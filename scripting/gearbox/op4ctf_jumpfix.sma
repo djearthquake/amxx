@@ -28,7 +28,7 @@ public plugin_init()
 
 public client_connect(target)
     if(is_user_connected(target))
-        g_bHasJump[target] = false;
+        set_task(1.5, "@no_jump", target)
 
 public client_disconnected(target)
     g_bHasJump[target] = false;
