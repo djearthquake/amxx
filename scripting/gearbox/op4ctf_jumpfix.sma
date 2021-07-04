@@ -1,5 +1,6 @@
 #include amxmodx
 #include fakemeta_util
+#include hamsandwich
 
 #define MAX_RESOURCE_PATH_LENGTH   64
 #define MAX_PLAYERS                32
@@ -8,6 +9,7 @@
 #define charsmin                   -1
 
 new szPowerup[ MAX_PLAYERS ];
+new bool:g_bHasJump[MAX_PLAYERS + 1];
 
 new const SzTakeJump[] = "take_Jump_Powerup"
 new const SzJump[]     = "ctf/pow_big_jump.wav"
@@ -20,8 +22,13 @@ public plugin_init()
 {
     register_plugin("op4ctf_jumpfix","2.2","SPiNX");
     register_event("CustomIcon", "plugin_log", "bcf", "2=take_Jump_Powerup", "2=drop_Jump_Powerup");
+    RegisterHam( Ham_Player_Jump, "player", "snd_effect" );
     g_snd = get_cvar_pointer("sv_dmjumpsound");
 }
+
+public client_connect(target)
+    if(is_user_connected(target))
+        g_bHasJump[target] = false;
 
 public plugin_log()
 {
@@ -34,22 +41,26 @@ public plugin_log()
         new target = get_loguser_index()
 
         if (is_user_alive(target))
-        
-        (containi(szPowerup, SzTakeJump) == charsmin ?
 
-            fm_set_user_longjump(target, false, false):
+        (containi(szPowerup, SzTakeJump) == charsmin ?
+            set_task(0.4, "@no_jump", target) :
 
                 fm_set_user_longjump(target, true, true),
-                snd_effect(target));
-    
+                g_bHasJump[target] = true)
+
 
     }
 
 }
+@no_jump(target)
+{
+    g_bHasJump[target] = false;
+    fm_set_user_longjump(target, false, false);
+}
 
 public snd_effect(target)
 
-    if(is_user_alive(target) && get_pcvar_num(g_snd))
+    if(g_bHasJump[target] && is_user_alive(target) && get_pcvar_num(g_snd))
     emit_sound(target, CHAN_WEAPON, SzJump, VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
 
 stock get_loguser_index()
