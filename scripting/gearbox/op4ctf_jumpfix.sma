@@ -43,7 +43,7 @@ public plugin_log()
 
         new target = get_loguser_index()
 
-        if (is_user_alive(target))
+        if (is_user_connected(target))
 
         (containi(szPowerup, SzTakeJump) == charsmin ?
             set_task(0.4, "@no_jump", target) :
