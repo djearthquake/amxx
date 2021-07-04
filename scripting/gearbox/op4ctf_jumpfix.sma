@@ -30,6 +30,9 @@ public client_connect(target)
     if(is_user_connected(target))
         g_bHasJump[target] = false;
 
+public client_disconnected(target)
+    g_bHasJump[target] = false;
+
 public plugin_log()
 {
     read_logargv(2,szPowerup, charsmax(szPowerup));
