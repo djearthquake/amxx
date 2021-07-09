@@ -55,6 +55,7 @@ public plugin_log()
     }
 
 }
+
 @no_jump(target)
 {
     g_bHasJump[target] = false;
@@ -62,9 +63,23 @@ public plugin_log()
 }
 
 public snd_effect(target)
+{
+    new Button = pev(target,pev_button),OldButton = pev(target,pev_oldbuttons);
+
+    if(Button & IN_JUMP && (OldButton & IN_FORWARD))
+    snd_play(target)
+
+}
+
+public snd_play(target)
+{
+    new Button = pev(target,pev_button),OldButton = pev(target,pev_oldbuttons);
+
+    if((Button & IN_FORWARD) && (OldButton & IN_JUMP))
 
     if(g_bHasJump[target] && is_user_alive(target) && get_pcvar_num(g_snd))
     emit_sound(target, CHAN_WEAPON, SzJump, VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+}
 
 stock get_loguser_index()
 {
