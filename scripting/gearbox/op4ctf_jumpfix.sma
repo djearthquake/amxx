@@ -21,9 +21,19 @@ public plugin_precache()
 public plugin_init()
 {
     register_plugin("op4ctf_jumpfix","2.2","SPiNX");
-    register_event("CustomIcon", "plugin_log", "bcf", "2=take_Jump_Powerup", "2=drop_Jump_Powerup");
-    RegisterHam( Ham_Player_Jump, "player", "snd_effect" );
-    g_snd = get_cvar_pointer("sv_dmjumpsound");
+
+    new mname[MAX_PLAYERS];
+    get_mapname(mname, charsmax(mname));
+
+    if (containi(mname,"op4c") == charsmin)
+        pause "a";
+
+    else
+    {
+        register_event("CustomIcon", "plugin_log", "bcf", "2=take_Jump_Powerup", "2=drop_Jump_Powerup");
+        RegisterHam( Ham_Player_Jump, "player", "snd_effect" );
+        g_snd = get_cvar_pointer("sv_dmjumpsound");
+    }
 }
 
 public client_connect(target)
