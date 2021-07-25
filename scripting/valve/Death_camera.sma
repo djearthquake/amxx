@@ -24,7 +24,7 @@ public client_disconnected(id)
         remove_task(id)
 
 public client_spawn(id)
-    if(is_user_connected(id) && !is_user_bot(id) || !is_user_hltv(id))
+    if(is_user_connected(id) && !is_user_bot(id) || is_user_connected(id) && !is_user_hltv(id))
         set_view(id, CAMERA_NONE) &&
         console_cmd(id, "default_fov 100")
 
