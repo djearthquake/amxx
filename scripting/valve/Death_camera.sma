@@ -29,7 +29,6 @@ public client_spawn(id)
         console_cmd(id, "default_fov 100")
 
 public client_death(victim,killer)
-
     if(killer > 0 && is_user_connected(victim) && killer != victim  && !is_user_alive(victim) && !is_user_bot(victim) && is_user_connected(killer))
         set_view(victim, CAMERA_3RDPERSON) &&
         console_cmd(victim, "default_fov 150")
