@@ -39,7 +39,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Thu 15 Jul 2021 02:58:23 AM CDT
+    *(__ [__)*|\ | >< Fri 30 Jul 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -232,10 +232,10 @@ public client_putinserver(id)
         /////////////////////DONT WANT LLAMAS COLLECT AUTHID///////////////////////////
         for (new admin=1; admin<=32; admin++)
         {
-            if (is_user_connected(admin) && is_user_admin(admin))
+            if (is_user_connected(admin) && is_user_admin(admin) && !equal(ClientCountry[m], ""))
                 client_print(admin,print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[m], ClientAuth[m], ClientCountry[m], ClientCity[m], ClientRegion[m]);
     
-            if (is_user_connected(admin) && !is_user_bot(admin))
+            if (is_user_connected(admin) && !is_user_bot(admin) && !equal(ClientCity[m], ""))
                 client_print(admin,print_chat,"%s connected from %s.", ClientName[m], ClientCity[m]);
         }
         
@@ -770,22 +770,22 @@ public read_web(feeding)
                     client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
 
             }
-            socket_close(g_Weather_Feed);
+            if(socket_close(g_Weather_Feed) == 0)socket_close(g_Weather_Feed)
             server_print "%s finished %s reading",PLUGIN, ClientName[id]
-
-            set_task(8.0, "@mark_socket", id);
+            set_task(1.0, "@mark_socket", id);
 
             return PLUGIN_CONTINUE;
 
         }
 
         if(!gotatemp[id])
-            set_task(8.0, "read_web",id+WEATHER);
+            set_task(3.0, "read_web",id+WEATHER);
     }
 
     return PLUGIN_HANDLED_MAIN;
 
 }
+
 
 @mark_socket(){IS_SOCKET_IN_USE = false;}
 
