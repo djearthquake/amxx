@@ -39,7 +39,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Fri 30 Jul 2021
+    *(__ [__)*|\ | >< Sun 01 Aug 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -97,7 +97,7 @@
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
 
-    new bool:IS_SOCKET_IN_USE
+    new bool:IS_SOCKET_IN_USE, mask
 
     new const g_szRequired_Files[][]={"GeoLite2-Country.mmdb","GeoLite2-City.mmdb"};
     new word_buffer[MAX_PLAYERS], g_debug, g_timeout, Float:g_task;
@@ -196,51 +196,55 @@ public plugin_init()
 }
 public client_putinserver(id)
 {
-    if(!task_exists(id+WEATHER) && id > 0 && !is_user_bot(id)) //will do server's weather
-    {
-        new total = iPlayers()
-        new Float:retask = (float(total++)*3.0)
-        new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
-        server_print "Task input time = %f", task_expand
-        set_task(task_expand,"@country_finder",id+WEATHER)
-    }
+    if(is_user_bot(id))return PLUGIN_HANDLED_MAIN
+    if(!task_exists(id+WEATHER) || (!task_exists(mask) && id > 0)) //will do server's weather
+        set_task(0.2,"@country_finder",id+WEATHER)
+    return PLUGIN_CONTINUE
 }
 @country_finder(Tsk)
 {
-    new m = Tsk - WEATHER
-    if(is_user_connected(m))
+    mask = Tsk - WEATHER
+
+    new total = iPlayers()
+    new Float:retask = (float(total++)*3.0)
+    new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
+
+
+    if(is_user_connected(mask))
     {
-        get_user_ip( m, ClientIP[m], charsmax( ClientIP[] ), WITHOUT_PORT );
+        get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
             
         #if AMXX_VERSION_NUM == 182
-            geoip_country( ClientIP[m], ClientCountry[m], charsmax(ClientCountry[]) );
+            geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
         #endif
     
         #if AMXX_VERSION_NUM != 182
-            geoip_country_ex( ClientIP[m], ClientCountry[m], charsmax(ClientCountry[]), 2 );
+            geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
         #endif
 
-        get_user_name(m,ClientName[m],charsmax(ClientName[]))
+        get_user_name(mask,ClientName[mask],charsmax(ClientName[]))
         
-        get_user_authid(m,ClientAuth[m],charsmax(ClientAuth[]))
+        get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
         
-        geoip_city(ClientIP[m],ClientCity[m],charsmax(ClientCity[]),1)
+        geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),1)
         
-        geoip_region_name(ClientIP[m],ClientRegion[m],charsmax(ClientRegion[]),2)
+        geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),2)
         server_print "checking temp country"
         
         /////////////////////DONT WANT LLAMAS COLLECT AUTHID///////////////////////////
         for (new admin=1; admin<=32; admin++)
         {
-            if (is_user_connected(admin) && is_user_admin(admin) && !equal(ClientCountry[m], ""))
-                client_print(admin,print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[m], ClientAuth[m], ClientCountry[m], ClientCity[m], ClientRegion[m]);
+            if (is_user_connected(admin) && is_user_admin(admin) && !equal(ClientCountry[mask], ""))
+                client_print(admin,print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[mask], ClientAuth[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]);
     
-            if (is_user_connected(admin) && !is_user_bot(admin) && !equal(ClientCity[m], ""))
-                client_print(admin,print_chat,"%s connected from %s.", ClientName[m], ClientCity[m]);
+            if (is_user_connected(admin) && !is_user_bot(admin) && !equal(ClientCity[mask], ""))
+                client_print(admin,print_chat,"%s connected from %s.", ClientName[mask], ClientCity[mask]);
         }
         
-        if(!task_exists(m))
-            set_task(1.5, "@que_em_up",m)
+        if(!task_exists(mask))
+            set_task(task_expand,"@que_em_up",mask)
+        server_print "Task input time = %f", task_expand
+            //set_task(1.5, "@que_em_up",m)
 
     }
 }
