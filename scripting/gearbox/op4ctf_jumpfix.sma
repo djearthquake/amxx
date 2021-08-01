@@ -7,6 +7,7 @@
 #define MAX_IP_LENGTH              16
 
 #define charsmin                   -1
+new const FL_ONGROUND2 = FL_ONGROUND | FL_PARTIALGROUND | FL_INWATER | FL_CONVEYOR | FL_FLOAT
 
 new szPowerup[ MAX_PLAYERS ];
 new bool:g_bHasJump[MAX_PLAYERS + 1];
@@ -76,7 +77,7 @@ public snd_effect(target)
 {
     new Button = pev(target,pev_button),OldButton = pev(target,pev_oldbuttons);
 
-    if(Button & IN_JUMP && (OldButton & IN_FORWARD))
+    if(Button & IN_JUMP && (OldButton & IN_FORWARD) && pev(target, pev_flags) & FL_ONGROUND)
     snd_play(target)
 
 }
@@ -84,8 +85,7 @@ public snd_effect(target)
 public snd_play(target)
 {
     new Button = pev(target,pev_button),OldButton = pev(target,pev_oldbuttons);
-
-    if((Button & IN_FORWARD) && (OldButton & IN_JUMP))
+    if(Button & IN_FORWARD && (OldButton & IN_JUMP) && pev(target, pev_flags) & ~FL_ONGROUND)
 
     if(g_bHasJump[target] && is_user_alive(target) && get_pcvar_num(g_snd))
     emit_sound(target, CHAN_WEAPON, SzJump, VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
