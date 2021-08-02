@@ -583,7 +583,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 
         g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
 
-        if(get_pcvar_num(g_long) && g_lat[id] != 0.0 || g_lat[id] != 0.0)
+        if(get_pcvar_float(g_long) && (!g_lat[id] || !g_lon[id]) )
 
             formatex(constring, charsmax (constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n",g_lat[id], g_lon[id], units, token);
 
