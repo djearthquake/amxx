@@ -610,7 +610,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket","testing/proxysnort.amxx")
+    callfunc_begin("@lock_socket","proxysnort.amxx")
     callfunc_end()
     new id = Task - WEATHER
 
@@ -640,7 +640,7 @@ public read_web(feeding)
     else
     if(!IS_SOCKET_IN_USE && gotatemp[id] == false)
     IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket","testing/proxysnort.amxx")
+    callfunc_begin("@lock_socket","proxysnort.amxx")
     callfunc_end()
 
     server_print "%s:reading %s temp",PLUGIN, ClientName[id]
