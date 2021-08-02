@@ -227,7 +227,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     else
         IS_SOCKET_IN_USE = true
     
-    callfunc_begin("@lock_socket","testing/clientemp_q21.amxx")
+    callfunc_begin("@lock_socket","clientemp.amxx")
     callfunc_end()
 
     if(get_pcvar_num(g_cvar_debugger) > 1 )
@@ -411,7 +411,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
     }
     set_task(1.0, "@mark_socket", id);
-    if(callfunc_begin("@mark_socket","testing/clientemp_q21.amxx"))
+    if(callfunc_begin("@mark_socket","clientemp.amxx"))
     {
         new work[MAX_PLAYERS]
         format(work,charsmax(work),PLUGIN,"")
