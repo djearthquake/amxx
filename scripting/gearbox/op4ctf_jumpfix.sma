@@ -7,7 +7,6 @@
 #define MAX_IP_LENGTH              16
 
 #define charsmin                   -1
-new const FL_ONGROUND2 = FL_ONGROUND | FL_PARTIALGROUND | FL_INWATER | FL_CONVEYOR | FL_FLOAT
 
 new szPowerup[ MAX_PLAYERS ];
 new bool:g_bHasJump[MAX_PLAYERS + 1];
