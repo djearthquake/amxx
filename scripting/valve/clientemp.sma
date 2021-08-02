@@ -39,7 +39,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Sun 01 Aug 2021
+    *(__ [__)*|\ | >< Sun 02 Aug 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -64,7 +64,7 @@
     #include sockets
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.8.4"
+    #define VERSION "1.8.5"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -94,6 +94,7 @@
     new ClientRegion[MAX_PLAYERS+1][MAX_NAME_LENGTH+1]
     new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH+1]
     new g_ClientTemp[MAX_PLAYERS+1][MAX_IP_LENGTH+1]
+
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
 
@@ -149,7 +150,7 @@ public plugin_init()
         register_dictionary(DIC);
 
     else
-    
+
     {
         log_amx("%s %s by %s paused to prevent data key leakage from missing %s.", PLUGIN, VERSION, AUTHOR, DIC);
         pause "a";
@@ -163,6 +164,7 @@ public plugin_init()
     g_long         = register_cvar("temp_long", "1"); //Uses longitude or city to get weather
     g_timeout      = register_cvar("temp_block", "25"); //how long minimum in between client temp requests
     g_queue_weight = register_cvar("temp_queue_weight", "5"); //# passes before putting queue to sleep
+
 
     register_clcmd("say !mytemp","Speak",0,"Shows your local temp.");
     register_clcmd("queue_test","@queue_test",ADMIN_SLAY,"Turns up the queue.");
@@ -213,34 +215,34 @@ public client_putinserver(id)
     if(is_user_connected(mask))
     {
         get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
-            
+
         #if AMXX_VERSION_NUM == 182
             geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
         #endif
-    
+
         #if AMXX_VERSION_NUM != 182
             geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
         #endif
 
         get_user_name(mask,ClientName[mask],charsmax(ClientName[]))
-        
+
         get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
-        
+
         geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),1)
-        
+
         geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),2)
         server_print "checking temp country"
-        
+
         /////////////////////DONT WANT LLAMAS COLLECT AUTHID///////////////////////////
         for (new admin=1; admin<=32; admin++)
         {
             if (is_user_connected(admin) && is_user_admin(admin) && !equal(ClientCountry[mask], ""))
                 client_print(admin,print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[mask], ClientAuth[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]);
-    
+
             if (is_user_connected(admin) && !is_user_bot(admin) && !equal(ClientCity[mask], ""))
                 client_print(admin,print_chat,"%s connected from %s.", ClientName[mask], ClientCity[mask]);
         }
-        
+
         if(!task_exists(mask))
             set_task(task_expand,"@que_em_up",mask)
         server_print "Task input time = %f", task_expand
@@ -306,13 +308,13 @@ public client_temp_cmd(id)
         {
             client_print(id,print_chat, "%L", LANG_PLAYER,"ALREADY_CHECKED", get_pcvar_num(g_timeout));
             num_to_word(get_pcvar_num(g_timeout), word_buffer, charsmax(word_buffer));
-    
+
             client_cmd(id, "spk ^"Warning. We did check your temperature check platform in %s minutes^"", word_buffer );
             change_task(id+BLOCK,get_pcvar_num(g_timeout)*60.0);
         }
-    
+
         else
-    
+
             set_task(1.0,"client_temp_filter",id)
     }
     else if(task_exists(id+BLOCK))remove_task(id+BLOCK)
@@ -340,13 +342,13 @@ public client_temp_cmd(id)
             new Float:retask = (float(total++)*3.0)
             new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
 
-            set_task(task_expand,"client_temp_cmd",m); 
+            set_task(task_expand,"client_temp_cmd",m);
             ////////////////////////////////////////////////////////////////////////////////
             server_print "We do not have %s's temp yet.",ClientName[m]
 
             if(task_exists(iQUEUE))
             {
-                
+
                 change_task(iQUEUE, 40.0)
                 server_print "Resuming queue per %s connected.",ClientName[m]
             }
@@ -459,7 +461,7 @@ public client_temp(id)
         timing = g_task+5.0;
 
         new ping, loss;
- 
+
         get_user_ping(id,ping,loss);
         new Float:timing2;
         timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
@@ -478,7 +480,7 @@ public client_temp(id)
         if(get_pcvar_num(g_debug) && is_user_admin(id) )
             set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
     }
-    
+
     if(get_pcvar_num(g_debug) > 1) //per req and updated to minimize log spam
         log_amx("%s|%s", ClientName[id], ClientAuth[id]);
 
@@ -540,7 +542,7 @@ public client_disconnected(id)
             {
                 if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
                 client_print(admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
-            
+
                 #if AMXX_VERSION_NUM != 182
                 client_print_color(admin,0, "^x03%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
                 #endif
@@ -550,7 +552,7 @@ public client_disconnected(id)
             {
                 if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
                 client_print(admin,print_chat,"%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
-        
+
                 #if AMXX_VERSION_NUM != 182
                 client_print_color(admin,0, "^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
                 #endif
@@ -608,6 +610,8 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
+    callfunc_begin("@lock_socket","testing/proxysnort.amxx")
+    callfunc_end()
     new id = Task - WEATHER
 
     server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
@@ -636,6 +640,8 @@ public read_web(feeding)
     else
     if(!IS_SOCKET_IN_USE && gotatemp[id] == false)
     IS_SOCKET_IN_USE = true;
+    callfunc_begin("@lock_socket","testing/proxysnort.amxx")
+    callfunc_end()
 
     server_print "%s:reading %s temp",PLUGIN, ClientName[id]
     #if AMXX_VERSION_NUM != 182
@@ -778,6 +784,14 @@ public read_web(feeding)
             server_print "%s finished %s reading",PLUGIN, ClientName[id]
             set_task(1.0, "@mark_socket", id);
 
+            if(callfunc_begin("@mark_socket","testing/proxysnort.amxx"))
+            {
+                new work[MAX_PLAYERS]
+                format(work,charsmax(work),PLUGIN,"")
+                callfunc_push_str(work)
+                callfunc_end()
+            }
+
             return PLUGIN_CONTINUE;
 
         }
@@ -791,7 +805,18 @@ public read_web(feeding)
 }
 
 
-@mark_socket(){IS_SOCKET_IN_USE = false;}
+@mark_socket(work[MAX_PLAYERS])
+{
+    IS_SOCKET_IN_USE = false;
+    if(!equal(work, ""))
+    server_print "%s | %s locking socket!", PLUGIN, work
+}
+
+@lock_socket()
+{
+    IS_SOCKET_IN_USE = true
+    server_print "%s other plugin locking socket!", PLUGIN
+}
 
 @the_queue()
 {
@@ -820,7 +845,7 @@ public read_web(feeding)
         get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
         server_print "We STILL need %s's temp already.",ClientName[players[q]]
 
-        //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused 
+        //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
         if(get_pcvar_num(g_long) && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
         set_task(queued_task++,"@country_finder",players[q]+WEATHER)
         //client_putinserver(players[q])
