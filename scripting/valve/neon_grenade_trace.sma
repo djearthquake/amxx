@@ -138,7 +138,7 @@ public plugin_init()
     g_cvar_neon_rad    = register_cvar("sv_neon_rad",  "1");
     g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
     g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
-    g_teams            = cstrike_running() ? get_cvar_pointer("mp_friendlyfire "): get_cvar_pointer("mp_teamplay");
+    g_teams            = !cstrike_running() ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
     clamp(g_cvar_neon_wid,1,150);
 
     g_cvar_bsod_iDelay = register_cvar("neon_flashbang_time", "2");
