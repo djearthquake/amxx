@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Sat Aug 31st, 2021.
+*(__ [__)*|\ | >< Last edit date Sat Aug 2nd, 2021.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -138,7 +138,7 @@ public plugin_init()
     g_cvar_neon_rad    = register_cvar("sv_neon_rad",  "1");
     g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
     g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
-    g_teams            = get_cvar_pointer("mp_teamplay");
+    g_teams            = cstrike_running() ? get_cvar_pointer("mp_friendlyfire "): get_cvar_pointer("mp_teamplay");
     clamp(g_cvar_neon_wid,1,150);
 
     g_cvar_bsod_iDelay = register_cvar("neon_flashbang_time", "2");
@@ -577,6 +577,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                             entity_explosion_knockback(victim, fExpOrigin);
                             new killer = entity_get_edict(ent,EV_ENT_owner);
 
+                            //if(killer > 0 && killer != players[m])
                             log_kill(killer,players[m],"Grenade Radiation",1);
                         }
                     }
