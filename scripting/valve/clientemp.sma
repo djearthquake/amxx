@@ -784,7 +784,7 @@ public read_web(feeding)
             server_print "%s finished %s reading",PLUGIN, ClientName[id]
             set_task(1.0, "@mark_socket", id);
 
-            if(callfunc_begin("@mark_socket","testing/proxysnort.amxx"))
+            if(callfunc_begin("@mark_socket","proxysnort.amxx"))
             {
                 new work[MAX_PLAYERS]
                 format(work,charsmax(work),PLUGIN,"")
