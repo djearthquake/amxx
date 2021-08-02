@@ -34,9 +34,9 @@
 *    -Finished migrating the messaging into debug mode.
 *    -Spread out proxy check tasks.
 * 
-*     08/02/2021 SPiNX
-*     Change log 1.4 to 1.5
-*    -Interfaced with the queue made on proxysnort.ams
+*    08/02/2021 SPiNX
+*    Change log 1.4 to 1.5
+*    -Interfaced with the queue made on proxysnort.sma
 */
 
 #include <amxmodx>
