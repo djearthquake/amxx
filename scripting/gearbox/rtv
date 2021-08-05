@@ -1,0 +1,20 @@
+/*Simple way to RTV with the missing RTV on existing Amxx base system*/
+
+#include amxmodx
+#include amxmisc
+public plugin_init()
+register_plugin("Simpler RTV", "1.1", "SPiNX") && register_clcmd("say rtv","handlesay")
+
+public handlesay(id)
+{
+    if(is_user_admin(id) || get_user_frags(id) > 10)
+    {
+        callfunc_begin("cmdVoteMapMenu","mapsmenu.amxx")
+        callfunc_end()
+    }
+    else if( get_user_frags(id) > 1)
+    {
+        callfunc_begin("@rtv","mapchooser.amxx")
+        callfunc_push_int(id)
+        callfunc_end()
+   
