@@ -1,3 +1,4 @@
+#define WEATHER_SCRIPT "clientemp.amxx"
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
@@ -110,7 +111,7 @@ public plugin_init()
     g_cvar_debugger         = register_cvar("proxy_debug", "0");
     //proxy_action: 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
 
-    g_clientemp_version     = get_cvar_pointer("temp_queue_weight")
+    g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
 
 
     //Tag positive findings by mod.
@@ -224,8 +225,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         client_putinserver(id)
     else
         IS_SOCKET_IN_USE = true
-    if(get_pcvar_num(g_clientemp_version) &&
-    callfunc_begin("@lock_socket","clientemp.amxx"))
+    if(get_pcvar_num(g_clientemp_version))
+    if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
     callfunc_end()
 
     if(get_pcvar_num(g_cvar_debugger) > 1 )
@@ -409,8 +410,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
     }
     set_task(1.0, "@mark_socket", id);
-    if(get_pcvar_num(g_clientemp_version) &&
-    callfunc_begin("@mark_socket","clientemp.amxx"))
+    if(get_pcvar_num(g_clientemp_version))
+    if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
     {
         new work[MAX_PLAYERS]
         format(work,charsmax(work),PLUGIN,"")
