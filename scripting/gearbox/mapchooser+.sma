@@ -61,8 +61,12 @@ public plugin_init()
     if (loadSettings(maps_ini_file))
         set_task(15.0, "voteNextmap", 987456, "", 0, "b")
 
-    g_coloredMenus = colored_menus()
-    g_mp_chattime = !cstrike_running() ? get_cvar_pointer("sv_timeout") : get_cvar_pointer("mp_chattime") , register_event("TeamScore", "team_score", "a")
+    g_coloredMenus = colored_menus()4   
+    g_mp_chattime = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
+
+    if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
+        register_event("TeamScore", "team_score", "a")
+
 
 }
 
@@ -142,7 +146,6 @@ bool:isInMenu(id)
     return false
 }
 
-//@rtv()g_rtv=true
 @rtv(id)
 
 if(is_user_connected(id))
@@ -155,6 +158,7 @@ public voteNextmap()
 {
     new winlimit = get_cvar_num("mp_winlimit")
     new maxrounds = get_cvar_num("mp_maxrounds")
+    new timeleft = get_timeleft()
 
     if (winlimit)
     {
@@ -174,11 +178,8 @@ public voteNextmap()
             return
         }
     } else {
-        new timeleft = get_timeleft()
 
-        new intercept = cstrike_running() ? 129 : 175
-
-        if (timeleft < 1 || timeleft > intercept && !g_rtv)
+        if (timeleft < 1 || timeleft > 129 && !g_rtv)
         {
             g_selected = false
             return
@@ -230,6 +231,8 @@ public voteNextmap()
     client_print(0, print_chat, "%L", LANG_SERVER, "TIME_CHOOSE")
     client_cmd(0, "spk Gman/Gman_Choose2")
     log_amx("Vote: Voting for the nextmap started")
+    log_amx "Map vote conducted with %i sec remaining.",timeleft
+
 }
 stock bool:ValidMap(mapname[])
 {
