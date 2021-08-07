@@ -85,7 +85,8 @@
     #define CHECK_MENU_TIME 0.5
 
     #define FLAG_AMX_VOTENEXTMAP ADMIN_VOTE
-
+	#define MAX_PLAYERS 32
+    #define MAX_MOTD_LENGTH 1536
     #define MAX_MAPS MAX_MOTD_LENGTH
     #define SELECTMAPS  5
 
