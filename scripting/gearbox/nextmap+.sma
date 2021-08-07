@@ -40,7 +40,8 @@ public plugin_init()
 
     g_amx_nextmap = register_cvar("amx_nextmap", "", FCVAR_SERVER|FCVAR_EXTDLL|FCVAR_SPONLY)
     g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-finale | 2-finale,tunes | 3-finale,tunes,gametitle*/
-    g_mp_chattime = cstrike_running() ? get_cvar_pointer("mp_chattime") : get_cvar_pointer("sv_timeout")
+
+    g_mp_chattime = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
 
     g_mp_friendlyfire = get_cvar_pointer("mp_friendlyfire")
     g_teamplay = get_cvar_pointer("mp_teamplay")
@@ -107,6 +108,8 @@ public delayedChange(Szstring[MAX_NAME_LENGTH])
 
 public changeMap()
 {
+    new time_left = get_timeleft()
+    log_amx "Event 30 ClanTimer called with %i sec remaining.",time_left
     new Szstring[MAX_NAME_LENGTH]
     new Float:chattime = g_mp_chattime ? get_pcvar_float(g_mp_chattime) : 10.0; // mp_chattime defaults to 10 in other mods
 
@@ -115,14 +118,16 @@ public changeMap()
 
     get_pcvar_string(g_amx_nextmap,Szstring,charsmax(Szstring))
     server_print "%s",Szstring
-    server_print "%s starting to make new task",PLUGIN
+    new Float:djleyedtask = floatclamp(chattime,1.0,122.0)
+    server_print "%s starting to make new task for %f",PLUGIN,djleyedtask
+    set_task(djleyedtask, "delayedChange", 0, Szstring, charsmax(Szstring)) //Over 2min6-7sec regular 'unannounced' mapcycle instead of vote would be next map
     new finale[128]
     formatex(finale,charsmax(finale),"Next map is %s!",Szstring)
     //Some mods do not have chat time so we make one. -SPiNX 2021
-    @finale(finale)
+    @finale(finale) //Pins players down for a true mp_chattime
     @title()
     @tunes()
-    set_task(chattime, "delayedChange", 0, Szstring, charsmax(Szstring)) // change with 1.5 sec. delay
+    
 }
 
 @finale(finale[128])
