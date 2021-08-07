@@ -29,6 +29,7 @@ new g_currentMap[MAX_NAME_LENGTH]
 // pcvars
 new g_mp_friendlyfire, g_mp_chattime
 new g_amx_nextmap, g_teamplay, g_finale
+new const Szjoin_chattime[] = "End map chat time!"
 
 public plugin_init()
 {
@@ -78,6 +79,12 @@ getNextMapName(szArg[], iMax)
 
     return len
 }
+
+public client_putinserver(id)
+if(get_timeleft() == 0 && is_user_connected(id))set_task(1.0,"@end_game",id)
+
+@end_game(id)
+{message_begin(MSG_ONE_UNRELIABLE,SVC_FINALE,{0,0,0},id);write_string(Szjoin_chattime);message_end();@tunes();}
 
 public sayNextMap()
 {
