@@ -8,124 +8,102 @@
 //     https://alliedmods.net/amxmodx-license
 
 //
-// Nextmap Chooser Plugin
+// NextMap Plugin
 //
 
 #include <amxmodx>
 #include <amxmisc>
 
-#define SELECTMAPS  5
-#define PLUGIN "Nextmap Chooser+"
-#define AUTHOR "SPINX|AMXX Dev Team"
-///MACROS for AMXX 1.8.2 local compile.
+// WARNING: If you comment this line make sure
+// that in your mapcycle file maps don't repeat.
+// However the same map in a row is still valid.
+#define OBEY_MAPCYCLE
+#define PLUGIN "NextMap+"
+#define MAX_NAME_LENGTH 32
 
+new g_nextMap[MAX_NAME_LENGTH]
+new g_mapCycle[MAX_NAME_LENGTH]
+new g_pos
+new g_currentMap[MAX_NAME_LENGTH]
 
-#define MAX_PLAYERS                32
-
-#define MAX_RESOURCE_PATH_LENGTH   64
-
-#define MAX_MENU_LENGTH            512
-
-#define MAX_NAME_LENGTH            32
-
-#define MAX_AUTHID_LENGTH          64
-
-#define MAX_IP_LENGTH              16
-
-#define MAX_USER_INFO_LENGTH       256
-
-#define charsmin                  -1
-//#define engine_changelevel server_cmd("changelevel %s", param)
-new Array:g_mapName;
-new g_mapNums;
-
-new g_nextName[SELECTMAPS]
-new g_voteCount[SELECTMAPS + 2]
-new g_mapVoteNum
-new g_teamScore[2]
-new g_lastMap[MAX_PLAYERS]
-
-new g_coloredMenus
-new bool:g_selected = false
-new bool:g_rtv = false
-
-new g_mp_chattime
+// pcvars
+new g_mp_friendlyfire, g_mp_chattime
+new g_amx_nextmap, g_teamplay, g_finale
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, AMXX_VERSION_STR, AUTHOR)
-    register_dictionary("mapchooser.txt")
-    register_dictionary("common.txt")
+    register_plugin(PLUGIN, AMXX_VERSION_STR, "SPiNX|AMXX Dev Team")
+    register_dictionary("nextmap.txt")
+    register_event("30", "changeMap", "a")
+    register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
+    register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
 
-    g_mapName=ArrayCreate(MAX_NAME_LENGTH);
+    g_amx_nextmap = register_cvar("amx_nextmap", "", FCVAR_SERVER|FCVAR_EXTDLL|FCVAR_SPONLY)
+    g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-finale | 2-finale,tunes | 3-finale,tunes,gametitle*/
 
-    new MenuName[MAX_RESOURCE_PATH_LENGTH]
-
-    format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
-    register_menucmd(register_menuid(MenuName), (charsmin^(charsmin<<(SELECTMAPS+2))), "countVote")
-    register_cvar("amx_extendmap_max", "90")
-    register_cvar("amx_extendmap_step", "15")
-
-    get_localinfo("lastMap", g_lastMap, charsmax(g_lastMap))
-    set_localinfo("lastMap", "")
-
-    new maps_ini_file[64]
-    get_configsdir(maps_ini_file, charsmax(maps_ini_file));
-    format(maps_ini_file, charsmax(maps_ini_file), "%s/maps.ini", maps_ini_file);
-
-    if (!file_exists(maps_ini_file))
-        get_cvar_string("mapcyclefile", maps_ini_file, charsmax(maps_ini_file))
-    if (loadSettings(maps_ini_file))
-        set_task(15.0, "voteNextmap", 987456, "", 0, "b")
-
-    g_coloredMenus = colored_menus()
     g_mp_chattime = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
 
-    if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
-        register_event("TeamScore", "team_score", "a")
+    g_mp_friendlyfire = get_cvar_pointer("mp_friendlyfire")
+    g_teamplay = get_cvar_pointer("mp_teamplay")
 
+    register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
 
+    get_mapname(g_currentMap, charsmax(g_currentMap))
+
+    new szString[MAX_NAME_LENGTH+8], szString2[MAX_NAME_LENGTH], szString3[8]
+
+    get_localinfo("lastmapcycle", szString, charsmax(szString))
+    parse(szString, szString2, charsmax(szString2), szString3, charsmax(szString3))
+
+    get_cvar_string("mapcyclefile", g_mapCycle, charsmax(g_mapCycle))
+
+    if (!equal(g_mapCycle, szString2))
+        g_pos = 0   // mapcyclefile has been changed - go from first
+    else
+        g_pos = str_to_num(szString3)
+
+    readMapCycle(g_mapCycle, g_nextMap, charsmax(g_nextMap))
+    set_pcvar_string(g_amx_nextmap, g_nextMap)
+    formatex(szString, charsmax(szString), "%s %d", g_mapCycle, g_pos)  // save lastmapcycle settings
+    set_localinfo("lastmapcycle", szString)
 }
 
-public checkVotes()
+getNextMapName(szArg[], iMax)
 {
-    new b = 0
+    new len = get_pcvar_string(g_amx_nextmap, szArg, iMax)
 
-    for (new a = 0; a < g_mapVoteNum; ++a)
-        if (g_voteCount[b] < g_voteCount[a])
-            b = a
+    if (ValidMap(szArg)) return len
+    len = copy(szArg, iMax, g_nextMap)
+    set_pcvar_string(g_amx_nextmap, g_nextMap)
 
-    if (g_voteCount[SELECTMAPS] > g_voteCount[b]
-        && g_voteCount[SELECTMAPS] > g_voteCount[SELECTMAPS+1])
+    return len
+}
+
+public sayNextMap()
+{
+    new name[MAX_NAME_LENGTH]
+
+    getNextMapName(name, charsmax(name))
+    client_print(0, print_chat, "%L %s", LANG_PLAYER, "NEXT_MAP", name)
+}
+
+public sayCurrentMap()
+    client_print(0, print_chat, "%L: %s", LANG_PLAYER, "PLAYED_MAP", g_currentMap)
+
+public sayFFStatus()
+    if (cstrike_running() || !cstrike_running() && get_pcvar_num(g_teamplay))
+        client_print(0, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, get_pcvar_num(g_mp_friendlyfire) ? "ON" : "OFF")
+
+public delayedChange(Szstring[MAX_NAME_LENGTH])
+{
+
+    if (g_mp_chattime)
     {
-        new mapname[MAX_NAME_LENGTH]
-
-        get_mapname(mapname, charsmax(mapname))
-        new Float:steptime = get_cvar_float("amx_extendmap_step")
-        set_cvar_float("mp_timelimit", get_cvar_float("mp_timelimit") + steptime)
-        client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime)
-        log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to next %.0f minutes", mapname, steptime)
-
-        return
+        server_print "%s adj chattime",PLUGIN
+        set_pcvar_float(g_mp_chattime, get_pcvar_float(g_mp_chattime) - 2.0)
     }
-
-    new smap[MAX_NAME_LENGTH]
-    if (g_voteCount[b] && g_voteCount[SELECTMAPS + 1] <= g_voteCount[b])
-    {
-        ArrayGetString(g_mapName, g_nextName[b], smap, charsmax(smap));
-        set_cvar_string("amx_nextmap", smap);
-    }
-
-    get_cvar_string("amx_nextmap", smap, charsmax(smap))
-    client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_NEXT", smap)
-    log_amx("Vote: Voting for the nextmap finished. The nextmap will be %s", smap)
-    if(g_rtv)
-    {
-        remove_task(987456)
-        new time = get_pcvar_num(g_mp_chattime)
-        if(time < 2)time = 5
-        set_task(float(time),"@changemap",987456,smap,charsmax(smap))
-    }
+    server_print "%s delayed map change",PLUGIN
+    engine_changelevel(Szstring)
 }
 
 @changemap(smap[MAX_NAME_LENGTH])
@@ -137,127 +115,60 @@ public checkVotes()
 #if AMXX_VERSION_NUM == 182
 stock engine_changelevel(smap[32])
 {
-	server_cmd("changelevel %s", smap)
+    server_cmd("changelevel %s", smap)
 }
 #endif
 
-public countVote(id, key)
+public changeMap()
 {
-    if (get_cvar_float("amx_vote_answers"))
-    {
-        new name[MAX_NAME_LENGTH]
-        get_user_name(id, name, charsmax(name))
+    new time_left = get_timeleft()
+    log_amx "Event 30 ClanTimer called with %i sec remaining.",time_left
+    new Szstring[MAX_NAME_LENGTH]
+    new Float:chattime = g_mp_chattime ? get_pcvar_float(g_mp_chattime) : 10.0; // mp_chattime defaults to 10 in other mods
 
-        if (key == SELECTMAPS)
-            client_print(0, print_chat, "%L", LANG_PLAYER, "CHOSE_EXT", name)
-        else if (key < SELECTMAPS)
-        {
-            new map[32];
-            ArrayGetString(g_mapName, g_nextName[key], map, charsmax(map));
-            client_print(0, print_chat, "%L", LANG_PLAYER, "X_CHOSE_X", name, map);
-        }
-    }
-    ++g_voteCount[key]
+    if (g_mp_chattime)
+        set_pcvar_float(g_mp_chattime, chattime + 2.0)      // make sure mp_chattime is long
 
-    return PLUGIN_HANDLED
+    get_pcvar_string(g_amx_nextmap,Szstring,charsmax(Szstring))
+    server_print "%s",Szstring
+    new Float:djleyedtask = floatclamp(chattime,1.0,122.0)
+    server_print "%s starting to make new task for %f",PLUGIN,djleyedtask
+    set_task(djleyedtask, "delayedChange", 0, Szstring, charsmax(Szstring)) //Over 2min6-7sec regular 'unannounced' mapcycle instead of vote would be next map
+    new finale[128]
+    formatex(finale,charsmax(finale),"Next map is %s!",Szstring)
+    //Some mods do not have chat time so we make one. -SPiNX 2021
+    @finale(finale) //Pins players down for a true mp_chattime
+    @title()
+    @tunes()
+    
 }
 
-bool:isInMenu(id)
+@finale(finale[128])
+if(get_pcvar_num(g_finale))
 {
-    for (new a = 0; a < g_mapVoteNum; ++a)
-        if (id == g_nextName[a])
-            return true
-    return false
+    message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
 }
 
-@rtv(id)
-
-if(is_user_connected(id))
+@title()
+if(get_pcvar_num(g_finale)>1)
 {
-    server_print "%s|%n called RTV", PLUGIN, id
-    g_rtv=true
-    change_task(987456,1.0)
+    emessage_begin(MSG_BROADCAST,get_user_msgid("GameTitle"),{0,0,0},0)
+    ewrite_byte(1)
+    emessage_end()
 }
-public voteNextmap()
+
+@tunes()
+if(get_pcvar_num(g_finale)>2)
 {
-    new winlimit = get_cvar_num("mp_winlimit")
-    new maxrounds = get_cvar_num("mp_maxrounds")
-    new timeleft = get_timeleft()
-
-    if (winlimit)
-    {
-        new c = winlimit - 2
-
-        if ((c > g_teamScore[0]) && (c > g_teamScore[1]))
-        {
-            g_selected = false
-            return
-        }
-    }
-    else if (maxrounds)
-    {
-        if ((maxrounds - 2) > (g_teamScore[0] + g_teamScore[1]))
-        {
-            g_selected = false
-            return
-        }
-    } else {
-
-        if (timeleft < 1 || timeleft > 129 && !g_rtv)
-        {
-            g_selected = false
-            return
-        }
-    }
-
-    if (g_selected)
-        return
-
-    g_selected = true
-
-    new menu[MAX_MENU_LENGTH], a, mkeys = (1<<SELECTMAPS + 1)
-
-    new pos = format(menu, charsmax(menu), g_coloredMenus ? "\y%L:\w^n^n" : "%L:^n^n", LANG_SERVER, "CHOOSE_NEXTM")
-    new dmax = (g_mapNums > SELECTMAPS) ? SELECTMAPS : g_mapNums
-
-    for (g_mapVoteNum = 0; g_mapVoteNum < dmax; ++g_mapVoteNum)
-    {
-        a = random_num(0, g_mapNums - 1)
-
-        while (isInMenu(a))
-            if (++a >= g_mapNums) a = 0
-
-        g_nextName[g_mapVoteNum] = a
-        pos += format(menu[pos], charsmax(menu) - pos, "%d. %a^n", g_mapVoteNum + 1, ArrayGetStringHandle(g_mapName, a));
-        mkeys |= (1<<g_mapVoteNum)
-        g_voteCount[g_mapVoteNum] = 0
-    }
-
-    menu[pos++] = '^n'
-    g_voteCount[SELECTMAPS] = 0
-    g_voteCount[SELECTMAPS + 1] = 0
-
-    new mapname[MAX_NAME_LENGTH]
-    get_mapname(mapname, charsmax(mapname))
-
-    if ((winlimit + maxrounds) == 0 && (get_cvar_float("mp_timelimit") < get_cvar_float("amx_extendmap_max")))
-    {
-        pos += format(menu[pos], charsmax(menu) - pos, "%d. %L^n", SELECTMAPS + 1, LANG_SERVER, "EXTED_MAP", mapname)
-        mkeys |= (1<<SELECTMAPS)
-    }
-
-    format(menu[pos], charsmax(menu), "%d. %L", SELECTMAPS+2, LANG_SERVER, "NONE")
-    new MenuName[MAX_RESOURCE_PATH_LENGTH]
-
-    format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
-    show_menu(0, mkeys, menu, 15, MenuName)
-    set_task(15.0, "checkVotes")
-    client_print(0, print_chat, "%L", LANG_SERVER, "TIME_CHOOSE")
-    client_cmd(0, "spk Gman/Gman_Choose2")
-    log_amx("Vote: Voting for the nextmap started")
-    log_amx "Map vote conducted with %i sec remaining.",timeleft
-
+    new iTrack = random_num(2,27) //1 is blank
+    emessage_begin(MSG_BROADCAST, SVC_CDTRACK, _, 0 );
+    ewrite_byte(iTrack);
+    ewrite_byte(1);
+    emessage_end();
 }
+
+new g_warning[] = "WARNING: Couldn't find a valid map or the file doesn't exist (file ^"%s^")"
+
 stock bool:ValidMap(mapname[])
 {
     if ( is_map_valid(mapname) )
@@ -288,60 +199,88 @@ stock bool:ValidMap(mapname[])
     return false;
 }
 
-loadSettings(filename[])
+#if defined OBEY_MAPCYCLE
+readMapCycle(szFileName[], szNext[], iNext)
 {
-    if (!file_exists(filename))
-        return 0
+    new b, i = 0, iMaps = 0
+    new szBuffer[MAX_NAME_LENGTH], szFirst[MAX_NAME_LENGTH]
 
-    new szText[MAX_NAME_LENGTH]
-    new currentMap[MAX_NAME_LENGTH]
-
-    new buff[MAX_USER_INFO_LENGTH];
-
-    get_mapname(currentMap, charsmax(currentMap))
-
-    new fp=fopen(filename,"r");
-
-    while (!feof(fp))
+    if (file_exists(szFileName))
     {
-        buff[0]='^0';
-        szText[0]='^0';
-
-        fgets(fp, buff, charsmax(buff));
-
-        parse(buff, szText, charsmax(szText));
-
-
-        if (szText[0] != ';' &&
-            ValidMap(szText) &&
-            !equali(szText, g_lastMap) &&
-            !equali(szText, currentMap))
+        while (read_file(szFileName, i++, szBuffer, charsmax(szBuffer), b))
         {
-            ArrayPushString(g_mapName, szText);
-            ++g_mapNums;
-        }
+            if (!isalnum(szBuffer[0]) || !ValidMap(szBuffer)) continue
 
+            if (!iMaps)
+                copy(szFirst, charsmax(szFirst), szBuffer)
+
+            if (++iMaps > g_pos)
+            {
+                copy(szNext, iNext, szBuffer)
+                g_pos = iMaps
+                return
+            }
+        }
     }
 
-    fclose(fp);
-
-    return g_mapNums
+    if (!iMaps)
+    {
+        log_amx(g_warning, szFileName)
+        copy(szNext, iNext, g_currentMap)
+    }
+    else
+        copy(szNext, iNext, szFirst)
+    g_pos = 1
 }
 
-public team_score()
+#else
+
+readMapCycle(szFileName[], szNext[], iNext)
 {
-    new team[2]
+    new b, i = 0, iMaps = 0
+    new szBuffer[MAX_NAME_LENGTH], szFirst[MAX_NAME_LENGTH]
 
-    read_data(1, team, charsmax(team))
-    g_teamScore[(team[0]=='C') ? 0 : 1] = read_data(2)
+    new a = g_pos
+
+    if (file_exists(szFileName))
+    {
+        while (read_file(szFileName, i++, szBuffer, charsmax(szBuffer), b))
+        {
+            if (!isalnum(szBuffer[0]) || !ValidMap(szBuffer)) continue
+
+            if (!iMaps)
+            {
+                iMaps = 1
+                copy(szFirst, charsmax(szFirst), szBuffer)
+            }
+
+            if (iMaps == 1)
+            {
+                if (equali(g_currentMap, szBuffer))
+                {
+                    if (a-- == 0)
+                        iMaps = 2
+                }
+            } else {
+                if (equali(g_currentMap, szBuffer))
+                    ++g_pos
+                else
+                    g_pos = 0
+
+                copy(szNext, iNext, szBuffer)
+                return
+            }
+        }
+    }
+
+    if (!iMaps)
+    {
+        log_amx(g_warning, szFileName)
+        copy(szNext, iNext, g_currentMap)
+    }
+    else
+        copy(szNext, iNext, szFirst)
+
+    g_pos = 0
 }
-
-public plugin_end()
-{
-    new current_map[MAX_NAME_LENGTH]
-
-    get_mapname(current_map, charsmax(current_map))
-    set_localinfo("lastMap", current_map)
-
-    ArrayDestroy(g_mapName)
-}
+#endif
