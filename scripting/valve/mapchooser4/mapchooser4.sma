@@ -1,3 +1,4 @@
+
     /*  AMX Mod X
     *   Nextmap Chooser Plugin
     *
@@ -85,7 +86,7 @@
 
     #define FLAG_AMX_VOTENEXTMAP ADMIN_VOTE
 
-    #define MAX_MAPS  MAX_MENU_LENGTH
+    #define MAX_MAPS MAX_MOTD_LENGTH
     #define SELECTMAPS  5
 
     #define MAP_HISTORY_MAX  15
@@ -204,8 +205,8 @@
     register_clcmd("say","handleSay")
 
     register_clcmd("amx_listmaps2","cmdListMaps",0,"- lists maps that can be nominated.")
-
-    if ( cstrike_running() )
+    
+    if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
     register_event("TeamScore", "team_score", "a")
 
     g_maxplayers = get_maxplayers()
