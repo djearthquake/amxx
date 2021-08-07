@@ -106,6 +106,19 @@ public delayedChange(Szstring[MAX_NAME_LENGTH])
     engine_changelevel(Szstring)
 }
 
+@changemap(smap[MAX_NAME_LENGTH])
+{
+    server_print "Trying to change to map %s",smap
+    engine_changelevel(smap)
+}
+
+#if AMXX_VERSION_NUM == 182
+stock engine_changelevel(smap[32])
+{
+    server_cmd("changelevel %s", smap)
+}
+#endif
+
 public changeMap()
 {
     new time_left = get_timeleft()
