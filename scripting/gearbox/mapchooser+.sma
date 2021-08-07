@@ -17,8 +17,25 @@
 #define SELECTMAPS  5
 #define PLUGIN "Nextmap Chooser+"
 #define AUTHOR "SPINX|AMXX Dev Team"
-#define charsmin    -1
+///MACROS for AMXX 1.8.2 local compile.
 
+
+#define MAX_PLAYERS                32
+
+#define MAX_RESOURCE_PATH_LENGTH   64
+
+#define MAX_MENU_LENGTH            512
+
+#define MAX_NAME_LENGTH            32
+
+#define MAX_AUTHID_LENGTH          64
+
+#define MAX_IP_LENGTH              16
+
+#define MAX_USER_INFO_LENGTH       256
+
+#define charsmin                  -1
+//#define engine_changelevel server_cmd("changelevel %s", param)
 new Array:g_mapName;
 new g_mapNums;
 
@@ -61,7 +78,7 @@ public plugin_init()
     if (loadSettings(maps_ini_file))
         set_task(15.0, "voteNextmap", 987456, "", 0, "b")
 
-    g_coloredMenus = colored_menus()4   
+    g_coloredMenus = colored_menus()
     g_mp_chattime = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
 
     if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
@@ -114,8 +131,15 @@ public checkVotes()
 @changemap(smap[MAX_NAME_LENGTH])
 {
     server_print "Trying to change to map %s",smap
-    if(ValidMap(smap))engine_changelevel(smap)
+    engine_changelevel(smap)
 }
+
+#if AMXX_VERSION_NUM == 182
+stock engine_changelevel(smap[32])
+{
+	server_cmd("changelevel %s", smap)
+}
+#endif
 
 public countVote(id, key)
 {
@@ -321,3 +345,4 @@ public plugin_end()
 
     ArrayDestroy(g_mapName)
 }
+
