@@ -1,3 +1,4 @@
+#define PROXY_SCRIPT "proxysnort.amxx"
 /*
     *
     *   SSSSSSSSSSSSSSS PPPPPPPPPPPPPPPPP     iiii  NNNNNNNN        NNNNNNNNXXXXXXX       XXXXXXX
@@ -610,7 +611,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket","proxysnort.amxx")
+    callfunc_begin("@lock_socket",PROXY_SCRIPT)
     callfunc_end()
     new id = Task - WEATHER
 
@@ -640,7 +641,7 @@ public read_web(feeding)
     else
     if(!IS_SOCKET_IN_USE && gotatemp[id] == false)
     IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket","proxysnort.amxx")
+    callfunc_begin("@lock_socket",PROXY_SCRIPT)
     callfunc_end()
 
     server_print "%s:reading %s temp",PLUGIN, ClientName[id]
@@ -784,7 +785,7 @@ public read_web(feeding)
             server_print "%s finished %s reading",PLUGIN, ClientName[id]
             set_task(1.0, "@mark_socket", id);
 
-            if(callfunc_begin("@mark_socket","proxysnort.amxx"))
+            if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
             {
                 new work[MAX_PLAYERS]
                 format(work,charsmax(work),PLUGIN,"")
