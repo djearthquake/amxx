@@ -40,6 +40,10 @@ public client_connect(target)
     if(is_user_connected(target))
         set_task(1.5, "@no_jump", target)
 
+#if !defined client_disconnected
+#define client_disconnected client_disconnect
+#endif
+
 public client_disconnected(target)
     g_bHasJump[target] = false;
 
