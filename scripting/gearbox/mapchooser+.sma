@@ -14,7 +14,7 @@
 #include <amxmodx>
 #include <amxmisc>
 
-#define SELECTMAPS  5
+#define SELECTMAPS  7
 #define PLUGIN "Nextmap Chooser+"
 #define AUTHOR "SPINX|AMXX Dev Team"
 #define VOTE_MAP_TASK 987456
@@ -48,7 +48,8 @@ new g_lastMap[MAX_PLAYERS]
 
 new g_coloredMenus
 new bool:g_selected = false
-new g_mp_chattime, g_auto_pick, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim
+new bool:g_rtv = false
+new g_mp_chattime, g_auto_pick, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
 
 public plugin_init()
 {
@@ -96,8 +97,20 @@ public plugin_init()
     if(get_cvar_pointer("mp_timelimit"))
         bind_pcvar_num(get_cvar_pointer("mp_timelimit"),g_timelim)
 
+    if(get_cvar_num("amx_vote_time"))
+        bind_pcvar_num(get_cvar_pointer("amx_vote_time"),g_votetime)
+
     if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
         register_event("TeamScore", "team_score", "a")
+}
+//@rtv()g_rtv=true
+@rtv(id)
+
+if(is_user_connected(id))
+{
+    server_print "%s|%n called RTV", PLUGIN, id
+    g_rtv=true
+    change_task(987456,1.0)
 }
 
 public checkVotes()
@@ -132,8 +145,20 @@ public checkVotes()
     get_cvar_string("amx_nextmap", smap, charsmax(smap))
     client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_NEXT", smap)
     log_amx("Vote: Voting for the nextmap finished. The nextmap will be %s", smap)
+
+    if(g_rtv)
+    {
+        remove_task(987456)
+        if(g_mp_chattime < 2)g_mp_chattime= 5
+        set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
+    }
 }
 
+@changemap(smap[MAX_NAME_LENGTH])
+{
+    server_print "Trying to change to map %s",smap
+    if(ValidMap(smap))engine_changelevel(smap)
+}
 
 #if AMXX_VERSION_NUM == 182
 stock engine_changelevel(smap[MAX_NAME_LENGTH])
@@ -170,6 +195,7 @@ bool:isInMenu(id)
             return true
     return false
 }
+
 @auto_map_pick()
 {   server_print "auto-picking maps"
     new players[MAX_PLAYERS]
@@ -221,15 +247,17 @@ public voteNextmap()
     }
     else if (g_frags)
     {
-        if ( g_frags_remaining > 3 && timeleft > 129 )
+        if ( g_frags_remaining > 3 && timeleft > 129 && !g_rtv )
         {
             g_selected = false
             return
         }
 
     } else {
-
-        if (timeleft < 1 || timeleft > 129)
+        new timeleft = get_timeleft()
+        new intercept = cstrike_running() ? 129 : g_votetime + 5.0
+        if (timeleft < 1 || timeleft > intercept && !g_rtv)
+        //if (timeleft < 1 || timeleft > 129)
         {
             g_selected = false
             return
@@ -266,7 +294,7 @@ public voteNextmap()
     new mapname[MAX_NAME_LENGTH]
     get_mapname(mapname, charsmax(mapname))
 
-    if ((g_wins + g_rnds) == 0 && (get_cvar_float("mp_timelimit") < get_pcvar_float(g_max)/*get_cvar_float("amx_extendmap_max")*/))
+    if ((g_wins + g_rnds) == 0 && (get_cvar_float("mp_timelimit") < get_pcvar_float(g_max)))
     {
         pos += format(menu[pos], charsmax(menu) - pos, "%d. %L^n", SELECTMAPS + 1, LANG_SERVER, "EXTED_MAP", mapname)
         mkeys |= (1<<SELECTMAPS)
