@@ -1,4 +1,4 @@
-// vim: set ts=4 sw=4 tw=99 noet:
+    // vim: set ts=4 sw=4 tw=99 noet:
 //
 // AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
 // Copyright (C) The AMX Mod X Development Team.
@@ -13,13 +13,15 @@
 
 #include <amxmodx>
 #include <amxmisc>
+#include engine
 
 // WARNING: If you comment this line make sure
 // that in your mapcycle file maps don't repeat.
 // However the same map in a row is still valid.
 #define OBEY_MAPCYCLE
-#define PLUGIN "NextMap+"
 #define MAX_NAME_LENGTH 32
+#define charsmin -1
+#define ZERO_TIME "30"
 
 new g_nextMap[MAX_NAME_LENGTH]
 new g_mapCycle[MAX_NAME_LENGTH]
@@ -27,29 +29,30 @@ new g_pos
 new g_currentMap[MAX_NAME_LENGTH]
 
 // pcvars
-new g_mp_friendlyfire, g_mp_chattime
-new g_amx_nextmap, g_teamplay, g_finale
-new const Szjoin_chattime[] = "End map chat time!"
+new g_mp_friendlyfire, g_teamplay, g_map_ent
+new g_mp_chattime
+new g_amx_nextmap
+
+new const CvarChatTimeDesc[]="Added by nextmap to include end game chat time."
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, AMXX_VERSION_STR, "SPiNX|AMXX Dev Team")
+    register_plugin("NextMap", AMXX_VERSION_STR, "AMXX Dev Team")
     register_dictionary("nextmap.txt")
-    register_event("30", "changeMap", "a")
+
+    get_mapname(g_currentMap, charsmax(g_currentMap))
+
+    register_event(ZERO_TIME, "changeMap", "a")
+
     register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
     register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
 
     g_amx_nextmap = register_cvar("amx_nextmap", "", FCVAR_SERVER|FCVAR_EXTDLL|FCVAR_SPONLY)
-    g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-finale | 2-finale,tunes | 3-finale,tunes,gametitle*/
 
-    g_mp_chattime = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
+    bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : create_cvar("mp_chattime", "10.0" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 105.0),g_mp_chattime)
 
-    g_mp_friendlyfire = get_cvar_pointer("mp_friendlyfire")
-    g_teamplay = get_cvar_pointer("mp_teamplay")
-
-    register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
-
-    get_mapname(g_currentMap, charsmax(g_currentMap))
+    if(get_cvar_pointer("mp_teamplay"))
+        bind_pcvar_num(get_cvar_pointer("mp_teamplay"), g_teamplay)
 
     new szString[MAX_NAME_LENGTH+8], szString2[MAX_NAME_LENGTH], szString3[8]
 
@@ -67,111 +70,59 @@ public plugin_init()
     set_pcvar_string(g_amx_nextmap, g_nextMap)
     formatex(szString, charsmax(szString), "%s %d", g_mapCycle, g_pos)  // save lastmapcycle settings
     set_localinfo("lastmapcycle", szString)
+
+    if(get_cvar_pointer("mp_friendlyfire"))
+    bind_pcvar_num(get_cvar_pointer("mp_friendlyfire"),g_mp_friendlyfire)
+    
+    && register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
+
+    g_map_ent = find_ent_by_class(charsmin, "item_ctfbase")
+        
 }
 
-getNextMapName(szArg[], iMax)
-{
-    new len = get_pcvar_string(g_amx_nextmap, szArg, iMax)
-
-    if (ValidMap(szArg)) return len
-    len = copy(szArg, iMax, g_nextMap)
-    set_pcvar_string(g_amx_nextmap, g_nextMap)
-
-    return len
-}
-
-public client_putinserver(id)
-if(get_timeleft() == 0 && is_user_connected(id))set_task(1.0,"@end_game",id)
-
-@end_game(id)
-{message_begin(MSG_ONE_UNRELIABLE,SVC_FINALE,{0,0,0},id);write_string(Szjoin_chattime);message_end();@tunes();}
-
-public sayNextMap()
+public sayNextMap(id)
+if(is_user_connected(id))
 {
     new name[MAX_NAME_LENGTH]
+    get_pcvar_string(g_amx_nextmap,name,charsmax(name))
 
-    getNextMapName(name, charsmax(name))
-    client_print(0, print_chat, "%L %s", LANG_PLAYER, "NEXT_MAP", name)
+    client_print id, print_chat, "%L %s", LANG_PLAYER, "NEXT_MAP", name
 }
 
-public sayCurrentMap()
-    client_print(0, print_chat, "%L: %s", LANG_PLAYER, "PLAYED_MAP", g_currentMap)
+public sayCurrentMap(id)
+if(is_user_connected(id))
+    client_print id, print_chat, "%L: %s", LANG_PLAYER, "PLAYED_MAP", g_currentMap
 
-public sayFFStatus()
-    if (cstrike_running() || !cstrike_running() && get_pcvar_num(g_teamplay))
-        client_print(0, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, get_pcvar_num(g_mp_friendlyfire) ? "ON" : "OFF")
+public sayFFStatus(id)
+{
+    if(g_teamplay || g_map_ent > charsmin)
+        client_print 0, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, g_mp_friendlyfire ? "ON" : "OFF"
+    else if(is_user_connected(id))
+        client_print id, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, g_mp_friendlyfire ? "ON" : "OFF"
+}
+#if !defined engine_changelevel
+stock engine_changelevel(smap[MAX_NAME_LENGTH]){server_cmd("changelevel %s", smap)}
+#endif
 
 public delayedChange(Szstring[MAX_NAME_LENGTH])
 {
-
-    if (g_mp_chattime)
-    {
-        server_print "%s adj chattime",PLUGIN
-        set_pcvar_float(g_mp_chattime, get_pcvar_float(g_mp_chattime) - 2.0)
-    }
-    server_print "%s delayed map change",PLUGIN
+    log_amx "Pushing map through"
     engine_changelevel(Szstring)
 }
-
-@changemap(smap[MAX_NAME_LENGTH])
-{
-    server_print "Trying to change to map %s",smap
-    engine_changelevel(smap)
-}
-
-#if AMXX_VERSION_NUM == 182
-stock engine_changelevel(smap[32])
-{
-    server_cmd("changelevel %s", smap)
-}
-#endif
-
 public changeMap()
 {
-    new time_left = get_timeleft()
-    log_amx "Event 30 ClanTimer called with %i sec remaining.",time_left
     new Szstring[MAX_NAME_LENGTH]
-    new Float:chattime = g_mp_chattime ? get_pcvar_float(g_mp_chattime) : 10.0; // mp_chattime defaults to 10 in other mods
-
-    if (g_mp_chattime)
-        set_pcvar_float(g_mp_chattime, chattime + 2.0)      // make sure mp_chattime is long
-
     get_pcvar_string(g_amx_nextmap,Szstring,charsmax(Szstring))
-    server_print "%s",Szstring
-    new Float:djleyedtask = floatclamp(chattime,1.0,122.0)
-    server_print "%s starting to make new task for %f",PLUGIN,djleyedtask
-    set_task(djleyedtask, "delayedChange", 0, Szstring, charsmax(Szstring)) //Over 2min6-7sec regular 'unannounced' mapcycle instead of vote would be next map
-    new finale[128]
-    formatex(finale,charsmax(finale),"Next map is %s!",Szstring)
-    //Some mods do not have chat time so we make one. -SPiNX 2021
-    @finale(finale) //Pins players down for a true mp_chattime
-    @title()
-    @tunes()
-    
+    set_task(float(g_mp_chattime), "delayedChange", 0, Szstring, charsmax(Szstring))
+    set_task(1.0,"@Show_Chat_time",MAX_PLAYERS,"", 0, "b")
+    log_amx "Chat time"
 }
 
-@finale(finale[128])
-if(get_pcvar_num(g_finale))
+@Show_Chat_time()
 {
-    message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
-}
-
-@title()
-if(get_pcvar_num(g_finale)>1)
-{
-    emessage_begin(MSG_BROADCAST,get_user_msgid("GameTitle"),{0,0,0},0)
-    ewrite_byte(1)
-    emessage_end()
-}
-
-@tunes()
-if(get_pcvar_num(g_finale)>2)
-{
-    new iTrack = random_num(2,27) //1 is blank
-    emessage_begin(MSG_BROADCAST, SVC_CDTRACK, _, 0 );
-    ewrite_byte(iTrack);
-    ewrite_byte(1);
-    emessage_end();
+    client_print 0, print_chat,"Chat time remaining %i seconds",--g_mp_chattime
+    if(task_exists(0))
+        change_task(0, float(g_mp_chattime))
 }
 
 new g_warning[] = "WARNING: Couldn't find a valid map or the file doesn't exist (file ^"%s^")"
