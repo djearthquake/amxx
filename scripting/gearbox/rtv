@@ -2,19 +2,33 @@
 
 #include amxmodx
 #include amxmisc
-public plugin_init()
-register_plugin("Simpler RTV", "1.1", "SPiNX") && register_clcmd("say rtv","handlesay")
 
+public plugin_init()
+{
+    register_plugin("Simpler RTV", "1.21", "SPiNX") && register_clcmd("say rtv","handlesay")
+    //g_mp_trick = get_cvar_pointer("mp_maxrounds") ? get_cvar_pointer("mp_maxrounds") : register_cvar("mp_maxrounds","")
+}
 public handlesay(id)
 {
-    if(is_user_admin(id) || get_user_frags(id) > 10)
+    if(is_user_admin(id) && get_user_frags(id) > 2 || get_user_frags(id) > 6)
     {
         callfunc_begin("cmdVoteMapMenu","mapsmenu.amxx")
         callfunc_end()
     }
-    else if( get_user_frags(id) > 1)
+    else if(is_user_admin(id) && get_user_frags(id) >= 1 || get_user_frags(id) >= 1 && get_user_frags(id) <= 6)
     {
         callfunc_begin("@rtv","mapchooser.amxx")
         callfunc_push_int(id)
         callfunc_end()
-   
+    }
+
+}
+
+/*
+changelog 
+* 
+1.0 - mapsmenu cmd free-for-all
+1.1 - rtv call functions remade mapchooser and need to have frags to RTV and 11 to get admin-style menu again instead of standard
+1.2 - Trying methods. Adding some get_players weighting as I finish.
+* 
+*/
