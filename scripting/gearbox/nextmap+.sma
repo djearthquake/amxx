@@ -29,9 +29,10 @@ new g_pos
 new g_currentMap[MAX_NAME_LENGTH]
 
 // pcvars
-new g_mp_friendlyfire, g_teamplay, g_map_ent
+new g_mp_friendlyfire, g_teamplay, g_map_ent, g_frags, g_frags_remaining
 new g_mp_chattime
-new g_amx_nextmap
+new g_amx_nextmap, g_finale
+new Szstring[MAX_NAME_LENGTH]
 
 new const CvarChatTimeDesc[]="Added by nextmap to include end game chat time."
 
@@ -46,6 +47,12 @@ public plugin_init()
 
     register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
     register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
+
+    if(get_cvar_pointer("mp_fraglimit"))
+        bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
+
+    if(get_cvar_pointer("mp_fragsleft"))
+        bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
 
     g_amx_nextmap = register_cvar("amx_nextmap", "", FCVAR_SERVER|FCVAR_EXTDLL|FCVAR_SPONLY)
 
@@ -73,11 +80,12 @@ public plugin_init()
 
     if(get_cvar_pointer("mp_friendlyfire"))
     bind_pcvar_num(get_cvar_pointer("mp_friendlyfire"),g_mp_friendlyfire)
-    
-    && register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
 
+    && register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
     g_map_ent = find_ent_by_class(charsmin, "item_ctfbase")
-        
+
+    g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-finale | 2-finale,tunes | 3-finale,tunes,gametitle*/
+
 }
 
 public sayNextMap(id)
@@ -109,13 +117,20 @@ public delayedChange(Szstring[MAX_NAME_LENGTH])
     log_amx "Pushing map through"
     engine_changelevel(Szstring)
 }
+
 public changeMap()
 {
-    new Szstring[MAX_NAME_LENGTH]
     get_pcvar_string(g_amx_nextmap,Szstring,charsmax(Szstring))
     set_task(float(g_mp_chattime), "delayedChange", 0, Szstring, charsmax(Szstring))
     set_task(1.0,"@Show_Chat_time",MAX_PLAYERS,"", 0, "b")
     log_amx "Chat time"
+    new finale[128]
+
+    formatex(finale,charsmax(finale),"Next map is %s!",Szstring)
+    //Some mods do not have chat time so we make one. -SPiNX 2021
+    @finale(finale)
+    @title()
+    @tunes()
 }
 
 @Show_Chat_time()
@@ -242,3 +257,27 @@ readMapCycle(szFileName[], szNext[], iNext)
     g_pos = 0
 }
 #endif
+
+@finale(finale[128])
+if(get_pcvar_num(g_finale))
+{
+    message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
+}
+
+@title()
+if(get_pcvar_num(g_finale)>1)
+{
+    emessage_begin(MSG_BROADCAST,get_user_msgid("GameTitle"),{0,0,0},0)
+    ewrite_byte(1)
+    emessage_end()
+}
+
+@tunes()
+if(get_pcvar_num(g_finale)>2)
+{
+    new iTrack = random_num(2,27) //1 is blank
+    emessage_begin(MSG_BROADCAST, SVC_CDTRACK, _, 0 );
+    ewrite_byte(iTrack);
+    ewrite_byte(1);
+    emessage_end();
+}
