@@ -14,7 +14,7 @@
 #include <amxmodx>
 #include <amxmisc>
 
-#define SELECTMAPS  7
+#define SELECTMAPS  9
 #define PLUGIN "Nextmap Chooser+"
 #define AUTHOR "SPINX|AMXX Dev Team"
 #define VOTE_MAP_TASK 987456
@@ -50,6 +50,7 @@ new g_coloredMenus
 new bool:g_selected = false
 new bool:g_rtv = false
 new g_mp_chattime, g_auto_pick, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
+new Float:checktime
 
 public plugin_init()
 {
@@ -77,8 +78,10 @@ public plugin_init()
     if (!file_exists(maps_ini_file))
         get_cvar_string("mapcyclefile", maps_ini_file, charsmax(maps_ini_file))
     if (loadSettings(maps_ini_file))
-        set_task(15.0, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
-
+    {
+        checktime = cstrike_running() ? 15.0 : 5.0 ;
+        set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
+    }
     g_coloredMenus = colored_menus()
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
 
@@ -103,7 +106,7 @@ public plugin_init()
     if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
         register_event("TeamScore", "team_score", "a")
 }
-//@rtv()g_rtv=true
+
 @rtv(id)
 
 if(is_user_connected(id))
@@ -115,6 +118,7 @@ if(is_user_connected(id))
 
 public checkVotes()
 {
+
     new b = 0
 
     for (new a = 0; a < g_mapVoteNum; ++a)
@@ -127,13 +131,29 @@ public checkVotes()
         new mapname[MAX_NAME_LENGTH]
 
         get_mapname(mapname, charsmax(mapname))
-        new Float:steptime = get_pcvar_float(g_step) //get_cvar_float("amx_extendmap_step")
-        set_cvar_float("mp_timelimit", get_cvar_float("mp_timelimit") + steptime)
-        client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime)
-        log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to next %.0f minutes", mapname, steptime)
+        new Float:steptime = get_pcvar_float(g_step)
+    
+        //Half-Life Frags
+        if(g_frags && g_frags_remaining)
+        {
+            log_amx"Setting frags"
+            set_cvar_num("mp_fraglimit", g_frags + floatround(steptime))
+            //client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime) //need frags instead of min translated
+            client_print 0, print_chat, "Incrementing frag limit to %i.", g_frags
+            log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to  %i frags", mapname, g_frags)
+        }
+
+        else
+        {
+            log_amx"Setting ext time"
+            set_cvar_float("mp_timelimit", get_cvar_float("mp_timelimit") + steptime)
+            client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime)
+            log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to next %.0f minutes", mapname, steptime)
+        }
 
         return
     }
+
 
     new smap[MAX_NAME_LENGTH]
     if (g_voteCount[b] && g_voteCount[SELECTMAPS + 1] <= g_voteCount[b])
@@ -149,9 +169,16 @@ public checkVotes()
     if(g_rtv)
     {
         remove_task(987456)
-        if(g_mp_chattime < 2)g_mp_chattime= 5
+        if(g_mp_chattime < 2)g_mp_chattime = 5
         set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
     }
+    
+    if(g_frags && g_frags_remaining < 2)
+    {
+        log_amx"HL server frag limit map change"
+        @changemap(smap)
+    }
+
 }
 
 @changemap(smap[MAX_NAME_LENGTH])
@@ -247,7 +274,7 @@ public voteNextmap()
     }
     else if (g_frags)
     {
-        if ( g_frags_remaining > 3 && timeleft > 129 && !g_rtv )
+        if ( g_frags_remaining > 5 && timeleft > 129 && !g_rtv )
         {
             g_selected = false
             return
@@ -255,7 +282,7 @@ public voteNextmap()
 
     } else {
         new timeleft = get_timeleft()
-        new intercept = cstrike_running() ? 129 : g_votetime + 5.0
+        new intercept = cstrike_running() ? 129 : g_votetime + 5
         if (timeleft < 1 || timeleft > intercept && !g_rtv)
         //if (timeleft < 1 || timeleft > 129)
         {
