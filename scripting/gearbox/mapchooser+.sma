@@ -14,7 +14,7 @@
 #include <amxmodx>
 #include <amxmisc>
 
-#define SELECTMAPS  7
+#define SELECTMAPS  8
 #define PLUGIN "Nextmap Chooser+"
 #define AUTHOR "SPINX|AMXX Dev Team"
 #define VOTE_MAP_TASK 987456
