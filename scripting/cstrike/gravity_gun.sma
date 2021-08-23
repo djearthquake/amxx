@@ -27,7 +27,7 @@
   Cvars:
 
   ggdm_active 0   - 0: disables the plugin
-                    1: enables the plugin (objects will be created next round)
+                    1: enables the plugin (objects will be creat    ed next round)
 
   ggdm_allweapons 0   - 0: players can only use the gravity gun
                         1: players can use all the weapons, and the knife is replaced with the gravity gun
@@ -107,10 +107,9 @@
 
 #include <engine>
 #include <engine_stocks>
+#include <fakemeta>
 #include <fun>
 #include <hamsandwich>
-
-//#include <ns2amx>
 
 #define find_entity find_ent
 
@@ -121,8 +120,12 @@
 #define GRAB_SPEED 30
 
 #define MAX_NAME_LENGTH 32
-#define MAX_SPAWNS 81
-#define BEHINDBASESIZE 1500
+#define MAX_RESOURCE_PATH_LENGTH 64
+#define MAX_MOTD_LENGTH 1536
+
+#define MAX_SPAWNS MAX_RESOURCE_PATH_LENGTH
+
+#define BEHINDBASESIZE MAX_MOTD_LENGTH
 
 new gMsgDeathMsg
 
@@ -132,7 +135,7 @@ new SPAWNS_ENABLED
 new OBJECTS_ENABLED
 
 new g_ObjectsNum
-new g_Model[MAX_SPAWNS][MAX_RESOURCE_PATH_LENGTH], g_ModelName[MAX_SPAWNS][MAX_NAME_LENGTH]
+new g_Model[MAX_SPAWNS][MAX_RESOURCE_PATH_LENGTH], g_Modelv[MAX_RESOURCE_PATH_LENGTH], g_ModelName[MAX_SPAWNS][MAX_NAME_LENGTH]
 new g_MinX[MAX_SPAWNS], g_MinY[MAX_SPAWNS], g_MinZ[MAX_SPAWNS]
 new g_MaxX[MAX_SPAWNS], g_MaxY[MAX_SPAWNS], g_MaxZ[MAX_SPAWNS]
 
@@ -145,20 +148,24 @@ new bool:wait_denygrab[MAX_NAME_LENGTH + 1]
 new bool:wait_denythrow[MAX_NAME_LENGTH + 1]
 new bool:active=false
 
-new GRAVGUN_VMODEL[MAX_RESOURCE_PATH_LENGTH] = "models/v_gauss.mdl"
-new GRAVGUN_PMODEL[MAX_RESOURCE_PATH_LENGTH] = "models/p_gauss.mdl"
 new g_active,g_all,g_damage,g_grab,g_throw,g_objects,g_dist,g_dist_max
+
+new const GRAVGUN_VMODEL[] = "models/portal/v_portal.mdl";
+new const GRAVGUN_PMODEL[] = "models/portal/portal.mdl";
+new const GRAVGUN_WMODEL[] = "models/rpgrocket.mdl";
+new const MsgStr[] = "WELCOME TO GRAVITY GUN DEATHMATCH!^nPRESS +ATTACK2 BUTTON TO GRAB AN OBJECT.^nPRESS +ATTACK BUTTON TO THROW IT AT YOUR ENEMIES AND KILL THEM.^nYou can throw an object without grabbing it if you are close to it.^nYou can also grab and throw players."
+new const gg_snd[] = "sound/ggdm/ggdm_grabbing.mp3"
 
 public plugin_init()
 {
   register_library("ggdm") 
   register_plugin("Gravity Gun DeathMatch", "0.3.2", "KRoTaL")
   g_active   = register_cvar("ggdm_active","1")
-  g_all      = register_cvar("ggdm_allweapons","1")
-  g_damage   = register_cvar("ggdm_damage","20")
+  g_all      = register_cvar("ggdm_allweapons","0")
+  g_damage   = register_cvar("ggdm_damage","50")
   g_grab     = register_cvar("ggdm_grabforce","10")
   g_throw    = register_cvar("ggdm_throwforce","1400")
-  g_objects  = register_cvar("ggdm_objects","30")
+  g_objects  = register_cvar("ggdm_objects","10")
   g_dist     = register_cvar("ggdm_maxdist","140")
   g_dist_max = register_cvar("ggdm_maxdist_grab","1500")
   register_clcmd("say","handle_say")
@@ -166,12 +173,13 @@ public plugin_init()
 
   register_event("CurWeapon","switchweapon","be","1=1")
 
-  //register_event("ResetHUD","reset_hud","b")
   RegisterHam(Ham_Spawn, "player", "reset_hud", 1);
   
   register_event("DeathMsg","death_event","a")
+  
+  register_forward(FM_EmitSound, "FmEmitSound")
 
-  register_touch("player","*", "gg_gun_touch")
+  register_touch("player","*", "gg_touch")
 
   if(cstrike_running())
   {
@@ -185,15 +193,26 @@ public plugin_init()
   set_task(0.5, "createSpawns", 0, "", 0)
 }
 
-//public plugin_cfg()
-//  if(!cstrike_running())
-//    roundstart()
+
+public FmEmitSound(id, channel, const sample[], Float:volume, Float:attenuation, flags, pitch)
+{
+  if(is_user_alive(id))
+  {
+    if(containi(sample, "knife") != -1 && get_pcvar_num(g_active))
+    {
+
+        return FMRES_SUPERCEDE
+    }
+    client_cmd(id, "mp3 play %s", gg_snd)
+  }
+  return FMRES_IGNORED
+}
 
 
 public ggdm_help(id)
 {
   set_hudmessage(255, 255, 255, -1.0, 0.67, 0, 0.01, 12.0, 0.01, 0.01, 2)
-  show_hudmessage(id, "WELCOME TO GRAVITY GUN DEATHMATCH!^nPRESS +ATTACK2 BUTTON TO GRAB AN OBJECT.^nPRESS +ATTACK BUTTON TO THROW IT AT YOUR ENNEMIES AND KILL THEM.^nYou can throw an object without grabbing it if you are close to it.^nYou can also grab and throw players.") //setlang
+  show_hudmessage id, MsgStr
 
   return PLUGIN_CONTINUE
 }
@@ -224,7 +243,8 @@ public reset_hud(id)
     if(task_exists(33333+id))
       remove_task(33333+id)
     client_cmd(id, "mp3 stop")
-    //set_user_godmode(id, 0)
+    remove_task(id)
+    set_user_godmode(id, 0)
     entity_set_edict(id, EV_ENT_owner, 33)
   }
 
@@ -236,9 +256,9 @@ public reset_hud(id)
   wait_denygrab[id]=false
   wait_denythrow[id]=false
   entity_set_edict(id, EV_ENT_owner, 33)
-  /*
-  if(!get_pcvar_num(g_all))
-    set_user_godmode(id, 0)*/
+
+  if(!get_pcvar_num(g_all) && is_user_alive(id))
+    set_user_godmode(id, 0)
   new ids[1]
   ids[0]=id
   set_task(0.1, "detect_key", 11111+id, ids, 1, "b")
@@ -289,7 +309,9 @@ public client_kill(id)
 
 public switchweapon(id)
 {
-  if(is_user_alive(id) && is_user_bot(id) || !is_user_bot(id))
+  if(is_user_bot(id))
+    return PLUGIN_HANDLED_MAIN
+  if(is_user_alive(id))
   {
       if(!get_pcvar_num(g_active) || SPAWNS_ENABLED == 0 || OBJECTS_ENABLED == 0)
         return PLUGIN_CONTINUE
@@ -305,6 +327,7 @@ public switchweapon(id)
         client_cmd(id, weap)
         entity_set_string(id, EV_SZ_viewmodel, GRAVGUN_VMODEL)
         entity_set_string(id, EV_SZ_weaponmodel, GRAVGUN_PMODEL)
+        entity_set_string(id, EV_SZ_weaponmodel, GRAVGUN_WMODEL)
       }
       else
       {
@@ -319,7 +342,7 @@ public switchweapon(id)
           if(grabbed[id])
           {
             client_cmd(id, "mp3 stop")
-            client_cmd(id, "mp3 play ^"sound\ggdm\ggdm_throw.mp3^"")
+            client_cmd(id, "mp3 play ^"sound/ggdm/ggdm_throw.mp3^"")
             if(task_exists(33333+id))
               remove_task(33333+id)
             wait_denythrow[id]=false
@@ -329,13 +352,19 @@ public switchweapon(id)
             new entity[1]
             entity[0]=grabbed[id]
             set_task(RESET_OWNER, "reset_owner", 22222+grabbed[id], entity, 1)
+            client_cmd(id, "mp3 stop %s", gg_snd)
             grabbed[id]=0
+            if(task_exists(id))
+              remove_task(id)
           }
     
           return PLUGIN_CONTINUE
         }
-      }
+
+    }
+
   }
+  
   return PLUGIN_CONTINUE
 }
 
@@ -348,24 +377,30 @@ public roundstart()
   }
   else
   {
-    if(/*SPAWNS_ENABLED == 1 && */OBJECTS_ENABLED == 1)
+    if(SPAWNS_ENABLED == 1 && OBJECTS_ENABLED == 1)
     {
-      //spawn_objects()
-      set_hudmessage(255, 255, 255, -1.0, 0.67, 0, 0.01, 15.0, 0.01, 0.01, 2)
-      show_hudmessage(0, "WELCOME TO GRAVITY GUN DEATHMATCH!^nPRESS +ATTACK2 BUTTON TO GRAB AN OBJECT.^nPRESS +ATTACK BUTTON TO THROW IT AT YOUR ENNEMIES AND KILL THEM.^nYou can throw an object without grabbing it if you are close to it.^nYou can also grab and throw players.")
-      show_hudmessage(0, "WELCOME TO GRAVITY GUN DEATHMATCH!^nPRESS +ATTACK2 BUTTON TO GRAB AN OBJECT.^nPRESS +ATTACK BUTTON TO THROW IT AT YOUR ENNEMIES AND KILL THEM.^nYou can throw an object without grabbing it if you are close to it.^nYou can also grab and throw players.")
+      spawn_objects()
+      new Float:time_msg = 1.5
+      set_hudmessage(255, 255, 255, -1.0, 0.67, 0, time_msg, time_msg, 0.01, 0.01, 2)
+      show_hudmessage(0, MsgStr)
       active=true
     }
     else
     {
-      //if(SPAWNS_ENABLED == 0)
-      //  console_print(0, "[Gravity Gun DeathMatch] OBJECTS WILL NOT SPAWN.")
+      if(SPAWNS_ENABLED == 0)
+      {
+        console_print 0, "[Gravity Gun DeathMatch] OBJECTS WILL NOT SPAWN."
+        client_print 0,print_console, "[Gravity Gun DeathMatch] OBJECTS WILL NOT SPAWN."
+      }
       if(OBJECTS_ENABLED == 0)
-        console_print(0, "[Gravity Gun DeathMatch] YOU NEED TO CONFIGURE THE OBJECTS TO BE SPAWNED.")
+      {
+        log_amx"[Gravity Gun DeathMatch] YOU NEED TO CONFIGURE THE OBJECTS TO BE SPAWNED."
+        client_print 0,print_console, "[Gravity Gun DeathMatch] YOU NEED TO CONFIGURE THE OBJECTS TO BE SPAWNED."
+      }
       active=false
     }
-  }
 
+  }
   return PLUGIN_CONTINUE
 }
 
@@ -464,11 +499,11 @@ public remove_objects()
   return PLUGIN_CONTINUE
 }
 
-public gg_gun_touch(ptr, ptd)
+public gg_touch(ptr, ptd)
 {
   new entity1, entity2
-  ptr = entity1
-  ptd = entity2
+  ptd = entity1
+  ptr = entity2
   if(active)
     return PLUGIN_CONTINUE
 
@@ -487,7 +522,7 @@ public gg_gun_touch(ptr, ptd)
       if(get_cvar_num("mp_friendlyfire") == 0 && get_user_team(killer) == get_user_team(entity2))
         return PLUGIN_CONTINUE
 
-      //set_user_godmode(entity2, 1)
+      set_user_godmode(entity2, 1)
       emit_sound(entity2, CHAN_BODY, "player/headshot1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
       set_msg_block(gMsgDeathMsg, BLOCK_SET)
       set_user_health(entity2, 0)
@@ -530,13 +565,13 @@ public log_kill(killer, victim, weapon[])
 {
   new kname[MAX_NAME_LENGTH], vname[MAX_NAME_LENGTH], kauthid[MAX_NAME_LENGTH], vauthid[MAX_NAME_LENGTH], kteam[10], vteam[10]
 
-  get_user_name(killer, kname, 31)
-  get_user_team(killer, kteam, 9)
-  get_user_authid(killer, kauthid, 31)
+  get_user_name(killer, kname, charsmax(kname))
+  get_user_team(killer, kteam, charsmax(kteam))
+  get_user_authid(killer, kauthid, charsmax(kauthid))
 
-  get_user_name(victim, vname, 31)
-  get_user_team(victim, vteam, 9)
-  get_user_authid(victim, vauthid, 31)
+  get_user_name(victim, vname, charsmax(vname))
+  get_user_team(victim, vteam, charsmax(vteam))
+  get_user_authid(victim, vauthid, charsmax(vauthid))
 
   log_message("^"%s<%d><%s><%s>^" killed ^"%s<%d><%s><%s>^" with ^"%s^"",
   kname, get_user_userid(killer), kauthid, kteam,
@@ -552,14 +587,14 @@ public extra_damage(killer, victim)
 
   if(health > 0)
   {
-    //set_user_godmode(victim, 1)
+    set_user_godmode(victim, 1)
     set_user_health(victim, health)
-    /*if(!get_pcvar_num(g_all))
-      set_user_godmode(victim, 1)*/
+    if(!get_pcvar_num(g_all))
+      set_user_godmode(victim, 1)
   }
   else
   {
-    //set_user_godmode(victim, 0)
+    set_user_godmode(victim, 0)
     emit_sound(victim, CHAN_BODY, "player/headshot1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
     set_msg_block(gMsgDeathMsg, BLOCK_SET)
     set_user_health(victim, 0)
@@ -608,7 +643,7 @@ public detect_key(player[])
     if(button & KEY_THROW)
     {
       client_cmd(id, "mp3 stop")
-      client_cmd(id, "mp3 play ^"sound\ggdm\ggdm_throw.mp3^"")
+      client_cmd(id, "mp3 play ^"sound/ggdm/ggdm_throw.mp3^"")
       if(task_exists(33333+id))
         remove_task(33333+id)
       wait_denythrow[id]=true
@@ -708,8 +743,8 @@ public detect_key(player[])
       }
       else if(!wait_denygrab[id])
       {
-        //client_cmd(id, "mp3 stop")
-        client_cmd(id, "mp3 play ^"sound\ggdm\ggdm_denygrab.mp3^"")
+      
+        client_cmd(id, "mp3 play ^"sound/ggdm/ggdm_denygrab.mp3^"")
         wait_denygrab[id]=true
         new ids[1]
         ids[0]=id
@@ -747,7 +782,7 @@ public detect_key(player[])
           if(length < get_pcvar_num(g_dist))
           {
             client_cmd(id, "mp3 stop")
-            client_cmd(id, "mp3 play ^"sound\ggdm\ggdm_throw.mp3^"")
+            client_cmd(id, "mp3 play ^"sound/ggdm/ggdm_throw.mp3^"")
             wait_denythrow[id]=true
             new ids[1]
             ids[0]=id
@@ -768,8 +803,7 @@ public detect_key(player[])
       }
       else if(!wait_denythrow[id])
       {
-        //client_cmd(id, "mp3 stop")
-        client_cmd(id, "mp3 play ^"sound\ggdm\ggdm_denythrow.mp3^"")
+        client_cmd(id, "mp3 play ^"sound/ggdm/ggdm_denythrow.mp3^"")
         wait_denythrow[id]=true
         new ids[1]
         ids[0]=id
@@ -784,37 +818,34 @@ public detect_key(player[])
 
 public set_grabbed(id, targetid)
 {
-  //client_cmd(id, "mp3 stop")
-  client_cmd(id, "mp3 play ^"sound\ggdm\ggdm_grab.mp3^"")
+  client_cmd(id, "mp3 play ^"sound/ggdm/ggdm_grab.mp3^"")
   if(task_exists(22222+targetid))
     remove_task(22222+targetid)
   grabbed[id]=targetid
   grablength[id]=80
   entity_set_edict(targetid, EV_ENT_owner, id+33)
-  new ids[1]
-  ids[0]=id
-  set_task(2.0, "loop_grabbing_sound", 33333+id, ids, 1)
+  if(!task_exists(id))
+    set_task(0.65,"@gun_snd",id,"",0,"b")
 }
 
-public loop_grabbing_sound(ids[])
-{
-  client_cmd(ids[0], "mp3 loop ^"sound\ggdm\ggdm_grabbing.mp3^"")
-}
+@gun_snd(id)
+if(is_user_alive(id) && get_user_weapon( id ) == CSW_KNIFE && get_pcvar_num(g_active) && !grabbing_player[id] && grabbed[id])
+  client_cmd(id, "mp3 play %s", gg_snd)
 
 public reset_denythrow(ids[])
-{
+
   wait_denythrow[ids[0]]=false
-}
+
 
 public reset_denygrab(ids[])
-{
+
   wait_denygrab[ids[0]]=false
-}
+
 
 public reset_owner(entity[])
-{
+
   entity_set_edict(entity[0], EV_ENT_owner, 33)
-}
+
 
 public createSpawns() //taken from Bail's Root Plugin
 {
@@ -827,8 +858,7 @@ public createSpawns() //taken from Bail's Root Plugin
   new Float:pspawncounter
 
   pspawncounter = 0.0
-  //ctbase_id = find_entity(-1,"info_player_start")
-  ctbase_id = find_ent_by_class(-1,"info_player_start")
+  ctbase_id = find_entity(-1,"info_player_start")
   while (ctbase_id > 0)
   {
     pspawncounter +=1.0
@@ -836,8 +866,7 @@ public createSpawns() //taken from Bail's Root Plugin
     ctbase_origin[0] += base_origin_temp[0]
     ctbase_origin[1] += base_origin_temp[1]
     ctbase_origin[2] += base_origin_temp[2]
-    //ctbase_id = find_entity(ctbase_id,"info_player_start")
-    ctbase_id = find_ent_by_class(ctbase_id,"info_player_start")
+    ctbase_id = find_entity(ctbase_id,"info_player_start")
   }
 
   ctbase_origin[0] = ctbase_origin[0] / pspawncounter
@@ -845,8 +874,7 @@ public createSpawns() //taken from Bail's Root Plugin
   ctbase_origin[2] = ctbase_origin[2] / pspawncounter
 
   pspawncounter = 0.0
- //tbase_id = find_entity(-1,"info_player_deathmatch")
-  tbase_id = find_ent_by_class(-1,"info_player_deathmatch")
+  tbase_id = find_entity(-1,"info_player_deathmatch")
   while (tbase_id > 0)
   {
     pspawncounter +=1.0
@@ -854,7 +882,6 @@ public createSpawns() //taken from Bail's Root Plugin
     tbase_origin[0] += base_origin_temp[0]
     tbase_origin[1] += base_origin_temp[1]
     tbase_origin[2] += base_origin_temp[2]
-    //tbase_id = find_entity(tbase_id,"info_player_deathmatch")
     tbase_id = find_ent_by_class(tbase_id,"info_player_deathmatch")
   }
 
@@ -1024,6 +1051,7 @@ public plugin_precache()
       g_MaxX[g_ObjectsNum]=strtonum(Xmax)
       g_MaxY[g_ObjectsNum]=strtonum(Ymax)
       g_MaxZ[g_ObjectsNum]=strtonum(Zmax)
+
       format(g_Model[g_ObjectsNum], charsmax(g_Model[]), "%s", g_Model[g_ObjectsNum])
       precache_model(g_Model[g_ObjectsNum])
       ++g_ObjectsNum
@@ -1037,11 +1065,12 @@ public plugin_precache()
 
   precache_model(GRAVGUN_VMODEL)
   precache_model(GRAVGUN_PMODEL)
+  precache_model(GRAVGUN_WMODEL)
+        
   precache_sound("player/headshot1.wav")
-
   precache_generic("sound/ggdm/ggdm_throw.mp3")
   precache_generic("sound/ggdm/ggdm_grab.mp3")
-  precache_generic("sound/ggdm/ggdm_grabbing.mp3")
+  precache_generic(gg_snd)
   precache_generic("sound/ggdm/ggdm_denythrow.mp3")
   precache_generic("sound/ggdm/ggdm_denygrab.mp3")
 }
