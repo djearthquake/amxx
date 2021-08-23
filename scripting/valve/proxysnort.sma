@@ -199,7 +199,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
 
     get_pcvar_string(g_cvar_tag, tag, charsmax (tag));
 
-    formatex(constring,charsmax (constring), "GET /v2/%s?key=%s&inf=1&asn=1&risk=2&days=30&tag=%s&vpn=1,%s HTTP/1.0^nHost: proxycheck.io^n^n", Ip, token, tag, authid);
+    formatex(constring,charsmax (constring), "GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.0^nHost: proxycheck.io^n^n", Ip, token, tag, authid);
 
     set_task(1.0, "@write_web", id+USERWRITE, constring, charsmax (constring) );
 
