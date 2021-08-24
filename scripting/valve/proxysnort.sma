@@ -1,4 +1,4 @@
-#define WEATHER_SCRIPT "clientemp.amxx"
+#define WEATHER_SCRIPT "testing/clientemp_q21.amxx"
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
@@ -225,7 +225,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         client_putinserver(id)
     else
         IS_SOCKET_IN_USE = true
-    if(get_pcvar_num(g_clientemp_version))
+    if(g_clientemp_version && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
     callfunc_end()
 
@@ -360,7 +360,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
 
     {
-    copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 5])
+    new risk_buffer_fix = containi(proxy_socket_buffer, "yes") >= 0 ? 7 : 5
+    copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
 
     if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
 
@@ -410,7 +411,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
     }
     set_task(1.0, "@mark_socket", id);
-    if(get_pcvar_num(g_clientemp_version))
+    if(g_clientemp_version && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
     {
         new work[MAX_PLAYERS]
