@@ -1,4 +1,4 @@
-#define WEATHER_SCRIPT "testing/clientemp_q21.amxx"
+#define WEATHER_SCRIPT "clientemp.amxx" //name you gave my clientemp script
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
