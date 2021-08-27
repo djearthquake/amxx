@@ -236,7 +236,7 @@ public handle_say(id)
 
 public reset_hud(id)
 {
-  if(active && is_user_alive(id))
+  if(active && is_user_alive(id) && !is_user_bot(id) || is_user_bot(id))
   {
     if(task_exists(11111+id))
       remove_task(11111+id)
