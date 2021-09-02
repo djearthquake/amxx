@@ -3,7 +3,7 @@
 #include fakemeta
 #include fakemeta_util
 
-#define OK if(is_user_alive(id) && !is_user_bot(id)
+#define OK if(is_user_connected(id) && !is_user_bot(id)
 new bool:g_spectating[MAX_PLAYERS]
 new g_spec_msg
 //new motd[MAX_MOTD_LENGTH]
@@ -17,7 +17,7 @@ public plugin_init()
     register_plugin("OF spectator","1.1", "SPiNX")
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
     register_concmd("!spec","random_view",0,"spectate random")
-    g_startaspec = register_cvar("sv_spectate_spawn", "0")
+    g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
 }
 
@@ -25,22 +25,23 @@ public client_putinserver(id)
 OK)(get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id))
 
 @go_spec(id)
-{
+{ fm_strip_user_weapons(id)
     OK)
     {
         if(g_spectating[id])
         {
             dllfunc(DLLFunc_SpectatorConnect, id)
-            fm_strip_user_weapons(id)
             client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
             g_spectating[id] = false 
             set_view(id, CAMERA_3RDPERSON)
+            //pev(id, pev_flags) & FL_SPECTATOR|FL_NOTARGET|FL_PROXY
             new effects = pev(id, pev_effects)
             set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_DORMANT));
             console_cmd(id, "default_fov 150")
 
 
             get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
+            //formatex(motd, charsmax(motd), "")
             show_motd(id, g_motd, "SPECTATOR MODE")
         }
         else
