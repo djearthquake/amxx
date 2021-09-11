@@ -69,7 +69,7 @@
    #define MAX_PLAYERS 32
    #define COLOR random_num(0,255)
    #define PITCH (random_num (20,200))
-    #define CPU MSG_ALL
+    #define CPU MSG_PVS
     #define SLOW change_task(g_model,random_float(1.5,2.0),0)
 
     #define DELAY ewrite_short(get_pcvar_num(g_cvar_bsod_iDelay)*4096) //Remember 4096 is ~1-sec per 'spec unit'
@@ -801,7 +801,10 @@ public pin_scoreboard(killer)
         emessage_begin(MSG_BROADCAST,get_user_msgid("ScoreInfo"))
         ewrite_byte(killer);
         ewrite_short(get_user_frags(killer));
-        ewrite_short(get_user_deaths(killer));
+        //ewrite_short(get_user_deaths(killer));
+        #define DEATHS 422
+        new dead = get_pdata_int(killer, DEATHS)
+        ewrite_short(dead);
 
         if(cstrike_running())
         {
