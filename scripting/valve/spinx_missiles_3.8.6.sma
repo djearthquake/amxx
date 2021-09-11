@@ -795,6 +795,7 @@ do_victim(victim,attacker,damage,unarmed,tk){
                 set_user_frags(attacker,get_user_frags(attacker) - 1 )
             }
 
+            //set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
             if(cstrike_running())
                 set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
             if(!cstrike_running())
@@ -1082,7 +1083,7 @@ public fire_missile(id) {
         if(!id) id = 1
     }
 
-    if(!get_cvar_num("amx_luds_missiles") || roundfreeze || !is_user_alive(id))
+    if(!get_cvar_num("amx_luds_missiles") || roundfreeze || !is_user_alive(id) && !is_user_bot(id))
         return PLUGIN_HANDLED
 
     show_missile_inv(id)
@@ -1098,7 +1099,7 @@ public fire_missile(id) {
     else if(equal(cmd,"amx_laserguided_missile"))       icmd = 2
     else if(equal(cmd,"amx_guncamera_missile"))         icmd = 3
     else if(equal(cmd,"amx_heatseeking_missile"))       icmd = 5
-    else if(equal(cmd,"amx_Parachuteseeking_missile"))       icmd = 6
+    else if(equal(cmd,"amx_Parachuteseeking_missile"))  icmd = 6
     else if(equal(cmd,"amx_swirlingdeath_missile"))     icmd = 7
     else                                                icmd = 4
 
@@ -2329,8 +2330,11 @@ public death_event(){
     new victim;
     victim = read_data(2)
     remove_task(35632+victim)
-    is_scan_rocket[victim] = 0
-    using_menu[victim] = 0
+    if(is_user_connected(victim))
+    {
+        is_scan_rocket[victim] = 0
+        using_menu[victim] = 0
+    }
     return PLUGIN_CONTINUE;
 }
 
@@ -2457,7 +2461,8 @@ public pin_scoreboard(killer)
         emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
         ewrite_byte(killer);
         ewrite_short(get_user_frags(killer));
-        ewrite_short(get_user_deaths(killer));
+        static iDEATHS = 422
+        ewrite_short(get_pdata_int(killer, iDEATHS))
 
         if(cstrike_running())
         {
