@@ -6,6 +6,8 @@
 #include hamsandwich
 
 #define charsmin -1
+new g_SzMonster_class[MAX_NAME_LENGTH]
+new g_weapon_name_formated[MAX_NAME_LENGTH]
 
 new npc_ent, g_npc_ent, npc_ent_bind[MAX_NAME_LENGTH]
 
@@ -89,17 +91,16 @@ public plugin_init()
 
 public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits)
 {
-    new SzMonster_class[MAX_NAME_LENGTH]
-    entity_get_string(this_ent,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
+    entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
 
     for ( new MENT; MENT < sizeof REPLACE; ++MENT )
-        replace(SzMonster_class,charsmax(SzMonster_class), REPLACE[MENT], " ");
+        replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], " ");
 
     new Float:health = entity_get_float(this_ent,EV_FL_health)
 
     if ( is_user_connected(idattacker) && !is_user_bot(idattacker) )
     {
-        client_print idattacker,print_center,"%s health:%i",SzMonster_class,floatround(health)
+        client_print idattacker,print_center,"%s health:%i",g_SzMonster_class,floatround(health)
         if (health - damage < 1.0 )
         {
             @fake_death(this_ent,idattacker)
@@ -109,12 +110,12 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
             new weapon = get_user_weapon(idattacker)
             new temp_npc
 
-            temp_npc = engfunc(EngFunc_CreateFakeClient,SzMonster_class)
+            temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
             if(temp_npc > 0)
             {
                 static szRejectReason[128]
                 new effects = pev(temp_npc, pev_effects)
-                dllfunc(DLLFunc_ClientConnect,temp_npc,SzMonster_class,"::1",szRejectReason)
+                dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"::1",szRejectReason)
                 set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
 
                 victim = temp_npc
@@ -163,40 +164,39 @@ public pin_scoreboard(killer)
 
 @fake_death(this_ent,idattacker)
 {
-    new SzMonster_class[MAX_NAME_LENGTH]
-    entity_get_string(this_ent,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
+    entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
 
     for ( new MENT; MENT < sizeof REPLACE; ++MENT )
-        replace(SzMonster_class,charsmax(SzMonster_class), REPLACE[MENT], "");
+        replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], "");
 
     if( is_user_connected(idattacker) && is_user_alive(idattacker) && !is_user_bot(idattacker) && is_valid_ent(this_ent))
 
-    client_print 0, print_center, "%n slayed a %s", idattacker,SzMonster_class
+    client_print 0, print_center, "%n slayed a %s", idattacker,g_SzMonster_class
 }
 
 stock log_kill(killer, victim, weapon)
 {
     new weapon_name[MAX_NAME_LENGTH]
+
     if(is_user_connected(killer))
     {
 
-        get_weaponname(weapon,weapon_name,charsmax(weapon_name))
+        get_weaponname(weapon,g_weapon_name_formated,charsmax(g_weapon_name_formated))
+
+        replace(g_weapon_name_formated, charsmax(g_weapon_name_formated), "weapon_", "")
 
         emessage_begin(MSG_BROADCAST, get_user_msgid("DeathMsg"), {0,0,0}, 0);
         ewrite_byte(killer);
         ewrite_byte(victim);
-        ewrite_string(weapon_name)
+        ewrite_string(g_weapon_name_formated)
         emessage_end();
 
         //Logging the message as seen on console.
-        new kname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1]
-
+        new kname[MAX_PLAYERS+1], vname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1]
+        get_user_authid(killer, kauthid, charsmax(kauthid))
         get_user_name(killer, kname, charsmax(kname))
 
-        get_user_authid(killer, kauthid, charsmax(kauthid))
-
-        log_message("^"%s<%d><%s>^" killed ^"%s^" with ^"%s^"",
-        kname, get_user_userid(killer), kauthid, victim, weapon)
+        log_message("^"%s<%d><%s>^" killed ^"%s^" with ^"%s^"", kname, get_user_userid(killer), kauthid, g_SzMonster_class, g_weapon_name_formated)
         pin_scoreboard(killer)
         set_task(0.5,"@disco",victim)
         
