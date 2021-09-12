@@ -4,7 +4,6 @@
 #include fakemeta
 #include fakemeta_util
 #include hamsandwich
-#define OP4_OFFSET 43
 
 #define charsmin -1
 
