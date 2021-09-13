@@ -7,8 +7,7 @@
 
 #define charsmin -1
 new g_SzMonster_class[MAX_NAME_LENGTH]
-new g_weapon_name_formated[MAX_NAME_LENGTH]
-
+new g_getakill
 new npc_ent, g_npc_ent, npc_ent_bind[MAX_NAME_LENGTH]
 
 new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door"}
@@ -68,7 +67,7 @@ new const REPLACE[][] = {"monster_", "func_"}
 public plugin_init()
 
 {
-    register_plugin("monsters' hitpoints","1.0","SPiNX");
+    register_plugin("monsters' hitpoints","1.1","SPiNX");
     g_npc_ent = register_cvar("npc_type", "parachute")
 
     bind_pcvar_string(g_npc_ent,npc_ent_bind, charsmax(npc_ent_bind))
@@ -85,6 +84,7 @@ public plugin_init()
         RegisterHam(Ham_TakeDamage,monster_list2[op4],"Ham_TakeDamage_player", 0)
     for(new op4; op4 < sizeof monster_list3; op4++)
         RegisterHam(Ham_TakeDamage,monster_list3[op4],"Ham_TakeDamage_player", 0)
+    g_getakill = register_cvar("monster_kill", "2")
 
 }
 
@@ -97,19 +97,17 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
         replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], " ");
 
     new Float:health = entity_get_float(this_ent,EV_FL_health)
+    new killer = idattacker
+    new victim = this_ent
+    new weapon = get_user_weapon(idattacker)
+    new temp_npc
 
     if ( is_user_connected(idattacker) && !is_user_bot(idattacker) )
     {
         client_print idattacker,print_center,"%s health:%i",g_SzMonster_class,floatround(health)
-        if (health - damage < 1.0 )
+        if (health - damage < 1.0 && get_pcvar_num(g_getakill) > 1)
         {
             @fake_death(this_ent,idattacker)
-
-            new killer = idattacker
-            new victim = this_ent
-            new weapon = get_user_weapon(idattacker)
-            new temp_npc
-
             temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
             if(temp_npc > 0)
             {
@@ -125,6 +123,10 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
 
         }
 
+        else if (health - damage < 1.0 && get_pcvar_num(g_getakill) > 0)
+
+            @fake_death(this_ent,idattacker)
+
     }
 
     GetHamReturnStatus() != HAM_SUPERCEDE 
@@ -132,7 +134,7 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
 
 public pin_scoreboard(killer)
 {
-    if(is_user_connected(killer))
+    if(is_user_connected(killer) && get_pcvar_num(g_getakill) > 2)
     {
         //Scoring
         fm_set_user_frags(killer,get_user_frags(killer) +1);
@@ -181,24 +183,27 @@ stock log_kill(killer, victim, weapon)
     if(is_user_connected(killer))
     {
 
-        get_weaponname(weapon,g_weapon_name_formated,charsmax(g_weapon_name_formated))
+        get_weaponname(weapon,weapon_name,charsmax(weapon_name))
 
-        replace(g_weapon_name_formated, charsmax(g_weapon_name_formated), "weapon_", "")
+        replace(weapon_name, charsmax(weapon_name), "weapon_", "")
 
         emessage_begin(MSG_BROADCAST, get_user_msgid("DeathMsg"), {0,0,0}, 0);
         ewrite_byte(killer);
         ewrite_byte(victim);
-        ewrite_string(g_weapon_name_formated)
+        ewrite_string(weapon_name)
         emessage_end();
 
         //Logging the message as seen on console.
-        new kname[MAX_PLAYERS+1], vname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1]
+        new kname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1]
         get_user_authid(killer, kauthid, charsmax(kauthid))
         get_user_name(killer, kname, charsmax(kname))
 
-        log_message("^"%s<%d><%s>^" killed ^"%s^" with ^"%s^"", kname, get_user_userid(killer), kauthid, g_SzMonster_class, g_weapon_name_formated)
-        pin_scoreboard(killer)
-        set_task(0.5,"@disco",victim)
+        log_message("^"%s<%d><%s>^" killed ^"%s^" with ^"%s^"", kname, get_user_userid(killer), kauthid, g_SzMonster_class, weapon_name)
+        if(get_pcvar_num(g_getakill) > 1)
+        {
+            pin_scoreboard(killer)
+            set_task(0.5,"@disco",victim)
+        }
         
     }
 
