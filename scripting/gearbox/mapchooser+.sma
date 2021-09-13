@@ -15,6 +15,7 @@
 #include <amxmisc>
 
 #define SELECTMAPS  8
+
 #define PLUGIN "Nextmap Chooser+"
 #define AUTHOR "SPINX|AMXX Dev Team"
 #define VOTE_MAP_TASK 987456
@@ -134,7 +135,8 @@ public checkVotes()
         new Float:steptime = get_pcvar_float(g_step)
     
         //Half-Life Frags
-        if(g_frags && g_frags_remaining)
+        new timeleft = get_timeleft()
+        if(g_frags && g_frags_remaining && timeleft > 129 )
         {
             log_amx"Setting frags"
             set_cvar_num("mp_fraglimit", g_frags + floatround(steptime))
@@ -253,6 +255,7 @@ stock random_map_pick()
 public voteNextmap()
 {
     new timeleft = get_timeleft()
+    new intercept = cstrike_running() ? 129 : g_votetime + 5
 
     if (g_wins)
     {
@@ -274,17 +277,14 @@ public voteNextmap()
     }
     else if (g_frags)
     {
-        if ( g_frags_remaining > 5 && timeleft > 129 && !g_rtv )
+        if ( g_frags_remaining > 5 && timeleft > (intercept + intercept) && !g_rtv )
         {
             g_selected = false
             return
         }
 
     } else {
-        new timeleft = get_timeleft()
-        new intercept = cstrike_running() ? 129 : g_votetime + 5
-        if (timeleft < 1 || timeleft > intercept && !g_rtv)
-        //if (timeleft < 1 || timeleft > 129)
+        if (timeleft < 1 || timeleft > (intercept + intercept) && !g_rtv)
         {
             g_selected = false
             return
