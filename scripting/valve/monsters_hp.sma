@@ -13,6 +13,7 @@ new npc_ent, g_npc_ent, npc_ent_bind[MAX_NAME_LENGTH]
 new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door"}
 
 new const monster_list1[][]={
+"item_airtank",
 "monster_alien_controller",
 "monster_alien_grunt",
 "monster_alien_slave",
@@ -61,7 +62,7 @@ new const monster_list3[][]={
 "monster_gonome"
 }
 
-new const REPLACE[][] = {"monster_", "func_"}
+new const REPLACE[][] = {"monster_", "func_", "item_"}
 
 
 public plugin_init()
