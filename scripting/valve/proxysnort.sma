@@ -124,22 +124,24 @@ public plugin_init()
 
 public client_putinserver(id)
 {
+    if(is_user_bot(id))
+        return PLUGIN_HANDLED_MAIN
 
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
+    if(is_user_alive(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
     {
-
-    get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT );
-
-    new total = iPlayers()
-    new Float:retask = (float(total++)*3.0)
-    new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
-
-    /*new Float:buffering = iPlayers() * 5.2
-    if(buffering == 0.0 ||  buffering > 20.0) buffering = random_float(4.0, 8.0)*/
-    server_print "%s task input time = %f", PLUGIN,task_expand
-    set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+        get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT );
+    
+        new total = iPlayers()
+        new Float:retask = (float(total++)*3.0)
+        new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
+    
+        /*new Float:buffering = iPlayers() * 5.2
+        if(buffering == 0.0 ||  buffering > 20.0) buffering = random_float(4.0, 8.0)*/
+        server_print "%s task input time = %f", PLUGIN,task_expand
+        set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
 
     }
+    return PLUGIN_CONTINUE;
 
 }
 
