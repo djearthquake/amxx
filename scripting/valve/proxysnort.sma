@@ -1,3 +1,5 @@
+#define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
+
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
@@ -53,8 +55,6 @@
 #define ADMIN 707
 
 #define WITHOUT_PORT                   1
-#define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
-
 #define PATTERN "(127\.(0))|(10\.(42))|(172\.(0)?1[6-9]\.)|(172\.(0)?2[0-9]\.)|(172\.(0)?3[0-1]\.)|(169\.254\.)|(192\.168\.)"
 
 //#define DEBUG //Echoes steps.
