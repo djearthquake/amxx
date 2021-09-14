@@ -638,7 +638,7 @@ public detect_key(player[])
     return PLUGIN_CONTINUE
 
   new button = entity_get_int(id, EV_INT_button)
-  if(grabbed[id])
+  if(grabbed[id] && is_user_alive(id))
   {
     if(button & KEY_THROW)
     {
@@ -656,8 +656,8 @@ public detect_key(player[])
       new entity[1]
       entity[0]=grabbed[id]
       set_task(RESET_OWNER, "reset_owner", 22222+grabbed[id], entity, 1)
-      if(grabbed[id] > 0 && grabbed[id] < 33)
-        extra_damage(id, grabbed[id])
+      //if(grabbed[id] > 0 && grabbed[id] < 33)
+      extra_damage(id, grabbed[id])
       grabbed[id]=0
 
       return PLUGIN_CONTINUE
@@ -665,6 +665,7 @@ public detect_key(player[])
     new origin[3], look[3], direction[3], moveto[3], Float:grabbedorigin[3], Float:velocity[3], length
     get_user_origin(id, origin, 1)
     get_user_origin(id, look, 3)
+
     entity_get_vector(grabbed[id], EV_VEC_origin, grabbedorigin)
 
     direction[0]=look[0]-origin[0]
@@ -975,8 +976,8 @@ public createSpawns() //taken from Bail's Root Plugin
       for(ia[0]=square_o2[0];ia[0] <=square_o1[0] && SPAWNS<MAX_SPAWNS;ia[0]+=xadd)
       {
         counterx++
-        ia[0] = float(floatround(ia[0]) + random(130)-65)
-        ia[1] = float(floatround(ia[1]) + random(130)-65)
+        ia[0] = float(floatround(ia[0]) + random_num(1,45) )
+        ia[1] = float(floatround(ia[1]) + random_num(1,45) )
         ia[2] = float(floatround(ia[2]))
 
         if( PointContents(ia) == CONTENTS_EMPTY && !xyused[counterx][countery])
@@ -984,10 +985,9 @@ public createSpawns() //taken from Bail's Root Plugin
           xyused[counterx][countery] = true
           SPAWNS++
           SPAWN[SPAWNS][0] = floatround(ia[0])
-          SPAWN[SPAWNS][1] = floatround(ia[1])
-          SPAWN[SPAWNS][2] = floatround(ia[2])
+          ia[0] = float(floatround(ia[0]) + random_num(1,45) )
+          ia[1] = float(floatround(ia[1]) + random_num(1,45) )
         }
-
       }
     }
   }
