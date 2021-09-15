@@ -32,9 +32,11 @@ public plugin_precache()
     precache_generic(szDeath_symbol_spr);
     smoke = precache_model(szDeath_symbol_tr);
     precache_generic(szDeath_symbol_spr);
-    #if AMXX_VERSION_NUM != 11|19
+    #if AMXX_VERSION_NUM != 110
+    #if AMXX_VERSION_NUM != 190
     precache_model("models/rpgrocket.mdl");
     precache_generic("models/rpgrocket.mdl");
+    #endif
     #endif
 }
 
