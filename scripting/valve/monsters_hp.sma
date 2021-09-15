@@ -1,18 +1,21 @@
 #include amxmodx
 #include amxmisc
 #include engine
+#include engine_stocks
 #include fakemeta
 #include fakemeta_util
 #include hamsandwich
 
 #define charsmin -1
+
 new g_SzMonster_class[MAX_NAME_LENGTH]
 new g_getakill
 new npc_ent, g_npc_ent, npc_ent_bind[MAX_NAME_LENGTH]
 
-new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door"}
+new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door", "monster_scientist"}
 
-new const monster_list1[][]={
+/*
+new const the_monster_list[][]={
 "item_airtank",
 "monster_alien_controller",
 "monster_alien_grunt",
@@ -23,9 +26,7 @@ new const monster_list1[][]={
 "monster_barney",
 "monster_bigmomma",
 "monster_bullchicken",
-"monster_cockroach"}
-
-new const monster_list2[][]={
+"monster_cockroach",
 "monster_gargantua",
 "monster_gman",
 "monster_grunt_repel",
@@ -41,26 +42,21 @@ new const monster_list2[][]={
 "monster_leech",
 "monster_miniturret",
 "monster_nihilanth",
-"monster_osprey"
-}
-
-
-new const monster_list3[][]={
+"monster_osprey",
 "monster_scientist",
 "monster_sentry",
 "monster_sitting_scientist",
 "monster_tentacle",
 "monster_turret",
 "monster_zombie",
-
 "monster_blkop_apache",
 "monster_blkop_osprey",
-
 "monster_shockroach",
 "monster_shocktrooper",
 "monster_pitdrone",
 "monster_gonome"
 }
+*/
 
 new const REPLACE[][] = {"monster_", "func_", "item_"}
 
@@ -73,18 +69,82 @@ public plugin_init()
 
     bind_pcvar_string(g_npc_ent,npc_ent_bind, charsmax(npc_ent_bind))
     npc_ent = find_ent(charsmin,npc_ent_bind)
+
     RegisterHamFromEntity(Ham_TakeDamage,npc_ent,"Ham_TakeDamage_player", 0) //cvar to test random classes
 
     register_event("Damage","@event_damage","b") //standard player hp reading
 
     for(new list; list < sizeof ents_with_health; ++list)
         RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 0) //array of breakables from skeleton key of destruction plugin
-    for(new op4; op4 < sizeof monster_list1; op4++)
-        RegisterHam(Ham_TakeDamage,monster_list1[op4],"Ham_TakeDamage_player", 0)
-    for(new op4; op4 < sizeof monster_list2; op4++)
-        RegisterHam(Ham_TakeDamage,monster_list2[op4],"Ham_TakeDamage_player", 0)
-    for(new op4; op4 < sizeof monster_list3; op4++)
-        RegisterHam(Ham_TakeDamage,monster_list3[op4],"Ham_TakeDamage_player", 0)
+
+    //if (find_ent(charsmin,"monstermaker") > 0)
+    new few[][]={"monstermaker","monster_apache","monster_tentacle"}
+    for(new ofthem; ofthem < sizeof few; ++ofthem)
+    if (find_ent(charsmin,few[ofthem]) > 0)
+    {
+        new const monster_list1[][]=
+        {
+            "item_airtank",
+            "monster_alien_controller",
+            "monster_alien_grunt",
+            "monster_alien_slave",
+            "monster_apache",
+            "monster_barnacle",
+            "monster_babycrab",
+            "monster_barney",
+            "monster_bigmomma",
+            "monster_bullchicken",
+            "monster_cockroach"
+        }
+
+        new const monster_list2[][]=
+        {
+            "monster_gargantua",
+            "monster_gman",
+            "monster_grunt_repel",
+            "monster_human_grunt_ally",
+            "monster_headcrab",
+            "monster_houndeye",
+            "monster_human_assassin",
+            "monster_human_grunt",
+            "monster_human_grunt_ally",
+            "monster_human_medic_ally",
+            "monster_human_torch_ally",
+            "monster_ichthyosaur",
+            "monster_leech",
+            "monster_miniturret",
+            "monster_nihilanth",
+            "monster_osprey"
+        }
+
+        new const monster_list3[][]=
+        {
+            "monster_scientist",
+            "monster_sentry",
+            "monster_sitting_scientist",
+            "monster_tentacle",
+            "monster_turret",
+            "monster_zombie",
+            "monster_blkop_apache",
+            "monster_blkop_osprey",
+            "monster_shockroach",
+            "monster_shocktrooper",
+            "monster_pitdrone",
+            "monster_gonome"
+        }
+
+        for(new op4; op4 < sizeof monster_list1; op4++)
+            RegisterHam(Ham_TakeDamage,monster_list1[op4],"Ham_TakeDamage_player", 0)
+
+        for(new op4; op4 < sizeof monster_list2; op4++)
+            RegisterHam(Ham_TakeDamage,monster_list2[op4],"Ham_TakeDamage_player", 0)
+
+        for(new op4; op4 < sizeof monster_list3; op4++)
+            RegisterHam(Ham_TakeDamage,monster_list3[op4],"Ham_TakeDamage_player", 0)
+
+        server_print "MM found!"
+    }
+
     g_getakill = register_cvar("monster_kill", "2")
 
 }
@@ -100,11 +160,11 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
     new Float:health = entity_get_float(this_ent,EV_FL_health)
     new killer = idattacker
     new victim = this_ent
-    new weapon = get_user_weapon(idattacker)
     new temp_npc
 
     if ( is_user_connected(idattacker) && !is_user_bot(idattacker) )
     {
+        new weapon = get_user_weapon(idattacker)
         client_print idattacker,print_center,"%s health:%i",g_SzMonster_class,floatround(health)
         if (health - damage < 1.0 && get_pcvar_num(g_getakill) > 1)
         {
@@ -130,7 +190,7 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
 
     }
 
-    GetHamReturnStatus() != HAM_SUPERCEDE 
+    GetHamReturnStatus() != HAM_SUPERCEDE
 }
 
 public pin_scoreboard(killer)
@@ -205,7 +265,7 @@ stock log_kill(killer, victim, weapon)
             pin_scoreboard(killer)
             set_task(0.5,"@disco",victim)
         }
-        
+
     }
 
 }
