@@ -49,9 +49,12 @@
 #include <fakemeta>
 #include <hamsandwich>
 #include <xs>
-
 #define message_begin_f(%1,%2,%3,%4) engfunc(EngFunc_MessageBegin, %1, %2, %3, %4)
 #define write_coord_f(%1) engfunc(EngFunc_WriteCoord, %1)
+#define MAX_NAME_LENGTH             32
+#define MAX_MENU_LENGTH            512
+new const RPG[]         = "models/rpgrocket.mdl"
+new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 
 //Cvars
 new pHook, pThrowSpeed, pSpeed, pWidth, pSound, pColor
@@ -62,22 +65,22 @@ new pMaxHooks, pRndStartDelay
 new sprBeam
 
 // Players hook entity
-new Hook[33]
+new Hook[MAX_NAME_LENGTH + 1]
 
 // MaxPlayers
 new gMaxPlayers
 
 // some booleans
-new bool:gHooked[33]
-new bool:canThrowHook[33]
+new bool:gHooked[MAX_NAME_LENGTH + 1]
+new bool:canThrowHook[MAX_NAME_LENGTH + 1]
 new bool:rndStarted
 
 // Player Spawn
-new bool:gRestart[33] = {false, ...}
-new bool:gUpdate[33] = {false, ...}
+new bool:gRestart[MAX_NAME_LENGTH + 1] = {false, ...}
+new bool:gUpdate[MAX_NAME_LENGTH + 1] = {false, ...}
 
-new gHooksUsed[33] // Used with sv_hookmax
-new bool:g_bHookAllowed[33] // Used with sv_hookadminonly
+new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
+new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
 
 public plugin_init()
 {
@@ -106,26 +109,25 @@ public plugin_init()
     //register_event("ResetHUD", "ResetHUD", "b")
 
     // Register cvars
-    register_cvar("sv_amxxhookmod",  "version 1.5", FCVAR_SERVER) // yay public cvar
-    pHook =     register_cvar("sv_hook", "1")
-    pThrowSpeed =   register_cvar("sv_hookthrowspeed", "1000")
-    pSpeed =    register_cvar("sv_hookspeed", "300")
-    pWidth =    register_cvar("sv_hookwidth", "32")
-    pSound =    register_cvar("sv_hooksound", "1")
-    pColor =    register_cvar("sv_hookcolor", "1")
-    pPlayers =  register_cvar("sv_hookplayers", "0")
-    pInterrupt =    register_cvar("sv_hookinterrupt", "0")
-    pAdmin =    register_cvar("sv_hookadminonly",  "0")
-    pHookSky =  register_cvar("sv_hooksky", "0")
-    pOpenDoors =    register_cvar("sv_hookopendoors", "1")
-    pUseButtons =   register_cvar("sv_hookusebuttons", "1")
-    pHostage =  register_cvar("sv_hookhostflollow", "1")
-    pWeapons =  register_cvar("sv_hookpickweapons", "1")
-    pInstant =  register_cvar("sv_hookinstant", "0")
-    pHookNoise =    register_cvar("sv_hooknoise", "0")
-    pMaxHooks =     register_cvar("sv_hookmax", "0")
-    pRndStartDelay = register_cvar("sv_hookrndstartdelay", "0.0")
-
+    register_cvar("sv_amxxhookmod",  "version 1.6", FCVAR_SERVER) // yay public cvar
+    pHook           =  register_cvar("sv_hook", "1")
+    pThrowSpeed     =  register_cvar("sv_hookthrowspeed", "2000")
+    pSpeed          =  register_cvar("sv_hookspeed", "300")
+    pWidth          =  register_cvar("sv_hookwidth", "32")
+    pSound          =  register_cvar("sv_hooksound", "1")
+    pColor          =  register_cvar("sv_hookcolor", "1")
+    pPlayers        =  register_cvar("sv_hookplayers", "0")
+    pInterrupt      =  register_cvar("sv_hookinterrupt", "0")
+    pAdmin          =  register_cvar("sv_hookadminonly",  "0")
+    pHookSky        =  register_cvar("sv_hooksky", "1")
+    pOpenDoors      =  register_cvar("sv_hookopendoors", "1")
+    pUseButtons     =  register_cvar("sv_hookusebuttons", "1")
+    pHostage        =  register_cvar("sv_hookhostflollow", "1")
+    pWeapons        =  register_cvar("sv_hookpickweapons", "1")
+    pInstant        =  register_cvar("sv_hookinstant", "1")
+    pHookNoise      =  register_cvar("sv_hooknoise", "0")
+    pMaxHooks       =  register_cvar("sv_hookmax", "0")
+    pRndStartDelay  =  register_cvar("sv_hookrndstartdelay", "0.0")
 
     // Touch forward
     register_forward(FM_Touch, "fwTouch")
@@ -137,18 +139,17 @@ public plugin_init()
 public plugin_precache()
 {
     // Hook Model
-    engfunc(EngFunc_PrecacheModel, "models/rpgrocket.mdl")
+    precache_model(RPG)
+    precache_generic(RPG)
 
     // Hook Beam
-    sprBeam = engfunc(EngFunc_PrecacheModel, "sprites/zbeam4.spr")
-
+    sprBeam = precache_model(HOOK_MODEL)
+    precache_generic("sprites/zbeam4.spr")
     // Hook Sounds
-    engfunc(EngFunc_PrecacheSound, "weapons/xbow_hit1.wav") // good hit
-    engfunc(EngFunc_PrecacheSound, "weapons/xbow_hit2.wav") // wrong hit
-
-    engfunc(EngFunc_PrecacheSound, "weapons/xbow_hitbod1.wav") // player hit
-
-    engfunc(EngFunc_PrecacheSound, "weapons/xbow_fire1.wav") // deploy
+    precache_generic("sound/weapons/xbow_hit1.wav")
+    precache_generic("sound/weapons/xbow_hit2.wav")
+    precache_generic("sound/weapons/xbow_hitbod1.wav")
+    precache_generic("sound/weapons/xbow_fire1.wav")
 }
 
 
@@ -292,7 +293,7 @@ public fwTouch(ptr, ptd)
     new id = pev(ptr, pev_owner)
 
     // Get classname
-    static szPtrClass[32]
+    static szPtrClass[MAX_NAME_LENGTH]
     pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
 
     if (equali(szPtrClass, "Hook"))
@@ -302,7 +303,7 @@ public fwTouch(ptr, ptd)
 
         if (pev_valid(ptd))
         {
-            static szPtdClass[32]
+            static szPtdClass[MAX_NAME_LENGTH]
             pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
             if (!get_pcvar_num(pPlayers) && /*equali(szPtdClass, "player")*/ is_user_alive(ptd))
@@ -335,14 +336,14 @@ public fwTouch(ptr, ptd)
             {
                 // Open doors
                 // Double doors tested in de_nuke and de_wallmart
-                static szTargetName[32]
+                static szTargetName[MAX_NAME_LENGTH]
                 pev(ptd, pev_targetname, szTargetName, charsmax(szTargetName))
                 if (strlen(szTargetName) > 0)
                 {
                     static ent
                     while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > 0)
                     {
-                        static szEntClass[32]
+                        static szEntClass[MAX_NAME_LENGTH]
                         pev(ent, pev_classname, szEntClass, charsmax(szEntClass))
 
                         if (equali(szEntClass, "trigger_multiple"))
@@ -382,7 +383,7 @@ stopdoors:
             static ent
             while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 15.0)) > 0)
             {
-                static szentClass[32]
+                static szentClass[MAX_NAME_LENGTH]
                 pev(ent, pev_classname, szentClass, charsmax(szentClass))
 
                 if (equali(szentClass, "weaponbox") || equali(szentClass, "armoury_entity"))
@@ -684,7 +685,7 @@ public give_hook(id, level, cid)
         return PLUGIN_HANDLED
     }
 
-    static szTarget[32]
+    static szTarget[MAX_NAME_LENGTH]
     read_argv(1, szTarget, charsmax(szTarget))
 
     new iUsrId = cmd_target(id, szTarget)
@@ -692,7 +693,7 @@ public give_hook(id, level, cid)
     if (!iUsrId)
         return PLUGIN_HANDLED
 
-    static szName[32]
+    static szName[MAX_NAME_LENGTH]
     get_user_name(iUsrId, szName, charsmax(szName))
 
     if (!g_bHookAllowed[iUsrId])
@@ -718,7 +719,7 @@ public take_hook(id, level, cid)
         return PLUGIN_HANDLED
     }
 
-    static szTarget[32]
+    static szTarget[MAX_NAME_LENGTH]
     read_argv(1, szTarget, charsmax(szTarget))
 
     new iUsrId = cmd_target(id, szTarget)
@@ -726,7 +727,7 @@ public take_hook(id, level, cid)
     if (!iUsrId)
         return PLUGIN_HANDLED
 
-    static szName[32]
+    static szName[MAX_NAME_LENGTH]
     get_user_name(iUsrId, szName, charsmax(szName))
 
     if (g_bHookAllowed[iUsrId])
@@ -775,7 +776,7 @@ stock statusMsg(id, szMsg[], {Float,_}:...)
     if (!iStatusText)
         iStatusText = get_user_msgid("StatusText")
 
-    static szBuffer[512]
+    static szBuffer[MAX_MENU_LENGTH]
     vformat(szBuffer, charsmax(szBuffer), szMsg, 3)
 
     message_begin((id == 0) ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, iStatusText, _, id)
