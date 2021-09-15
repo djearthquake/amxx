@@ -114,6 +114,7 @@
 
     new const SOUND_GOTATEMP[] = "misc/Temp.wav";
     new bool:gotatemp[ MAX_PLAYERS + 1 ]
+    new bool:g_seal_later[ MAX_PLAYERS + 1 ]
 
     new const faren_country[][]={
     //Bahamas
@@ -177,6 +178,19 @@ public plugin_init()
     g_q_weight     = 1
 }
 
+public plugin_precache()
+{
+    if(file_exists("sound/misc/Temp.wav")){
+        precache_sound(SOUND_GOTATEMP);
+        precache_generic("sound/misc/Temp.wav")
+    }
+        else
+    {
+        log_amx("Paused to prevent crash from missing %s.",SOUND_GOTATEMP);
+        pause "a";
+    }
+}
+
 @queue_test(id)
 {
     change_task(iQUEUE, 10.0)
@@ -200,7 +214,7 @@ public plugin_init()
 public client_putinserver(id)
 {
     if(is_user_bot(id))return PLUGIN_HANDLED_MAIN
-    if(!task_exists(id+WEATHER) || (!task_exists(mask) && id > 0)) //will do server's weather
+    if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
         set_task(0.2,"@country_finder",id+WEATHER)
     return PLUGIN_CONTINUE
 }
@@ -209,11 +223,13 @@ public client_putinserver(id)
     mask = Tsk - WEATHER
 
     new total = iPlayers()
-    new Float:retask = (float(total++)*3.0)
+    new Float:retask = (float(total++)*4.5) //2 players 6 sec apart at 3.0
+    if(retask > 20.0)
+        retask = 15.0
     new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
 
 
-    if(is_user_connected(mask))
+    if(is_user_connected(mask) && !is_user_bot(mask))
     {
         get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
 
@@ -251,17 +267,7 @@ public client_putinserver(id)
 
     }
 }
-public plugin_precache()
-{
-    if(file_exists("sound/misc/Temp.wav")){
-        precache_sound(SOUND_GOTATEMP);
-    }
-        else
-    {
-        log_amx("Paused to prevent crash from missing %s.",SOUND_GOTATEMP);
-        pause "a";
-    }
-}
+
 public Speak(id)
 {
     if(gotatemp[id]) //remind them otherwise fetch it
@@ -316,7 +322,7 @@ public client_temp_cmd(id)
 
         else
 
-            set_task(1.0,"client_temp_filter",id)
+            set_task(random_float(3.5,7.0),"client_temp_filter",id)
     }
     else if(task_exists(id+BLOCK))remove_task(id+BLOCK)
 }
@@ -341,7 +347,7 @@ public client_temp_cmd(id)
             ////////////////////////////////////////////////////////////////////////////////
             new total = iPlayers()
             new Float:retask = (float(total++)*3.0)
-            new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
+            new Float:task_expand = floatround(random_float(retask+5.0,retask+8.0), floatround_ceil)*1.0
 
             set_task(task_expand,"client_temp_cmd",m);
             ////////////////////////////////////////////////////////////////////////////////
@@ -630,7 +636,7 @@ public read_web(feeding)
 {
     new id = feeding - WEATHER
 
-    if(IS_SOCKET_IN_USE == true && !gotatemp[id])
+    if(IS_SOCKET_IN_USE && !gotatemp[id])
     {
         new Float:vary;
         vary = floatsqroot(random_float(25.0,200.0))
@@ -639,10 +645,12 @@ public read_web(feeding)
     }
 
     else
-    if(!IS_SOCKET_IN_USE && gotatemp[id] == false)
-    IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket",PROXY_SCRIPT)
-    callfunc_end()
+    if(!IS_SOCKET_IN_USE && !gotatemp[id])
+    {
+        IS_SOCKET_IN_USE = true;
+        callfunc_begin("@lock_socket",PROXY_SCRIPT)
+        callfunc_end()
+    }
 
     server_print "%s:reading %s temp",PLUGIN, ClientName[id]
     #if AMXX_VERSION_NUM != 182
@@ -666,7 +674,7 @@ public read_web(feeding)
             replace(out, 6, ",", "");
 
             #define PITCH (random_num (90,111))
-            emit_sound(0, CHAN_AUTO, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
+            emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
             gotatemp[id] = true;
 
             set_task(get_pcvar_num(g_timeout)*60.0, "Block", id+BLOCK); //anti-flood
@@ -781,31 +789,52 @@ public read_web(feeding)
                     client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
 
             }
-            if(socket_close(g_Weather_Feed) == 0)socket_close(g_Weather_Feed)
-            server_print "%s finished %s reading",PLUGIN, ClientName[id]
-            set_task(1.0, "@mark_socket", id);
-
-            if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
+            if(socket_close(g_Weather_Feed) == 1)
             {
-                new work[MAX_PLAYERS]
-                format(work,charsmax(work),PLUGIN,"")
-                callfunc_push_str(work)
-                callfunc_end()
-            }
+                server_print "%s finished %s reading",PLUGIN, ClientName[id]
+                set_task(5.0, "@mark_socket", id);
+    
+                if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
+                {
+                    new work[MAX_PLAYERS]
+                    format(work,charsmax(work),PLUGIN,"")
+                    callfunc_push_str(work)
+                    callfunc_end()
+                }
+
+
+            }/*
+            else
+            {
+                //g_seal_later[id] = true
+                log_amx "Trouble fully closing socket!"
+            }*/
 
             return PLUGIN_CONTINUE;
 
         }
 
         if(!gotatemp[id])
-            set_task(3.0, "read_web",id+WEATHER);
+            set_task(10.0, "read_web",id+WEATHER);
     }
 
     return PLUGIN_HANDLED_MAIN;
 
 }
-
-
+/*
+public plugin_end()
+{
+    new players[ MAX_PLAYERS ];
+    new playercount;
+    get_players(players,playercount,"ch")
+    
+    for (new id=0; id < playercount ; ++id)
+    {
+        if (g_seal_later[id] == true)
+            socket_close(g_Weather_Feed)
+    }
+}
+*/
 @mark_socket(work[MAX_PLAYERS])
 {
     IS_SOCKET_IN_USE = false;
