@@ -1,4 +1,3 @@
-
 /*
 * Appears unfinished/needs tested ::: Github
 *
@@ -44,6 +43,7 @@ new const smallkit[] = "sound/items/smallmedkit1.wav"
 new const apache1[]  = "models/apachet.mdl"
 new const apache2[]  = "models/apache.mdl"
 new const apache3[]  = "models/HVR.mdl"
+new const light[]    = "sprites/lgtning.spr"
 
 new const apache_snds[][] ={
 "apache/ap_rotor1.wav",
@@ -63,7 +63,7 @@ new const apache_snds_gen[][] ={
 "sound/weapons/mortarhit.wav",
 "sound/turret/tu_fire1.wav"
 }
-new const smoker_precache[] = "sprites/white.spr"
+new const smoker_precache[] = "sprites/white.spr" //and apache https://github.com/ValveSoftware/halflife/blob/master/dlls/apache.cpp
 
 
 
@@ -97,6 +97,9 @@ public plugin_precache()
 
     precache_model(apache3)
     precache_generic(apache3)
+
+    precache_model(light)
+    precache_generic(light)
 
     precache_model("models/metalplategibs_green.mdl")
     precache_generic("models/metalplategibs_green.mdl")
