@@ -25,7 +25,7 @@
 new g_timer[MAX_PLAYERS + 1]
 new g_afk_spec_player/*, afk*/
 new const CvarAFKTimeDesc[] = "Seconds before moving AFK player into spectator mode."
-new sleepy[MAX_PLAYERS + 1], g_spec
+new sleepy[MAX_PLAYERS + 1], g_spec, g_reset
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 #define ALRT 84641
 #define FADE_HOLD (1<<2)
@@ -37,6 +37,7 @@ public plugin_init()
 
 #if AMXX_VERSION_NUM == 182
 g_afk_spec_player = register_cvar("mp_autospec", "75")
+g_reset = register_cvar("mp_autospec_reset", "1")
 #endif
 
 #if AMXX_VERSION_NUM == 190
@@ -113,11 +114,11 @@ public new_users()
                 {
                     if(!g_spec)
                         return
+
                     dllfunc(DLLFunc_ClientPutInServer, players[downloader])
                     log_amx "Sending %n to spec", ClientName[downloader]
                     callfunc_push_int(players[downloader])
                     callfunc_end()
-                    sleepy[players[downloader]] = g_timer[players[downloader]] = 1
                 }
                 else
                 {
@@ -125,7 +126,6 @@ public new_users()
                     show_hudmessage 0, "%s is NO LONGER active...", ClientName[players[downloader]]
                     //client_print 0, print_chat, "%s is NO LONGER active...", ClientName[players[downloader]]
                     screensaver(players[downloader], uptime)
-                    //sleepy[players[downloader]] = 1
                 }
             }
             else
@@ -145,10 +145,12 @@ public screensaver_stop(id)
     new holdTime = 1<<8
     new fadeType = FADE_HOLD
     new blindness = 0
-    sleepy[id] = 1
-    if (is_user_connected(id))
+    if (is_user_alive(id))
     {
-        message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), {0,0,0}, id); // use the magic #1 for "one client" 
+        if(get_pcvar_num(g_reset))
+            sleepy[id] = 1
+
+        message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), {0,0,0}, id);
         write_short(duration); // fade lasts this long duration 
         write_short(holdTime); // fade lasts this long hold time 
         write_short(fadeType); // fade type 
@@ -164,7 +166,7 @@ public screensaver(id, uptime)
 if (is_user_connected(id))
 {
     client_print id,print_center, "Screen saver active at: %i seconds", uptime
-    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), {0,0,0}, id); // use the magic #1 for "one client"  
+    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), {0,0,0}, id); 
     write_short(1<<12); // fade lasts this long duration  
     write_short(1<<8); // fade lasts this long hold time  
     write_short(FADE_HOLD); // fade type
