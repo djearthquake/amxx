@@ -38,13 +38,13 @@ public plugin_init()
 #if AMXX_VERSION_NUM == 182
 g_afk_spec_player = register_cvar("mp_autospec", "75")
 #endif
-/*
+
 #if AMXX_VERSION_NUM == 190
 #if AMXX_VERSION_NUM == 110
     bind_pcvar_num( create_cvar("mp_autospec", "90", FCVAR_NONE, CvarAFKTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 300.0), g_afk_spec_player)
 #endif
 #endif
-*/
+
     g_spec = get_cvar_pointer("sv_spectate_spawn")
     RegisterHam(Ham_Spawn, "player", "screensaver_stop", 1);
 }
@@ -54,7 +54,6 @@ public client_putinserver(index)
 
     if(!task_exists(ALRT) && !is_user_bot(index) && !is_user_admin(index))
     {
-        //t_user_name(index,ClientName[index],charsmax(ClientName[]))
         set_task(1.5,"the_alert", ALRT) //1.0 stil gets doubles!
     }
     g_timer[index] = 1
@@ -66,8 +65,6 @@ public the_alert()
 }
 
 public client_authorized(id)
-
-//if(is_user_connected(id))
 {
     get_user_name(id,ClientName[id],charsmax(ClientName[]))
     client_print 0,print_chat,"%s is lurking...", ClientName[id]
