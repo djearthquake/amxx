@@ -117,7 +117,7 @@ public new_users()
                     log_amx "Sending %n to spec", ClientName[downloader]
                     callfunc_push_int(players[downloader])
                     callfunc_end()
-                    sleepy[players[downloader]] = 1
+                    sleepy[players[downloader]] = g_timer[players[downloader]] = 1
                 }
                 else
                 {
@@ -145,7 +145,7 @@ public screensaver_stop(id)
     new holdTime = 1<<8
     new fadeType = FADE_HOLD
     new blindness = 0
-    g_timer[id] = 1
+    sleepy[id] = 1
     if (is_user_connected(id))
     {
         message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), {0,0,0}, id); // use the magic #1 for "one client" 
@@ -163,7 +163,7 @@ public screensaver_stop(id)
 public screensaver(id, uptime)
 if (is_user_connected(id))
 {
-    client_print id,print_center, "Screen saver active for:%i seconds", uptime
+    client_print id,print_center, "Screen saver active at: %i seconds", uptime
     message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), {0,0,0}, id); // use the magic #1 for "one client"  
     write_short(1<<12); // fade lasts this long duration  
     write_short(1<<8); // fade lasts this long hold time  
