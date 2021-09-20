@@ -16,7 +16,7 @@ public plugin_init()
 public client_kill(id)
 if(is_user_connected(id))
 {
-    static name[32];
+    static name[MAX_NAME_LENGTH];
     get_user_name(id,name,charsmax(name))
     fakedamage(id,"Suicide",WOW,WTF);
     client_print(0,print_chat,"%s is trying to kill themself!",name);
