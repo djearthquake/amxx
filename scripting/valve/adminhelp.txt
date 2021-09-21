@@ -1,0 +1,246 @@
+[bg]
+HELP_COMS = AMX Mod X Help: Komandi
+HELP_ENTRIES = Vkarani %d - %d ot %d
+HELP_USE_MORE = Izpolzvaite '%s %d' za poveche
+HELP_USE_BEGIN = Izpolzvaite '%s 1' za nachalo
+TYPE_HELP_1 = Napishete '%s' v konzolata za da vidite povehe komandi
+TYPE_HELP_2 = Napishete '%s' v konzolata 
+TIME_INFO_1 = Ostavashto vreme: %d:%02d min. Sledvashta karta: %s
+TIME_INFO_2 = Nqma limit na vremeto. Sledvashta karta: %s
+
+[bp]
+HELP_COMS = Ajuda do AMX Mod X: Comandos
+HELP_ENTRIES = Entradas %d - %d de %d
+HELP_USE_MORE = Use '%s %d' para ver mais comandos
+HELP_USE_BEGIN = Use '%s 1' para voltar ao inicio
+TYPE_HELP_1 = Escreva '%s' no console para ver os comandos disponiveis.
+TYPE_HELP_2 = Escreva '%s' no console para buscas de comando usando parte do nome.
+TIME_INFO_1 = Tempo Restante: %d:%02d min. Proximo Mapa: %s
+TIME_INFO_2 = Sem Limite de Tempo. Proximo Mapa: %s
+
+[bs]
+HELP_COMS = AMX Mod X Pomoc: Komande
+HELP_ENTRIES = Vrijednosti %d - %d od %d
+HELP_USE_MORE = Koristi '%s %d' za jos komandi
+HELP_USE_BEGIN = Koristi '%s 1' za pocetak
+TYPE_HELP_1 = Ukucajte '%s' u konzoli da bi ste vidjeli moguce komande
+TYPE_HELP_2 = Ukucajte '%s' u konzoli
+TIME_INFO_1 = Preostalo Vrijeme: %d:%02d min. Slijedeca Mapa: %s
+TIME_INFO_2 = Nema vremenskog ogranicenja. Slijedeca Mapa: %s
+
+[cn]
+HELP_COMS = AMX Mod X 帮助: 命令
+HELP_ENTRIES = 目前第 %d 条 - %d 条,共 %d 条
+HELP_USE_MORE = 使用 '%s %d' 获取更多
+HELP_USE_BEGIN = 使用 '%s 1' 返回首页
+TYPE_HELP_1 = 在控制台输入 '%s' 查看有效的命令
+TYPE_HELP_2 = 在控制台输入 '%s'
+TIME_INFO_1 = 剩余时间: %d:%02d 分钏. 下一张地图为: %s
+TIME_INFO_2 = 无时间限制. 下一张地图为: %s
+
+[cz]
+HELP_COMS = AMX Mod X Help: Prikazy
+HELP_ENTRIES = Polozky %d - %d z %d
+HELP_USE_MORE = Napis '%s %d' pro vice
+HELP_USE_BEGIN = napis '%s 1' pro zacatek
+TYPE_HELP_1 = Napis '%s' do konzole pro vypis prikazu
+TYPE_HELP_2 = Napis '%s' do konzole pro
+TIME_INFO_1 = Zbyva jeste: %d:%02d min. Dalsi mapa: %s
+TIME_INFO_2 = Neni casovy limit. Dalsi mapa: %s
+
+[da]
+HELP_COMS = AMX Mod X Hjaelp: Kommandoer
+HELP_ENTRIES = Indskrivninger %d - %d of %d
+HELP_USE_MORE = Brug '%s %d' for mere
+HELP_USE_BEGIN = Brug '%s 1' for at begynde
+TYPE_HELP_1 = Skriv '%s' i konsollen for at se kommandoer til raadighed
+TYPE_HELP_2 = Skriv '%s' i konsollen for
+TIME_INFO_1 = Tid tilbage: %d:%02d min. Naeste bane: %s
+TIME_INFO_2 = Ingen tidsgraense. Naeste bane: %s
+
+[de]
+HELP_COMS = AMX Mod X Help: Befehle
+HELP_ENTRIES = Einträge %d - %d von %d
+HELP_USE_MORE = Nutze '%s %d' für die nächste Seite
+HELP_USE_BEGIN = Nutze '%s 1' um zum Anfang zu gelangen
+TYPE_HELP_1 = Schreibe '%s' in die Konsole um die verfuegbaren Befehle anzuzeigen.
+TYPE_HELP_2 = Schreibe '%s' in die Konsole um nach Teilbefehlsnamen zu suchen.
+TIME_INFO_1 = Verbleibende Zeit: %d:%02d Minuten, nächste Map: %s
+TIME_INFO_2 = Kein Zeitlimit. Nächste Map ist: %s
+
+[en]
+HELP_COMS = AMX Mod X Help: Commands
+HELP_ENTRIES = Entries %d - %d of %d
+HELP_USE_MORE = Use '%s %d' for more
+HELP_USE_BEGIN = Use '%s 1' for begin
+TYPE_HELP_1 = Type '%s' in the console to see available commands.
+TYPE_HELP_2 = Type '%s' in console for partial command name searches.
+TIME_INFO_1 = Time Left: %d:%02d min. Next Map: %s
+TIME_INFO_2 = No Time Limit. Next Map: %s
+HELP_CMD_INFO = <entry no.> [no. of entries to display (server only)] - displays information about available commands
+SEARCH_CMD_INFO = <match> <entry no.> [no. of entries to display (server only)] - displays information about matched commands
+NO_MATCHING_RESULTS = ^nNo matching results found^n
+
+[es]
+HELP_COMS = Ayuda de AMX Mod X: Comandos
+HELP_ENTRIES = Entradas %d - %d de %d
+HELP_USE_MORE = Escribe '%s %d' para mostrar mas
+HELP_USE_BEGIN = Escribe '%s 1' para volver al principio
+TYPE_HELP_1 = Escribe '%s' en la consola para ver los comandos disponibles.
+TYPE_HELP_2 = Escribe '%s' en la consola para ver busquedas parciales de nombres de comandos
+TIME_INFO_1 = Tiempo restante: %d:%02d min. Proximo Mapa: %s
+TIME_INFO_2 = Tiempo Ilimitado. Proximo Mapa: %s
+HELP_CMD_INFO = <num. entrada> [num. de entradas a mostrar (solo para el servidor)] - muestra informacion sobre los comandos
+SEARCH_CMD_INFO = <coincidencia> <entrada no.> [no. de entradas para mostrar (solo servidor)]: muestra información sobre comandos coincidentes
+NO_MATCHING_RESULTS = ^nNo se han encontrado resultados^n
+
+[fi]
+HELP_COMS = AMX Mod X Help: Komennot
+HELP_ENTRIES = Kohdat %d - %d Kaikkiaan %d
+HELP_USE_MORE = Kirjoita '%s %d' saadaksesi lisatietoja
+HELP_USE_BEGIN = Kirjoita '%s 1' aloittaaksesi
+TYPE_HELP_1 = Kirjoita '%s' konsoliin nahdaksesi komennot
+TYPE_HELP_2 = Kirjoita '%s' konsoliin
+TIME_INFO_1 = Aikaa jaljella: %d:%02d minuuttia. Seuraava mappi: %s
+TIME_INFO_2 = Ei aikarajaa. Seuraava mappi: %s
+
+[fr]
+HELP_COMS = Aide AMX Mod X: Commandes
+HELP_ENTRIES = Entrees %d - %d sur %d
+HELP_USE_MORE = Utilise '%s %d' pour la suite
+HELP_USE_BEGIN = Utilise '%s 1'  pour le debut
+TYPE_HELP_1 = Tape '%s' dans la console pour voir les commandes disponibles
+TYPE_HELP_2 = Tape '%s' dans la console pour
+TIME_INFO_1 = Temps Restant: %d:%02d mn. Prochaine Carte: %s
+TIME_INFO_2 = Aucun Temps Limite. Prochaine Carte: %s
+HELP_CMD_INFO = <n entree.> [nbre d'entrees a afficher (serveur uniquement)] - affiche des informations sur les cmds dispo.
+
+[hr]
+HELP_COMS = AMX Mod X Pomoc: Naredbe
+HELP_ENTRIES = Vrijednosti %d - %d od %d
+HELP_USE_MORE = Koristi '%s %d' za jos naredbi
+HELP_USE_BEGIN = Koristi '%s 1' za pocetak
+TYPE_HELP_1 = Ukucajte '%s' u konzoli da bi ste vidjeli moguce naredbe
+TYPE_HELP_2 = Ukucajte '%s' u konzoli
+TIME_INFO_1 = Preostalo Vrijeme: %d:%02d min. Sljedeca Mapa: %s
+TIME_INFO_2 = Nema vremenskog ogranicenja. Sljedeca Mapa: %s
+
+[hu]
+HELP_COMS = AMX Mod X segítség: Parancsok
+HELP_ENTRIES = Bejegyzés %d - %d of %d
+HELP_USE_MORE = Írj 'amx_help %d' -t többhöz
+HELP_USE_BEGIN = Yrj 'amx_help 1' -t az első oldalhoz
+TYPE_HELP_1 = Írj 'amx_help' -t a konzolba hogy láthasd a parancsokat
+TYPE_HELP_2 = Írj %s - információt nyújt az egyező parancsokhoz
+TIME_INFO_1 = Hátrálévő idő: %d:%02d perc. következő pálya: %s
+TIME_INFO_2 = Nincs időhatár. A következő pálya: %s
+HELP_CMD_INFO = <bejegyzés száma.> [megjeneítendő bejegyzések száma (csak szerver)] - információt nyújt az elérhető parancsokhoz
+SEARCH_CMD_INFO = <egyezés> <bejegyzés száma> [megjeneítendő bejegyzések száma (csak szerver)] - információt nyújt az egyező parancsokhoz
+NO_MATCHING_RESULTS = ^nNem található egyezés^n
+
+[lt]
+HELP_COMS = AMX Mod X Pagalba: Komandos
+HELP_ENTRIES = Irasai %d - %d is %d
+HELP_USE_MORE = Naudok '%s %d' del daugiau info
+HELP_USE_BEGIN = Naudok '%s 1' kad pradetum
+TYPE_HELP_1 = Rasyk '%s' konsoleje, kad pamatytum prieinamas komandas.
+TYPE_HELP_2 = Rasyk '%s' konsoleje
+TIME_INFO_1 = Liko laiko: %d:%02d min. Kitas zemelapis: %s
+TIME_INFO_2 = Nera laiko limito. Kitas zemelapis: %s
+
+[mk]
+HELP_COMS = AMX Mod X Pomosh - Komandi
+HELP_ENTRIES = Komandi %d - %d od %d
+HELP_USE_MORE = Napishi '%s %d' za ushte komandi
+HELP_USE_BEGIN = Napishi '%s 1' za vrakjanje na pochetok
+TYPE_HELP_1 = Napishi '%s' vo konzolata za da gi vidish site komandi
+TYPE_HELP_2 = Napishi '%s' vo konzolata
+TIME_INFO_1 = Preostanato vreme: %d:%02d min. Sledna mapa: %s
+TIME_INFO_2 = Nema ogranichuvanje na vremeto. Sledna mapa: %s
+
+[nl]
+HELP_COMS = AMX Mod X Help: Commando's
+HELP_ENTRIES = Data %d - %d van %d
+HELP_USE_MORE = Typ '%s %d' voor meer
+HELP_USE_BEGIN = Typ '%s 1' voor het begin
+TYPE_HELP_1 = Type '%s' in de console om de beschikbare commando's te zien.
+TYPE_HELP_2 = Type '%s' in console om commando's te zoeken op naam.
+TIME_INFO_1 = Resterende tijd: %d:%02d min. Volgende map: %s
+TIME_INFO_2 = Geen tijdlimiet. Volgende map: %s
+HELP_CMD_INFO = <nr. ingeven> [aantal ingevingen te weergeven (alleen server)] - weergeeft informatie over beschikbare commando's.
+SEARCH_CMD_INFO = <match> <nr. ingeven> [aantal ingevingen te weergeven (alleen server)] - weergeeft informatie over overeenkomstige commando's.
+NO_MATCHING_RESULTS = ^nGeen overeenkomstige zoekresultaten gevonden^n
+
+[pl]
+HELP_COMS = AMX Mod X pomoc: Komendy
+HELP_ENTRIES = Wpisy %d - %d z %d
+HELP_USE_MORE = Uzyj '%s %d' aby wyswietlic wiecej
+HELP_USE_BEGIN = Uzyj '%s 1' aby dojsc do poczatku
+TYPE_HELP_1 = Wpisz '%s' w konsoli aby uzyskac liste komend
+TYPE_HELP_2 = Wpisz '%s' w konsoli
+TIME_INFO_1 = Pozostaly czas: %d:%02d min. Nastepna mapa: %s
+TIME_INFO_2 = Brak limitu czasu. Nastepna mapa: %s
+
+[pt]
+TYPE_HELP_1 = Escreve '%s' na consola para ver os comandos disponíveis.
+TYPE_HELP_2 = Escreve '%s' na consola para procurar comandos a partir de uma parte do nome.
+
+[ro]
+HELP_COMS = Ajutor AMX Mod X: Comenzi
+HELP_ENTRIES = Intrari %d - %d din %d
+HELP_USE_MORE = Scrie '%s %d' pentru mai mult
+HELP_USE_BEGIN = Scrie '%s 1' pentru inceput
+TYPE_HELP_1 = Scrie '%s' in consola pentru afisare lista comenzi
+TYPE_HELP_2 = Scrie '%s' in consola
+TIME_INFO_1 = Timp Ramas: %d:%02d. Urmatoarea Harta: %s
+TIME_INFO_2 = Nici o Limita a Timpului. Urmatoarea Harta: %s
+
+[ru]
+HELP_COMS = AMX Mod X Помощь: Команды
+HELP_ENTRIES = Список доступных команд с %d по %d. Всего команд - %d
+HELP_USE_MORE = Напишите '%s %d" для продолжения
+HELP_USE_BEGIN = Напишите '%s 1' для просмотра с начала
+TYPE_HELP_1 = Напишите в консоли '%s' для просмотра доступных команд
+TYPE_HELP_2 = Введите '%s' в консоли, чтобы выполнить частичный поиск.
+TIME_INFO_1 = До смены карты осталось: %d:%02d мин. Следующая карта: %s
+TIME_INFO_2 = Ограничения по времени нет. Следующая карта: %s
+
+[sk]
+HELP_COMS = AMX Mod X Help: Prikazy
+HELP_ENTRIES = Polozky %d - %d z %d
+HELP_USE_MORE = Napis '%s %d' pre viac
+HELP_USE_BEGIN = Napis '%s 1' pre zaciatok
+TYPE_HELP_1 = Napis '%s' do konzoly pre vypis prikazov
+TYPE_HELP_2 = Napis '%s' do konzoly
+TIME_INFO_1 = Ostava este: %d:%02d min. Dalsia mapa: %s
+TIME_INFO_2 = Neni casovy limit. Dalsia mapa: %s
+
+[sr]
+HELP_COMS = AMX Mod X Pomoc: Komande
+HELP_ENTRIES = Vrednosti %d - %d od %d
+HELP_USE_MORE = Koristi '%s %d' za jos komandi
+HELP_USE_BEGIN = Koristi '%s 1' za pocetak
+TYPE_HELP_1 = Ukucajte '%s' u konzoli da bi ste videli moguce komande
+TYPE_HELP_2 = Ukucajte '%s' u konzoli
+TIME_INFO_1 = Preostalo Vreme: %d:%02d min. Sledeca Mapa: %s
+TIME_INFO_2 = Nema vremenskog ogranicenja. Sledeca Mapa: %s
+
+[sv]
+HELP_COMS = AMX Mod X Hj'a'lp: Kommandon
+HELP_ENTRIES = Post %d - %d av %d
+HELP_USE_MORE = Skriv '%s %d' f'o'r mer
+HELP_USE_BEGIN = Skriv '%s 1' f'o'r b'o'rjan
+TYPE_HELP_1 = Skriv '%s' i konsolen f'o'r att se befintliga kommandon
+TYPE_HELP_2 = Skriv '%s' i konsolen f'o'r
+TIME_INFO_1 = Tid kvar: %d:%02d min. Kommande karta: %s
+TIME_INFO_2 = Ingen tid satt tills kommande karta. Kommande karta: %s
+
+[tr]
+HELP_COMS = AMX Mod X Yardim: Emirler
+HELP_ENTRIES = Girisler %d - %d of %d
+HELP_USE_MORE = '%s %d' kullanin gerisini gormek icin
+HELP_USE_BEGIN = Baslatmak icin '%s 1' i kullanin
+TYPE_HELP_1 = Consolda '%s' yazin, mevcud olan emirleri gormek icin
+TYPE_HELP_2 = Consolda '%s'
+TIME_INFO_1 = Geri kalan zaman: %d:%02d dak. Diger Map: %s
+TIME_INFO_2 = Zaman sureci yokdur. Diger Map: %s
