@@ -98,6 +98,8 @@ new risk[ 4 ], g_iHeadcount, g_cvar_debugger;
 
 new bool:IS_SOCKET_IN_USE
 
+new bool:g_has_been_checked[MAX_PLAYERS]
+
 new g_clientemp_version
 
 public plugin_init()
@@ -130,6 +132,7 @@ public client_putinserver(id)
 
     if(is_user_alive(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
     {
+        g_has_been_checked[id] = false
         get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT );
 
         new total = iPlayers()
@@ -154,7 +157,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     if ( !is_user_bot(id) )
 
     {
-        server_print "Checking connected user if not a bot"
+        server_print "%s %s by %s:Checking if %s is a bot or something else.",PLUGIN, VERSION, AUTHOR, name
 
         get_user_name(id,name,charsmax(name))
 
@@ -227,17 +230,19 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
 @write_web(text[MAX_USER_INFO_LENGTH], reader)
 {
     new id = reader - USERWRITE;
-
+    if (g_has_been_checked[id])
+        return
     if(IS_SOCKET_IN_USE)
-        client_putinserver(id)
+        set_task(10.0,"client_putinserver",id)
     else
         IS_SOCKET_IN_USE = true
+    server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
     if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
     callfunc_end()
 
     if(get_pcvar_num(g_cvar_debugger) > 1 )
-        server_print "%s %s by %s:Is socket writable?", PLUGIN, VERSION, AUTHOR
+        server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, name
 
     #if AMXX_VERSION_NUM != 182
     if (socket_is_writable(g_proxy_socket, 100000))
@@ -248,7 +253,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     if(get_pcvar_num(g_cvar_debugger) > 1 )
     {
         if(is_user_connected(id))
-            server_print "%s %s by %s:Yes! Writing to the socket of %s", PLUGIN, VERSION, AUTHOR, name
+            server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
     }
 }
 
@@ -415,7 +420,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     if(get_pcvar_num(g_cvar_debugger))
         server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
     }
-    set_task(1.0, "@mark_socket", id);
+    if(!task_exists(id))
+        set_task(3.5, "@client_mark_socket", id);
 
     if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
@@ -426,8 +432,19 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         callfunc_end()
     }
 
-    return PLUGIN_CONTINUE;
+    return
 
+}
+
+public client_disconnected(id)
+    g_has_been_checked[id] = false
+
+@client_mark_socket(id)
+{
+    g_has_been_checked[id] = true
+    IS_SOCKET_IN_USE = false;
+    if(is_user_connected(id))
+        server_print "%s | %s unlocking socket!", PLUGIN, name
 }
 
 @mark_socket(work[MAX_PLAYERS])
@@ -435,7 +452,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     IS_SOCKET_IN_USE = false;
 
     if(!equal(work, ""))
-    server_print "%s | %s locking socket!", PLUGIN, work
+    server_print "%s | %s unlocking socket!", PLUGIN, work
 }
 
 @lock_socket()
