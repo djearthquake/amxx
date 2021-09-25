@@ -1,5 +1,6 @@
 #define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
-
+//#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
+//#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
@@ -198,6 +199,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         get_user_authid(id,authid,charsmax (authid));
     
         g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
+		//g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2);
+	
     
         get_pcvar_string(g_cvar_token, token, charsmax (token));
     
@@ -229,7 +232,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         client_putinserver(id)
     else
         IS_SOCKET_IN_USE = true
-    if(g_clientemp_version && get_pcvar_num(g_clientemp_version))
+    if(find_plugin_byfile(WEATHER_SCRIPT) /*g_clientemp_version*/ && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
     callfunc_end()
 
@@ -569,3 +572,4 @@ stock iPlayers()
 
     return g_iHeadcount
 }
+
