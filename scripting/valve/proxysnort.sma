@@ -1,3 +1,4 @@
+
 #define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
 //#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
 //#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
@@ -230,38 +231,42 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
 @write_web(text[MAX_USER_INFO_LENGTH], reader)
 {
     new id = reader - USERWRITE;
-    if (g_has_been_checked[id])
-        return
-    if(IS_SOCKET_IN_USE)
-        set_task(10.0,"client_putinserver",id)
-    else
-        IS_SOCKET_IN_USE = true
-    server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
-    if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
-    if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
-    callfunc_end()
-
-    if(get_pcvar_num(g_cvar_debugger) > 1 )
-        server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, name
-
-    #if AMXX_VERSION_NUM != 182
-    if (socket_is_writable(g_proxy_socket, 100000))
-    #endif
-
-    socket_send(g_proxy_socket,text,charsmax (text));
-
-    if(get_pcvar_num(g_cvar_debugger) > 1 )
+    if( id > 0 && !g_has_been_checked[id])
     {
-        if(is_user_connected(id))
-            server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
+
+        if(IS_SOCKET_IN_USE)
+            set_task(10.0,"client_putinserver",id)
+        else
+            IS_SOCKET_IN_USE = true
+        server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
+        if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
+        if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
+        callfunc_end()
+    
+        if(get_pcvar_num(g_cvar_debugger) > 1 )
+            server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, name
+    
+        #if AMXX_VERSION_NUM != 182
+        if (socket_is_writable(g_proxy_socket, 100000))
+        #endif
+    
+        socket_send(g_proxy_socket,text,charsmax (text));
+    
+        if(get_pcvar_num(g_cvar_debugger) > 1 )
+        {
+            if(is_user_connected(id))
+                server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
+        }
+
     }
+
 }
 
 @read_web(proxy_snort)
 {
     new id = proxy_snort - USERREAD
 
-    if( id > 0 )
+    if( id > 0 && !g_has_been_checked[id])
     if (is_user_connected(id) || !is_user_bot(id) )
 
     {
@@ -281,8 +286,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         }
 
         if (!equal(proxy_socket_buffer, ""))
-
         {
+
             if(get_pcvar_num(g_cvar_debugger) > 2)
                 server_print "%s", proxy_socket_buffer
 
