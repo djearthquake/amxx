@@ -289,7 +289,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
 
 
             //Proxy user treatments
-            if (containi(proxy_socket_buffer, "yes") >= 0 || containi(proxy_socket_buffer, "Compromised") >= 0)
+            if (containi(proxy_socket_buffer, "yes") != charsmin || containi(proxy_socket_buffer, "Compromised") != charsmin)
 
             {
 
@@ -322,17 +322,16 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
             }
 
             //What if they aren't on proxy or VPN?
-            if (containi(proxy_socket_buffer, "no") >= 0  && containi(proxy_socket_buffer, "error") == charsmin )
-            {
-                server_print "No proxy found on %s, %s",name,authid
-            }
+            if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") == charsmin )
+                server_print "No proxy found on %s, %s error-free",name,authid
 
-            if (containi(proxy_socket_buffer, "no") >= 0  && containi(proxy_socket_buffer, "error") >= 0 )
+            if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
-                server_print "No proxy found on %s, %s",name,authid
+                server_print "No proxy found on %s, %s with error on packet",name,authid
+                client_print 0, print_console, "No proxy found on %s, with error on packet", name
             }
             //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
-            if (containi(proxy_socket_buffer, "error") >= 0  && containi(proxy_socket_buffer, "message") >= 0 )
+            if (containi(proxy_socket_buffer, "error") != charsmin  && containi(proxy_socket_buffer, "message") != charsmin )
             {
                 new msg[128];
                 copyc(msg, charsmax (msg), proxy_socket_buffer[containi(proxy_socket_buffer, "message") + 11], '"');
@@ -372,7 +371,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
 
     {
-        new risk_buffer_fix = containi(proxy_socket_buffer, "yes") >= 0 ? 7 : 5
+        new risk_buffer_fix = containi(proxy_socket_buffer, "yes") != charsmin ? 7 : 5
         copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
 
         if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
