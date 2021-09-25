@@ -232,7 +232,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         client_putinserver(id)
     else
         IS_SOCKET_IN_USE = true
-    if(find_plugin_byfile(WEATHER_SCRIPT) /*g_clientemp_version*/ && get_pcvar_num(g_clientemp_version))
+    if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin /*g_clientemp_version*/ && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
     callfunc_end()
 
@@ -416,7 +416,9 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
     }
     set_task(1.0, "@mark_socket", id);
-    if(g_clientemp_version && get_pcvar_num(g_clientemp_version))
+
+    if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin /*g_clientemp_version*/ && get_pcvar_num(g_clientemp_version))
+    //if(g_clientemp_version && get_pcvar_num(g_clientemp_version))
     if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
     {
         new work[MAX_PLAYERS]
@@ -572,4 +574,3 @@ stock iPlayers()
 
     return g_iHeadcount
 }
-
