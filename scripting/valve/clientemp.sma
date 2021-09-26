@@ -1,4 +1,7 @@
 #define PROXY_SCRIPT "proxysnort.amxx"
+//#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
+//#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
+
 /*
     *
     *   SSSSSSSSSSSSSSS PPPPPPPPPPPPPPPPP     iiii  NNNNNNNN        NNNNNNNNXXXXXXX       XXXXXXX
@@ -213,7 +216,7 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id))return PLUGIN_HANDLED_MAIN
+    if(is_user_bot(id) || is_user_hltv(id))return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
         set_task(0.2,"@country_finder",id+WEATHER)
     return PLUGIN_CONTINUE
@@ -587,8 +590,9 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink) );
         get_pcvar_string(g_cvar_units, units, charsmax (units) );
         get_pcvar_string(g_cvar_token, token, charsmax (token) );
+        g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
+		//g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
 
-        g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
 
         if(get_pcvar_float(g_long) && (!g_lat[id] || !g_lon[id]) )
 
