@@ -1,4 +1,4 @@
-// vim: set ts=4 sw=4 tw=99 noet:
+    // vim: set ts=4 sw=4 tw=99 noet:
 //
 // AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
 // Copyright (C) The AMX Mod X Development Team.
@@ -8,389 +8,155 @@
 //     https://alliedmods.net/amxmodx-license
 
 //
-// Nextmap Chooser Plugin
+// NextMap Plugin
 //
 
 #include <amxmodx>
 #include <amxmisc>
+#include engine
 
-#define SELECTMAPS  8
+// WARNING: If you comment this line make sure
+// that in your mapcycle file maps don't repeat.
+// However the same map in a row is still valid.
+#define OBEY_MAPCYCLE
+#define MAX_PLAYERS 32
+#define MAX_NAME_LENGTH 32
+#define charsmin -1
+#define ZERO_TIME "30"
 
-#define PLUGIN "Nextmap Chooser+"
-#define AUTHOR "SPINX|AMXX Dev Team"
-#define VOTE_MAP_TASK 987456
-///MACROS for AMXX 1.8.2 local compile.
+new g_nextMap[MAX_NAME_LENGTH]
+new g_mapCycle[MAX_NAME_LENGTH]
+new g_pos
+new g_currentMap[MAX_NAME_LENGTH]
 
 
-#define MAX_PLAYERS                32
-
-#define MAX_RESOURCE_PATH_LENGTH   64
-
-#define MAX_MENU_LENGTH            512
-
-#define MAX_NAME_LENGTH            32
-
-#define MAX_AUTHID_LENGTH          64
-
-#define MAX_IP_LENGTH              16
-
-#define MAX_USER_INFO_LENGTH       256
-
-#define charsmin                  -1
-#if !defined create_cvar
-#define create_cvar register_cvar
+// pcvars
+new g_mp_friendlyfire, g_teamplay, g_map_ent
+new g_mp_chattime, g_counter
+new g_amx_nextmap, g_finale
+new g_finale_msg[64]
+new g_Szstring[MAX_NAME_LENGTH]
+#if AMXX_VERSION_NUM != 182
+new const CvarChatTimeDesc[]="Added by nextmap to include end game chat time."
 #endif
-new Array:g_mapName;
-new g_mapNums;
-
-new g_nextName[SELECTMAPS]
-new g_voteCount[SELECTMAPS + 2]
-new g_mapVoteNum
-new g_teamScore[2]
-new g_lastMap[MAX_PLAYERS]
-
-new g_coloredMenus
-new bool:g_selected = false
-new bool:g_rtv = false
-new g_mp_chattime, g_auto_pick, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
-new Float:checktime
-
 public plugin_init()
 {
-    register_plugin(PLUGIN, AMXX_VERSION_STR, AUTHOR)
-    register_dictionary("mapchooser.txt")
-    register_dictionary("common.txt")
+    register_plugin("NextMap", AMXX_VERSION_STR, "AMXX Dev Team")
+    register_dictionary("nextmap.txt")
 
-    g_mapName=ArrayCreate(MAX_NAME_LENGTH);
+    get_mapname(g_currentMap, charsmax(g_currentMap))
 
-    new MenuName[MAX_RESOURCE_PATH_LENGTH]
+    register_event(ZERO_TIME, "changeMap", "a")
 
-    format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
-    register_menucmd(register_menuid(MenuName), (charsmin^(charsmin<<(SELECTMAPS+2))), "countVote")
- /*   #if AMXX_VERSION_NUM == 182
-    g_max       = register_cvar("amx_extendmap_max", "90")
-    g_step      = register_cvar("amx_extendmap_step", "15")
-    g_auto_pick = register_cvar("mapchooser_auto", "0")
-    #else*/
-    g_max       = create_cvar("amx_extendmap_max", "90")
-    g_step      = create_cvar("amx_extendmap_step", "15")
-    g_auto_pick = create_cvar("mapchooser_auto", "0")
- //   #endif
-    get_localinfo("lastMap", g_lastMap, charsmax(g_lastMap))
-    set_localinfo("lastMap", "")
+    register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
+    register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
 
-    new maps_ini_file[64]
-    get_configsdir(maps_ini_file, charsmax(maps_ini_file));
-    format(maps_ini_file, charsmax(maps_ini_file), "%s/maps.ini", maps_ini_file);
 
-    if (!file_exists(maps_ini_file))
-        get_cvar_string("mapcyclefile", maps_ini_file, charsmax(maps_ini_file))
-    if (loadSettings(maps_ini_file))
-    {
-        checktime = cstrike_running() ? 15.0 : 5.0 ;
-        set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
-    }
-    g_coloredMenus = colored_menus()
+    g_amx_nextmap = register_cvar("amx_nextmap", "", FCVAR_SERVER|FCVAR_EXTDLL|FCVAR_SPONLY)
     #if AMXX_VERSION_NUM == 182
-    g_mp_chattime = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
+    g_mp_chattime = register_cvar("mp_chattime", "10")
     #else
-    bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
+    bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : create_cvar("mp_chattime", "10" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0, .has_max = true, .max_val = 105),g_mp_chattime)
     #endif
-    if(get_cvar_pointer("mp_winlimit"))
-        #if AMXX_VERSION_NUM == 182
-        g_wins = get_cvar_pointer("mp_winlimit")
+    if(get_cvar_pointer("mp_teamplay"))
+    #if AMXX_VERSION_NUM == 182
+    g_teamplay = get_cvar_pointer("mp_teamplay")
         #else
-        bind_pcvar_num(get_cvar_pointer("mp_winlimit"),g_wins)
+        bind_pcvar_num(get_cvar_pointer("mp_teamplay"), g_teamplay)
         #endif
-    if(get_cvar_pointer("mp_maxrounds"))
-        #if AMXX_VERSION_NUM == 182
-        g_rnds = get_cvar_pointer("mp_maxrounds")
-        #else
-        bind_pcvar_num(get_cvar_pointer("mp_maxrounds"),g_rnds)
-        #endif
-    if(get_cvar_pointer("mp_fraglimit"))
-        #if AMXX_VERSION_NUM == 182
-        g_frags = get_cvar_pointer("mp_fraglimit")
-        #else
-        bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
-        #endif
-    if(get_cvar_pointer("mp_fragsleft"))
-        #if AMXX_VERSION_NUM == 182
-        g_frags_remaining = get_cvar_pointer("mp_fragsleft")
-        #else
-        bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
-        #endif
-    if(get_cvar_pointer("mp_timelimit"))
-        #if AMXX_VERSION_NUM == 182
-        g_timelim = get_cvar_pointer("mp_timelimit")
-        #else
-        bind_pcvar_num(get_cvar_pointer("mp_timelimit"),g_timelim)
-        #endif
-    if(get_cvar_num("amx_vote_time"))
-        #if AMXX_VERSION_NUM == 182
-        g_votetime = get_cvar_pointer("amx_vote_time")
-        #else
-        bind_pcvar_num(get_cvar_pointer("amx_vote_time"),g_votetime)
-        #endif
+    new szString[MAX_NAME_LENGTH+8], szString2[MAX_NAME_LENGTH], szString3[8]
 
-    if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
-        register_event("TeamScore", "team_score", "a")
+    get_localinfo("lastmapcycle", szString, charsmax(szString))
+    parse(szString, szString2, charsmax(szString2), szString3, charsmax(szString3))
+
+    get_cvar_string("mapcyclefile", g_mapCycle, charsmax(g_mapCycle))
+
+    if (!equal(g_mapCycle, szString2))
+        g_pos = 0   // mapcyclefile has been changed - go from first
+    else
+        g_pos = str_to_num(szString3)
+
+    readMapCycle(g_mapCycle, g_nextMap, charsmax(g_nextMap))
+    set_pcvar_string(g_amx_nextmap, g_nextMap)
+    formatex(szString, charsmax(szString), "%s %d", g_mapCycle, g_pos)  // save lastmapcycle settings
+    set_localinfo("lastmapcycle", szString)
+
+    if(get_cvar_num("mp_friendlyfire")) //pointer makes wack numbers appear in end chat timer
+    {
+        #if AMXX_VERSION_NUM == 182
+        g_mp_friendlyfire = get_cvar_pointer("mp_friendlyfire")
+        #else
+        bind_pcvar_num(get_cvar_pointer("mp_friendlyfire"),g_mp_friendlyfire)
+        #endif
+        register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
+    }
+    g_map_ent = find_ent_by_class(charsmin, "item_ctfbase")
+
+    g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-finale | 2-finale,tunes | 3-finale,tunes,gametitle*/
+    if(cstrike_running())
+        g_counter = get_cvar_pointer("mp_chattime")
+    else
+        g_counter = get_cvar_num("mp_chattime")
+
 }
 
-@rtv(id)
-
+public sayNextMap(id)
 if(is_user_connected(id))
 {
-    server_print "%s|%n called RTV", PLUGIN, id
-    g_rtv=true
-    change_task(987456,1.0)
+    new name[MAX_NAME_LENGTH]
+    get_pcvar_string(g_amx_nextmap,name,charsmax(name))
+
+    client_print id, print_chat, "%L %s", LANG_PLAYER, "NEXT_MAP", name
 }
 
-public checkVotes()
+public sayCurrentMap(id)
+if(is_user_connected(id))
+    client_print id, print_chat, "%L: %s", LANG_PLAYER, "PLAYED_MAP", g_currentMap
+
+public sayFFStatus(id)
 {
-
-    new b = 0
-    new frags_remaining = get_pcvar_num(g_frags_remaining)
-    new mp_chattime = get_pcvar_num(g_mp_chattime)
-
-    for (new a = 0; a < g_mapVoteNum; ++a)
-
-        if (g_voteCount[b] < g_voteCount[a])
-            b = a
-
-    if (g_voteCount[SELECTMAPS] > g_voteCount[b] && g_voteCount[SELECTMAPS] > g_voteCount[SELECTMAPS+1])
-    {
-        new mapname[MAX_NAME_LENGTH]
-
-        get_mapname(mapname, charsmax(mapname))
-        new Float:steptime = get_pcvar_float(g_step)
-        g_frags = get_pcvar_num(g_frags)
-
-        //Half-Life Frags
-        new timeleft = get_timeleft()
-        if(g_frags && frags_remaining && timeleft > 129 )
-        {
-            log_amx"Setting frags"
-            set_cvar_num("mp_fraglimit", g_frags+ floatround(steptime))
-            //client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime) //need frags instead of min translated
-            client_print 0, print_chat, "Incrementing frag limit to %i.", g_frags
-            log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to  %i frags", mapname, g_frags)
-        }
-
-        else
-        {
-            log_amx"Setting ext time"
-            set_cvar_float("mp_timelimit", get_pcvar_float(g_timelim) + steptime)
-            client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime)
-            log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to next %.0f minutes", mapname, steptime)
-        }
-
-        return
-    }
-
-    new smap[MAX_NAME_LENGTH]
-    if (g_voteCount[b] && g_voteCount[SELECTMAPS + 1] <= g_voteCount[b])
-    {
-        ArrayGetString(g_mapName, g_nextName[b], smap, charsmax(smap));
-        set_cvar_string("amx_nextmap", smap);
-    }
-
-    get_cvar_string("amx_nextmap", smap, charsmax(smap))
-    client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_NEXT", smap)
-    log_amx("Vote: Voting for the nextmap finished. The nextmap will be %s", smap)
-
-    if(g_rtv)
-    {
-        remove_task(987456)
-
-        if(mp_chattime < 2)
-        set_task(float(mp_chattime),"@changemap",987456,smap,charsmax(smap))
-    }
-
-
+    if(g_teamplay || g_map_ent > charsmin)
+        client_print 0, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, g_mp_friendlyfire ? "ON" : "OFF"
+    else if(is_user_connected(id))
+        client_print id, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, g_mp_friendlyfire ? "ON" : "OFF"
 }
-
-@changemap(smap[MAX_NAME_LENGTH])
-{
-    server_print "Trying to change to map %s",smap
-    if(ValidMap(smap))engine_changelevel(smap)
-}
-
-#if AMXX_VERSION_NUM == 182
-stock engine_changelevel(smap[MAX_NAME_LENGTH])
-{
-    server_cmd("amx_map %s", smap)
-}
+#if !defined engine_changelevel
+stock engine_changelevel(smap[MAX_NAME_LENGTH]){server_cmd("changelevel %s", smap)}
 #endif
 
-public countVote(id, key)
+public delayedChange()
 {
-    if (get_cvar_float("amx_vote_answers"))
-    {
-        new name[MAX_NAME_LENGTH]
-        get_user_name(id, name, charsmax(name))
-
-        if (key == SELECTMAPS)
-            client_print(0, print_chat, "%L", LANG_PLAYER, "CHOSE_EXT", name)
-        else if (key < SELECTMAPS)
-        {
-            new map[MAX_NAME_LENGTH];
-            ArrayGetString(g_mapName, g_nextName[key], map, charsmax(map));
-            client_print(0, print_chat, "%L", LANG_PLAYER, "X_CHOSE_X", name, map);
-        }
-    }
-    ++g_voteCount[key]
-
-    return PLUGIN_HANDLED
+    log_amx "Pushing map through"
+    //engine_changelevel(g_Szstring)
+    server_cmd("amx_map %s", g_Szstring)
 }
 
-bool:isInMenu(id)
+public changeMap()
 {
-    for (new a = 0; a < g_mapVoteNum; ++a)
-        if (id == g_nextName[a])
-            return true
-    return false
+    get_pcvar_string(g_amx_nextmap,g_Szstring,charsmax(g_Szstring))
+    
+    g_counter = get_pcvar_num(g_mp_chattime)
+
+    set_task(float(g_counter), "delayedChange", 0, g_Szstring, charsmax(g_Szstring))
+    set_task(1.0,"@Show_Chat_time",MAX_PLAYERS,"", 0, "b")
+    client_print 0,print_chat,"Chat Time: %i",g_counter
+    client_print 0,print_console,"babble time is: %i",get_pcvar_num(g_mp_chattime)
+
+    log_amx "Chat time"
+    formatex(g_finale_msg,charsmax(g_finale_msg),"Next map is %s!",g_Szstring)
+    //Some mods do  not have chat time so we make one. -SPiNX 2021
+
+    //Amxx-Hammer multi-manager in essence
+    set_task(0.1,"@finale")
+    set_task(0.2,"@title")
+    set_task(0.3,"@tunes")
 }
 
-@auto_map_pick()
-{   server_print "auto-picking maps"
-    new players[MAX_PLAYERS]
-    new playercount
+@Show_Chat_time()
+    client_print 0, print_console,"Chat time remaining %i seconds",--g_counter
 
-    get_players(players,playercount,"i")
+new g_warning[] = "WARNING: Couldn't find a valid map or the file doesn't exist (file ^"%s^")"
 
-    for (new m=0; m<playercount; ++m)
-    {
-        #if AMXX_VERSION_NUM != 182
-        amxclient_cmd(players[m],random_map_pick()) //hooks all with unknown command
-        server_print "Trying amxclient_cmd..."
-        #endif
-        console_cmd(players[m],random_map_pick())
-        server_print "Trying console_cmd..."
-        client_cmd(players[m],random_map_pick()) //humans only
-        server_print "Trying client_cmd..."
-        //engclient_cmd(players[m],random_map_pick()) //joke
-    }
-}
-stock random_map_pick()
-{
-    new custom;
-    custom = random_num(1,5)
-    new formated[MAX_IP_LENGTH]
-    formatex(formated,charsmax(formated),"menuselect %i", custom)
-    return formated;
-}
-
-public voteNextmap()
-{
-    new timeleft = get_timeleft()
-    new intercept = cstrike_running() ? 129 : get_pcvar_num(g_votetime) + 5
-
-    new frags_remaining = get_pcvar_num(g_frags_remaining)
-
-    if(g_frags && frags_remaining < 2)
-    {
-        new word_buffer[MAX_PLAYERS]
-        num_to_word(frags_remaining, word_buffer, charsmax(word_buffer));
-        //client_cmd(0,"spk ^"%s point remaining^"",word_buffer)
-        client_cmd(0,"spk ^"%s point remaining final point on b team^"",word_buffer)
-
-        new smap[MAX_NAME_LENGTH]
-        get_cvar_string("amx_nextmap", smap, charsmax(smap))
-        log_amx"HL server frag limit map change %s",smap
-        //@changemap(smap) //abrupt change
-        if(callfunc_begin("changeMap","nextmap.amxx"))
-            callfunc_end()
-        if(task_exists(987456))
-            remove_task(987456)
-        return
-    }
-    if(g_frags && frags_remaining < 4)change_task(987456,1.0) //avoid missing 'voted' map or expected nextmap and running from maps.ini/mapcycle. Could inrement it then chattime next script pass.
-    if (g_wins)
-    {
-        new wins = get_pcvar_num(g_wins)
-        new c = wins - 2
-
-        if ((c > g_teamScore[0]) && (c > g_teamScore[1]))
-        {
-            g_selected = false
-            return
-        }
-    }
-    else if (g_rnds)
-    {
-        new rounds = get_pcvar_num(g_rnds)
-        if ((rounds - 2) > (g_teamScore[0] + g_teamScore[1]))
-        {
-            g_selected = false
-            return
-        }
-    }
-    else if (get_pcvar_num(g_frags))
-    {
-        if ( frags_remaining > 4 && timeleft > (intercept + intercept) && !g_rtv )
-        {
-            g_selected = false
-            return
-        }
-
-    } else {
-        if (timeleft < 1 || timeleft > (intercept + intercept) && !g_rtv)
-        {
-            g_selected = false
-            return
-        }
-
-    }
-    if (g_selected)
-        return
-
-    g_selected = true
-
-    new menu[MAX_MENU_LENGTH], a, mkeys = (1<<SELECTMAPS + 1)
-
-    new pos = format(menu, charsmax(menu), g_coloredMenus ? "\y%L:\w^n^n" : "%L:^n^n", LANG_SERVER, "CHOOSE_NEXTM")
-    new dmax = (g_mapNums > SELECTMAPS) ? SELECTMAPS : g_mapNums
-
-    for (g_mapVoteNum = 0; g_mapVoteNum < dmax; ++g_mapVoteNum)
-    {
-        a = random_num(0, g_mapNums - 1)
-
-        while (isInMenu(a))
-            if (++a >= g_mapNums) a = 0
-
-        g_nextName[g_mapVoteNum] = a
-        pos += format(menu[pos], charsmax(menu) - pos, "%d. %a^n", g_mapVoteNum + 1, ArrayGetStringHandle(g_mapName, a));
-        mkeys |= (1<<g_mapVoteNum)
-        g_voteCount[g_mapVoteNum] = 0
-    }
-
-    menu[pos++] = '^n'
-    g_voteCount[SELECTMAPS] = 0
-    g_voteCount[SELECTMAPS + 1] = 0
-
-    new mapname[MAX_NAME_LENGTH]
-    get_mapname(mapname, charsmax(mapname))
-
-    if ((g_wins + g_rnds) == 0 && (get_cvar_float("mp_timelimit") < get_pcvar_float(g_max)))
-    {
-        pos += format(menu[pos], charsmax(menu) - pos, "%d. %L^n", SELECTMAPS + 1, LANG_SERVER, "EXTED_MAP", mapname)
-        mkeys |= (1<<SELECTMAPS)
-    }
-
-    format(menu[pos], charsmax(menu), "%d. %L", SELECTMAPS+2, LANG_SERVER, "NONE")
-    new MenuName[MAX_RESOURCE_PATH_LENGTH]
-
-    format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
-    show_menu(0, mkeys, menu, charsmax(menu), MenuName)
-    set_task(15.0, "checkVotes")
-    //AUTOPICK MAPS FOR DEBUGGING ETC
-    if(get_pcvar_num(g_auto_pick))set_task(2.0,"@auto_map_pick")
-    client_print(0, print_chat, "%L", LANG_SERVER, "TIME_CHOOSE")
-    client_cmd(0, "spk Gman/Gman_Choose2")
-    log_amx("Vote: Voting for the nextmap started")
-    log_amx "Map vote conducted with %i sec remaining.",timeleft
-}
 stock bool:ValidMap(mapname[])
 {
     if ( is_map_valid(mapname) )
@@ -421,60 +187,112 @@ stock bool:ValidMap(mapname[])
     return false;
 }
 
-loadSettings(filename[])
+#if defined OBEY_MAPCYCLE
+readMapCycle(szFileName[], szNext[], iNext)
 {
-    if (!file_exists(filename))
-        return 0
+    new b, i = 0, iMaps = 0
+    new szBuffer[MAX_NAME_LENGTH], szFirst[MAX_NAME_LENGTH]
 
-    new szText[MAX_NAME_LENGTH]
-    new currentMap[MAX_NAME_LENGTH]
-
-    new buff[MAX_USER_INFO_LENGTH];
-
-    get_mapname(currentMap, charsmax(currentMap))
-
-    new fp=fopen(filename,"r");
-
-    while (!feof(fp))
+    if (file_exists(szFileName))
     {
-        buff[0]='^0';
-        szText[0]='^0';
-
-        fgets(fp, buff, charsmax(buff));
-
-        parse(buff, szText, charsmax(szText));
-
-
-        if (szText[0] != ';' &&
-            ValidMap(szText) &&
-            !equali(szText, g_lastMap) &&
-            !equali(szText, currentMap))
+        while (read_file(szFileName, i++, szBuffer, charsmax(szBuffer), b))
         {
-            ArrayPushString(g_mapName, szText);
-            ++g_mapNums;
-        }
+            if (!isalnum(szBuffer[0]) || !ValidMap(szBuffer)) continue
 
+            if (!iMaps)
+                copy(szFirst, charsmax(szFirst), szBuffer)
+
+            if (++iMaps > g_pos)
+            {
+                copy(szNext, iNext, szBuffer)
+                g_pos = iMaps
+                return
+            }
+        }
     }
 
-    fclose(fp);
-
-    return g_mapNums
+    if (!iMaps)
+    {
+        log_amx(g_warning, szFileName)
+        copy(szNext, iNext, g_currentMap)
+    }
+    else
+        copy(szNext, iNext, szFirst)
+    g_pos = 1
 }
 
-public team_score()
-{
-    new team[2]
+#else
 
-    read_data(1, team, charsmax(team))
-    g_teamScore[(team[0]=='C') ? 0 : 1] = read_data(2)
+readMapCycle(szFileName[], szNext[], iNext)
+{
+    new b, i = 0, iMaps = 0
+    new szBuffer[MAX_NAME_LENGTH], szFirst[MAX_NAME_LENGTH]
+
+    new a = g_pos
+
+    if (file_exists(szFileName))
+    {
+        while (read_file(szFileName, i++, szBuffer, charsmax(szBuffer), b))
+        {
+            if (!isalnum(szBuffer[0]) || !ValidMap(szBuffer)) continue
+
+            if (!iMaps)
+            {
+                iMaps = 1
+                copy(szFirst, charsmax(szFirst), szBuffer)
+            }
+
+            if (iMaps == 1)
+            {
+                if (equali(g_currentMap, szBuffer))
+                {
+                    if (a-- == 0)
+                        iMaps = 2
+                }
+            } else {
+                if (equali(g_currentMap, szBuffer))
+                    ++g_pos
+                else
+                    g_pos = 0
+
+                copy(szNext, iNext, szBuffer)
+                return
+            }
+        }
+    }
+
+    if (!iMaps)
+    {
+        log_amx(g_warning, szFileName)
+        copy(szNext, iNext, g_currentMap)
+    }
+    else
+        copy(szNext, iNext, szFirst)
+
+    g_pos = 0
+}
+#endif
+
+@finale()
+if(get_pcvar_num(g_finale))
+{
+    message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(g_finale_msg);message_end()
 }
 
-public plugin_end()
+@title()
+if(get_pcvar_num(g_finale)>1)
 {
-    new current_map[MAX_NAME_LENGTH]
+    emessage_begin(MSG_BROADCAST,get_user_msgid("GameTitle"),{0,0,0},0)
+    ewrite_byte(1)
+    emessage_end()
+}
 
-    get_mapname(current_map, charsmax(current_map))
-    set_localinfo("lastMap", current_map)
-
-    ArrayDestroy(g_mapName)
+@tunes()
+if(get_pcvar_num(g_finale)>2)
+{
+    new iTrack = random_num(2,27) //1 is blank
+    emessage_begin(MSG_BROADCAST, SVC_CDTRACK, _, 0 );
+    ewrite_byte(iTrack);
+    ewrite_byte(1);
+    emessage_end();
 }
