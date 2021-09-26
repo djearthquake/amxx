@@ -1,4 +1,3 @@
-
 #define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
 //#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
 //#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
@@ -128,7 +127,7 @@ public plugin_init()
 
 public client_putinserver(id)
 {
-    if(is_user_bot(id))
+    if(is_user_bot(id) || is_user_hltv(id))
         return PLUGIN_HANDLED_MAIN
 
     if(is_user_alive(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
