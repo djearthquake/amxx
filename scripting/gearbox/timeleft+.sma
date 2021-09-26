@@ -296,7 +296,7 @@ public timeRemain(param[])
     
                     {
     
-                        if(g_frags)
+                        if(g_frags && frags_remaining > 0)
                         {
                             new min_left = tmlf/PER_MINUTE
                             new word_buffer[MAX_PLAYERS]
