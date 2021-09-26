@@ -230,7 +230,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
 @write_web(text[MAX_USER_INFO_LENGTH], reader)
 {
     new id = reader - USERWRITE;
-    if( id > 0 && !g_has_been_checked[id])
+    if(is_user_connected(id) && id > 0 && !g_has_been_checked[id])
     {
 
         if(IS_SOCKET_IN_USE)
@@ -253,7 +253,6 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     
         if(get_pcvar_num(g_cvar_debugger) > 1 )
         {
-            if(is_user_connected(id))
                 server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
         }
 
@@ -266,7 +265,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     new id = proxy_snort - USERREAD
 
     if( id > 0 && !g_has_been_checked[id])
-    if (is_user_connected(id) || !is_user_bot(id) )
+    if (is_user_alive(id) || !is_user_bot(id) && !is_user_hltv(id))
 
     {
 
