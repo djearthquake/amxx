@@ -28,6 +28,22 @@
 
 #define g_packHP 15
 
+#define MAX_PLAYERS                32
+
+#define MAX_RESOURCE_PATH_LENGTH   64
+
+#define MAX_MENU_LENGTH            512
+
+#define MAX_NAME_LENGTH            32
+
+#define MAX_AUTHID_LENGTH          64
+
+#define MAX_IP_LENGTH              16
+
+#define MAX_USER_INFO_LENGTH       256
+
+#define charsmin                  -1
+
 //Base plugin is from Xalus Walk through walls. Interchangeable cvars.
 ///Idea from Castlewolfenstein on Apple II.
 
@@ -40,7 +56,7 @@ new g_model, g_model2;
 
 new g_cvarDistance, g_cvarFalldistance, g_cvarButton, g_cvarDelay, g_cvarMessages;
 
-new g_Ent, g_Ent1, g_Ent2, g_Ent3, g_Ent4, g_Ent5;
+//new g_Ent, g_Ent1, g_Ent2, g_Ent3, g_Ent4, g_Ent5;
 
 new const SzClass[][] = {"func_breakable", "func_door", "func_door_rotating", "func_wall","trigger_multiple", "func_pushable", "momentary_door"}; //", "worldspawn" crash-related but damn it's fun
 
@@ -178,8 +194,8 @@ public Restore_door2(entity, iPlayers_index)
     set_pev(entity, pev_rendermode, kRenderGlow);
     set_pev(entity, pev_renderamt,  255.0);
     //set_ent_rendering(entity, kRenderFxExplode, 3);
-        
-        if(g_bHasKey2[iPlayers_index])
+
+    if(g_bHasKey2[iPlayers_index])
 
         {
             entity_set_string(entity,EV_SZ_classname,"func_breakable")
@@ -402,9 +418,9 @@ bool:is_hull_vacant(const Float:origin[3], hull)
 
 public plugin_precache()
 {
-    g_model  = precache_model("models/w_security.mdl");
+    precache_model("models/w_security.mdl");
     g_model2 = precache_model("sprites/steam1.spr");
-    precache_model("models/w_securityt.mdl");
+    precache_model("models/w_securityt.mdl"); //need prevent crash
     precache_model("models/glassgibs.mdl");
     //keep func_breakable, random near untraceable crashes
     precache_sound("debris/bustglass1.wav");
@@ -427,45 +443,40 @@ public client_putinserver(iPlayers_index)
     new Float:angles[3] = { 0.0, 0.0, 0.0 }
 
 
-    if( is_user_connected(iPlayers_index) && is_user_alive(iPlayers_index) && get_user_frags(iPlayers_index) > 4 || is_user_connected(iPlayers_index) && is_user_admin(iPlayers_index))
-        {
-            give_item(iPlayers_index,"item_security");
-            g_bHasKey[iPlayers_index] = true
-            client_print(iPlayers_index, print_center,"Skeleton Key given!");
+    if( !is_user_bot(iPlayers_index) && is_user_alive(iPlayers_index) && get_user_frags(iPlayers_index) > 4 || is_user_alive(iPlayers_index) && is_user_admin(iPlayers_index))
+    {
+        give_item(iPlayers_index,"item_security");
+        g_bHasKey[iPlayers_index] = true
+        client_print(iPlayers_index, print_center,"Skeleton Key given!");
+/*
+        g_key = create_entity("func_breakable")
 
-            g_key = create_entity("func_breakable")
+        entity_set_string(g_key, EV_SZ_targetname,"skeleton_key")
+        entity_set_edict(g_key, EV_ENT_aiment, iPlayers_index)
+        entity_set_edict(g_key, EV_ENT_owner, iPlayers_index)
+        entity_set_float(g_key, EV_FL_health, g_packHP*1.0) //Cvar later?
+        entity_set_size(g_key, minbox, maxbox )
+        set_pev(g_key,pev_angles,angles)
+        entity_set_int(g_key, EV_INT_movetype, MOVETYPE_BOUNCE)
+        set_pev(g_key,pev_solid,SOLID_BBOX)
+        set_pev(g_key,pev_takedamage, DAMAGE_AIM)
 
-            entity_set_string(g_key, EV_SZ_targetname,"skeleton_key")
-            entity_set_edict(g_key, EV_ENT_aiment, iPlayers_index)
-            entity_set_edict(g_key, EV_ENT_owner, iPlayers_index)
-            entity_set_float(g_key, EV_FL_health, g_packHP*1.0) //Cvar later?
-            entity_set_size(g_key, minbox, maxbox )
-            set_pev(g_key,pev_angles,angles)
-            entity_set_int(g_key, EV_INT_movetype, MOVETYPE_BOUNCE)
-            set_pev(g_key,pev_solid,SOLID_BBOX)
-            set_pev(g_key,pev_takedamage, DAMAGE_AIM)
-
-
-            if(get_user_frags(iPlayers_index) > 9)
-                g_bHasKey2[iPlayers_index] = true && client_print(iPlayers_index, print_chat,"impulse 204 (~ console) drops key of destruction!");
+*/
+        if(get_user_frags(iPlayers_index) > 9)
+            g_bHasKey2[iPlayers_index] = true && client_print(iPlayers_index, print_chat,"impulse 204 (~ console) drops key of destruction!");
 
 
-            if(is_user_connected(iPlayers_index))
+        //if(is_user_connected(iPlayers_index) && g_bHasKey2[iPlayers_index])
+//            entity_set_model(g_key, "models/w_security.mdl")
 
-                if(is_user_admin(iPlayers_index))
-                    entity_set_model(g_key, "models/w_security.mdl")
-
-                else
-                    entity_set_model(g_key, "models/w_securityt.mdl")
-
-        }
+    }
     else
-            {
-                    g_bHasKey[iPlayers_index] = false
-                    client_print(iPlayers_index, print_center,"You were not granted a key!");
-                    new X = ( 5 - get_user_frags(iPlayers_index) )
-                    client_print(iPlayers_index,print_chat,"%i more frag(s) are needed.", X);
-            }
+    {
+        g_bHasKey[iPlayers_index] = false
+        client_print(iPlayers_index, print_center,"You were not granted a key!");
+        new X = ( 5 - get_user_frags(iPlayers_index) )
+        client_print(iPlayers_index,print_chat,"%i more frag(s) are needed.", X);
+    }
 
     return PLUGIN_CONTINUE;
 
@@ -488,7 +499,7 @@ public impulse_handler(iPlayers_index)
 
     else
 
-    client_print(iPlayers_index, print_chat,"You have no keys to drop!");
+        client_print(iPlayers_index, print_chat,"You have no keys to drop!");
 
 }
 
