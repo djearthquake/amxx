@@ -20,13 +20,22 @@
 *
 * LAST UPDATE: Sun 01 Aug 2021 08:25:06 AM CDT
 */
+#define MAX_MENU_LENGTH            512
+#define MAX_USER_INFO_LENGTH       256
+#define MAX_RESOURCE_PATH_LENGTH   64
+#define MAX_AUTHID_LENGTH          64
+#define MAX_PLAYERS                32
+#define MAX_NAME_LENGTH            32
+#define MAX_IP_LENGTH              16
+#define charsmin                   -1
+
 #include <amxmodx>
 #include <amxmisc> //admin check
 #include <engine> //gravity belt, tennis shoes
 #include <fakemeta> //give
 #include <fakemeta_util> //teleport
 #include <fun> //give
-#include <Gearbox>
+#include <gearbox>
 #include <hamsandwich> //register some events
 
 #define VER "Sun 01 Aug 2021"
@@ -341,7 +350,8 @@ return PLUGIN_CONTINUE;
 
 @Fn_Reward(id)
 {
-    set_task_ex(random_float(7.0,15.0), "@display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
+    //set_task_ex(random_float(7.0,15.0), "@display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
+    set_task(random_float(7.0,15.0), "@display_info", id,_,_,"a", 2);
 
     if( is_user_alive(id) )
     {
@@ -753,12 +763,21 @@ return PLUGIN_HANDLED;
         {
             emessage_begin(id ? MSG_PVS : MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0)
             ewrite_byte(TE_BEAMPOINTS);
+            #if AMXX_VERSION_NUM == 182
+            write_coord(floatround(origin[0]));
+            write_coord(floatround(origin[1]));
+            write_coord(floatround(origin[2]));
+            write_coord(floatround(End[0]));
+            write_coord(floatround(End[1]));
+            write_coord(floatround(End[2]));
+            #else
             ewrite_coord_f(origin[0]);
             ewrite_coord_f(origin[1]);
             ewrite_coord_f(origin[2]);
             ewrite_coord_f(End[0]);
             ewrite_coord_f(End[1]);
             ewrite_coord_f(End[2]);
+            #endif
             ewrite_short(GraphicT);
             ewrite_byte(Start);
             ewrite_byte(Rate);
