@@ -53,6 +53,7 @@
 #define write_coord_f(%1) engfunc(EngFunc_WriteCoord, %1)
 #define MAX_NAME_LENGTH             32
 #define MAX_MENU_LENGTH            512
+#define charsmin                    -1
 new const RPG[]         = "models/rpgrocket.mdl"
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 
@@ -81,6 +82,8 @@ new bool:gUpdate[MAX_NAME_LENGTH + 1] = {false, ...}
 
 new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
+
+new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power"}
 
 public plugin_init()
 {
@@ -116,7 +119,7 @@ public plugin_init()
     pWidth          =  register_cvar("sv_hookwidth", "32")
     pSound          =  register_cvar("sv_hooksound", "1")
     pColor          =  register_cvar("sv_hookcolor", "1")
-    pPlayers        =  register_cvar("sv_hookplayers", "0")
+    pPlayers        =  register_cvar("sv_hookplayers", "1")
     pInterrupt      =  register_cvar("sv_hookinterrupt", "0")
     pAdmin          =  register_cvar("sv_hookadminonly",  "0")
     pHookSky        =  register_cvar("sv_hooksky", "1")
@@ -315,10 +318,10 @@ public fwTouch(ptr, ptd)
 
                 return FMRES_HANDLED
             }
-            else if (equali(szPtdClass, "hostage_entity") && cstrike_running())
+            else if (containi(szPtdClass, "monster") > charsmin)
             {
                 // Makes an hostage follow
-                if (get_pcvar_num(pHostage) && get_user_team(id) == 2)
+                if (get_pcvar_num(pHostage) /*&& get_user_team(id) == 2*/)
                 {
                     //cs_set_hostage_foll(ptd, (cs_get_hostage_foll(ptd) == id) ? 0 : id)
                     // With the use function we have the sounds!
@@ -332,44 +335,45 @@ public fwTouch(ptr, ptd)
                 }
                 return FMRES_HANDLED
             }
-            else if (get_pcvar_num(pOpenDoors) && equali(szPtdClass, "func_door") || equali(szPtdClass, "func_door_rotating"))
+            else if (get_pcvar_num(pOpenDoors) && (containi(szPtdClass, "door") > charsmin || containi(szPtdClass, "trigger_multiple") > charsmin))
             {
                 // Open doors
                 // Double doors tested in de_nuke and de_wallmart
                 static szTargetName[MAX_NAME_LENGTH]
                 pev(ptd, pev_targetname, szTargetName, charsmax(szTargetName))
-                if (strlen(szTargetName) > 0)
+                /*if (strlen(szTargetName) > charsmin)
                 {
                     static ent
-                    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > 0)
+                    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > charsmin)
                     {
                         static szEntClass[MAX_NAME_LENGTH]
                         pev(ent, pev_classname, szEntClass, charsmax(szEntClass))
-
+                        dllfunc(DLLFunc_Touch, ent, id)
                         if (equali(szEntClass, "trigger_multiple"))
                         {
                             dllfunc(DLLFunc_Touch, ent, id)
                             goto stopdoors // No need to touch anymore
                         }
                     }
-                }
+                }*/
 
                 // No double doors.. just touch it
+                dllfunc(DLLFunc_Use, ptd, id)
                 dllfunc(DLLFunc_Touch, ptd, id)
 stopdoors:
             }
-            else if (get_pcvar_num(pUseButtons) && equali(szPtdClass, "func_button"))
+            else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin)) //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
             {
-                if (pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY)
-                    dllfunc(DLLFunc_Touch, ptd, id) // Touch only
-                else
+                //if (pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY)
+                    //dllfunc(DLLFunc_Touch, ptd, id) // Touch only
+               // else
                     dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
             }
         }
 
         // If cvar sv_hooksky is 0 and hook is in the sky remove it!
         new iContents = engfunc(EngFunc_PointContents, fOrigin)
-        if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
+        if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)  
         {
             if(get_pcvar_num(pSound))
                 emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit2.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
@@ -381,12 +385,16 @@ stopdoors:
         if (get_pcvar_num(pWeapons))
         {
             static ent
-            while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 15.0)) > 0)
+            while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 35.0)) > 0)
             {
                 static szentClass[MAX_NAME_LENGTH]
                 pev(ent, pev_classname, szentClass, charsmax(szentClass))
 
-                if (equali(szentClass, "weaponbox") || equali(szentClass, "armoury_entity"))
+                //if (equali(szentClass, "weaponbox") || equali(szentClass, "armoury_entity")) //very CS
+                for (new toget; toget < sizeof grabable_goodies;toget++)
+
+                if (containi(szentClass, grabable_goodies[toget]) != charsmin)
+
                     dllfunc(DLLFunc_Touch, ent, id)
             }
         }
@@ -446,7 +454,7 @@ public hookthink(param[])
         pev(id, pev_origin, usrOrigin)
 
         static tr
-        engfunc(EngFunc_TraceLine, usrOrigin, entOrigin, 1, -1, tr)
+        engfunc(EngFunc_TraceLine, usrOrigin, entOrigin, 1, charsmin, tr)
 
         static Float:fFraction
         get_tr2(tr, TR_flFraction, fFraction)
@@ -547,7 +555,9 @@ public throw_hook(id)
         static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
 
         //Set some Data
+        //set_pev(Hook[id], pev_classname, "Hook")
         set_pev(Hook[id], pev_classname, "Hook")
+
 
         engfunc(EngFunc_SetModel, Hook[id], "models/rpgrocket.mdl")
         engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
