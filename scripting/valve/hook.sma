@@ -46,6 +46,7 @@
 
 #include <amxmodx>
 #include <amxmisc>
+#include engine_stocks
 #include <fakemeta>
 #include <hamsandwich>
 #include <xs>
@@ -56,6 +57,8 @@
 #define charsmin                    -1
 new const RPG[]         = "models/rpgrocket.mdl"
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
+
+//new break_ent;
 
 //Cvars
 new pHook, pThrowSpeed, pSpeed, pWidth, pSound, pColor
@@ -83,11 +86,13 @@ new bool:gUpdate[MAX_NAME_LENGTH + 1] = {false, ...}
 new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
 
-new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power"}
+new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power", "train"}
 
 public plugin_init()
 {
     register_plugin("Hook", "1.6", "SPINX|P34nut")
+    //RegisterHamFromEntity(Ham_Touch, break_ent, "@somefcn")
+    //break_ent = find_ent(charsmin, "func_breakable");
 
     // Hook commands
     register_clcmd("+hook", "make_hook")
@@ -334,6 +339,10 @@ public fwTouch(ptr, ptd)
                     remove_hook(id)
                 }
                 return FMRES_HANDLED
+            }
+            else if (containi(szPtdClass, "break") > charsmin)
+            {
+                ExecuteHam(Ham_TakeDamage,ptd,ptd,ptr,500.0,DMG_CRUSH|DMG_ALWAYSGIB)
             }
             else if (get_pcvar_num(pOpenDoors) && (containi(szPtdClass, "door") > charsmin || containi(szPtdClass, "trigger_multiple") > charsmin))
             {
