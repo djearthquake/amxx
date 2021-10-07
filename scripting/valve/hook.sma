@@ -57,8 +57,8 @@
 #define charsmin                    -1
 new const RPG[]         = "models/rpgrocket.mdl"
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
-
-//new break_ent;
+new g_mapname[MAX_NAME_LENGTH]
+new bool:bsatch_crash_fix
 
 //Cvars
 new pHook, pThrowSpeed, pSpeed, pWidth, pSound, pColor
@@ -91,8 +91,6 @@ new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power"
 public plugin_init()
 {
     register_plugin("Hook", "1.6", "SPINX|P34nut")
-    //RegisterHamFromEntity(Ham_Touch, break_ent, "@somefcn")
-    //break_ent = find_ent(charsmin, "func_breakable");
 
     // Hook commands
     register_clcmd("+hook", "make_hook")
@@ -142,6 +140,11 @@ public plugin_init()
 
     // Get maxplayers
     gMaxPlayers = get_maxplayers()
+    
+    get_mapname(g_mapname, charsmax(g_mapname))
+
+    if(equali(g_mapname,"beach_head"))bsatch_crash_fix=true
+    
 }
 
 public plugin_precache()
@@ -154,9 +157,17 @@ public plugin_precache()
     sprBeam = precache_model(HOOK_MODEL)
     precache_generic("sprites/zbeam4.spr")
     // Hook Sounds
+    precache_sound("weapons/xbow_hit1.wav")
     precache_generic("sound/weapons/xbow_hit1.wav")
+
+    
     precache_generic("sound/weapons/xbow_hit2.wav")
+    precache_sound("weapons/xbow_hit2.wav")
+    
+    precache_sound("weapons/xbow_hitbod1.wav")
     precache_generic("sound/weapons/xbow_hitbod1.wav")
+    
+    precache_sound("weapons/xbow_fire1.wav")
     precache_generic("sound/weapons/xbow_fire1.wav")
 }
 
@@ -304,7 +315,7 @@ public fwTouch(ptr, ptd)
     static szPtrClass[MAX_NAME_LENGTH]
     pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
 
-    if (equali(szPtrClass, "Hook"))
+    if (equali(szPtrClass, "Hook") || containi(szPtrClass, "grapple") > charsmin)
     {
         static Float:fOrigin[3]
         pev(ptr, pev_origin, fOrigin)
@@ -314,7 +325,7 @@ public fwTouch(ptr, ptd)
             static szPtdClass[MAX_NAME_LENGTH]
             pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
-            if (!get_pcvar_num(pPlayers) && /*equali(szPtdClass, "player")*/ is_user_alive(ptd))
+            if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
             {
                 // Hit a player
                 if (get_pcvar_num(pSound))
@@ -325,35 +336,43 @@ public fwTouch(ptr, ptd)
             }
             else if (containi(szPtdClass, "monster") > charsmin)
             {
-                // Makes an hostage follow
-                if (get_pcvar_num(pHostage) /*&& get_user_team(id) == 2*/)
+                if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin || containi(szPtdClass, "mortar") > charsmin )
                 {
-                    //cs_set_hostage_foll(ptd, (cs_get_hostage_foll(ptd) == id) ? 0 : id)
-                    // With the use function we have the sounds!
-                    dllfunc(DLLFunc_Use, ptd, id)
+                    // Makes an hostage follow
+                    if (get_pcvar_num(pHostage) /*&& get_user_team(id) == 2*/)
+                    {
+                        //cs_set_hostage_foll(ptd, (cs_get_hostage_foll(ptd) == id) ? 0 : id)
+                        // With the use function we have the sounds!
+                        dllfunc(DLLFunc_Use, ptd, id)
+                    }
+
                 }
-                if (!get_pcvar_num(pPlayers))
-                {
-                    if(get_pcvar_num(pSound))
-                        emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-                    remove_hook(id)
-                }
+                else
+                goto damage
+            }
+            else if (containi(szPtdClass, "breakable") > charsmin || containi(szPtdClass, "pushable") > charsmin || containi(szPtdClass,"illusionary") > charsmin)
+            {
+damage:               
+                ExecuteHam(Ham_TakeDamage,ptd,ptd,ptr,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //no hurt barnacles
+                ExecuteHam(Ham_TakeDamage,ptd,ptd,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //not hurting big momma directly
+
+                /*if(get_pcvar_num(pSound))
+                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
+                remove_hook(id)
                 return FMRES_HANDLED
             }
-            else if (containi(szPtdClass, "break") > charsmin)
-            {
-                ExecuteHam(Ham_TakeDamage,ptd,ptd,ptr,500.0,DMG_CRUSH|DMG_ALWAYSGIB)
-            }
-            else if (get_pcvar_num(pOpenDoors) && (containi(szPtdClass, "door") > charsmin || containi(szPtdClass, "trigger_multiple") > charsmin))
+            else if (equali(szPtdClass, "monster_tripmine"))
+                ExecuteHam(Ham_TakeDamage,ptd,ptd,ptd,160.0,DMG_CRUSH)
+            else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
             {
                 // Open doors
                 // Double doors tested in de_nuke and de_wallmart
-                static szTargetName[MAX_NAME_LENGTH]
+                /*static szTargetName[MAX_NAME_LENGTH]
                 pev(ptd, pev_targetname, szTargetName, charsmax(szTargetName))
-                /*if (strlen(szTargetName) > charsmin)
+                if (strlen(szTargetName) > charsmin)
                 {
                     static ent
-                    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > charsmin)
+                    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > 0) //-1 crash
                     {
                         static szEntClass[MAX_NAME_LENGTH]
                         pev(ent, pev_classname, szEntClass, charsmax(szEntClass))
@@ -362,13 +381,18 @@ public fwTouch(ptr, ptd)
                         {
                             dllfunc(DLLFunc_Touch, ent, id)
                             goto stopdoors // No need to touch anymore
+                            //break
                         }
                     }
                 }*/
 
                 // No double doors.. just touch it
+                //pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY ?  dllfunc(DLLFunc_Touch, ptd, id) : dllfunc(DLLFunc_Use, ptd, id)+
                 dllfunc(DLLFunc_Use, ptd, id)
                 dllfunc(DLLFunc_Touch, ptd, id)
+                
+
+                
 stopdoors:
             }
             else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin)) //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
@@ -376,7 +400,11 @@ stopdoors:
                 //if (pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY)
                     //dllfunc(DLLFunc_Touch, ptd, id) // Touch only
                // else
-                    dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
+                dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
+                dllfunc(DLLFunc_Touch, ptd, id) // Use Buttons
+                /*
+                if(get_pcvar_num(pSound))
+                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
             }
         }
 
@@ -394,7 +422,7 @@ stopdoors:
         if (get_pcvar_num(pWeapons))
         {
             static ent
-            while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 35.0)) > 0)
+            while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 125.0)) > 0)
             {
                 static szentClass[MAX_NAME_LENGTH]
                 pev(ent, pev_classname, szentClass, charsmax(szentClass))
@@ -403,8 +431,13 @@ stopdoors:
                 for (new toget; toget < sizeof grabable_goodies;toget++)
 
                 if (containi(szentClass, grabable_goodies[toget]) != charsmin)
-
+                if (containi(szentClass, "satchel") != charsmin && bsatch_crash_fix)
+                    dllfunc(DLLFunc_Use, ent, id)
+                else
                     dllfunc(DLLFunc_Touch, ent, id)
+                /*
+                if(get_pcvar_num(pSound))
+                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
             }
         }
 
