@@ -48,6 +48,7 @@
 #include <amxmisc>
 #include engine_stocks
 #include <fakemeta>
+#include <fakemeta_util>
 #include <hamsandwich>
 #include <xs>
 #define message_begin_f(%1,%2,%3,%4) engfunc(EngFunc_MessageBegin, %1, %2, %3, %4)
@@ -60,11 +61,14 @@ new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
 new bool:bsatch_crash_fix
 
+
 //Cvars
 new pHook, pThrowSpeed, pSpeed, pWidth, pSound, pColor
 new pInterrupt, pAdmin, pHookSky, pOpenDoors, pPlayers
 new pUseButtons, pHostage, pWeapons, pInstant, pHookNoise
 new pMaxHooks, pRndStartDelay
+new pHook_break
+
 // Sprite
 new sprBeam
 
@@ -85,6 +89,17 @@ new bool:gUpdate[MAX_NAME_LENGTH + 1] = {false, ...}
 
 new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
+
+new const debris1[]  = "sound/debris/pushbox1.wav"
+new const debris2[]  = "sound/debris/pushbox2.wav"
+new const debris3[]  = "sound/debris/pushbox3.wav"
+new const glass1[]   = "debris/bustglass1.wav"
+new const glass2[]   = "debris/bustglass2.wav"
+new const glass1a[]   = "sound/debris/bustglass1.wav"
+new const glass2a[]   = "sound/debris/bustglass2.wav"
+
+new const battery[]  = "models/w_battery.mdl"
+
 
 new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power", "train"}
 
@@ -134,6 +149,7 @@ public plugin_init()
     pHookNoise      =  register_cvar("sv_hooknoise", "0")
     pMaxHooks       =  register_cvar("sv_hookmax", "0")
     pRndStartDelay  =  register_cvar("sv_hookrndstartdelay", "0.0")
+    pHook_break     =  register_cvar("sv_hookbreak", "1") //break or use door
 
     // Touch forward
     register_forward(FM_Touch, "fwTouch")
@@ -169,6 +185,19 @@ public plugin_precache()
     
     precache_sound("weapons/xbow_fire1.wav")
     precache_generic("sound/weapons/xbow_fire1.wav")
+
+    precache_generic(battery); //func_pushable
+    precache_generic(debris1); //func_pushable
+    precache_generic(debris2); //func_pushable
+    precache_generic(debris3); //func_pushable
+
+        //breakable ent properties
+    precache_sound(glass1);   //func_pushable
+    precache_sound(glass2);   //func_pushable
+
+    precache_generic(glass1a);   //func_pushable
+    precache_generic(glass2a);   //func_pushable
+
 }
 
 
@@ -325,6 +354,9 @@ public fwTouch(ptr, ptd)
             static szPtdClass[MAX_NAME_LENGTH]
             pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
+            if (equali(szPtrClass, "worldspawn"))
+                return FMRES_IGNORED
+
             if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
             {
                 // Hit a player
@@ -356,55 +388,39 @@ damage:
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,ptr,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //no hurt barnacles
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //not hurting big momma directly
 
-                /*if(get_pcvar_num(pSound))
-                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
                 remove_hook(id)
                 return FMRES_HANDLED
             }
             else if (equali(szPtdClass, "monster_tripmine"))
+            {
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,ptd,160.0,DMG_CRUSH)
+            }
+                
             else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
             {
-                // Open doors
-                // Double doors tested in de_nuke and de_wallmart
-                /*static szTargetName[MAX_NAME_LENGTH]
-                pev(ptd, pev_targetname, szTargetName, charsmax(szTargetName))
-                if (strlen(szTargetName) > charsmin)
+
+                if(!get_pcvar_num(pHook_break))
                 {
-                    static ent
-                    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > 0) //-1 crash
-                    {
-                        static szEntClass[MAX_NAME_LENGTH]
-                        pev(ent, pev_classname, szEntClass, charsmax(szEntClass))
-                        dllfunc(DLLFunc_Touch, ent, id)
-                        if (equali(szEntClass, "trigger_multiple"))
-                        {
-                            dllfunc(DLLFunc_Touch, ent, id)
-                            goto stopdoors // No need to touch anymore
-                            //break
-                        }
-                    }
-                }*/
+                    dllfunc(DLLFunc_Use, ptd, id)
+                    dllfunc(DLLFunc_Touch, ptd, id)
+                }
+                else
+                {
+                    ////////////////MAKE HOOK VERY DESTRUCTIVE
 
-                // No double doors.. just touch it
-                //pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY ?  dllfunc(DLLFunc_Touch, ptd, id) : dllfunc(DLLFunc_Use, ptd, id)+
-                dllfunc(DLLFunc_Use, ptd, id)
-                dllfunc(DLLFunc_Touch, ptd, id)
-                
+                    entity_set_string(ptd, EV_SZ_classname,"func_breakable")
+                    entity_set_float(ptd, EV_FL_takedamage, 2.0);
+                    entity_set_float(ptd, EV_FL_health, 100.0);
 
-                
+                }
 stopdoors:
             }
             else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin)) //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
             {
-                //if (pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY)
-                    //dllfunc(DLLFunc_Touch, ptd, id) // Touch only
-               // else
+
                 dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
                 dllfunc(DLLFunc_Touch, ptd, id) // Use Buttons
-                /*
-                if(get_pcvar_num(pSound))
-                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
+
             }
         }
 
