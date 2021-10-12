@@ -46,6 +46,7 @@
 
 #include <amxmodx>
 #include <amxmisc>
+#include engine
 #include engine_stocks
 #include <fakemeta>
 #include <fakemeta_util>
@@ -56,7 +57,9 @@
 #define MAX_NAME_LENGTH             32
 #define MAX_MENU_LENGTH            512
 #define charsmin                    -1
-new const RPG[]         = "models/rpgrocket.mdl"
+
+
+new const RPG[]         = "models/flag.mdl"
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
 new bool:bsatch_crash_fix
@@ -197,6 +200,48 @@ public plugin_precache()
 
     precache_generic(glass1a);   //func_pushable
     precache_generic(glass2a);   //func_pushable
+    
+    precache_sound("debris/bustmetal1.wav");
+    precache_generic("sound/debris/bustmetal1.wav");
+
+    precache_sound("debris/bustmetal2.wav");
+    precache_generic("sound/debris/bustmetal2.wav");
+
+    precache_sound("debris/metal1.wav");
+    precache_generic("sound/debris/metal1.wav");
+
+    precache_sound("debris/metal2.wav");
+    precache_generic("sound/debris/metal2.wav");
+
+    precache_sound("debris/metal3.wav");
+    precache_generic("sound/debris/metal3.wav");
+
+    precache_model("sprites/fexplo.spr")
+    precache_generic("sprites/fexplo.spr")
+
+    precache_model("models/w_battery.mdl")
+    precache_generic("models/w_battery.mdl")
+    
+    precache_model("models/hair.mdl")
+    precache_generic("models/hair.mdl")
+
+    precache_model("models/rope32.mdl")
+    precache_generic("models/rope32.mdl")
+
+    precache_model("models/rope16.mdl")
+    precache_generic("models/rope16.mdl")
+    
+    precache_sound("items/grab_rope.wav")
+    precache_generic("sound/items/grab_rope.wav")
+    
+    precache_sound("items/rope1.wav")
+    precache_generic("sound/items/rope1.wav")
+    
+    precache_sound("items/rope2.wav")
+    precache_generic("sound/items/rope2.wav")
+
+    precache_sound("items/rope3.wav")
+    precache_generic("sound/items/rope3.wav")
 
 }
 
@@ -335,24 +380,44 @@ public ResetHUD(id)
 
 public fwTouch(ptr, ptd)
 {
-    if (!pev_valid(ptr))
+    //if (!pev_valid(ptr) || !pev_valid(ptd) )
+    if (!pev_valid(ptr) )
         return FMRES_IGNORED
 
     new id = pev(ptr, pev_owner)
 
     // Get classname
-    static szPtrClass[MAX_NAME_LENGTH]
+
+
+    new szPtrClass[MAX_NAME_LENGTH]
     pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
+
+    new szPtdClass[MAX_NAME_LENGTH]
+    pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
+
+    //need line with a bool to turn think off the applied rope prevent crash?
+
+    //trying filter out by model
+    new model1[MAX_NAME_LENGTH], model2[MAX_NAME_LENGTH]
+    pev(ptr,pev_model,model1,charsmax(model1))
+    pev(ptd,pev_model,model2,charsmax(model2))
+    if(containi(model1,"rope") != charsmin || containi(model2,"rope") != charsmin)
+        return FMRES_IGNORED
+    /////////////////////////////////////////////
+
+    //get model make sure is rope them make it world
+    //set_pev(Hook[id], pev_owner, 0) //for tripmine still not trip nor beam yet
+
+    //if(!equali(szPtrClass, "player") || !equali(szPtdClass, "player") ) //check player ignore doing it
 
     if (equali(szPtrClass, "Hook") || containi(szPtrClass, "grapple") > charsmin)
     {
+    
         static Float:fOrigin[3]
         pev(ptr, pev_origin, fOrigin)
 
         if (pev_valid(ptd))
         {
-            static szPtdClass[MAX_NAME_LENGTH]
-            pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
             if (equali(szPtrClass, "worldspawn"))
                 return FMRES_IGNORED
@@ -368,7 +433,8 @@ public fwTouch(ptr, ptd)
             }
             else if (containi(szPtdClass, "monster") > charsmin)
             {
-                if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin || containi(szPtdClass, "mortar") > charsmin )
+                if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || 
+                containi(szPtdClass, "sentry") > charsmin || containi(szPtdClass, "nuke") > charsmin || containi(szPtdClass, "scientist") > charsmin )
                 {
                     // Makes an hostage follow
                     if (get_pcvar_num(pHostage) /*&& get_user_team(id) == 2*/)
@@ -382,45 +448,75 @@ public fwTouch(ptr, ptd)
                 else
                 goto damage
             }
-            else if (containi(szPtdClass, "breakable") > charsmin || containi(szPtdClass, "pushable") > charsmin || containi(szPtdClass,"illusionary") > charsmin)
+            else if (containi(szPtdClass, "breakable") > charsmin || containi(szPtdClass, "pushable") > charsmin || 
+            containi(szPtdClass,"illusionary") > charsmin || containi(szPtdClass,"wall") > charsmin)
             {
 damage:               
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,ptr,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //no hurt barnacles
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //not hurting big momma directly
 
+                /*if(get_pcvar_num(pSound))
+                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
                 remove_hook(id)
                 return FMRES_HANDLED
             }
+            /*
             else if (equali(szPtdClass, "monster_tripmine"))
             {
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,ptd,160.0,DMG_CRUSH)
+                entity_set_string(ptd, EV_SZ_classname,"func_breakable")
+                entity_set_float(ptd, EV_FL_takedamage, 2.0);
+                set_pev(ptd,pev_solid, SOLID_BBOX)
+                set_pev(ptd, pev_flags, SF_BREAK_TOUCH)
+                entity_set_float(ptd, EV_FL_health, 10.0);
             }
-                
-            else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
+            */
+            else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin
+            || containi(szPtdClass, "wall") > charsmin || containi(szPtdClass, "illusion") > charsmin )
             {
+                // Open doors
+                // Double doors tested in de_nuke and de_wallmart
+                /*static szTargetName[MAX_NAME_LENGTH]
+                pev(ptd, pev_targetname, szTargetName, charsmax(szTargetName))
+                if (strlen(szTargetName) > charsmin)
+                {
+                    static ent
+                    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "target", szTargetName)) > 0) //-1 crash
+                    {
+                        static szEntClass[MAX_NAME_LENGTH]
+                        pev(ent, pev_classname, szEntClass, charsmax(szEntClass))
+                        dllfunc(DLLFunc_Touch, ent, id)
+                        if (equali(szEntClass, "trigger_multiple"))
+                        {
+                            dllfunc(DLLFunc_Touch, ent, id)
+                            goto stopdoors // No need to touch anymore
+                            //break
+                        }
+                    }
+                }*/
 
+                // No double doors.. just touch it
+                //pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY ?  dllfunc(DLLFunc_Touch, ptd, id) : dllfunc(DLLFunc_Use, ptd, id)+
+                
                 if(!get_pcvar_num(pHook_break))
                 {
-                    dllfunc(DLLFunc_Use, ptd, id)
-                    dllfunc(DLLFunc_Touch, ptd, id)
-                }
-                else
-                {
-                    ////////////////MAKE HOOK VERY DESTRUCTIVE
-
-                    entity_set_string(ptd, EV_SZ_classname,"func_breakable")
-                    entity_set_float(ptd, EV_FL_takedamage, 2.0);
-                    entity_set_float(ptd, EV_FL_health, 100.0);
-
+                    force_use(ptr,ptd)
+                    fake_touch(ptr,ptd)
+                    //dllfunc(DLLFunc_Use, ptd, id) //ok for grap
+                    //dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
                 }
 stopdoors:
             }
             else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin)) //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
             {
-
+                //if (pev(ptd, pev_spawnflags) & SF_BUTTON_TOUCH_ONLY)
+                    //dllfunc(DLLFunc_Touch, ptd, id) // Touch only
+               // else
                 dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
                 dllfunc(DLLFunc_Touch, ptd, id) // Use Buttons
-
+                /*
+                if(get_pcvar_num(pSound))
+                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
             }
         }
 
@@ -600,9 +696,18 @@ public throw_hook(id)
             xs_vec_copy(fStart, fOrigin)
     }
 
-
+    
     // Make the hook!
-    Hook[id] = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
+    //Hook[id] = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "func_breakable"))
+    //Hook[id] = create_entity("func_breakable") /*&& create_entity("env_smoker")*/
+    //Hook[id] = create_entity("env_smoker")  // like a mag glass
+    ///Hook[id] = create_entity("env_rope") ///fun/super unstable OF only //so close
+    //Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements lim[p no pull hook no blowup
+    Hook[id] = create_entity("monster_penguin") //chaos expected
+
+    
+
+
 
     if (Hook[id])
     {
@@ -616,11 +721,18 @@ public throw_hook(id)
         //set_pev(Hook[id], pev_classname, "Hook")
         set_pev(Hook[id], pev_classname, "Hook")
 
-
-        engfunc(EngFunc_SetModel, Hook[id], "models/rpgrocket.mdl")
+        engfunc(EngFunc_SetModel, Hook[id], RPG)
         engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
         engfunc(EngFunc_SetSize, Hook[id], fMins, fMaxs)
-
+        //set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH)
+        //fm_set_kvd(Hook[id], "scale" , "3000"); //smoker
+        fm_set_kvd(Hook[id], "angles", "0 0 0");
+        //fm_set_kvd(Hook[id], "explodemagnitude", "350")
+        
+        fm_set_kvd(Hook[id], "bodymodel", "models/rope32.mdl")
+        fm_set_kvd(Hook[id], "segments", "5")
+        fm_set_kvd(Hook[id], "endingmodel", "models/rope16.mdl")
+       
         //set_pev(Hook[id], pev_mins, fMins)
         //set_pev(Hook[id], pev_maxs, fMaxs)
 
@@ -629,6 +741,8 @@ public throw_hook(id)
         set_pev(Hook[id], pev_solid, 2)
         set_pev(Hook[id], pev_movetype, 5)
         set_pev(Hook[id], pev_owner, id)
+        //set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH)
+        //set_pev(Hook[id], pev_health, 10.0)
 
         //Set hook velocity
         static Float:fForward[3], Float:Velocity[3]
@@ -642,9 +756,13 @@ public throw_hook(id)
         Velocity[2] = fForward[2] * fSpeed
 
         set_pev(Hook[id], pev_velocity, Velocity)
+        
+        
+        
+        dllfunc( DLLFunc_Spawn, Hook[id] )
 
         // Make the line between Hook and Player
-        message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, Float:{0.0, 0.0, 0.0}, 0)
+        message_begin_f(MSG_PVS, SVC_TEMPENTITY, Float:{0.0, 0.0, 0.0}, 0)
         if (get_pcvar_num(pInstant))
         {
             write_byte(1) // TE_BEAMPOINT
@@ -731,7 +849,7 @@ public remove_hook(id)
     // Remove the line between user and hook
     if (is_user_connected(id))
     {
-        message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
+        message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id)
         write_byte(99) // TE_KILLBEAM
         write_short(id) // entity
         message_end()
@@ -841,8 +959,7 @@ stock get_user_hitpoint(id, Float:hOrigin[3])
 stock statusMsg(id, szMsg[], {Float,_}:...)
 {
     static iStatusText
-    if (!iStatusText)
-        iStatusText = get_user_msgid("StatusText")
+    iStatusText = cstrike_running() ? get_user_msgid("TextMsg") : get_user_msgid("StatusText")
 
     static szBuffer[MAX_MENU_LENGTH]
     vformat(szBuffer, charsmax(szBuffer), szMsg, 3)
@@ -850,6 +967,8 @@ stock statusMsg(id, szMsg[], {Float,_}:...)
     message_begin((id == 0) ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, iStatusText, _, id)
     write_byte(0) // Unknown
     write_string(szBuffer) // Message
+    if(!cstrike_running())
+    write_string("cstrike patched")
     message_end()
 
     return 1
