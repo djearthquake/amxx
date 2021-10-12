@@ -380,7 +380,7 @@ public ResetHUD(id)
 
 public fwTouch(ptr, ptd)
 {
-    //if (!pev_valid(ptr) || !pev_valid(ptd) )
+    //if (!pev_valid(ptr) || !pev_valid(ptd) ) //nerfs
     if (!pev_valid(ptr) )
         return FMRES_IGNORED
 
@@ -392,18 +392,6 @@ public fwTouch(ptr, ptd)
     new szPtrClass[MAX_NAME_LENGTH]
     pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
 
-    new szPtdClass[MAX_NAME_LENGTH]
-    pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
-
-    //need line with a bool to turn think off the applied rope prevent crash?
-
-    //trying filter out by model
-    new model1[MAX_NAME_LENGTH], model2[MAX_NAME_LENGTH]
-    pev(ptr,pev_model,model1,charsmax(model1))
-    pev(ptd,pev_model,model2,charsmax(model2))
-    if(containi(model1,"rope") != charsmin || containi(model2,"rope") != charsmin)
-        return FMRES_IGNORED
-    /////////////////////////////////////////////
 
     //get model make sure is rope them make it world
     //set_pev(Hook[id], pev_owner, 0) //for tripmine still not trip nor beam yet
@@ -415,9 +403,24 @@ public fwTouch(ptr, ptd)
     
         static Float:fOrigin[3]
         pev(ptr, pev_origin, fOrigin)
+        new szPtdClass[MAX_NAME_LENGTH]
 
         if (pev_valid(ptd))
         {
+
+
+
+        //need line with a bool to turn think off the applied rope prevent crash?
+    
+        //trying filter out by model
+        new model1[MAX_NAME_LENGTH], model2[MAX_NAME_LENGTH]
+        pev(ptr,pev_model,model1,charsmax(model1))
+        pev(ptd,pev_model,model2,charsmax(model2))
+        if(containi(model1,"rope") != charsmin || containi(model2,"rope") != charsmin)
+            return FMRES_IGNORED
+        /////////////////////////////////////////////
+
+            pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
             if (equali(szPtrClass, "worldspawn"))
                 return FMRES_IGNORED
