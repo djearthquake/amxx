@@ -59,7 +59,9 @@
 #define charsmin                    -1
 
 
-new const RPG[]         = "models/flag.mdl"
+//new const RPG[]         = "models/flag.mdl"
+new const RPG[]         = "models/tool_box.mdl"
+
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
 new bool:bsatch_crash_fix
@@ -70,7 +72,7 @@ new pHook, pThrowSpeed, pSpeed, pWidth, pSound, pColor
 new pInterrupt, pAdmin, pHookSky, pOpenDoors, pPlayers
 new pUseButtons, pHostage, pWeapons, pInstant, pHookNoise
 new pMaxHooks, pRndStartDelay
-new pHook_break
+new pHook_break, pHead
 
 // Sprite
 new sprBeam
@@ -128,7 +130,7 @@ public plugin_init()
     }
     else
     
-    register_clcmd("fullupdate", "Update")
+    //register_clcmd("fullupdate", "Update")
     RegisterHam(Ham_Spawn, "player", "ResetHUD", 1);
     //register_event("ResetHUD", "ResetHUD", "b")
 
@@ -153,6 +155,7 @@ public plugin_init()
     pMaxHooks       =  register_cvar("sv_hookmax", "0")
     pRndStartDelay  =  register_cvar("sv_hookrndstartdelay", "0.0")
     pHook_break     =  register_cvar("sv_hookbreak", "1") //break or use door
+    pHead           =  register_cvar("sv_hookhead", "4")
 
     // Touch forward
     register_forward(FM_Touch, "fwTouch")
@@ -243,6 +246,24 @@ public plugin_precache()
     precache_sound("items/rope3.wav")
     precache_generic("sound/items/rope3.wav")
 
+    precache_model("models/leech.mdl")
+    precache_generic("models/leech.mdl")
+    
+    precache_sound("leech/leech_bite1.wav");
+    precache_generic("sound/leech/leech_bite1.wav");
+
+    precache_sound("leech/leech_bite2.wav");
+    precache_generic("sound/leech/leech_bite2.wav");
+
+    precache_sound("leech/leech_bite3.wav");
+    precache_generic("sound/leech/leech_bite3.wav");
+
+
+    precache_sound("leech/leech_alert1.wav");
+    precache_generic("sound/leech/leech_alert1.wav");
+
+    precache_sound("leech/leech_alert2.wav");
+    precache_generic("sound/leech/leech_alert2.wav");
 }
 
 
@@ -411,7 +432,7 @@ public fwTouch(ptr, ptd)
 
 
         //need line with a bool to turn think off the applied rope prevent crash?
-    
+        /*
         //trying filter out by model
         new model1[MAX_NAME_LENGTH], model2[MAX_NAME_LENGTH]
         pev(ptr,pev_model,model1,charsmax(model1))
@@ -419,10 +440,12 @@ public fwTouch(ptr, ptd)
         if(containi(model1,"rope") != charsmin || containi(model2,"rope") != charsmin)
             return FMRES_IGNORED
         /////////////////////////////////////////////
-
+        */
             pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
-            if (equali(szPtrClass, "worldspawn"))
+            //if (equali(szPtrClass, "worldspawn") || equali(szPtrClass, "env_hook") || equali(szPtrClass, "monster_penguin"))
+            if(equali(szPtrClass, "env_hook")) 
+
                 return FMRES_IGNORED
 
             if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
@@ -474,8 +497,7 @@ damage:
                 entity_set_float(ptd, EV_FL_health, 10.0);
             }
             */
-            else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin
-            || containi(szPtdClass, "wall") > charsmin || containi(szPtdClass, "illusion") > charsmin )
+            else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
             {
                 // Open doors
                 // Double doors tested in de_nuke and de_wallmart
@@ -503,11 +525,21 @@ damage:
                 
                 if(!get_pcvar_num(pHook_break))
                 {
-                    force_use(ptr,ptd)
-                    fake_touch(ptr,ptd)
-                    //dllfunc(DLLFunc_Use, ptd, id) //ok for grap
-                    //dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
+                    //force_use(ptr,ptd)
+                    //fake_touch(ptr,ptd)
+                    dllfunc(DLLFunc_Use, ptd, id) //ok for grap
+                    dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
                 }
+                else
+                {
+                    entity_set_string(ptd, EV_SZ_classname,"func_breakable")
+                    entity_set_float(ptd, EV_FL_takedamage, 2.0);
+                    set_pev(ptd,pev_solid, SOLID_BBOX)
+                    set_pev(ptd, pev_flags, SF_BREAK_TOUCH)
+                    entity_set_float(ptd, EV_FL_health, 10.0)
+                    dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
+                }
+                
 stopdoors:
             }
             else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin)) //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
@@ -704,9 +736,17 @@ public throw_hook(id)
     //Hook[id] = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "func_breakable"))
     //Hook[id] = create_entity("func_breakable") /*&& create_entity("env_smoker")*/
     //Hook[id] = create_entity("env_smoker")  // like a mag glass
-    ///Hook[id] = create_entity("env_rope") ///fun/super unstable OF only //so close
-    //Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements lim[p no pull hook no blowup
-    Hook[id] = create_entity("monster_penguin") //chaos expected
+    switch(get_pcvar_num(pHead))
+    {
+        case 0: Hook[id] = create_entity("env_rope") //hook needs to be instant for roping otherwise makes a web
+        case 1: Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements lim[p no pull hook no blowup
+        //case 2: Hook[id] = create_entity("info_target") //bad with flag
+        case 2: Hook[id] = create_entity("trigger_hurt")
+        case 3: Hook[id] = create_entity("env_smoker")
+        case 4: Hook[id] = create_entity("monster_penguin") //chaos expected //hook not instant
+        case 5: Hook[id] = create_entity("monster_leech") //bad with flag
+        case 6: Hook[id] = create_entity("func_breakable") //bad with flag
+    }
 
     
 
@@ -727,15 +767,26 @@ public throw_hook(id)
         engfunc(EngFunc_SetModel, Hook[id], RPG)
         engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
         engfunc(EngFunc_SetSize, Hook[id], fMins, fMaxs)
+        //env_explosion/breakable
         //set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH)
-        //fm_set_kvd(Hook[id], "scale" , "3000"); //smoker
+        //env_smoker
+        //fm_set_kvd(Hook[id], "scale" , "1000"); //smoker
         fm_set_kvd(Hook[id], "angles", "0 0 0");
-        //fm_set_kvd(Hook[id], "explodemagnitude", "350")
-        
+        // then needs hp pev to be VAR insead of constant
+        //fm_set_kvd(Hook[id], "explodemagnitude", "350") //like the C4 on CS. Exactly
+
+        //trigger_hurt
+        fm_set_kvd(Hook[id], "dmg ", "-20");
+        fm_set_kvd(Hook[id], "delay", "0");
+        fm_set_kvd(Hook[id], "damagetype", "0");
+        //end hurt spec
+
+        //env_rope
         fm_set_kvd(Hook[id], "bodymodel", "models/rope32.mdl")
-        fm_set_kvd(Hook[id], "segments", "5")
+        fm_set_kvd(Hook[id], "segments", "6")
         fm_set_kvd(Hook[id], "endingmodel", "models/rope16.mdl")
-       
+        //end rope
+
         //set_pev(Hook[id], pev_mins, fMins)
         //set_pev(Hook[id], pev_maxs, fMaxs)
 
@@ -744,8 +795,9 @@ public throw_hook(id)
         set_pev(Hook[id], pev_solid, 2)
         set_pev(Hook[id], pev_movetype, 5)
         set_pev(Hook[id], pev_owner, id)
-        //set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH)
-        //set_pev(Hook[id], pev_health, 10.0)
+        
+      //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
+      //  set_pev(Hook[id], pev_health, 100.0) //para smoker
 
         //Set hook velocity
         static Float:fForward[3], Float:Velocity[3]
@@ -833,24 +885,40 @@ public throw_hook(id)
         TaskData[0] = id
         TaskData[1] = Hook[id]
 
-        set_task(0.1, "hookthink", id + 890, TaskData, 2, "b")
+        set_task(0.2, "hookthink", id + 890, TaskData, 2, "b")
     }
     else
         client_print(id, print_chat, "Can't create hook")
 }
 
+
 public remove_hook(id)
 {
+    if(is_user_connected(id))
+
+    server_print "remove_Hook call"
     //Player can now throw hooks
     canThrowHook[id] = true
+    new szClass[MAX_NAME_LENGTH]
+    if (pev_valid(Hook[id]))
+        pev(Hook[id], pev_classname, szClass, charsmax(szClass))
+    if (containi(szClass, "rope") > charsmin)
+    {
+        //prevents rope crashing
+        set_pev(Hook[id], pev_owner, 0)
+        return PLUGIN_HANDLED_MAIN//will crash otherwise fn guarantee it!
+    }
 
     // Remove the hook if it is valid
     if (pev_valid(Hook[id]))
+    {
         engfunc(EngFunc_RemoveEntity, Hook[id])
-    Hook[id] = 0
+        Hook[id] = 0
+    }
 
     // Remove the line between user and hook
-    if (is_user_connected(id))
+
+    if(is_user_connected(id))
     {
         message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id)
         write_byte(99) // TE_KILLBEAM
@@ -860,8 +928,41 @@ public remove_hook(id)
 
     // Player is not hooked anymore
     gHooked[id] = false
-    return 1
+    //return 1
+
+    return PLUGIN_CONTINUE
 }
+
+/*
+public remove_hook(id)
+{
+    if (pev_valid(Hook[id]))
+    {
+        server_print "remove_Hook call"
+        //Player can now throw hooks
+        canThrowHook[id] = true
+    
+        // Remove the hook if it is valid
+        if (pev_valid(Hook[id]))
+            engfunc(EngFunc_RemoveEntity, Hook[id])
+        Hook[id] = 0
+    
+        // Remove the line between user and hook
+        if (is_user_connected(id))
+        {
+            message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id)
+            write_byte(99) // TE_KILLBEAM
+            write_short(id) // entity
+            message_end()
+        }
+    
+        // Player is not hooked anymore
+        gHooked[id] = false
+        return 1
+    }
+    return PLUGIN_CONTINUE
+}
+*/
 
 public give_hook(id, level, cid)
 {
