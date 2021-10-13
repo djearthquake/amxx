@@ -152,11 +152,11 @@ public plugin_init()
     pWeapons        =  register_cvar("sv_hookpickweapons", "1")
     pInstant        =  register_cvar("sv_hookinstant", "0")
     pHookNoise      =  register_cvar("sv_hooknoise", "0")
-    pMaxHooks       =  register_cvar("sv_hookmax", "0")
+    pMaxHooks       =  register_cvar("sv_hookmax", "100")
     pRndStartDelay  =  register_cvar("sv_hookrndstartdelay", "0.0")
     pHook_break     =  register_cvar("sv_hookbreak", "1") //break or use door
     pHead           =  register_cvar("sv_hookhead", "4")
-    pSegments       =  register_cvar("sv_hooksegments", "36") //dont fuck with unless you know what you are doing
+    pSegments       =  register_cvar("sv_hooksegments", "3")
 
     // Touch forward
     register_forward(FM_Touch, "fwTouch")
@@ -578,11 +578,13 @@ stopdoors:
                 //if (equali(szentClass, "weaponbox") || equali(szentClass, "armoury_entity")) //very CS
                 for (new toget; toget < sizeof grabable_goodies;toget++)
 
-                if (containi(szentClass, grabable_goodies[toget]) != charsmin)
+                if (containi(szentClass, grabable_goodies[toget]) != charsmin && containi(szentClass, "satchel") == charsmin)
+                dllfunc(DLLFunc_Touch, ent, id)
+                /*
                 if (containi(szentClass, "satchel") != charsmin && bsatch_crash_fix)
                     dllfunc(DLLFunc_Use, ent, id)
                 else
-                    dllfunc(DLLFunc_Touch, ent, id)
+                    dllfunc(DLLFunc_Touch, ent, id)*/
                 /*
                 if(get_pcvar_num(pSound))
                     emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)*/
@@ -741,16 +743,16 @@ public throw_hook(id)
     {
         case 0: Hook[id] = create_entity("env_rope") //hook needs to be instant for roping otherwise makes a web
         case 1: Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements lim[p no pull hook no blowup
-        //case 2: Hook[id] = create_entity("info_target") //bad with flag
-        case 2: Hook[id] = create_entity("monster_satchel")
-        case 3: Hook[id] = create_entity("env_smoker")
+        case 2: Hook[id] = create_entity("trigger_push")
+        case 3: Hook[id] = create_entity("monster_snark")
         case 4: Hook[id] = create_entity("monster_penguin") //chaos expected //hook not instant
         case 5: Hook[id] = create_entity("monster_leech") //bad with flag
-        //case 6: Hook[id] = create_entity("func_breakable") //bad with flag
+        case 6: Hook[id] = create_entity("light")
     }
 
+    if(!get_pcvar_num(pHead) && !get_pcvar_num(pAdmin) ?
+    set_pcvar_num(pAdmin, 1) : set_pcvar_num(pAdmin, 0) )
     
-
 
 
     if (Hook[id])
@@ -762,7 +764,6 @@ public throw_hook(id)
         static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
 
         //Set some Data
-        //set_pev(Hook[id], pev_classname, "Hook")
         set_pev(Hook[id], pev_classname, "Hook")
 
         engfunc(EngFunc_SetModel, Hook[id], RPG)
@@ -771,10 +772,30 @@ public throw_hook(id)
         //env_explosion/breakable
         //set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH)
         //env_smoker
-        //fm_set_kvd(Hook[id], "scale" , "1000"); //smoker
-        fm_set_kvd(Hook[id], "angles", "0 0 0");
-        // then needs hp pev to be VAR insead of constant
+        fm_set_kvd(Hook[id], "scale" , "1000"); //smoker
+
         //fm_set_kvd(Hook[id], "explodemagnitude", "350") //like the C4 on CS. Exactly
+        
+        
+        
+        /*
+         classname trigger_push
+        trigger_push model *228
+        trigger_push style 32
+        trigger_push sounds 0*
+        trigger_push delay 0*
+        trigger_push spawnflags 0*
+        trigger_push angles 0 -90 0*
+        trigger_push speed 1000*
+        */
+        fm_set_kvd(Hook[id], "angles", "0 0 0");
+        //fm_set_kvd(Hook[id], "spawnflags", "0");
+        fm_set_kvd(Hook[id], "speed", "1000");
+        //fm_set_kvd(Hook[id], "sounds", "0");
+        //fm_set_kvd(Hook[id], "style", "32");
+        //fm_set_kvd(Hook[id], "model", "*228"); // Host_Error: no precache: 32
+
+        fm_set_kvd(Hook[id], "height", "9000");
 
         //trigger_hurt
         fm_set_kvd(Hook[id], "dmg ", "-20");
@@ -784,12 +805,17 @@ public throw_hook(id)
 
         //env_rope
         fm_set_kvd(Hook[id], "bodymodel", "models/rope32.mdl")
+        fm_set_kvd(Hook[id], "targetname", "hooks_rope")
+        
+        
+        
 
         switch(get_pcvar_num(pSegments))
         {
-            case 6:  fm_set_kvd(Hook[id], "segments", "6")
-            case 36: fm_set_kvd(Hook[id], "segments", "36")
-            case 50: fm_set_kvd(Hook[id], "segments", "50")
+            case   1..6: fm_set_kvd(Hook[id], "segments", "6")
+            case  7..16: fm_set_kvd(Hook[id], "segments", "14")
+            case 17..36: fm_set_kvd(Hook[id], "segments", "24")
+            case 37..50: fm_set_kvd(Hook[id], "segments", "36")
         }
 
 
@@ -1072,17 +1098,20 @@ stock get_user_hitpoint(id, Float:hOrigin[3])
 stock statusMsg(id, szMsg[], {Float,_}:...)
 {
     static iStatusText
-    iStatusText = cstrike_running() ? get_user_msgid("TextMsg") : get_user_msgid("StatusText")
+
+    iStatusText = get_user_msgid("HudText")
 
     static szBuffer[MAX_MENU_LENGTH]
     vformat(szBuffer, charsmax(szBuffer), szMsg, 3)
 
-    message_begin((id == 0) ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, iStatusText, _, id)
-    write_byte(0) // Unknown
-    write_string(szBuffer) // Message
-    if(!cstrike_running())
-    write_string("cstrike patched")
-    message_end()
+    if(id == 0)
+        emessage_begin(MSG_BROADCAST, iStatusText, _, 0)
+    else if(id != 0)
+        emessage_begin(MSG_ONE_UNRELIABLE, iStatusText, _, id)
+
+    ewrite_string(szBuffer) // Message
+    ewrite_byte(1) //InitHUDstyle 
+    emessage_end()
 
     return 1
 }
