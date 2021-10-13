@@ -140,7 +140,7 @@ public plugin_init()
     pThrowSpeed     =  register_cvar("sv_hookthrowspeed", "2000")
     pSpeed          =  register_cvar("sv_hookspeed", "300")
     pWidth          =  register_cvar("sv_hookwidth", "32")
-    pSound          =  register_cvar("sv_hooksound", "1")
+    pSound          =  register_cvar("sv_hooksound", "0")
     pColor          =  register_cvar("sv_hookcolor", "1")
     pPlayers        =  register_cvar("sv_hookplayers", "1")
     pInterrupt      =  register_cvar("sv_hookinterrupt", "0")
@@ -176,9 +176,17 @@ public plugin_precache()
     precache_model(RPG)
     precache_generic(RPG)
 
+    precache_model("models/barnacle.mdl")
+    precache_generic("models/barnacle.mdl")
+
+
+    precache_model("models/barnaclet.mdl")
+    precache_generic("models/barnaclet.mdl")
+
+
     // Hook Beam
     sprBeam = precache_model(HOOK_MODEL)
-    precache_generic("sprites/zbeam4.spr")
+    precache_generic(HOOK_MODEL)
     // Hook Sounds
     precache_sound("weapons/xbow_hit1.wav")
     precache_generic("sound/weapons/xbow_hit1.wav")
@@ -265,6 +273,25 @@ public plugin_precache()
 
     precache_sound("leech/leech_alert2.wav");
     precache_generic("sound/leech/leech_alert2.wav");
+
+    precache_sound("barnacle/bcl_alert2.wav")
+    precache_sound("barnacle/bcl_bite3.wav")
+    precache_sound("barnacle/bcl_chew1.wav")
+    precache_sound("barnacle/bcl_chew2.wav")
+    precache_sound("barnacle/bcl_chew3.wav")
+    precache_sound("barnacle/bcl_die1.wav")
+    precache_sound("barnacle/bcl_die3.wav")
+    precache_sound("barnacle/bcl_tongue1.wav")
+
+    precache_generic("sound/barnacle/bcl_alert2.wav")
+    precache_generic("sound/barnacle/bcl_bite3.wav")
+    precache_generic("sound/barnacle/bcl_chew1.wav")
+    precache_generic("sound/barnacle/bcl_chew2.wav")
+    precache_generic("sound/barnacle/bcl_chew3.wav")
+    precache_generic("sound/barnacle/bcl_die1.wav")
+    precache_generic("sound/barnacle/bcl_die3.wav")
+    precache_generic("sound/barnacle/bcl_tongue1.wav")
+
 }
 
 
@@ -396,7 +423,8 @@ public ResetHUD(id)
     if (get_pcvar_num(pMaxHooks) > 0)
     {
         gHooksUsed[id] = 0
-        statusMsg(0, "[Hook] 0 of %d hooks used.", get_pcvar_num(pMaxHooks))
+        //statusMsg(0, "[Hook] 0 of %d hooks used.", get_pcvar_num(pMaxHooks))
+        statusMsg(id, "[Hook] 0 of %d hooks used.", get_pcvar_num(pMaxHooks))
     }
 }
 
@@ -736,13 +764,12 @@ public throw_hook(id)
 
     
     // Make the hook!
-    //Hook[id] = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "func_breakable"))
-    //Hook[id] = create_entity("func_breakable") /*&& create_entity("env_smoker")*/
     //Hook[id] = create_entity("env_smoker")  // like a mag glass
     switch(get_pcvar_num(pHead))
     {
         case 0: Hook[id] = create_entity("env_rope") //hook needs to be instant for roping otherwise makes a web
-        case 1: Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements lim[p no pull hook no blowup
+        //case 1: Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements limp no pull hook no blowup
+        case 1: Hook[id] = create_entity("monster_barnacle") //fun stable needs refinements lim[p no pull hook no blowup
         case 2: Hook[id] = create_entity("trigger_push")
         case 3: Hook[id] = create_entity("monster_snark")
         case 4: Hook[id] = create_entity("monster_penguin") //chaos expected //hook not instant
