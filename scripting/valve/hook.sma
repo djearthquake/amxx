@@ -72,7 +72,7 @@ new pHook, pThrowSpeed, pSpeed, pWidth, pSound, pColor
 new pInterrupt, pAdmin, pHookSky, pOpenDoors, pPlayers
 new pUseButtons, pHostage, pWeapons, pInstant, pHookNoise
 new pMaxHooks, pRndStartDelay
-new pHook_break, pHead
+new pHook_break, pHead,pSegments
 
 // Sprite
 new sprBeam
@@ -156,6 +156,7 @@ public plugin_init()
     pRndStartDelay  =  register_cvar("sv_hookrndstartdelay", "0.0")
     pHook_break     =  register_cvar("sv_hookbreak", "1") //break or use door
     pHead           =  register_cvar("sv_hookhead", "4")
+    pSegments       =  register_cvar("sv_hooksegments", "36") //dont fuck with unless you know what you are doing
 
     // Touch forward
     register_forward(FM_Touch, "fwTouch")
@@ -741,11 +742,11 @@ public throw_hook(id)
         case 0: Hook[id] = create_entity("env_rope") //hook needs to be instant for roping otherwise makes a web
         case 1: Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements lim[p no pull hook no blowup
         //case 2: Hook[id] = create_entity("info_target") //bad with flag
-        case 2: Hook[id] = create_entity("trigger_hurt")
+        case 2: Hook[id] = create_entity("monster_satchel")
         case 3: Hook[id] = create_entity("env_smoker")
         case 4: Hook[id] = create_entity("monster_penguin") //chaos expected //hook not instant
         case 5: Hook[id] = create_entity("monster_leech") //bad with flag
-        case 6: Hook[id] = create_entity("func_breakable") //bad with flag
+        //case 6: Hook[id] = create_entity("func_breakable") //bad with flag
     }
 
     
@@ -783,7 +784,15 @@ public throw_hook(id)
 
         //env_rope
         fm_set_kvd(Hook[id], "bodymodel", "models/rope32.mdl")
-        fm_set_kvd(Hook[id], "segments", "6")
+
+        switch(get_pcvar_num(pSegments))
+        {
+            case 6:  fm_set_kvd(Hook[id], "segments", "6")
+            case 36: fm_set_kvd(Hook[id], "segments", "36")
+            case 50: fm_set_kvd(Hook[id], "segments", "50")
+        }
+
+
         fm_set_kvd(Hook[id], "endingmodel", "models/rope16.mdl")
         //end rope
 
@@ -797,7 +806,7 @@ public throw_hook(id)
         set_pev(Hook[id], pev_owner, id)
         
       //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
-      //  set_pev(Hook[id], pev_health, 100.0) //para smoker
+      //  set_pev(Hook[id], pev_health, 100.0) //for smoker
 
         //Set hook velocity
         static Float:fForward[3], Float:Velocity[3]
