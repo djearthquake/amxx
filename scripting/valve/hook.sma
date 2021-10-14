@@ -746,11 +746,16 @@ public throw_hook(id)
         static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
 
         //Set some Data
-        if (get_pcvar_num(pUseButtons) > 1)
-            get_pcvar_num(pHead) <= 1 ? set_pev(Hook[id], pev_classname, "Hook") : set_pev(Hook[id], pev_classname, "Hook_rope") //nice monster maker bot hook for player
-            //////////////////////////////////////////////////Need regular hook and spec feat hook seperated classes.
-        else
-            get_pcvar_num(pHead) <= 1 ? set_pev(Hook[id], pev_classname, "Hook_rope") : set_pev(Hook[id], pev_classname, "Hook") //normal except 5 good hook otherwise 'normal'
+        switch(get_pcvar_num(pHead))
+        {
+            case 0: set_pev(Hook[id], pev_classname, "Hook_rope")
+            case 1: set_pev(Hook[id], pev_classname, "Hook_rope_barnacle")
+            case 2: set_pev(Hook[id], pev_classname, "Hook_rope_push")
+            case 3: set_pev(Hook[id], pev_classname, "Hook_rope_snark")
+            case 4: set_pev(Hook[id], pev_classname, "Hook_rope_guin")
+            case 5: set_pev(Hook[id], pev_classname, "Hook_rope_leech")
+            case 6: set_pev(Hook[id], pev_classname, "Hook_illuminati")
+        }
 
         engfunc(EngFunc_SetModel, Hook[id], RPG)
         engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
