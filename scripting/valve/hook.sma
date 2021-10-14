@@ -64,7 +64,7 @@ new const RPG[]         = "models/tool_box.mdl"
 
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
-//new bool:bsatch_crash_fix
+new bool:bsatch_crash_fix
 
 
 //Cvars
@@ -351,8 +351,17 @@ public del_hook(id)
     
         return PLUGIN_CONTINUE
     }
-    else
+    else if (get_pcvar_num(pHead) <=2 && !canThrowHook[id])
+    {
         canThrowHook[id] = true
+        if(is_user_connected(id))
+        {
+            message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id)
+            write_byte(99) // TE_KILLBEAM
+            write_short(id) // entity
+            message_end()
+        }
+    }
 
     return PLUGIN_HANDLED
 
