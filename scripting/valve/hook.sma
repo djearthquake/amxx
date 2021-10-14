@@ -64,7 +64,7 @@ new const RPG[]         = "models/tool_box.mdl"
 
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
-new bool:bsatch_crash_fix
+//new bool:bsatch_crash_fix
 
 
 //Cvars
@@ -342,11 +342,20 @@ public plugin_cfg()
 }
 public del_hook(id)
 {
-    // Remove players hook
-    if (!canThrowHook[id])
-        remove_hook(id)
+    //need keep trigger_push, barnacle, env_rope intact for now
+    if (get_pcvar_num(pHead) > 2) //tested works
+    {
+        // Remove players hook
+        if (!canThrowHook[id])
+            remove_hook(id)
+    
+        return PLUGIN_CONTINUE
+    }
+    else
+        canThrowHook[id] = true
 
     return PLUGIN_HANDLED
+
 }
 
 public round_bstart()
@@ -414,10 +423,10 @@ public ResetHUD(id)
         gUpdate[id] = false
         return
     }
-    if (gHooked[id])
-    {
+
+    if (gHooked[id] && !find_ent(charsmin,"env_rope") || !find_ent(charsmin,"monster_barnacle") )
         remove_hook(id)
-    }
+
     if (get_pcvar_num(pMaxHooks) > 0)
     {
         gHooksUsed[id] = 0
@@ -506,7 +515,7 @@ damage:
                     dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
                 }
                 
-stopdoors:
+///stopdoors:
             }
             else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
             //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
@@ -550,7 +559,7 @@ stopdoors:
             emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
 
         // Make some sparks :D
-        message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, fOrigin, 0)
+        message_begin_f(MSG_PVS, SVC_TEMPENTITY, fOrigin, 0)
         write_byte(9) // TE_SPARKS
         write_coord_f(fOrigin[0]) // Origin
         write_coord_f(fOrigin[1])
@@ -705,7 +714,7 @@ public throw_hook(id)
         set_pcvar_num(pInstant, 1)
     //only admins should be making ropes at this time. Hard on the network resources.
     if(!get_pcvar_num(pHead) && !get_pcvar_num(pAdmin) ?
-    set_pcvar_num(pAdmin, 1) : set_pcvar_num(pAdmin, 0) )
+    set_pcvar_num(pAdmin, 1) & set_pcvar_num(pInstant, 1) : set_pcvar_num(pAdmin, 0))
     
 
     if (Hook[id])
@@ -717,7 +726,8 @@ public throw_hook(id)
         static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
 
         //Set some Data
-        set_pev(Hook[id], pev_classname, "Hook")
+        
+        get_pcvar_num(pHead) <= 1 ? set_pev(Hook[id], pev_classname, "Hook") : set_pev(Hook[id], pev_classname, "Hook_rope")
 
         engfunc(EngFunc_SetModel, Hook[id], RPG)
         engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
@@ -804,7 +814,7 @@ public throw_hook(id)
         dllfunc( DLLFunc_Spawn, Hook[id] )
 
         // Make the line between Hook and Player
-        message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, Float:{0.0, 0.0, 0.0}, 0)
+        message_begin_f(MSG_PVS, SVC_TEMPENTITY, Float:{0.0, 0.0, 0.0}, 0)
         if (get_pcvar_num(pInstant))
         {
             write_byte(1) // TE_BEAMPOINT
@@ -907,7 +917,7 @@ public remove_hook(id)
 
     if(is_user_connected(id))
     {
-        message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
+        message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id)
         write_byte(99) // TE_KILLBEAM
         write_short(id) // entity
         message_end()
