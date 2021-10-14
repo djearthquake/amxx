@@ -38,6 +38,7 @@
 *       amx_givehook <username>
 *       amx_takehook <username>
 *   1.6: All mod support. Switched to Ham on Spawns. -SPiNX 2021
+*   1.7: Monster maker effects -SPiNX October 2021
 *
 \***********************************************************************************/
 
@@ -59,9 +60,8 @@
 #define charsmin                    -1
 
 
-//new const RPG[]         = "models/flag.mdl"
-new const RPG[]         = "models/tool_box.mdl"
-
+//new const RPG[]         = "models/flag.mdl" //fun. makes the xbow sound effect seems more realistic. Need a decent harpoon model please.
+new const RPG[]         = "models/tool_box.mdl" //need to pin that to weapons pick up and dmg_crush to humans. Thanks Sierra, Valve, OLO DLEJ. Many names. From DJEQ!
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
 new bool:bsatch_crash_fix
@@ -110,7 +110,8 @@ new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power"
 
 public plugin_init()
 {
-    register_plugin("Hook", "1.6", "SPINX|P34nut")
+    register_plugin("Hook", "1.7", "SPINX") //1.5 and under was developed by P34nut for CS
+    //This is more for OF the first mod. Env_rope is exclusivley in OF.
 
     // Hook commands
     register_clcmd("+hook", "make_hook")
@@ -129,7 +130,7 @@ public plugin_init()
         register_event("TextMsg", "Restart", "a", "2=#Game_will_restart_in")
     }
     else
-    
+
     //register_clcmd("fullupdate", "Update")
     RegisterHam(Ham_Spawn, "player", "ResetHUD", 1);
     //register_event("ResetHUD", "ResetHUD", "b")
@@ -163,11 +164,11 @@ public plugin_init()
 
     // Get maxplayers
     gMaxPlayers = get_maxplayers()
-    
+
     get_mapname(g_mapname, charsmax(g_mapname))
 
     if(equali(g_mapname,"beach_head"))bsatch_crash_fix=true
-    
+
 }
 
 public plugin_precache()
@@ -191,13 +192,13 @@ public plugin_precache()
     precache_sound("weapons/xbow_hit1.wav")
     precache_generic("sound/weapons/xbow_hit1.wav")
 
-    
+
     precache_generic("sound/weapons/xbow_hit2.wav")
     precache_sound("weapons/xbow_hit2.wav")
-    
+
     precache_sound("weapons/xbow_hitbod1.wav")
     precache_generic("sound/weapons/xbow_hitbod1.wav")
-    
+
     precache_sound("weapons/xbow_fire1.wav")
     precache_generic("sound/weapons/xbow_fire1.wav")
 
@@ -212,7 +213,7 @@ public plugin_precache()
 
     precache_generic(glass1a);   //func_pushable
     precache_generic(glass2a);   //func_pushable
-    
+
     precache_sound("debris/bustmetal1.wav");
     precache_generic("sound/debris/bustmetal1.wav");
 
@@ -233,7 +234,7 @@ public plugin_precache()
 
     precache_model("models/w_battery.mdl")
     precache_generic("models/w_battery.mdl")
-    
+
     precache_model("models/hair.mdl")
     precache_generic("models/hair.mdl")
 
@@ -242,13 +243,13 @@ public plugin_precache()
 
     precache_model("models/rope16.mdl")
     precache_generic("models/rope16.mdl")
-    
+
     precache_sound("items/grab_rope.wav")
     precache_generic("sound/items/grab_rope.wav")
-    
+
     precache_sound("items/rope1.wav")
     precache_generic("sound/items/rope1.wav")
-    
+
     precache_sound("items/rope2.wav")
     precache_generic("sound/items/rope2.wav")
 
@@ -257,7 +258,7 @@ public plugin_precache()
 
     precache_model("models/leech.mdl")
     precache_generic("models/leech.mdl")
-    
+
     precache_sound("leech/leech_bite1.wav");
     precache_generic("sound/leech/leech_bite1.wav");
 
@@ -343,17 +344,26 @@ public plugin_cfg()
 public del_hook(id)
 {
     //need keep trigger_push, barnacle, env_rope intact for now
-    if (get_pcvar_num(pHead) > 2) //tested works
+    if (get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) < 6) //tested works can detach hook from monsters 'unleashed'
     {
         // Remove players hook
         if (!canThrowHook[id])
             remove_hook(id)
-    
-        return PLUGIN_CONTINUE
+        if(is_user_connected(id))
+        {
+            message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
+            write_byte(99) // TE_KILLBEAM
+            write_short(id) // entity
+            message_end()
+        }
+        return PLUGIN_HANDLED
+        //return PLUGIN_CONTINUE
     }
-    else if (get_pcvar_num(pHead) <=2 && !canThrowHook[id])
+    else if (get_pcvar_num(pHead) <=2/* || get_pcvar_num(pHead) == 6*/)
     {
-        canThrowHook[id] = true
+        if(!canThrowHook[id])
+            canThrowHook[id] = true
+
         if(is_user_connected(id))
         {
             message_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, id)
@@ -457,7 +467,7 @@ public fwTouch(ptr, ptd)
 
     if (equali(szPtrClass, "Hook") || (containi(szPtrClass, "grapple") > charsmin && get_pcvar_num(pPlayers) > 2) )
     {
-    
+
         static Float:fOrigin[3]
         pev(ptr, pev_origin, fOrigin)
         new szPtdClass[MAX_NAME_LENGTH]
@@ -467,7 +477,7 @@ public fwTouch(ptr, ptd)
 
             pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
-            if(equali(szPtrClass, "env_hook")) 
+            if(equali(szPtrClass, "Hook"))
 
                 return FMRES_IGNORED
 
@@ -482,7 +492,7 @@ public fwTouch(ptr, ptd)
             }
             else if (containi(szPtdClass, "monster") > charsmin && get_pcvar_num(pPlayers) > 1)
             {
-                if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || 
+                if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin ||
                 containi(szPtdClass, "sentry") > charsmin || containi(szPtdClass, "nuke") > charsmin || containi(szPtdClass, "scientist") > charsmin )
                 {
                     // Makes an hostage follow
@@ -496,10 +506,10 @@ public fwTouch(ptr, ptd)
                 else
                 goto damage
             }
-            else if (containi(szPtdClass, "breakable") > charsmin || containi(szPtdClass, "pushable") > charsmin || 
+            else if (containi(szPtdClass, "breakable") > charsmin || containi(szPtdClass, "pushable") > charsmin ||
             containi(szPtdClass,"illusionary") > charsmin || containi(szPtdClass,"wall") > charsmin)
             {
-damage:               
+damage:
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,ptr,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //no hurt barnacles
                 ExecuteHam(Ham_TakeDamage,ptd,ptd,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //not hurting big momma directly
 
@@ -508,7 +518,7 @@ damage:
             }
 
             else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
-            {                
+            {
                 if(!get_pcvar_num(pHook_break))
                 {
                     dllfunc(DLLFunc_Use, ptd, id) //ok for grap
@@ -523,8 +533,7 @@ damage:
                     entity_set_float(ptd, EV_FL_health, 10.0)
                     dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
                 }
-                
-///stopdoors:
+
             }
             else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
             //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
@@ -537,7 +546,7 @@ damage:
 
         // If cvar sv_hooksky is 0 and hook is in the sky remove it!
         new iContents = engfunc(EngFunc_PointContents, fOrigin)
-        if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)  
+        if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
         {
             if(get_pcvar_num(pSound))
                 emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit2.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
@@ -704,7 +713,7 @@ public throw_hook(id)
             xs_vec_copy(fStart, fOrigin)
     }
 
-    
+
     // Make the hook!
     //Hook[id] = create_entity("env_smoker")  // like a mag glass
     switch(get_pcvar_num(pHead))
@@ -712,11 +721,13 @@ public throw_hook(id)
         case 0: Hook[id] = create_entity("env_rope") //hook needs to be instant for roping otherwise makes a web
         //case 1: Hook[id] = create_entity("monster_tripmine") //fun stable needs refinements limp no pull hook no blowup
         case 1: Hook[id] = create_entity("monster_barnacle") //fun stable needs to be dettached like env_rope
-        case 2: Hook[id] = create_entity("trigger_push") /// Next work in progress
-        case 3: Hook[id] = create_entity("monster_snark")
-        case 4: Hook[id] = create_entity("monster_penguin") //chaos expected //better without instanthook on
+        case 2: Hook[id] = create_entity("trigger_push") //tested. Sic. Not modeled yet. Can make a doorway impassable. ;)
+        case 3: Hook[id] = create_entity("monster_snark") //bastards!
+        case 4: Hook[id] = create_entity("monster_penguin") //destroys hook campers. When on a ladder formidble opponent. //better without instanthook on
+        ///Can shoot an entire flock!!
         case 5: Hook[id] = create_entity("monster_leech") //novelty. works fine underwater. Decent limp mode for hook.
-        case 6: Hook[id] = create_entity("light")
+        ///Now they some how do not need waypoints!!
+        case 6: Hook[id] = create_entity("light") ///Toolbox or flag model lights up!
     }
     //if using certain hooks they need set up just so to work as expected
     if(get_pcvar_num(pHead) == 1 && !get_pcvar_num(pInstant))
@@ -724,7 +735,7 @@ public throw_hook(id)
     //only admins should be making ropes at this time. Hard on the network resources.
     if(!get_pcvar_num(pHead) && !get_pcvar_num(pAdmin) ?
     set_pcvar_num(pAdmin, 1) & set_pcvar_num(pInstant, 1) : set_pcvar_num(pAdmin, 0))
-    
+
 
     if (Hook[id])
     {
@@ -735,8 +746,11 @@ public throw_hook(id)
         static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
 
         //Set some Data
-        
-        get_pcvar_num(pHead) <= 1 ? set_pev(Hook[id], pev_classname, "Hook") : set_pev(Hook[id], pev_classname, "Hook_rope")
+        if (get_pcvar_num(pUseButtons) > 1)
+            get_pcvar_num(pHead) <= 1 ? set_pev(Hook[id], pev_classname, "Hook") : set_pev(Hook[id], pev_classname, "Hook_rope") //nice monster maker bot hook for player
+            //////////////////////////////////////////////////Need regular hook and spec feat hook seperated classes.
+        else
+            get_pcvar_num(pHead) <= 1 ? set_pev(Hook[id], pev_classname, "Hook_rope") : set_pev(Hook[id], pev_classname, "Hook") //normal except 5 good hook otherwise 'normal'
 
         engfunc(EngFunc_SetModel, Hook[id], RPG)
         engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
@@ -745,21 +759,8 @@ public throw_hook(id)
         //set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH)
         //env_smoker
         fm_set_kvd(Hook[id], "scale" , "1000"); //smoker
-
         //fm_set_kvd(Hook[id], "explodemagnitude", "350") //like the C4 on CS. Exactly
-        
-        
-        
-        /*
-         classname trigger_push
-        trigger_push model *228
-        trigger_push style 32
-        trigger_push sounds 0*
-        trigger_push delay 0*
-        trigger_push spawnflags 0*
-        trigger_push angles 0 -90 0*
-        trigger_push speed 1000*
-        */
+
         fm_set_kvd(Hook[id], "angles", "0 0 0");
         //fm_set_kvd(Hook[id], "spawnflags", "0");
         fm_set_kvd(Hook[id], "speed", "1000");
@@ -801,7 +802,7 @@ public throw_hook(id)
         set_pev(Hook[id], pev_solid, 2)
         set_pev(Hook[id], pev_movetype, 5)
         set_pev(Hook[id], pev_owner, id)
-        
+
       //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
       //  set_pev(Hook[id], pev_health, 100.0) //for smoker
 
@@ -817,9 +818,9 @@ public throw_hook(id)
         Velocity[2] = fForward[2] * fSpeed
 
         set_pev(Hook[id], pev_velocity, Velocity)
-        
-        
-        
+
+
+
         dllfunc( DLLFunc_Spawn, Hook[id] )
 
         // Make the line between Hook and Player
@@ -911,8 +912,8 @@ public remove_hook(id)
     if (containi(szClass, "rope") > charsmin || containi(szClass, "barnacle") != charsmin)    //equali(szClass, "monster_barnacle"))
     {
         //prevents rope crashing
-        set_pev(Hook[id], pev_owner, 0)
-        return PLUGIN_HANDLED_MAIN//will crash otherwise fn guarantee it!
+        set_pev(Hook[id], pev_owner, 0) //little effect
+        return PLUGIN_HANDLED_MAIN //will crash otherwise
     }
 
     // Remove the hook if it is valid
@@ -1050,7 +1051,7 @@ stock statusMsg(id, szMsg[], {Float,_}:...)
         emessage_begin(MSG_ONE_UNRELIABLE, iStatusText, _, id)
 
     ewrite_string(szBuffer) // Message
-    ewrite_byte(1) //InitHUDstyle 
+    ewrite_byte(1) //InitHUDstyle
     emessage_end()
 
     return 1
