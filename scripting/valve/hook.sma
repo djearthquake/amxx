@@ -344,7 +344,7 @@ public plugin_cfg()
 public del_hook(id)
 {
     //need keep trigger_push, barnacle, env_rope intact for now
-    if (get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) < 6) //tested works can detach hook from monsters 'unleashed'
+    if (get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) < 7) //tested works can detach hook from monsters 'unleashed'
     {
         // Remove players hook
         if (!canThrowHook[id])
