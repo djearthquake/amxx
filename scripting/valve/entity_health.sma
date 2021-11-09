@@ -1,5 +1,5 @@
 /*
- * player_hp.sma
+ * entity_health.sma
  * 
  * Copyright 2021 SPiNX <>
  * 
