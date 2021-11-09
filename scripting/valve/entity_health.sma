@@ -26,7 +26,7 @@
 
  *V1.2 Optimize. Register ents based off map contents.
  *V1.1 Add monsters and frags.
- *V1.0 Merge breakable HP with player HP scripts.
+ *V1.0 Merge breakable HP with player HP script.
 */
 
 #include amxmodx
