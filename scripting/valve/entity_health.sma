@@ -1,3 +1,34 @@
+/*
+ * player_hp.sma
+ * 
+ * Copyright 2021 SPiNX <>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
+
+/*
+2021-11-09  SPiNX  <>
+
+ *V1.2 Finish clean converting to map specific m,onsters and items instead of long arbitrary list that lead to instabilities issuso n monsters that did not exist on map.
+ *V1.1 Add monsters
+ *V1.0 Port function or piece of code from Powerplay to sanctify it and then add breakables or merge old breakle HP plugin with it. So long ago do not recall exact story.
+*/
+
 #include amxmodx
 #include amxmisc
 #include engine
@@ -8,36 +39,44 @@
 
 #define charsmin        -1
 #define MAX_CMD_LENGTH 128
+
+
 new g_value[ MAX_CMD_LENGTH ],g_value_copywrite[ MAX_CMD_LENGTH ]
 
 
-new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door", "item_airtank"}
-//for plugin I have that makes these breakable yet are still retain some residual memory with respect to their native classes. Otehrwise when making door breakable no HP shows in HUD.
+new const ents_with_health[][]={"func_breakable", "func_pushable", "item_airtank"} //misc items with HP
 new const REPLACE[][] = {"monster_", "func_", "item_"} //for printing announcments
 
 new g_getakill;
 new g_SzMonster_class[MAX_NAME_LENGTH]
 new bool:g_b_SzKilling_Monster[MAX_NAME_LENGTH]
-//new bool:b_found_target
 
 public plugin_init()
 {
-    register_plugin("monster player hitpoints","1.1","SPiNX");
+    register_plugin("Entity Health","1.2","SPiNX");
 
-    //clients
-    register_event("Damage","@event_damage","b") //standard player hp reading
-    
-    //other
+    //Hook for clients standard player hp reading
+    register_event("Damage","@event_damage","b")
+    g_getakill = register_cvar("monster_kill", "3") //1 show hp/kill | 2 show death messages, what weapon | 3 get frags
+    @sub_init()
+
+}
+
+@sub_init()
+{
+    //Misc items that carry HP
     for(new list; list < sizeof ents_with_health; ++list)
+    if(find_ent(charsmin,ents_with_health[list]))
+    {   
+        server_print "Entities with HP on map:^n^n%s", ents_with_health[list]
+        log_amx "Found %s", ents_with_health[list]
 
-    #if AMXX_VERSION_NUM == 182
+        #if AMXX_VERSION_NUM == 182
         RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1)
-    #else ///array of breakables from skeleton key of destruction plugin
+        #else
         RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1, true)
-    #endif
-    
-    g_getakill = register_cvar("monster_kill", "3") //1 show hp/kill|2 show death messages, what weapon|3 get frags
-
+        #endif
+    }
 }
 
 @event_damage(id)
@@ -217,12 +256,13 @@ public pfn_keyvalue( ent )
         server_print "Monsters on map are:^n^n%s", g_value
         log_amx "Found %s", g_value
 
-    //register them to show HP
-    #if AMXX_VERSION_NUM == 182
+        //register map specific monsters to show HP, announce frags, show deaths, account for frags
+        #if AMXX_VERSION_NUM == 182
         RegisterHam(Ham_TakeDamage,g_value,"Ham_TakeDamage_player", 1)
-    #else
+        #else
         RegisterHam(Ham_TakeDamage,g_value,"Ham_TakeDamage_player", 1, true)
-    #endif
+        #endif
     }
+
 
 }
