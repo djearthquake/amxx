@@ -6,192 +6,114 @@
 #include fakemeta_util
 #include hamsandwich
 
-#define charsmin -1
+#define charsmin        -1
+#define MAX_CMD_LENGTH 128
+new g_value[ MAX_CMD_LENGTH ],g_value_copywrite[ MAX_CMD_LENGTH ]
 
+
+new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door", "item_airtank"}
+//for plugin I have that makes these breakable yet are still retain some residual memory with respect to their native classes. Otehrwise when making door breakable no HP shows in HUD.
+new const REPLACE[][] = {"monster_", "func_", "item_"} //for printing announcments
+
+new g_getakill;
 new g_SzMonster_class[MAX_NAME_LENGTH]
-new g_getakill
-new npc_ent, g_npc_ent, npc_ent_bind[MAX_NAME_LENGTH]
-
-new const ents_with_health[][]={"func_breakable", "func_pushable", "func_door", "func_door_rotating", "momentary_door", "monster_scientist"}
-
-/*
-new const the_monster_list[][]={
-"item_airtank",
-"monster_alien_controller",
-"monster_alien_grunt",
-"monster_alien_slave",
-"monster_apache",
-"monster_barnacle",
-"monster_babycrab",
-"monster_barney",
-"monster_bigmomma",
-"monster_bullchicken",
-"monster_cockroach",
-"monster_gargantua",
-"monster_gman",
-"monster_grunt_repel",
-"monster_human_grunt_ally",
-"monster_headcrab",
-"monster_houndeye",
-"monster_human_assassin",
-"monster_human_grunt",
-"monster_human_grunt_ally",
-"monster_human_medic_ally",
-"monster_human_torch_ally",
-"monster_ichthyosaur",
-"monster_leech",
-"monster_miniturret",
-"monster_nihilanth",
-"monster_osprey",
-"monster_scientist",
-"monster_sentry",
-"monster_sitting_scientist",
-"monster_tentacle",
-"monster_turret",
-"monster_zombie",
-"monster_blkop_apache",
-"monster_blkop_osprey",
-"monster_shockroach",
-"monster_shocktrooper",
-"monster_pitdrone",
-"monster_gonome"
-}
-*/
-
-new const REPLACE[][] = {"monster_", "func_", "item_"}
-
+new bool:g_b_SzKilling_Monster[MAX_NAME_LENGTH]
+//new bool:b_found_target
 
 public plugin_init()
-
 {
-    register_plugin("monsters' hitpoints","1.1","SPiNX");
-    g_npc_ent = register_cvar("npc_type", "parachute")
+    register_plugin("monster player hitpoints","1.1","SPiNX");
 
-    bind_pcvar_string(g_npc_ent,npc_ent_bind, charsmax(npc_ent_bind))
-    npc_ent = find_ent(charsmin,npc_ent_bind)
-
-    RegisterHamFromEntity(Ham_TakeDamage,npc_ent,"Ham_TakeDamage_player", 0) //cvar to test random classes
-
+    //clients
     register_event("Damage","@event_damage","b") //standard player hp reading
-
+    
+    //other
     for(new list; list < sizeof ents_with_health; ++list)
-        RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 0) //array of breakables from skeleton key of destruction plugin
 
-    //if (find_ent(charsmin,"monstermaker") > 0)
-    new few[][]={"monstermaker","monster_apache","monster_tentacle"}
-    for(new ofthem; ofthem < sizeof few; ++ofthem)
-    if (find_ent(charsmin,few[ofthem]) > 0)
-    {
-        new const monster_list1[][]=
-        {
-            "item_airtank",
-            "monster_alien_controller",
-            "monster_alien_grunt",
-            "monster_alien_slave",
-            "monster_apache",
-            "monster_barnacle",
-            "monster_babycrab",
-            "monster_barney",
-            "monster_bigmomma",
-            "monster_bullchicken",
-            "monster_cockroach"
-        }
+    #if AMXX_VERSION_NUM == 182
+        RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1)
+    #else ///array of breakables from skeleton key of destruction plugin
+        RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1, true)
+    #endif
+    
+    g_getakill = register_cvar("monster_kill", "3") //1 show hp/kill|2 show death messages, what weapon|3 get frags
 
-        new const monster_list2[][]=
-        {
-            "monster_gargantua",
-            "monster_gman",
-            "monster_grunt_repel",
-            "monster_human_grunt_ally",
-            "monster_headcrab",
-            "monster_houndeye",
-            "monster_human_assassin",
-            "monster_human_grunt",
-            "monster_human_grunt_ally",
-            "monster_human_medic_ally",
-            "monster_human_torch_ally",
-            "monster_ichthyosaur",
-            "monster_leech",
-            "monster_miniturret",
-            "monster_nihilanth",
-            "monster_osprey"
-        }
+}
 
-        new const monster_list3[][]=
-        {
-            "monster_scientist",
-            "monster_sentry",
-            "monster_sitting_scientist",
-            "monster_tentacle",
-            "monster_turret",
-            "monster_zombie",
-            "monster_blkop_apache",
-            "monster_blkop_osprey",
-            "monster_shockroach",
-            "monster_shocktrooper",
-            "monster_pitdrone",
-            "monster_gonome"
-        }
+@event_damage(id)
+{
+    new victim = id;new killer = get_user_attacker(victim);
+    new health = get_user_health(victim)
+    if( is_user_alive(killer) && !is_user_bot(killer) &&  killer != victim && health < 100)
+        client_print killer,print_center,"%n HP: %i",victim, health
 
-        for(new op4; op4 < sizeof monster_list1; op4++)
-            RegisterHam(Ham_TakeDamage,monster_list1[op4],"Ham_TakeDamage_player", 0)
+    else if (killer == victim && is_user_alive(killer) && !is_user_bot(killer))
+        client_print killer,print_center,"CAREFUL!"
 
-        for(new op4; op4 < sizeof monster_list2; op4++)
-            RegisterHam(Ham_TakeDamage,monster_list2[op4],"Ham_TakeDamage_player", 0)
-
-        for(new op4; op4 < sizeof monster_list3; op4++)
-            RegisterHam(Ham_TakeDamage,monster_list3[op4],"Ham_TakeDamage_player", 0)
-
-        server_print "MM found!"
-    }
-
-    g_getakill = register_cvar("monster_kill", "2")
-
+    return PLUGIN_CONTINUE;
 }
 
 
 public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits)
 {
-    entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
-
-    for ( new MENT; MENT < sizeof REPLACE; ++MENT )
-        replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], " ");
-
-    new Float:health = entity_get_float(this_ent,EV_FL_health)
-    new killer = idattacker
-    new victim = this_ent
-    new temp_npc
-
-    if ( is_user_connected(idattacker) && !is_user_bot(idattacker) )
+    if(is_user_alive(idattacker) && idattacker != this_ent)
     {
-        new weapon = get_user_weapon(idattacker)
-        client_print idattacker,print_center,"%s health:%i",g_SzMonster_class,floatround(health)
-        if (health - damage < 1.0 && get_pcvar_num(g_getakill) > 1)
+    #if AMXX_VERSION_NUM == 182;
+        if(equal(ClientName[idattacker],""))
+            get_user_name(idattacker,ClientName[idattacker],charsmax(ClientName[]))
+            //attempt fix blank names amxx182. Establish when they shoot not connect/putinserver bug avoidance.
+    #endif
+
+        entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
+    
+        for ( new MENT; MENT < sizeof REPLACE; ++MENT )
+            replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], " ");
+
+        new Float:health = entity_get_float(this_ent,EV_FL_health)
+        new killer = idattacker
+        new victim = this_ent
+        new temp_npc
+        new weapon = get_user_weapon(killer)
+        if(is_user_connected(killer) && !is_user_bot(killer) && victim != killer && health > 0.0 )
+            client_print killer,print_center,"%s health:%i",g_SzMonster_class, floatround(health)
+
+        if (health - damage < -2.0 && !g_b_SzKilling_Monster[killer])
         {
-            @fake_death(this_ent,idattacker)
-            temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
-            if(temp_npc > 0)
+            g_b_SzKilling_Monster[killer] = true
+
+            if(get_pcvar_num(g_getakill) > 0)
             {
-                static szRejectReason[128]
-                new effects = pev(temp_npc, pev_effects)
-                dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"::1",szRejectReason)
-                set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
-
-                victim = temp_npc
-                log_kill(killer,victim ,weapon)
-
+                @fake_death(this_ent,idattacker)
+            }
+            
+        
+            if (get_pcvar_num(g_getakill) > 1)
+            {
+                @fake_death(this_ent,idattacker)
+                if(!is_user_bot(this_ent))
+                    SetHamParamInteger(5, DMG_ALWAYSGIB) //otherwise multi kills on corpse!
+                temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
+                if(temp_npc > 0)
+                {
+                    static szRejectReason[128]
+                    new effects = pev(temp_npc, pev_effects)
+                    dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"::1",szRejectReason)
+                    set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
+    
+                    victim = temp_npc
+                    log_kill(killer,victim ,weapon)
+    
+                }
+    
             }
 
         }
-
-        else if (health - damage < 1.0 && get_pcvar_num(g_getakill) > 0)
-
-            @fake_death(this_ent,idattacker)
-
+        
     }
 
     GetHamReturnStatus() != HAM_SUPERCEDE
 }
+
 
 public pin_scoreboard(killer)
 {
@@ -199,7 +121,7 @@ public pin_scoreboard(killer)
     {
         //Scoring
         fm_set_user_frags(killer,get_user_frags(killer) +1);
-        #define DEATHS 422
+        #define DEATHS 422 //OP4 CS
         new deaths = get_pdata_int(killer, DEATHS)
         new frags = get_user_frags(killer)
 
@@ -217,13 +139,6 @@ public pin_scoreboard(killer)
     }
 
 }
-@event_damage(id)
-{
-    new killer = get_user_attacker(id);
-    if( is_user_connected(killer) && is_user_alive(killer) && !is_user_bot(killer) )
-        client_print(killer,print_center,"%n HP: %i",id, get_user_health(id));
-    return PLUGIN_CONTINUE;
-}
 
 @fake_death(this_ent,idattacker)
 {
@@ -233,9 +148,20 @@ public pin_scoreboard(killer)
         replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], "");
 
     if( is_user_connected(idattacker) && is_user_alive(idattacker) && !is_user_bot(idattacker) && is_valid_ent(this_ent))
-
+    #if AMXX_VERSION_NUM == 182;
+    client_print 0, print_center, "%s slayed a %s", ClientName[idattacker],g_SzMonster_class //amxx182 code
+    #else
     client_print 0, print_center, "%n slayed a %s", idattacker,g_SzMonster_class
+    #endif
+
 }
+
+@disco(victim)
+    server_cmd( "kick #%d ^"temp_bot^"", get_user_userid(victim) );
+
+@ok(killer)
+    if (is_user_connected(killer))
+        g_b_SzKilling_Monster[killer] = false
 
 stock log_kill(killer, victim, weapon)
 {
@@ -264,11 +190,39 @@ stock log_kill(killer, victim, weapon)
         {
             pin_scoreboard(killer)
             set_task(0.5,"@disco",victim)
+            set_task(0.5,"@ok",killer)
         }
 
     }
 
 }
 
-@disco(victim)
-server_cmd( "kick #%d ^"temp_bot^"", get_user_userid(victim) );
+public pfn_keyvalue( ent )
+{
+    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+
+    /*Copy the monsters*/
+    if(containi(Classname,"monster_") > charsmin || equali(key,"monstertype"))
+    {
+
+        equali(key,"monstertype") ? copy(g_value, charsmax(g_value), value) : copy(g_value, charsmax(g_value), Classname)
+        
+        if(equali(g_value,"monstermaker") || equali(g_value, g_value_copywrite))
+            return //Minimize multiple entries
+
+        if(containi(g_value,"monster_") > charsmin)
+            copy(g_value_copywrite, charsmax(g_value_copywrite), Classname)
+
+        server_print "Monsters on map are:^n^n%s", g_value
+        log_amx "Found %s", g_value
+
+    //register them to show HP
+    #if AMXX_VERSION_NUM == 182
+        RegisterHam(Ham_TakeDamage,g_value,"Ham_TakeDamage_player", 1)
+    #else
+        RegisterHam(Ham_TakeDamage,g_value,"Ham_TakeDamage_player", 1, true)
+    #endif
+    }
+
+}
