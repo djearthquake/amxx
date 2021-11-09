@@ -1,32 +1,32 @@
 /*
  * entity_health.sma
- * 
+ *
  * Copyright 2021 SPiNX <>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 /*
 2021-11-09  SPiNX  <>
 
- *V1.2 Finish clean converting to map specific m,onsters and items instead of long arbitrary list that lead to instabilities issuso n monsters that did not exist on map.
- *V1.1 Add monsters
- *V1.0 Port function or piece of code from Powerplay to sanctify it and then add breakables or merge old breakle HP plugin with it. So long ago do not recall exact story.
+ *V1.2 Optimize. Register ents based off map contents.
+ *V1.1 Add monsters and frags.
+ *V1.0 Merge breakable HP with player HP scripts.
 */
 
 #include amxmodx
@@ -67,7 +67,7 @@ public plugin_init()
     //Misc items that carry HP
     for(new list; list < sizeof ents_with_health; ++list)
     if(find_ent(charsmin,ents_with_health[list]))
-    {   
+    {
         server_print "Entities with HP on map:^n^n%s", ents_with_health[list]
         log_amx "Found %s", ents_with_health[list]
 
@@ -104,7 +104,7 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
     #endif
 
         entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
-    
+
         for ( new MENT; MENT < sizeof REPLACE; ++MENT )
             replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], " ");
 
@@ -124,8 +124,8 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
             {
                 @fake_death(this_ent,idattacker)
             }
-            
-        
+
+
             if (get_pcvar_num(g_getakill) > 1)
             {
                 @fake_death(this_ent,idattacker)
@@ -138,16 +138,16 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
                     new effects = pev(temp_npc, pev_effects)
                     dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"::1",szRejectReason)
                     set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
-    
+
                     victim = temp_npc
                     log_kill(killer,victim ,weapon)
-    
+
                 }
-    
+
             }
 
         }
-        
+
     }
 
     GetHamReturnStatus() != HAM_SUPERCEDE
@@ -246,7 +246,7 @@ public pfn_keyvalue( ent )
     {
 
         equali(key,"monstertype") ? copy(g_value, charsmax(g_value), value) : copy(g_value, charsmax(g_value), Classname)
-        
+
         if(equali(g_value,"monstermaker") || equali(g_value, g_value_copywrite))
             return //Minimize multiple entries
 
