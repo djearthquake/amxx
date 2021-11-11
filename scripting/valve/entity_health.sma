@@ -1,5 +1,7 @@
 /*
  * entity_health.sma
+ * CVAR: monster_kills 0|1|2|3
+ *  //1 show hp/kill | 2 show death messages, what weapon | 3 get frags
  *
  * Copyright 2021 SPiNX <>
  *
@@ -29,6 +31,10 @@
  *V1.0 Merge breakable HP with player HP script.
 */
 
+
+new HamHook:hookDamage,HamHook:XhookDamage_alt
+new bool:go_ahead
+
 #include amxmodx
 #include amxmisc
 #include engine
@@ -41,10 +47,10 @@
 #define MAX_CMD_LENGTH 128
 
 
-new g_value[ MAX_CMD_LENGTH ],g_value_copywrite[ MAX_CMD_LENGTH ]
+new The_Value_Copy[ MAX_CMD_LENGTH ],The_Value_Copy_copywrite[ MAX_CMD_LENGTH ]
 
 
-new const ents_with_health[][]={"func_breakable", "func_pushable", "item_airtank"} //misc items with HP
+new const ents_with_health[][]={"func_breakable", "func_pushable", "item_airtank", "func_door", "momentary_door", "func_door_rotating"} //misc parishables
 new const REPLACE[][] = {"monster_", "func_", "item_"} //for printing announcments
 
 new g_getakill;
@@ -54,47 +60,128 @@ new bool:g_b_SzKilling_Monster[MAX_NAME_LENGTH]
 public plugin_init()
 {
     register_plugin("Entity Health","1.2","SPiNX");
+    register_event("Damage","@event_damage","be")
+    log_amx "init"
 
-    //Hook for clients standard player hp reading
-    register_event("Damage","@event_damage","b")
-    g_getakill = register_cvar("monster_kill", "3") //1 show hp/kill | 2 show death messages, what weapon | 3 get frags
-    @sub_init()
+    if (get_pcvar_num(g_getakill))
+        @sub_init()
 
 }
 
 @sub_init()
 {
+    new ent;
+    log_amx "sub-init"
     //Misc items that carry HP
     for(new list; list < sizeof ents_with_health; ++list)
-    if(find_ent(charsmin,ents_with_health[list]))
     {
-        server_print "Entities with HP on map:^n^n%s", ents_with_health[list]
-        log_amx "Found %s", ents_with_health[list]
+        ent = find_ent(charsmin,ents_with_health[list])
 
-        #if AMXX_VERSION_NUM == 182
-        RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1)
-        #else
-        RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1, true)
-        #endif
+        if(ent > 0)
+        {
+            log_amx "Found %s", ents_with_health[list]
+
+            #if AMXX_VERSION_NUM == 182
+            XhookDamage_alt = RegisterHam(Ham_TakeDamage,ents_with_health[list],"Ham_TakeDamage_player", 1)
+
+            #else
+            XhookDamage_alt = RegisterHamFromEntity(Ham_TakeDamage,ent,"Ham_TakeDamage_player", 1)
+            #endif
+
+            DisableHamForward(XhookDamage_alt)
+
+
+        }
     }
 }
 
 @event_damage(id)
 {
-    new victim = id;new killer = get_user_attacker(victim);
-    new health = get_user_health(victim)
-    if( is_user_alive(killer) && !is_user_bot(killer) &&  killer != victim && health < 100)
-        client_print killer,print_center,"%n HP: %i",victim, health
-
-    else if (killer == victim && is_user_alive(killer) && !is_user_bot(killer))
-        client_print killer,print_center,"CAREFUL!"
-
+    log_amx "Damage call from %n", id
+    if(is_user_alive(id) && id > 0)
+    {
+        new victim = id;new killer = get_user_attacker(victim);
+        if(is_user_connected(killer) || pev_valid(victim) || pev_valid(killer))
+        {
+            new health = pev(victim,pev_health)
+    
+            entity_get_string(victim,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
+    
+            if( is_user_alive(killer) && !is_user_bot(killer) &&  killer != victim && health < 100)
+                client_print killer,print_center,"%n HP: %i",victim, health
+    
+            else if (killer == victim && is_user_alive(killer) && !is_user_bot(killer))
+                client_print killer,print_center,"CAREFUL!"
+    
+            else
+            {
+                if(pev_valid(killer) || pev_valid(victim) && is_user_connected(killer))
+                    entity_get_string(killer,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
+    
+                if(equali(g_SzMonster_class, "player") && is_user_connected(victim))
+                {
+                    killer != victim ?
+                        client_print( 0,print_center,"%n is being hit by %n", victim, killer)
+                        :
+                        client_print( 0,print_center,"%n is doing it to themself!", victim)
+                }
+                else if(containi(g_SzMonster_class, "monster") >> charsmin == victim)
+                {
+                    if(pev_valid(victim))
+                        client_print 0,print_center,"%n is being blasted^n^nby a %s with HP: %i",victim, g_SzMonster_class, pev(victim,pev_health)
+                }
+    
+                else
+                {
+                    new temp_local_buffer[32]
+                    new Shooter = pev(killer,pev_owner)
+                    if(pev_valid(Shooter))
+                    {
+                        entity_get_string(Shooter,EV_SZ_classname,temp_local_buffer,charsmax(temp_local_buffer))
+                        client_print( 0,print_center,"%n is being hit by^n^n %s^n^nfrom %s", victim, g_SzMonster_class, temp_local_buffer)
+                    }
+                    else
+                    {
+                        new shootable = pev(killer,pev_health)
+                        shootable != 0 ?
+                        client_print( 0,print_center,"%n is being hit by^n^n %s^n^nwith health %i", victim, g_SzMonster_class, shootable)
+                        :
+                        client_print( 0,print_center,"%n is being attacked by^n^n %s", victim, g_SzMonster_class)
+    
+                    }
+                }
+            }
+        }
+    }
     return PLUGIN_CONTINUE;
 }
 
 
 public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits)
 {
+    if(hookDamage)
+    {
+        if (get_pcvar_num(g_getakill))
+        {
+            server_print "Enabling hook damage"
+            EnableHamForward(hookDamage)
+        }
+
+        else 
+            DisableHamForward(hookDamage)
+    }
+
+    if(XhookDamage_alt)
+    {
+        if (XhookDamage_alt && get_pcvar_num(g_getakill) > 1)
+        {
+            server_print "Enabling hook alt damage"
+            EnableHamForward(XhookDamage_alt)
+        }
+        else
+            DisableHamForward(XhookDamage_alt)
+    }
+
     if(is_user_alive(idattacker) && idattacker != this_ent)
     {
     #if AMXX_VERSION_NUM == 182;
@@ -236,33 +323,62 @@ stock log_kill(killer, victim, weapon)
 
 }
 
+
+//Prior to init
 public pfn_keyvalue( ent )
 {
     new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
     copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+    if(containi(Classname,"monster") > charsmin) go_ahead=true
 
-    /*Copy the monsters*/
-    if(containi(Classname,"monster_") > charsmin || equali(key,"monstertype"))
+    g_getakill = register_cvar("monster_kill", "0")
+
+    if (get_pcvar_num(g_getakill) && go_ahead)
     {
 
-        equali(key,"monstertype") ? copy(g_value, charsmax(g_value), value) : copy(g_value, charsmax(g_value), Classname)
 
-        if(equali(g_value,"monstermaker") || equali(g_value, g_value_copywrite))
-            return //Minimize multiple entries
+        if(containi(Classname,"monster_") > charsmin || equali(key,"monstertype"))
 
-        if(containi(g_value,"monster_") > charsmin)
-            copy(g_value_copywrite, charsmax(g_value_copywrite), Classname)
+        {
 
-        server_print "Monsters on map are:^n^n%s", g_value
-        log_amx "Found %s", g_value
+            equali(key,"monstertype") ? copy(The_Value_Copy, charsmax(The_Value_Copy), value) : copy(The_Value_Copy, charsmax(The_Value_Copy), Classname)
 
-        //register map specific monsters to show HP, announce frags, show deaths, account for frags
-        #if AMXX_VERSION_NUM == 182
-        RegisterHam(Ham_TakeDamage,g_value,"Ham_TakeDamage_player", 1)
-        #else
-        RegisterHam(Ham_TakeDamage,g_value,"Ham_TakeDamage_player", 1, true)
-        #endif
+            if(equali(The_Value_Copy,"monstermaker") || equali(The_Value_Copy, The_Value_Copy_copywrite))
+            goto DIVERT
+
+            if(containi(The_Value_Copy,"monster_") > charsmin)
+                copy(The_Value_Copy_copywrite, charsmax(The_Value_Copy_copywrite), Classname)
+            log_amx("Found %s", The_Value_Copy)
+                
+            //////////////////////KEEPS BOOT_CAMP ETC FROM CRASH LOADING////////////////////////////
+            if(containi(Classname,"monster_") == charsmin || !equali(key,"monstertype")) goto DIVERT
+            ////////////////////////////////////////////////////////////////////////////////////////
+            hookDamage = RegisterHam(Ham_TakeDamage,The_Value_Copy,"Ham_TakeDamage_player", 1)
+            DisableHamForward(hookDamage)
+
+
+
+        }
+        return PLUGIN_CONTINUE  
+
+
     }
+    DIVERT: 
 
+    return PLUGIN_CONTINUE  
 
 }
+
+public plugin_end()
+{
+    if(hookDamage)
+        DisableHamForward(hookDamage)
+
+    if(XhookDamage_alt)
+        DisableHamForward(XhookDamage_alt)
+}
+
+
+public HamFilter(Ham:which, HamError:err, const reason[])
+/*FUTURESTATE:https://wiki.alliedmods.net/HamSandwich_General_Usage_(AMX_Mod_X)#Config_File_Requirements*/
+return PLUGIN_HANDLED
