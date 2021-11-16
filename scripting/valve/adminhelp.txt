@@ -24,7 +24,7 @@ HELP_ENTRIES = Vrijednosti %d - %d od %d
 HELP_USE_MORE = Koristi '%s %d' za jos komandi
 HELP_USE_BEGIN = Koristi '%s 1' za pocetak
 TYPE_HELP_1 = Ukucajte '%s' u konzoli da bi ste vidjeli moguce komande
-TYPE_HELP_2 = Ukucajte '%s' u konzoli
+TYPE_HELP_1 = Ukucajte '%s' u konzoli
 TIME_INFO_1 = Preostalo Vrijeme: %d:%02d min. Slijedeca Mapa: %s
 TIME_INFO_2 = Nema vremenskog ogranicenja. Slijedeca Mapa: %s
 
@@ -84,15 +84,15 @@ NO_MATCHING_RESULTS = ^nNo matching results found^n
 [es]
 HELP_COMS = Ayuda de AMX Mod X: Comandos
 HELP_ENTRIES = Entradas %d - %d de %d
-HELP_USE_MORE = Escribe '%s %d' para mostrar mas
+HELP_USE_MORE = Escribe '%s %d' para mostrar más
 HELP_USE_BEGIN = Escribe '%s 1' para volver al principio
 TYPE_HELP_1 = Escribe '%s' en la consola para ver los comandos disponibles.
 TYPE_HELP_2 = Escribe '%s' en la consola para ver busquedas parciales de nombres de comandos
-TIME_INFO_1 = Tiempo restante: %d:%02d min. Proximo Mapa: %s
-TIME_INFO_2 = Tiempo Ilimitado. Proximo Mapa: %s
-HELP_CMD_INFO = <num. entrada> [num. de entradas a mostrar (solo para el servidor)] - muestra informacion sobre los comandos
-SEARCH_CMD_INFO = <coincidencia> <entrada no.> [no. de entradas para mostrar (solo servidor)]: muestra información sobre comandos coincidentes
-NO_MATCHING_RESULTS = ^nNo se han encontrado resultados^n
+TIME_INFO_1 = Tiempo restante: %d:%02d min. Próximo Mapa: %s
+TIME_INFO_2 = Tiempo Ilimitado. Próximo Mapa: %s
+HELP_CMD_INFO = <núm. entrada> [núm. de entradas a mostrar (solo para el servidor)] - muestra información sobre los comandos
+SEARCH_CMD_INFO = <coincidente> <núm. entrada> [núm. de entradas a mostrar (solo para el servidor)] - muestra información sobre los comandos coincidentes
+NO_MATCHING_RESULTS = ^nNo se encontraron resultados coincidentes^n 
 
 [fi]
 HELP_COMS = AMX Mod X Help: Komennot
@@ -163,13 +163,10 @@ HELP_COMS = AMX Mod X Help: Commando's
 HELP_ENTRIES = Data %d - %d van %d
 HELP_USE_MORE = Typ '%s %d' voor meer
 HELP_USE_BEGIN = Typ '%s 1' voor het begin
-TYPE_HELP_1 = Type '%s' in de console om de beschikbare commando's te zien.
-TYPE_HELP_2 = Type '%s' in console om commando's te zoeken op naam.
+TYPE_HELP_1 = Voer '%s' in in de console om de beschikbare commando's te bekijken
+TYPE_HELP_2 = Voer '%s' in in de console om beschikbare opdrachten te zien
 TIME_INFO_1 = Resterende tijd: %d:%02d min. Volgende map: %s
 TIME_INFO_2 = Geen tijdlimiet. Volgende map: %s
-HELP_CMD_INFO = <nr. ingeven> [aantal ingevingen te weergeven (alleen server)] - weergeeft informatie over beschikbare commando's.
-SEARCH_CMD_INFO = <match> <nr. ingeven> [aantal ingevingen te weergeven (alleen server)] - weergeeft informatie over overeenkomstige commando's.
-NO_MATCHING_RESULTS = ^nGeen overeenkomstige zoekresultaten gevonden^n
 
 [pl]
 HELP_COMS = AMX Mod X pomoc: Komendy
