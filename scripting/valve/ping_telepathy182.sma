@@ -7,26 +7,15 @@
 */
 #include amxmodx
 #include amxmisc
-#define MAX_PLAYERS 32
-#define MAX_NAME_LENGTH 32
-#define MAX_IP_LENGTH 16
+
 #define WITHOUT_PORT 1
-
-
 #define MAX_PLAYERS                32
-
 #define MAX_RESOURCE_PATH_LENGTH   64
-
 #define MAX_MENU_LENGTH            512
-
 #define MAX_NAME_LENGTH            32
-
 #define MAX_AUTHID_LENGTH          64
-
 #define MAX_IP_LENGTH              16
-
 #define MAX_USER_INFO_LENGTH       256
-
 #define charsmin                  -1
 
 #define client_disconnect client_disconnected
