@@ -4,7 +4,7 @@
 #include <time>
 
 #define ADMIN_FLAG ADMIN_RCON
-const charsmin                         =   -1
+const charsmin              =   -1
 const MAX_CMD_LENGTH        =   128
 
 new gaglist[MAX_CMD_LENGTH]
