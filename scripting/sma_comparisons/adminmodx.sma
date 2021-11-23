@@ -390,19 +390,6 @@ public plugin_cfg()
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// Required modules for this plugin
-//
-public plugin_modules()
-{
-	require_module("FUN")
-	require_module("FAKEMETA")
-	require_module("ENGINE")
-
-	return PLUGIN_CONTINUE
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-//
 // Precaches sounds and models
 //
 public plugin_precache()
@@ -468,7 +455,7 @@ public client_infochanged(id)
 //
 // When a player disconnects from the server
 //
-public client_disconnect(id)
+public client_disconnected(id)
 {
 	g_gaged[id] = 0
 	g_buried[id] = 0
