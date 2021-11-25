@@ -71,7 +71,7 @@ new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s 
 new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new proxy_socket_buffer[ MAX_MENU_LENGTH ], g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
 new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ], provider[MAX_RESOURCE_PATH_LENGTH];
-new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin;
+new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin, g_maxPlayers;
 new const MESSAGE[] = "Proxysnort by Spinx"
 new risk[ 4 ], g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE
@@ -89,6 +89,7 @@ public plugin_init()
     g_cvar_debugger         = register_cvar("proxy_debug", "0");
     //proxy_action: 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
     g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
+    g_maxPlayers = get_maxplayers()
     //Tag positive findings by mod.
     new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name));
@@ -228,7 +229,7 @@ stock get_user_profile(id)
                 log_amx "%s, %s uses a proxy!", name, authid
                 if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
                 {
-                    for (new admin=1; admin<=get_maxplayers(); admin++)
+                    for (new admin=1; admin<=g_maxPlayers; admin++)
                         if (is_user_connected(admin) && is_user_admin(admin))
                             client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
                     client_cmd 0,"spk ^"bad entry detected^""
@@ -275,7 +276,7 @@ stock get_user_profile(id)
                 if(get_pcvar_num(g_cvar_debugger) > 2 )
                     server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
                 set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-                for (new admin=1; admin<=get_maxplayers(); admin++)
+                for (new admin=1; admin<=g_maxPlayers; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
             }
@@ -290,7 +291,7 @@ stock get_user_profile(id)
             server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
             if(get_pcvar_num(g_cvar_debugger) > 2 )
                 server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
-            for (new admin=1; admin<=get_maxplayers(); admin++)
+            for (new admin=1; admin<=g_maxPlayers; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
             client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
         }
@@ -360,7 +361,7 @@ stock get_user_profile(id)
         }
         else
         {
-            for (new admin=1; admin<=get_maxplayers(); admin++)
+            for (new admin=1; admin<=g_maxPlayers; admin++)
             if (is_user_connected(admin) && is_user_admin(admin))
             {
                 client_print admin,print_chat,"Check your API key validity!"
