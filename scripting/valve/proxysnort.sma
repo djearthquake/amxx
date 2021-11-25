@@ -228,7 +228,7 @@ stock get_user_profile(id)
                 log_amx "%s, %s uses a proxy!", name, authid
                 if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
                 {
-                    for (new admin=1; admin<=MAX_PLAYERS; admin++)
+                    for (new admin=1; admin<=get_maxplayers(); admin++)
                         if (is_user_connected(admin) && is_user_admin(admin))
                             client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
                     client_cmd 0,"spk ^"bad entry detected^""
@@ -275,7 +275,7 @@ stock get_user_profile(id)
                 if(get_pcvar_num(g_cvar_debugger) > 2 )
                     server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
                 set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-                for (new admin=1; admin<=MAX_PLAYERS; admin++)
+                for (new admin=1; admin<=get_maxplayers(); admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
             }
@@ -290,7 +290,7 @@ stock get_user_profile(id)
             server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
             if(get_pcvar_num(g_cvar_debugger) > 2 )
                 server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
-            for (new admin=1; admin<=MAX_PLAYERS; admin++)
+            for (new admin=1; admin<=get_maxplayers(); admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
             client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
         }
@@ -360,7 +360,7 @@ stock get_user_profile(id)
         }
         else
         {
-            for (new admin=1; admin<=MAX_PLAYERS; admin++)
+            for (new admin=1; admin<=get_maxplayers(); admin++)
             if (is_user_connected(admin) && is_user_admin(admin))
             {
                 client_print admin,print_chat,"Check your API key validity!"
