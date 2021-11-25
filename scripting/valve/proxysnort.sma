@@ -130,7 +130,7 @@ public client_putinserver(id)
     if(is_user_bot(id) || is_user_hltv(id))
         return PLUGIN_HANDLED_MAIN
 
-    if(is_user_alive(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
+    if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
     {
         g_has_been_checked[id] = false
         get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT );
