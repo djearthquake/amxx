@@ -39,6 +39,7 @@
 #if !defined client_disconnect
 #define client_disconnected client_disconnect
 #endif
+
 new const SzRope_msg[]="Plugin paused due to env_rope would be invisible."
 new g_timing, g_iTic_quota, g_iTic_sleep, g_iTic;
 
@@ -49,8 +50,9 @@ public plugin_init()
     g_iTic_sleep = register_cvar("sys_sleep",  "32"); //Tic hibernation rate.
     g_iTic_quota = register_cvar("sys_quota", "32"); //Tic rate quota.
     g_iTic       = get_cvar_pointer("sys_ticrate"); //Base tic rate. Only used to launch server with.
-    set_task(1.0, "@Cpu_saver", 1541,_,_,"b")
+    set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
 }
+
 public client_putinserver(id)
 if (get_pcvar_num(g_timing) == 1)
 {
@@ -61,17 +63,32 @@ if (get_pcvar_num(g_timing) == 1)
         server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
         pause("c")
     }
-    new iAlloted_Tic;
-    iAlloted_Tic = is_user_connected(id) && !is_user_bot(id) && iPlayers() >= 1 ? (iPlayers() * get_pcvar_num(g_iTic_quota) ) : set_pcvar_num(g_iTic,iAlloted_Tic)
+
+    else if(is_user_connected(id) && !is_user_bot(id))
+    {
+        @set_tic()
+    }
+    else server_print "bot detected!"
+
+}
+
+public client_remove(id)
+{
+    (get_pcvar_num(g_timing) && iPlayers() < 2) ? set_pcvar_num(g_iTic,get_pcvar_num(g_iTic_sleep)) : @set_tic()
     server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
 }
-public client_disconnected(id)
-    get_pcvar_num(g_timing) && iPlayers() < 2 ? set_pcvar_num(g_iTic,get_pcvar_num(g_iTic_sleep)) : client_putinserver(id)
 
 stock iPlayers()
 {
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
     return iHeadcount
+}
+
+@set_tic()
+{
+    new iAlloted_Tic = iPlayers() ? get_pcvar_num(g_iTic_quota)*iPlayers() : get_pcvar_num(g_iTic_sleep)
+    set_pcvar_num(g_iTic, iAlloted_Tic ? iAlloted_Tic : g_iTic_sleep)
+    server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
 }
 
 @Cpu_saver() /*Attempts to minimize thrashing. May cause it too. Needs testing please. Thank you.*/
@@ -89,4 +106,5 @@ stock iPlayers()
         server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
         log_amx "Adjusting tic based on turbulence."
     }
+
 }
