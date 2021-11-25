@@ -62,18 +62,21 @@
 #define MAX_MENU_LENGTH            512
 #define MAX_NAME_LENGTH            32
 #define MAX_AUTHID_LENGTH          64
-#define MAX_IP_LENGTH              16
+#define MAX_IP_LENGTH_V6           40
 #define MAX_USER_INFO_LENGTH       256
+#define MAX_CMD_LENGTH             128
 #define charsmin                  -1
 #define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
+new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.0^nHost: proxycheck.io^n^n"
 new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
-new proxy_socket_buffer[ MAX_USER_INFO_LENGTH + MAX_MENU_LENGTH ], g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
-new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH], ip[MAX_IP_LENGTH], authid[ MAX_AUTHID_LENGTH + 1 ], provider[MAX_RESOURCE_PATH_LENGTH];
+new proxy_socket_buffer[ MAX_MENU_LENGTH ], g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
+new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ], provider[MAX_RESOURCE_PATH_LENGTH];
 new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin;
 new const MESSAGE[] = "Proxysnort by Spinx"
-new risk[ 4 ], g_iHeadcount, g_cvar_debugger;
+new risk[ 4 ], g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE
 new bool:g_has_been_checked[MAX_PLAYERS]
+
 new g_clientemp_version
 public plugin_init()
 {
@@ -83,11 +86,11 @@ public plugin_init()
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
     g_cvar_admin            = register_cvar("proxy_admin", "0"); //check admins
     g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
-    g_cvar_debugger         = register_cvar("proxy_debug", "1");
+    g_cvar_debugger         = register_cvar("proxy_debug", "0");
     //proxy_action: 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
     g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
     //Tag positive findings by mod.
-    new mod_name[MAX_NAME_LENGTH] //Thx Pizzahut! https://forums.alliedmods.net/member.php?s=cffd384455c06423cc6504018c7326d5&u=2605
+    new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name));
     set_pcvar_string(g_cvar_tag, mod_name);
 }
@@ -95,23 +98,22 @@ public client_putinserver(id)
 {
     if(is_user_bot(id) || is_user_hltv(id))
         return PLUGIN_HANDLED_MAIN
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
+    if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id) && !g_has_been_checked[id])
     {
-        g_has_been_checked[id] = false
         get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT );
         new total = iPlayers()
         new Float:retask = (float(total++)*3.0)
         new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
-        /*new Float:buffering = iPlayers() * 5.2
-        if(buffering == 0.0 ||  buffering > 20.0) buffering = random_float(4.0, 8.0)*/
         server_print "%s task input time = %f", PLUGIN,task_expand
-        set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+        if(!task_exists(id))
+            set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
     }
+    else server_print "Client checked earlier...stopping %s", PLUGIN
     return PLUGIN_CONTINUE;
 }
-public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
+public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 {
-    if (is_user_connected(id) && !is_user_connecting(id) && id > 0)
+    if (is_user_connected(id) && !is_user_connecting(id) && id > 0 )
     if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id))
     if ( !is_user_bot(id) )
     {
@@ -139,6 +141,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
                 server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
                 return PLUGIN_HANDLED_MAIN; ///comment out or do not use plugin on local servers!
             }
+
         }
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         new Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
@@ -151,8 +154,9 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         //g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2);
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         get_pcvar_string(g_cvar_tag, tag, charsmax (tag));
-        formatex(constring,charsmax (constring), "GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.0^nHost: proxycheck.io^n^n", Ip, token, tag, authid);
-        set_task(1.0, "@write_web", id+USERWRITE, constring, charsmax (constring) );
+        formatex(constring,charsmax (constring), SzGet, Ip, token, tag, authid);
+        if(!task_exists(id+USERWRITE))
+            set_task(1.0, "@write_web", id+USERWRITE, constring, charsmax (constring) );
         if(get_pcvar_num(g_cvar_debugger) > 2 )
         {
             server_print "This is where we are trying to get %s from:", PLUGIN
@@ -184,9 +188,18 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
         socket_send(g_proxy_socket,text,charsmax (text));
         if(get_pcvar_num(g_cvar_debugger) > 1 )
         {
-                server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
+            server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
         }
+
     }
+
+}
+stock get_user_profile(id)
+{
+    get_user_name(id,name,charsmax(name) );
+    get_user_authid(id,authid,charsmax(authid) );
+    get_user_ip(id,Ip,charsmax(Ip),1);
+    return authid, Ip, name
 }
 @read_web(proxy_snort)
 {
@@ -194,9 +207,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     if( id > 0 && !g_has_been_checked[id])
     if (is_user_alive(id) || !is_user_bot(id) && !is_user_hltv(id))
     {
-        get_user_name(id,name,charsmax(name) );
-        get_user_authid(id,authid,charsmax(authid) );
-        get_user_ip(id,Ip,charsmax(Ip),1);
+        get_user_profile(id)
+
         if(get_pcvar_num(g_cvar_debugger) > 1)
             server_print "%s %s by %s:reading the socket", PLUGIN, VERSION, AUTHOR
         #if AMXX_VERSION_NUM != 182
@@ -216,9 +228,10 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
                 log_amx "%s, %s uses a proxy!", name, authid
                 if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
                 {
-                    for (new admin=1; admin<=32; admin++)
+                    for (new admin=1; admin<=MAX_PLAYERS; admin++)
                         if (is_user_connected(admin) && is_user_admin(admin))
                             client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+                    client_cmd 0,"spk ^"bad entry detected^""
                 }
                 //ban steamid
                 if (get_pcvar_num(g_cvar_iproxy_action) == 3)
@@ -231,8 +244,12 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
                     server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
             }
             //What if they aren't on proxy or VPN?
-            if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") == charsmin )
+            if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
+            {
                 server_print "No proxy found on %s, %s error-free",name,authid
+                if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
+                    g_has_been_checked[id] = true //stop double prints
+            }
             if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
                 server_print "No proxy found on %s, %s with error on packet",name,authid
@@ -241,26 +258,24 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
             //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
             if (containi(proxy_socket_buffer, "error") != charsmin  && containi(proxy_socket_buffer, "message") != charsmin )
             {
-                new msg[128];
+                new msg[MAX_CMD_LENGTH];
                 copyc(msg, charsmax (msg), proxy_socket_buffer[containi(proxy_socket_buffer, "message") + 11], '"');
-                /*replace(msg, charmin (msg), ":", "");*/
                 server_print "Message is: %s",msg
             }
                 //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
             if (containi(proxy_socket_buffer, "provider") > charsmin )
             {
                 copyc(provider, charsmax (provider), proxy_socket_buffer[containi(proxy_socket_buffer, "provider") + 12], '"');
-                //copy(provider, charsmax(provider), proxy_socket_buffer[containi(proxy_socket_buffer, "provider") + 12])
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
             }
-            if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger))
+            if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
             {
                 if(get_pcvar_num(g_cvar_debugger) > 2 )
                     server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
                 set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-                for (new admin=1; admin<=32; admin++)
+                for (new admin=1; admin<=MAX_PLAYERS; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
             }
@@ -275,19 +290,22 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
             server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
             if(get_pcvar_num(g_cvar_debugger) > 2 )
                 server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
-            for (new admin=1; admin<=32; admin++)
+            for (new admin=1; admin<=MAX_PLAYERS; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
             client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
         }
+        g_has_been_checked[id] = true
         socket_close(g_proxy_socket);
         if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
     }
-    else if (containi(proxy_socket_buffer, "risk") == charsmin)
+    else if (containi(proxy_socket_buffer, "risk") == charsmin && get_pcvar_num(g_cvar_debugger))
     {
+        //must be here to see the risk and provider
         set_task(3.5, "@read_web",id+USERREAD);
     }
     else
     {
+        g_has_been_checked[id] = true
         socket_close(g_proxy_socket);
         if(get_pcvar_num(g_cvar_debugger) > 4 )bright_message();
         if (equal(proxy_socket_buffer, "") && get_pcvar_num(g_cvar_debugger) )
@@ -312,11 +330,8 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH ], id)
     }
     return
 }
-public client_disconnected(id)
-    g_has_been_checked[id] = false
 @client_mark_socket(id)
 {
-    g_has_been_checked[id] = true
     IS_SOCKET_IN_USE = false;
     if(is_user_connected(id))
         server_print "%s | %s unlocking socket!", PLUGIN, name
@@ -339,22 +354,27 @@ public client_disconnected(id)
     {
         if ( cstrike_running() || is_running("dod") == 1 )
         {
-            new motd[128];
+            new motd[MAX_CMD_LENGTH];
             format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://proxycheck.io/'><body BGCOLOR='#FFFFFF'><br><center>Null proxy key detected.</center></html>");
             show_motd(id, motd, "Invalid API key!");
         }
         else
-        for (new admin=1; admin<=32; admin++)
-        if (is_user_connected(admin) && is_user_admin(admin))
         {
-            client_print admin,print_chat,"Check your API key validity!"
-            client_print admin,print_center,"Null sv_proxycheckio-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION
-            client_print admin,print_console,"Get key from proxycheck.io."
+            for (new admin=1; admin<=MAX_PLAYERS; admin++)
+            if (is_user_connected(admin) && is_user_admin(admin))
+            {
+                client_print admin,print_chat,"Check your API key validity!"
+                client_print admin,print_center,"Null sv_proxycheckio-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION
+                client_print admin,print_console,"Get key from proxycheck.io."
+            }
+        
         }
+
     }
+
 }
 public plugin_end()
-    regex_free(hPattern);
+    regex_free(hPattern)
 
 public bright_message()
 {
