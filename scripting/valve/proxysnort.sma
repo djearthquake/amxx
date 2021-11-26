@@ -1,4 +1,7 @@
 #define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
+//This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
+///If you do not use it, ignore or study it.
+//https://github.com/djearthquake/amxx/blob/main/scripting/valve/clientemp.sma
 //#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
 //#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
 /**
@@ -40,13 +43,19 @@
 *    08/02/2021 SPiNX
 *    Change log 1.4 to 1.5
 *    -Interfaced with the queue made on proxysnort.sma
+*
+*    11/026/2021 SPiNX
+*    Change log 1.5 to 1.6
+*    -Remade array based off the IP instead of client index.
+*    -Tuned plugin to be more misery when debug is off.
+*    -Assured all the GoldSrc mods can run this when putin server.
 */
 #include <amxmodx>
 #include <amxmisc>
 #include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.5"
+#define VERSION "1.6"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
