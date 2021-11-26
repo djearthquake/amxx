@@ -56,12 +56,13 @@ public plugin_init()
 public client_putinserver(id)
 if (get_pcvar_num(g_timing) == 1)
 {
+    remove_task(1541)
     if( find_ent(-1,"env_rope") || find_ent(-1,"env_electrified_wire") ) //Rope can disappear over 70fps.
     {
         set_pcvar_num(g_iTic,70)
         log_amx SzRope_msg
         server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
-        pause("c")
+        pause("a")
     }
 
     else if(is_user_connected(id) && !is_user_bot(id))
@@ -69,6 +70,7 @@ if (get_pcvar_num(g_timing) == 1)
         @set_tic()
     }
     else server_print "bot detected!"
+    set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
 
 }
 
@@ -91,7 +93,7 @@ stock iPlayers()
     server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
 }
 
-@Cpu_saver() /*Attempts to minimize thrashing. May cause it too. Needs testing please. Thank you.*/
+@Cpu_saver()
 {
     new iPing,iLoss
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
@@ -99,6 +101,7 @@ stock iPlayers()
     for(new lot;lot < sizeof players;lot++)
         get_user_ping(players[lot],iPing,iLoss)
 
+    if(iLoss)
     if(iLoss > 2)
     {
         server_print "%i|%i",iPing,iLoss
