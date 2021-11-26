@@ -1,4 +1,6 @@
-#define PROXY_SCRIPT "proxysnort.amxx"
+#define PROXY_SCRIPT "proxysnort.amxx" //This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
+///If you do not use it, ignore or study it.
+///https://github.com/djearthquake/amxx/blob/main/scripting/valve/proxysnort.sma
 //#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
 //#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
 
@@ -68,7 +70,7 @@
     #include sockets
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.8.5"
+    #define VERSION "1.8.6"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -109,7 +111,7 @@
     new word_buffer[MAX_PLAYERS], g_debug, g_timeout, Float:g_task;
 
     new Float:g_lat[ MAX_PLAYERS ], Float:g_lon[ MAX_PLAYERS ];
-    new g_queue_weight, g_q_weight, g_iHeadcount;
+    new g_queue_weight, g_q_weight;
     new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ];
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
 
@@ -238,7 +240,9 @@ public client_putinserver(id)
 {
     mask = Tsk - WEATHER
 
-    new total = iPlayers()
+    new total, iHeadcount
+    iPlayers()
+    total = iHeadcount
     new Float:retask = (float(total++)*4.5) //2 players 6 sec apart at 3.0
     if(retask > 20.0)
         retask = 15.0
@@ -389,7 +393,9 @@ public client_temp_cmd(id)
         if(!gotatemp[m] && m > 0)
         {
             ////////////////////////////////////////////////////////////////////////////////
-            new total = iPlayers()
+            new total, iHeadcount
+            iPlayers()
+            total = iHeadcount
             new Float:retask = (float(total++)*3.0)
             new Float:task_expand = floatround(random_float(retask+5.0,retask+8.0), floatround_ceil)*1.0
 
@@ -415,13 +421,15 @@ public client_temp_cmd(id)
 }
 
 public client_remove(id)
-
-    if( iPlayers() == 0)
+{
+    new iHeadcount
+    iPlayers()
+    if( iHeadcount == 0)
     {
         change_task(iQUEUE, 1800.0)
         remove_task(id);
     }
-
+}
 
 public client_temp_filter(id)
 {
@@ -582,8 +590,10 @@ public needan(keymissing)
 
 public client_disconnected(id)
 {
+    new iHeadcount
+    iPlayers()
     if( is_user_bot(id) /*|| is_user_hltv(id) */) return
-    if( iPlayers() > 0 )
+    if( iHeadcount > 0 )
     {
         for (new admin=1; admin<=32; admin++)
 
@@ -850,13 +860,7 @@ public read_web(feeding)
                 }
 
 
-            }/*
-            else
-            {
-                //g_seal_later[id] = true
-                log_amx "Trouble fully closing socket!"
-            }*/
-
+            }
             return PLUGIN_CONTINUE;
 
         }
@@ -868,20 +872,7 @@ public read_web(feeding)
     return PLUGIN_CONTINUE;
 
 }
-/*
-public plugin_end()
-{
-    new players[ MAX_PLAYERS ];
-    new playercount;
-    get_players(players,playercount,"ch")
 
-    for (new id=0; id < playercount ; ++id)
-    {
-        if (g_seal_later[id] == true)
-            socket_close(g_Weather_Feed)
-    }
-}
-*/
 @mark_socket(work[MAX_PLAYERS])
 {
     IS_SOCKET_IN_USE = false;
@@ -904,32 +895,24 @@ public plugin_end()
     new gopher = get_pcvar_num(g_queue_weight)
 
     new players[ MAX_PLAYERS ];
-    new playercount;
-
-    get_players(players,playercount,"c")
-
-    for (new q; q < playercount ; ++q)
+    new iHeadcount
+    iPlayers()
+    for (new q; q < iHeadcount ; ++q)
     {
-    /*
-        if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
-        {
-            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-            server_print "Adding Client to check temp"
-        }
-    */
+
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
         {
             gotatemp[q] = true
         }
 
-        //Make array of non-bot connected players
-
+        //Make array of non-bot connected players who need their temp still.
         //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        if(!gotatemp[players[q]])
+        else if(!gotatemp[players[q]])
         {
             server_print "%s queued for %s",ClientName[q],PLUGIN
             //task spread formula
-            new total = playercount
+            new iHeadcount;iPlayers()
+            new total = iHeadcount
             server_print "Total players shows as: %i", total
             new Float:retask = (float(total++)*2.0)
             new Float:queued_task = (float(total++)*3.0)
@@ -980,25 +963,14 @@ public plugin_end()
 
 stock players_who_see_effects()
 {
-    for (new SEE=0; SEE<iPlayers(); SEE++)
-
+    new iHeadcount;iPlayers()
+    for (new SEE; SEE<iHeadcount; SEE++)
         return SEE;
-
     return PLUGIN_CONTINUE;
 }
 
 stock iPlayers()
 {
-    #if AMXX_VERSION_NUM == 182;
-        new players[ MAX_PLAYERS ],pNum
-        get_players(players,pNum,"c")
-        g_iHeadcount = pNum;
-
-    #else
-
-        g_iHeadcount = get_playersnum_ex(GetPlayersFlags:GetPlayers_ExcludeBots)
-
-    #endif
-
-    return g_iHeadcount
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
+    return iHeadcount,players
 }
