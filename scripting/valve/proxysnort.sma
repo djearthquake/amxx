@@ -94,9 +94,9 @@ public plugin_init()
     hPattern = regex_compile(PATTERN, iReturnValue, szError, charsmax(szError), "is");
     g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_SERVER|FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
-    g_cvar_admin            = register_cvar("proxy_admin", "0"); //check admins
+    g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
     g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
-    g_cvar_debugger         = register_cvar("proxy_debug", "0");
+    g_cvar_debugger         = register_cvar("proxy_debug", "5");
     //proxy_action: 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
     g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
     g_maxPlayers = get_maxplayers()
@@ -130,10 +130,10 @@ public client_putinserver(id)
         else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && Data[ SzProxy ] == 1)
         {
             handle_proxy_user(id)
-            server_print "IP is NOT ok"
+            server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
         }
         else
-            server_print "IP is ok"
+            server_print "[%s] %s is ok^n^n%s", PLUGIN, Data[ SzAddress ],Data[SzIsp]
 
 
     }
@@ -308,6 +308,8 @@ stock handle_proxy_user(id)
             }
             if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
             {
+                Data[SzIsp] = provider
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if(get_pcvar_num(g_cvar_debugger) > 2 )
                     server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
                 set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
@@ -321,6 +323,8 @@ stock handle_proxy_user(id)
     {
         new risk_buffer_fix = containi(proxy_socket_buffer, "yes") != charsmin ? 7 : 5
         copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
+        Data[iRisk] = risk
+        TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
         if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
         {
             server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
