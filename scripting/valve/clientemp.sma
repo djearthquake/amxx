@@ -43,7 +43,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Sun 02 Aug 2021
+    *(__ [__)*|\ | >< Fri 26 Nov 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -118,7 +118,6 @@
 
     new const SOUND_GOTATEMP[] = "misc/Temp.wav";
     new bool:gotatemp[ MAX_PLAYERS + 1 ]
-    new bool:g_seal_later[ MAX_PLAYERS + 1 ]
 
     new Trie:g_client_temp
 
@@ -312,7 +311,7 @@ public client_putinserver(id)
         new_temp = Data[iTemp]
     else
         new_temp = str_to_num(g_ClientTemp[id])
-        
+
     //Speak the temperature.
     num_to_word(new_temp, word_buffer, charsmax(word_buffer))
     if(new_temp < 0)
@@ -320,6 +319,8 @@ public client_putinserver(id)
 
     else
         client_cmd(id, "spk ^"temperature right now is %s degrees^"", word_buffer );
+
+    server_print "Spoke temp for^n^n%s",ClientName[id]
 }
 
 public Speak(id)
@@ -631,7 +632,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         get_pcvar_string(g_cvar_units, units, charsmax (units) );
         get_pcvar_string(g_cvar_token, token, charsmax (token) );
         g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
-		//g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
+        //g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
 
 
         if(get_pcvar_float(g_long) && (!g_lat[id] || !g_lon[id]) )
@@ -839,7 +840,7 @@ public read_web(feeding)
             {
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
                 set_task(5.0, "@mark_socket", id);
-    
+
                 if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
                 {
                     new work[MAX_PLAYERS]
@@ -873,7 +874,7 @@ public plugin_end()
     new players[ MAX_PLAYERS ];
     new playercount;
     get_players(players,playercount,"ch")
-    
+
     for (new id=0; id < playercount ; ++id)
     {
         if (g_seal_later[id] == true)
@@ -896,51 +897,68 @@ public plugin_end()
 
 @the_queue()
 {
+
     //Assure admins queue is really running
     server_print "---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
     //How many runs before task is put to sleep given diminished returns
     new gopher = get_pcvar_num(g_queue_weight)
 
-    //Make array of non-bot connected players
     new players[ MAX_PLAYERS ];
     new playercount;
 
     get_players(players,playercount,"c")
 
     for (new q; q < playercount ; ++q)
-    //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-    if(!gotatemp[players[q]])
     {
-        server_print "%s queued for %s",ClientName[q],PLUGIN
-        //task spread formula
-        new total = playercount
-        server_print "Total players shows as: %i", total
-        new Float:retask = (float(total++)*2.0)
-        new Float:queued_task = (float(total++)*3.0)
-        server_print "Total players for math adj to: %i", total
-        get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
-        server_print "We STILL need %s's temp already.",ClientName[players[q]]
-
-        //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
-        if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
-            if(!task_exists(players[q] + WEATHER))
-                set_task(queued_task+++5.0,"@country_finder",players[q]+WEATHER)
-        //client_putinserver(players[q])
-
-        //if they have a task set-up already adjust it
-        if(task_exists(players[q] + WEATHER))
-            change_task(players[q] + WEATHER,retask)
-        //if they don'y have a task set-up make one
-        else
+    /*
+        if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
-            set_task(queued_task,"client_temp",players[q]);
-            server_print "%f|Queue task time for %s", queued_task, ClientName[players[q]]
-            change_task(iQUEUE, 45.0)
-            //server_print "new q time is %i",
+            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+            server_print "Adding Client to check temp"
+        }
+    */
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
+        {
+            gotatemp[q] = true
+        }
+
+        //Make array of non-bot connected players
+
+        //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
+        if(!gotatemp[players[q]])
+        {
+            server_print "%s queued for %s",ClientName[q],PLUGIN
+            //task spread formula
+            new total = playercount
+            server_print "Total players shows as: %i", total
+            new Float:retask = (float(total++)*2.0)
+            new Float:queued_task = (float(total++)*3.0)
+            server_print "Total players for math adj to: %i", total
+            get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
+            server_print "We STILL need %s's temp already.",ClientName[players[q]]
+
+            //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
+            if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
+                if(!task_exists(players[q] + WEATHER))
+                    set_task(queued_task+++5.0,"@country_finder",players[q]+WEATHER)
+            //client_putinserver(players[q])
+
+            //if they have a task set-up already adjust it
+            if(task_exists(players[q] + WEATHER))
+                change_task(players[q] + WEATHER,retask)
+            //if they don'y have a task set-up make one
+            else
+            {
+                set_task(queued_task,"client_temp",players[q]);
+                server_print "%f|Queue task time for %s", queued_task, ClientName[players[q]]
+                change_task(iQUEUE, 45.0)
+                //server_print "new q time is %i",
+            }
+
         }
 
     }
-    else//count the inactive passes before lengthing task time.
+    //count the inactive passes before lengthing task time.
     //queue counter
     if(g_q_weight < gopher)
     {
@@ -950,12 +968,13 @@ public plugin_end()
     }
 
     //queue sleeper
-    if(g_q_weight >= gopher)
+    else if(g_q_weight >= gopher)
     {
             change_task(iQUEUE, 500.0);
             server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
             g_q_weight = 1;
     }
+    else server_print "^n------------------------------------------THE QUEUE!^n------------------------------------------"
 
 }
 
