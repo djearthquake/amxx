@@ -76,8 +76,18 @@ new const MESSAGE[] = "Proxysnort by Spinx"
 new risk[ 4 ], g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE
 new bool:g_has_been_checked[MAX_PLAYERS]
-
+new Trie:g_already_checked
 new g_clientemp_version
+
+enum _:Client_proxy
+{
+    SzAddress[ MAX_IP_LENGTH_V6 ],
+    SzIsp[ MAX_RESOURCE_PATH_LENGTH ],
+    SzProxy[ 2 ],
+    iRisk[ 4]
+}
+new Data[ Client_proxy ]
+
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
@@ -94,23 +104,40 @@ public plugin_init()
     new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name));
     set_pcvar_string(g_cvar_tag, mod_name);
+    g_already_checked = TrieCreate()
 }
 public client_putinserver(id)
 {
     if(is_user_bot(id) || is_user_hltv(id))
         return PLUGIN_HANDLED_MAIN
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id) && !g_has_been_checked[id])
+
+    if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
     {
-        get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT );
+
+        get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
         new total = iPlayers()
-        new Float:retask = (float(total++)*3.0)
-        new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
-        server_print "%s task input time = %f", PLUGIN,task_expand
-        if(!task_exists(id))
-            set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+        Data[SzAddress] = ip
+        if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+        {
+            new Float:retask = (float(total++)*3.0)
+            new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
+            server_print "%s task input time = %f", PLUGIN,task_expand
+            Data[SzAddress] = ip
+            TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+            if(!task_exists(id))
+                set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+        }
+        else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && Data[ SzProxy ] == 1)
+        {
+            handle_proxy_user(id)
+            server_print "IP is NOT ok"
+        }
+        else
+            server_print "IP is ok"
+
+
     }
-    else server_print "Client checked earlier...stopping %s", PLUGIN
-    return PLUGIN_CONTINUE;
+    return PLUGIN_CONTINUE
 }
 public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 {
@@ -202,6 +229,25 @@ stock get_user_profile(id)
     get_user_ip(id,Ip,charsmax(Ip),1);
     return authid, Ip, name
 }
+stock handle_proxy_user(id)
+{
+    if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
+    {
+        for (new admin=1; admin<=g_maxPlayers; admin++)
+            if (is_user_connected(admin) && is_user_admin(admin))
+                client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+        client_cmd 0,"spk ^"bad entry detected^""
+    }
+    //ban steamid
+    if (get_pcvar_num(g_cvar_iproxy_action) == 3)
+        server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
+    //ban ip
+    if (get_pcvar_num(g_cvar_iproxy_action) == 2)
+        server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
+    //kick
+    if (get_pcvar_num(g_cvar_iproxy_action) == 1)
+        server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
+}
 @read_web(proxy_snort)
 {
     new id = proxy_snort - USERREAD
@@ -225,24 +271,11 @@ stock get_user_profile(id)
             //Proxy user treatments
             if (containi(proxy_socket_buffer, "yes") != charsmin || containi(proxy_socket_buffer, "Compromised") != charsmin)
             {
+                Data[SzProxy] = 1
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
-                if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
-                {
-                    for (new admin=1; admin<=g_maxPlayers; admin++)
-                        if (is_user_connected(admin) && is_user_admin(admin))
-                            client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
-                    client_cmd 0,"spk ^"bad entry detected^""
-                }
-                //ban steamid
-                if (get_pcvar_num(g_cvar_iproxy_action) == 3)
-                    server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
-                //ban ip
-                if (get_pcvar_num(g_cvar_iproxy_action) == 2)
-                    server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
-                //kick
-                if (get_pcvar_num(g_cvar_iproxy_action) == 1)
-                    server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
+                handle_proxy_user(id)
             }
             //What if they aren't on proxy or VPN?
             if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
@@ -253,6 +286,8 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
+                Data[SzProxy] = 0
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 server_print "No proxy found on %s, %s with error on packet",name,authid
                 client_print 0, print_console, "No proxy found on %s, with error on packet", name
             }
