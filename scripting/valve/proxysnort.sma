@@ -87,6 +87,7 @@ new bool:IS_SOCKET_IN_USE
 new bool:g_has_been_checked[MAX_PLAYERS]
 new Trie:g_already_checked
 new g_clientemp_version
+new SzSave[MAX_CMD_LENGTH]
 
 enum _:Client_proxy
 {
@@ -114,6 +115,7 @@ public plugin_init()
     get_modname(mod_name, charsmax(mod_name));
     set_pcvar_string(g_cvar_tag, mod_name);
     g_already_checked = TrieCreate()
+    ReadProxyFromFile( )
 }
 public client_putinserver(id)
 {
@@ -281,7 +283,11 @@ stock handle_proxy_user(id)
             if (containi(proxy_socket_buffer, "yes") != charsmin || containi(proxy_socket_buffer, "Compromised") != charsmin)
             {
                 Data[SzProxy] = 1
-                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) 
+                @file_data(SzSave)
+    
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
                 handle_proxy_user(id)
@@ -289,6 +295,13 @@ stock handle_proxy_user(id)
             //What if they aren't on proxy or VPN?
             if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
             {
+                Data[SzProxy] = 0
+
+                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+
+                @file_data(SzSave)
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
+
                 server_print "No proxy found on %s, %s error-free",name,authid
                 if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
                     g_has_been_checked[id] = true //stop double prints
@@ -296,7 +309,11 @@ stock handle_proxy_user(id)
             if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
                 Data[SzProxy] = 0
+                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+
+                @file_data(SzSave)
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
                 server_print "No proxy found on %s, %s with error on packet",name,authid
                 client_print 0, print_console, "No proxy found on %s, with error on packet", name
             }
@@ -422,6 +439,62 @@ stock handle_proxy_user(id)
     }
 
 }
+@file_data(SzSave[MAX_CMD_LENGTH])
+{
+    server_print "%s|trying save", PLUGIN
+    new szFilePath[ MAX_CMD_LENGTH ]
+    get_configsdir( szFilePath, charsmax( szFilePath ) )
+    add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
+
+    write_file(szFilePath, SzSave)
+}
+
+public ReadProxyFromFile( )
+{
+    new szDataFromFile[ MAX_CMD_LENGTH ]
+    new szFilePath[ MAX_CMD_LENGTH ]
+    get_configsdir( szFilePath, charsmax( szFilePath ) )
+    add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
+    new debugger = get_pcvar_num(g_cvar_debugger)
+
+    new f = fopen( szFilePath, "rt" )
+
+    if( !f )
+    {
+        new szMessage[ MAX_USER_INFO_LENGTH ]
+        formatex( szMessage, charsmax( szMessage ), "Unable to open %s", szFilePath )
+        set_fail_state( szMessage )
+    }
+
+    while( !feof( f ) )
+    {
+        fgets( f, szDataFromFile, charsmax( szDataFromFile ) )
+
+        if( !szDataFromFile[ 0 ] || szDataFromFile[ 0 ] == ';' || szDataFromFile[ 0 ] == '/' && szDataFromFile[ 1 ] == '/' )
+            continue
+
+        trim
+        (
+            szDataFromFile
+        )
+        parse
+        (
+            szDataFromFile,
+            Data[ SzAddress ], charsmax( Data[ SzAddress ] ),
+            Data[ SzProxy ], charsmax( Data[SzProxy] )
+        )
+
+        if(debugger)
+            server_print "Read %s,%i^n^nfrom file",Data[ SzAddress ], Data[ SzProxy ]
+
+        TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
+    }
+    fclose( f )
+    if(debugger)
+        server_print "................Proxy list from file....................."
+}
+
 public plugin_end()
     regex_free(hPattern)
 
