@@ -1,12 +1,13 @@
 #include <amxmodx>
 #include <amxmisc>
+#include <engine>
 #include <engine_stocks>
 #include <fakemeta>
 #include <fun>
 #include <hamsandwich>
-
-#define MAX_NAME_LENGTH  32
-#define charsmin -1
+#define MAX_NAME_LENGTH 32
+#define MAX_CMD_LENGTH 128
+#define charsmin        -1
 
 new const GIVES[][]=
 {
@@ -41,23 +42,27 @@ new const GIVES[][]=
 }
 
 new const REPLACE[][] = {"ammo_", "weapon_", "item_"}
-new const tracer[]={"ammo_buckshot"}
-new g_map_ent
+new const tracer[]= "ammo_buckshot"
 
 public plugin_init()
 {
     register_plugin("Gives random weapon(s) on spawn.", "A", ".sρiηX҉.");
-    RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
 
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
-    g_map_ent = find_ent_by_class(charsmin, tracer)
-    if (containi(mname,"op4c") > charsmin || g_map_ent)
-        pause "a";
+
+    if (containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer))
+    {
+        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)
+        pause("a")
+    }
+
+    RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
 }
 
 public client_getfreestuff(id)
 {
+
     if( !is_user_connected(id) || is_user_bot(id) )
     return PLUGIN_HANDLED_MAIN;
 
