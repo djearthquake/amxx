@@ -87,6 +87,7 @@ new bool:IS_SOCKET_IN_USE
 new bool:g_has_been_checked[MAX_PLAYERS]
 new Trie:g_already_checked
 new g_clientemp_version
+new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH]
 new SzSave[MAX_CMD_LENGTH]
 
 enum _:Client_proxy
@@ -115,7 +116,20 @@ public plugin_init()
     get_modname(mod_name, charsmax(mod_name));
     set_pcvar_string(g_cvar_tag, mod_name);
     g_already_checked = TrieCreate()
+    @init_proxy_file()
+}
+@init_proxy_file()
+{
+    static SzLoopback[] = "127.0.0.1"
+    Data[SzAddress] = SzLoopback
+    Data[ SzProxy ] = 1
+    if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                
+    formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+    @file_data(SzSave)
     ReadProxyFromFile( )
+
 }
 public client_putinserver(id)
 {
@@ -147,6 +161,12 @@ public client_putinserver(id)
             server_print "[%s] %s is ok^n^n%s", PLUGIN, Data[ SzAddress ],Data[SzIsp]
 
 
+    }
+    else
+    {
+        get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
+        if(!equali(ClientAuth[id], "BOT"))
+            handle_proxy_user(id)
     }
     return PLUGIN_CONTINUE
 }
@@ -461,9 +481,11 @@ public ReadProxyFromFile( )
 
     if( !f )
     {
-        new szMessage[ MAX_USER_INFO_LENGTH ]
-        formatex( szMessage, charsmax( szMessage ), "Unable to open %s", szFilePath )
-        set_fail_state( szMessage )
+        //new szMessage[ MAX_USER_INFO_LENGTH ]
+        //formatex( szMessage, charsmax( szMessage ), "Unable to open %s", szFilePath )
+        //set_fail_state( szMessage )
+        @init_proxy_file()
+        return
     }
 
     while( !feof( f ) )
