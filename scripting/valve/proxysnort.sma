@@ -116,7 +116,7 @@ public plugin_init()
     get_modname(mod_name, charsmax(mod_name));
     set_pcvar_string(g_cvar_tag, mod_name);
     g_already_checked = TrieCreate()
-    @init_proxy_file()
+    ReadProxyFromFile( )
 }
 @init_proxy_file()
 {
@@ -481,9 +481,6 @@ public ReadProxyFromFile( )
 
     if( !f )
     {
-        //new szMessage[ MAX_USER_INFO_LENGTH ]
-        //formatex( szMessage, charsmax( szMessage ), "Unable to open %s", szFilePath )
-        //set_fail_state( szMessage )
         @init_proxy_file()
         return
     }
