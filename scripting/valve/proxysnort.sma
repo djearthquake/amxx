@@ -138,11 +138,16 @@ public client_putinserver(id)
 
     if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
     {
+        static SzLoopback[] = "127.0.0.1"
 
         get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
         new total = iPlayers()
         Data[SzAddress] = ip
-        if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+
+        if(equali(ip,SzLoopback))
+            client_proxycheck(ip,id)
+
+        else if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
         {
             new Float:retask = (float(total++)*3.0)
             new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
@@ -152,7 +157,7 @@ public client_putinserver(id)
             if(!task_exists(id))
                 set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
         }
-        else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && Data[ SzProxy ] == 1)
+        else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
         {
             handle_proxy_user(id)
             server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
@@ -262,22 +267,25 @@ stock get_user_profile(id)
 }
 stock handle_proxy_user(id)
 {
-    if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
+    if(is_user_connected(id))
     {
-        for (new admin=1; admin<=g_maxPlayers; admin++)
-            if (is_user_connected(admin) && is_user_admin(admin))
-                client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
-        client_cmd 0,"spk ^"bad entry detected^""
+        if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
+        {
+            for (new admin=1; admin<=g_maxPlayers; admin++)
+                if (is_user_connected(admin) && is_user_admin(admin))
+                    client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+            client_cmd 0,"spk ^"bad entry detected^""
+        }
+        //ban steamid
+        if (get_pcvar_num(g_cvar_iproxy_action) == 3)
+            server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
+        //ban ip
+        if (get_pcvar_num(g_cvar_iproxy_action) == 2)
+            server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
+        //kick
+        if (get_pcvar_num(g_cvar_iproxy_action) == 1)
+            server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
     }
-    //ban steamid
-    if (get_pcvar_num(g_cvar_iproxy_action) == 3)
-        server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
-    //ban ip
-    if (get_pcvar_num(g_cvar_iproxy_action) == 2)
-        server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
-    //kick
-    if (get_pcvar_num(g_cvar_iproxy_action) == 1)
-        server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
 }
 @read_web(proxy_snort)
 {
@@ -310,7 +318,9 @@ stock handle_proxy_user(id)
     
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
-                handle_proxy_user(id)
+                //task per data wasn't being saved, kicking too quickly
+                //handle_proxy_user(id)
+                set_task(1.0,"handle_proxy_user",id)
             }
             //What if they aren't on proxy or VPN?
             if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
@@ -505,7 +515,7 @@ public ReadProxyFromFile( )
 
         if(debugger)
             server_print "Read %s,%i^n^nfrom file",Data[ SzAddress ], Data[ SzProxy ]
-
+        str_to_num(Data[ SzProxy ])
         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
 
     }
