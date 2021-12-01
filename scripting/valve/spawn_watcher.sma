@@ -62,7 +62,7 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
             get_user_name(victim,VictimN,charsmax(VictimN))
 
             if(!is_user_bot(attacker))
-                client_print(attacker,print_chat,"[AMXX] Attacking %s when under 'Spawn Protection' mirrors damage! %d|HP ",VictimN,damage)
+                client_print(attacker,print_chat,"[AMXX] Attacking %s when under 'Spawn Protection' mirrors damage! %d|HP ",VictimN,floatround(damage))
     
             new shell = get_pcvar_num(g_shell)
             if(is_user_connected(attacker))
