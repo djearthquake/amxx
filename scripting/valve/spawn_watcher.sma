@@ -11,7 +11,7 @@ new HamHook:XhookDamage_spawn
 
 public plugin_init()
 {
-    register_plugin("Spawn Protection", "8.1", "SPiNX|Peli") // Peli maintained up until 8.0. Profile:https://forums.alliedmods.net/member.php?u=86
+    register_plugin("Spawn Protection", "8.1", "SPiNX|Peli") // Peli maintained up until 7.0. Profile:https://forums.alliedmods.net/member.php?u=86
     //Peli's plugin https://forums.alliedmods.net/showthread.php?t=1886
     
     register_concmd("amx_spawn_time", "cmd_sptime", ADMIN_CVAR, "1 through 10 to set Spawn Protection time") // Concmd (Console Command) for the CVAR time
