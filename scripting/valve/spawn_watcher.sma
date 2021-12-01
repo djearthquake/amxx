@@ -31,7 +31,7 @@ public plugin_init()
 public plugin_precache()
 {
     g_Trail = precache_model("sprites/smoke.spr")
-    g_Trail = precache_generic("sprites/smoke.spr")
+    precache_generic("sprites/smoke.spr")
 }
 
 public client_disconnected(id)
