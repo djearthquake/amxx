@@ -2,6 +2,7 @@
 #include <amxmisc>
 #include <engine>
 #include <engine_stocks>
+#include <fakemeta>
 #include <fun>
 #include <hamsandwich>
 
@@ -52,7 +53,7 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
         {
             set_user_godmode(attacker, 0)
             fakedamage(attacker,"Spawn Hacking",damage*1.0,DMG_TIMEBASED)
-            if(damage > 99.0)
+            if(damage > 99.0 || pev(victim,pev_health) - damage <= 1.0 )
             {
                 client_print(0,print_chat,"Killing %n for spawn violation",attacker);
                 fakedamage(attacker,"Spawn kill in godmode.",1000.0,DMG_TIMEBASED)
