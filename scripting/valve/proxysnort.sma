@@ -133,10 +133,10 @@ public plugin_init()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id) || is_user_hltv(id))
+    if(is_user_bot(id))
         return PLUGIN_HANDLED_MAIN
 
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0 && !is_user_connecting(id))
+    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
     {
         static SzLoopback[] = "127.0.0.1"
 
@@ -177,7 +177,7 @@ public client_putinserver(id)
 }
 public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 {
-    if (is_user_connected(id) && !is_user_connecting(id) && id > 0 )
+    //if (is_user_connected(id) && !is_user_connecting(id) && id > 0 )
     if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id))
     if ( !is_user_bot(id) )
     {
@@ -267,6 +267,7 @@ stock get_user_profile(id)
 }
 stock handle_proxy_user(id)
 {
+    bright_message()
     if(is_user_connected(id))
     {
         if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
@@ -394,7 +395,7 @@ stock handle_proxy_user(id)
         socket_close(g_proxy_socket);
         if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
     }
-    else if (containi(proxy_socket_buffer, "risk") == charsmin && get_pcvar_num(g_cvar_debugger))
+    else if (containi(proxy_socket_buffer, "risk") == charsmin /*&& get_pcvar_num(g_cvar_debugger)*/)
     {
         //must be here to see the risk and provider
         set_task(3.5, "@read_web",id+USERREAD);
@@ -525,7 +526,10 @@ public ReadProxyFromFile( )
 }
 
 public plugin_end()
+{
     regex_free(hPattern)
+    TrieDestroy(g_already_checked)
+}
 
 public bright_message()
 {
