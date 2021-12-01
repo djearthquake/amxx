@@ -313,17 +313,17 @@ stock handle_proxy_user(id)
                 Data[SzProxy] = 1
                 formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
 
-                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) 
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 @file_data(SzSave)
-    
+
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
                 //task per data wasn't being saved, kicking too quickly
                 set_task(1.0,"handle_proxy_user",id)
-                return
+
             }
             //What if they aren't on proxy or VPN?
-            else if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
+            if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
             {
                 Data[SzProxy] = 0
 
@@ -336,7 +336,7 @@ stock handle_proxy_user(id)
                 if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
                     g_has_been_checked[id] = true //stop double prints
             }
-            else if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
+            if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
                 Data[SzProxy] = 0
                 formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
@@ -348,7 +348,7 @@ stock handle_proxy_user(id)
                 client_print 0, print_console, "No proxy found on %s, with error on packet", name
             }
             //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
-            else if (containi(proxy_socket_buffer, "error") != charsmin  && containi(proxy_socket_buffer, "message") != charsmin )
+            if (containi(proxy_socket_buffer, "error") != charsmin  && containi(proxy_socket_buffer, "message") != charsmin )
             {
                 new msg[MAX_CMD_LENGTH];
                 copyc(msg, charsmax (msg), proxy_socket_buffer[containi(proxy_socket_buffer, "message") + 11], '"');
