@@ -1,41 +1,79 @@
 #include amxmodx
+#include amxmisc
 #include engine
+#include hamsandwich
 #include fakemeta
 
 #define alert 911
-#define SPEC_PRG "testing/of_spectate.amxx"
+#define SPEC_PRG "of_spectate.amxx"
 //Define your spec plugin pathway!
+#define MAX_PLAYERS                32
+#define MAX_RESOURCE_PATH_LENGTH   64
+#define MAX_MENU_LENGTH            512
+#define MAX_NAME_LENGTH            32
+#define MAX_AUTHID_LENGTH          64
+#define MAX_IP_LENGTH              16
+#define MAX_USER_INFO_LENGTH       256
+#define charsmin                  -1
+/*
+#if AMXX_VERSION_NUM == 182
+    #define %n %s
+#endif*/
 new g_timer[MAX_PLAYERS + 1]
-new g_afk_spec_player, afk
+new g_afk_spec_player/*, afk*/
 new const CvarAFKTimeDesc[] = "Seconds before moving AFK player into spectator mode."
-new sleepy[MAX_PLAYERS + 1]
+new sleepy[MAX_PLAYERS + 1], g_spec
+new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
+new g_mname[MAX_NAME_LENGTH]
+new bool:b_Op4c
+
+#define ALRT 84641
+#define FADE_HOLD (1<<2)
 
 public plugin_init()
 {
     register_plugin("Connect Alert System","1.0","SPiNX");
-    set_task(1.0, "@new_users",alert,"",0,"b");
-    bind_pcvar_num( create_cvar("mp_autospec", "90", FCVAR_NONE, CvarAFKTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 300.0), g_afk_spec_player)
+    set_task(1.0, "new_users",alert,"",0,"b");
+
+    #if AMXX_VERSION_NUM == 182
+    g_afk_spec_player = register_cvar("mp_autospec", "75")
+    #else
+        bind_pcvar_num(get_cvar_pointer("mp_autospec") ? get_cvar_pointer("mp_autospec") : create_cvar("mp_autospec", "90", FCVAR_NONE, CvarAFKTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 300.0),g_afk_spec_player)
+    #endif
+
+    g_afk_spec_player = register_cvar("mp_autospec", "75")
+
+    g_spec = get_cvar_pointer("sv_spectate_spawn")
+    RegisterHam(Ham_Spawn, "player", "screensaver_stop", 1);
+    get_mapname(g_mname, charsmax(g_mname))
+    if(containi(g_mname, "op4c") == charmin)
+        b_Op4c=true
 }
 
 public client_putinserver(index)
-
-    if(!task_exists(index) && !is_user_bot(index))
-    {
-        set_task(3.0,"@alert", index)
-        g_timer[index] = 0
-    }
-
-@alert()
-    client_cmd(0,"spk ^"alert a intruder is here^"")
-
-public client_authorized(id)
 {
-    client_print 0,print_chat,"%n is lurking...", id
-    g_timer[id] = 0
-    server_print "%n is lurking...", id
+
+    if(!task_exists(ALRT) && !is_user_bot(index) && !is_user_admin(index))
+    {
+        set_task(1.75,"the_alert", ALRT)
+    }
+    g_timer[index] = 1
 }
 
-@new_users()
+public the_alert()
+{
+    client_cmd(0,"spk ^"alert a intruder is here^"")
+}
+
+public client_authorized(id) //auth was messing up names on download
+{
+    get_user_name(id,ClientName[id],charsmax(ClientName[]))
+    client_print 0,print_chat,"%s is lurking...", ClientName[id]
+    server_print "%s is lurking...", ClientName[id]
+}
+
+
+public new_users()
 {
     new players[MAX_PLAYERS], playercount, downloader;
     get_players(players,playercount,"i");
@@ -46,19 +84,43 @@ public client_authorized(id)
 
         if(is_user_connecting(players[downloader]))
         {
+            set_hudmessage(255, 255, 255, 0.00, 0.50, .effects= 0 , .holdtime= 5.0)
             new uptime = g_timer[players[downloader]]++
-            server_print"%n uptime:%i", players[downloader], uptime
+            #if AMXX_VERSION_NUM == 182
+            server_print"%s download time:%i", ClientName[players[downloader]], uptime
+            #else
+            server_print"%n download time:%i", players[downloader], uptime
+            #endif
 
             if(uptime < 5)
             {
+                #if AMXX_VERSION_NUM == 182
+
+                client_print 0,print_chat,"%s is connecting...", ClientName[players[downloader]]
+                server_print "%s is connecting...", ClientName[players[downloader]
+
+                #else
                 client_print 0,print_chat,"%n is connecting...", players[downloader]
                 server_print "%n is connecting...", players[downloader]
+
+                #endif
             }
 
             else
             {
+                #if AMXX_VERSION_NUM == 182
+
+                show_hudmessage 0, "%s is downloading...", ClientName[players[downloader]]
+                client_print 0,print_chat,"%s is downloading...", ClientName[players[downloader]]
+                server_print "%s is downloading...", ClientName[players[downloader]]
+
+                #else
+
+                show_hudmessage 0, "%n is downloading...", players[players[downloader]]
                 client_print 0,print_chat,"%n is downloading...", players[downloader]
                 server_print "%n is downloading...", players[downloader]
+
+                #endif
             }
 
         }
@@ -66,21 +128,75 @@ public client_authorized(id)
         if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]))
         {
             new uptime = sleepy[players[downloader]]++
-            client_print players[downloader],print_chat, "AFK time:%i", uptime
 
-            if (uptime > g_afk_spec_player )
+            if (uptime > get_pcvar_num(g_afk_spec_player))
             {
-                dllfunc(DLLFunc_ClientPutInServer, players[downloader])
-                if(callfunc_begin("@go_spec",SPEC_PRG))
-                log_amx "Sending %n to spec", players[downloader]
+                set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
+
+                if(g_spec && callfunc_begin("@go_spec",SPEC_PRG))
                 {
+                    if(!g_spec)
+                        return
+
+                    log_amx "Sending %s to spec", ClientName[players[downloader]]
+
+                    dllfunc(DLLFunc_ClientPutInServer, players[downloader])
+
                     callfunc_push_int(players[downloader])
                     callfunc_end()
-                    sleepy[players[downloader]] = 0
+                    sleepy[players[downloader]] = 1
+                }
+                else
+                {
+                    show_hudmessage 0, "%s is NO LONGER active...", ClientName[players[downloader]]
+                    //client_print 0, print_chat, "%s is NO LONGER active...", ClientName[players[downloader]]
+                    screensaver(players[downloader], uptime)
+                    //sleepy[players[downloader]] = 1
                 }
             }
             else
-                server_print( "%n is NO LONGER active...", players[downloader])
+            {
+                show_hudmessage 0, "%s is NO LONGER active...", ClientName[players[downloader]]
+                client_print players[downloader],print_chat, "AFK time:%i", uptime
+                //client_print 0, print_console, "%s is NO LONGER active...", ClientName[players[downloader]]
+            }
         }
     }
+}
+
+public screensaver_stop(id,{Float,_}:...)
+{
+    new duration = 1<<12
+    new holdTime = 1<<8
+    new fadeType = FADE_HOLD
+    new blindness = 0
+    g_timer[id] = 1
+    sleepy[id] = 1
+    if (is_user_connected(id) && !is_user_bot(id))
+    {
+        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id); // unreliable was failing too often
+        write_short(duration); // fade lasts this long duration
+        write_short(holdTime); // fade lasts this long hold time
+        write_short(fadeType); // fade type
+        write_byte(0); // fade red
+        write_byte(0); // fade green
+        write_byte(0); // fade blue
+        write_byte(blindness); // fade alpha
+        message_end();
+    }
+}
+
+public screensaver(id, uptime,{Float,_}:...)
+if (is_user_connected(id) && !is_user_bot(id) && !b_Op4c)
+{
+    client_print id,print_center, "Screen saver active for:%i seconds", uptime
+    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // use the magic #1 for "one client"
+    write_short(1<<12); // fade lasts this long duration
+    write_short(1<<8); // fade lasts this long hold time
+    write_short(FADE_HOLD); // fade type
+    write_byte(0); // fade red
+    write_byte(0); // fade green
+    write_byte(0); // fade blue
+    write_byte(255); // fade alpha
+    message_end();
 }
