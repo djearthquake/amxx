@@ -53,7 +53,7 @@ public plugin_init()
     ReadGagsFromFile( )
 
     debugger = get_pcvar_num(g_advise) > 1
-    register_concmd( "amx_gag", "GagCmd", ADMIN_FLAG, "<name to block> <HH:MM:SS MM/DD/YYYY>" )
+    register_concmd( "amx_gag", "GagCmd", ADMIN_FLAG, "<STEAMID to block> <HH:MM:SS MM/DD/YYYY>" )
 
 }
 
