@@ -13,7 +13,6 @@ new g_aggers;
 new g_advise;
 
 new Trie:g_Orders
-
 new g_Dcheck[MAX_IP_LENGTH]
 new szDataFromFile[ MAX_CMD_LENGTH ]
 
@@ -54,7 +53,7 @@ public plugin_init()
     ReadGagsFromFile( )
 
     debugger = get_pcvar_num(g_advise) > 1
-    register_concmd( "amx_gag", "GagCmd", ADMIN_FLAG, "<name to block>" )
+    register_concmd( "amx_gag", "GagCmd", ADMIN_FLAG, "<name to block> <HH:MM:SS MM/DD/YYYY>" )
 
 }
 
@@ -247,6 +246,9 @@ public updated_gag_time(id)
 
 }
 
+public plugin_end()
+    TrieDestroy(g_Orders)
+
 stock time_now()
 {
     static iHour,iMin,iSec;
@@ -271,8 +273,8 @@ stock time_now()
  * ; sample of gagged_players.ini file
  * ; path addons/amxmodx/configs
  * ; remove semi-colon to uncomment
- * ;"STEAMID1" "HH:MM:SS" "MM/DD/2050"
- * ;"STEAMID2" "HH:MM:SS" "MM/DD/2020"
- * ;"STEAMID3" "HH:MM:SS" "MM/DD/2030"
- * ;"STEAM_0:1:10012" "02:02:02" "12/01/2021"
+ * ;"STEAMID1" "HH:MM:SS MM/DD/2050"
+ * ;"STEAMID2" "HH:MM:SS MM/DD/2020"
+ * ;"STEAMID3" "HH:MM:SS MM/DD/2030"
+ * ;"STEAM_0:1:10012" "02:02:02 12/01/2021"
 */
