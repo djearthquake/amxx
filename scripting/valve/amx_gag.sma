@@ -150,20 +150,6 @@ public GagCmd( id, level, cid )
     add( szFilePath, charsmax( szFilePath ), "/gagged_players.ini" )
 
     write_file(szFilePath, SzGag)
-/*
-    new f = fopen( szFilePath, "at" )
-
-    if( !f )
-    {
-        new szMessage[ MAX_USER_INFO_LENGTH ]
-        formatex( szMessage, charsmax( szMessage ), "Unable to open %s", szFilePath )
-        set_fail_state( szMessage )
-    }
-    //native fputs(file, const text[], bool:null_term = false);
-    fputs( f, SzGag, false )
-
-    fclose( f )
-*/
 }
 
 public ReadGagsFromFile( )
