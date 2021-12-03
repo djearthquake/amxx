@@ -159,7 +159,7 @@ public client_putinserver(id)
         }
         else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
         {
-            handle_proxy_user(id)
+            @handle_proxy_user(id)
             server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
         }
         else
@@ -171,7 +171,7 @@ public client_putinserver(id)
     {
         get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
         if(!equali(ClientAuth[id], "BOT"))
-            handle_proxy_user(id)
+            @handle_proxy_user(id)
     }
     return PLUGIN_CONTINUE
 }
@@ -265,7 +265,7 @@ stock get_user_profile(id)
     get_user_ip(id,Ip,charsmax(Ip),1);
     return authid, Ip, name
 }
-stock handle_proxy_user(id)
+@handle_proxy_user(id)
 {
     bright_message()
     if(is_user_connected(id))
@@ -320,7 +320,7 @@ stock handle_proxy_user(id)
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
                 //task per data wasn't being saved, kicking too quickly
-                set_task(1.0,"handle_proxy_user",id)
+                set_task(1.0,"@handle_proxy_user",id)
 
             }
             //What if they aren't on proxy or VPN?
@@ -395,7 +395,7 @@ stock handle_proxy_user(id)
         socket_close(g_proxy_socket);
         if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
     }
-    else if (containi(proxy_socket_buffer, "risk") == charsmin /*&& get_pcvar_num(g_cvar_debugger)*/)
+    else if (containi(proxy_socket_buffer, "risk") == charsmin)
     {
         //must be here to see the risk and provider
         set_task(3.5, "@read_web",id+USERREAD);
