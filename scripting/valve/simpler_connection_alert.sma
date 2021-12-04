@@ -117,8 +117,8 @@ public new_users()
                 #else
 
                 show_hudmessage 0, "%n is downloading...", players[players[downloader]]
-                client_print 0,print_chat,"%n is downloading...", players[downloader]
-                server_print "%n is downloading...", players[downloader]
+                client_print 0,print_chat,"%n is downloading...", players[players[downloader]]
+                server_print "%n is downloading...", players[players[downloader]]
 
                 #endif
             }
