@@ -234,7 +234,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 @write_web(text[MAX_USER_INFO_LENGTH], reader)
 {
     new id = reader - USERWRITE;
-    if(is_user_connected(id) && id > 0 && !g_has_been_checked[id])
+    if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
             set_task(10.0,"client_putinserver",id)
@@ -291,20 +291,18 @@ stock get_user_profile(id)
 @read_web(proxy_snort)
 {
     new id = proxy_snort - USERREAD
-    if( id > 0 && !g_has_been_checked[id])
-    if (is_user_connected(id) && !is_user_bot(id))
+    if( id > 0 && !g_has_been_checked[id] )
+    if (!is_user_bot(id))
     {
         get_user_profile(id)
 
         if(get_pcvar_num(g_cvar_debugger) > 1)
             server_print "%s %s by %s:reading the socket", PLUGIN, VERSION, AUTHOR
         #if AMXX_VERSION_NUM != 182
-        if (socket_is_readable(g_proxy_socket, 100000))
+        if(socket_is_readable(g_proxy_socket, 100000))
         #endif
-        {
-            socket_recv(g_proxy_socket,proxy_socket_buffer,charsmax (proxy_socket_buffer));
-        }
-        if (!equal(proxy_socket_buffer, ""))
+        socket_recv(g_proxy_socket,proxy_socket_buffer,charsmax (proxy_socket_buffer));
+        if(!equal(proxy_socket_buffer, ""))
         {
             if(get_pcvar_num(g_cvar_debugger) > 2)
                 server_print "%s", proxy_socket_buffer
@@ -374,59 +372,67 @@ stock get_user_profile(id)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
             }
-        }
-    }
-    if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
-    {
-        new risk_buffer_fix = containi(proxy_socket_buffer, "yes") != charsmin ? 7 : 5
-        copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
-        Data[iRisk] = risk
-        TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-        if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
-        {
-            server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
-            if(get_pcvar_num(g_cvar_debugger) > 2 )
-                server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
-            for (new admin=1; admin<=g_maxPlayers; admin++)
-                if (is_user_connected(admin) && is_user_admin(admin))
-            client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
-        }
-        g_has_been_checked[id] = true
-        socket_close(g_proxy_socket);
-        if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
-    }
-    else if (containi(proxy_socket_buffer, "risk") == charsmin)
-    {
-        //must be here to see the risk and provider
-        set_task(3.5, "@read_web",id+USERREAD);
-    }
-    else
-    {
-        g_has_been_checked[id] = true
-        socket_close(g_proxy_socket);
-        if(get_pcvar_num(g_cvar_debugger) > 4 )bright_message();
-        if (equal(proxy_socket_buffer, "") && get_pcvar_num(g_cvar_debugger) )
-        {
-            server_print "Buffer is now blank for %s|%s",name,authid
-        }
-        if(get_pcvar_num(g_cvar_debugger))
-            server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
-    }
-    if(!task_exists(id))
-        set_task(3.5, "@client_mark_socket", id);
-    if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
-    {
-        if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
-        {
-            new work[MAX_PLAYERS]
-            format(work,charsmax(work),PLUGIN,"")
-            callfunc_push_str(work)
-            callfunc_end()
-        }
+            if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
+            {
+                new risk_buffer_fix = containi(proxy_socket_buffer, "yes") != charsmin ? 7 : 5
+                copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
+                Data[iRisk] = risk
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
+                {
+                    server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                    if(get_pcvar_num(g_cvar_debugger) > 2 )
+                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                    for (new admin=1; admin<=g_maxPlayers; admin++)
+                        if (is_user_connected(admin) && is_user_admin(admin))
+                    client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                }
+                g_has_been_checked[id] = true
+                socket_close(g_proxy_socket);
+                if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
+            }
+            else if (containi(proxy_socket_buffer, "risk") == charsmin)
+            {
+                //must be here to see the risk and provider
+                set_task(3.5, "@read_web",id+USERREAD);
+            }
+            else
+            {
+                g_has_been_checked[id] = true
+                socket_close(g_proxy_socket);
+                if(get_pcvar_num(g_cvar_debugger) > 4 )bright_message();
+                if (equal(proxy_socket_buffer, "") && get_pcvar_num(g_cvar_debugger) )
+                {
+                    server_print "Buffer is now blank for %s|%s",name,authid
+                }
+                if(get_pcvar_num(g_cvar_debugger))
+                    server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
+            }
+            ///UN-Lock the socket here so other clients can be checked.
+            if(!task_exists(id))
+                set_task(3.5, "@client_mark_socket", id);
+            ///UN-Lock other script I made if used in tandom to prevent socket making game unplayable
+            if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
+            {
+                if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
+                {
+                    new work[MAX_PLAYERS]
+                    format(work,charsmax(work),PLUGIN,"")
+                    callfunc_push_str(work)
+                    callfunc_end()
+                }
+    
+            }
 
+        }
+        else if(is_user_connected(id) || is_user_connecting(id))
+            set_task(3.5, "@read_web",id+USERREAD);
+        else
+            socket_close(g_proxy_socket);
     }
-    return
+    return PLUGIN_HANDLED
 }
+
 @client_mark_socket(id)
 {
     IS_SOCKET_IN_USE = false;
