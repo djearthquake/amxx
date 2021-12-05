@@ -855,6 +855,15 @@ public read_web(feeding)
                         client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
     
                 }
+                if(equali(ClientCity[id],"") && containi(buffer, "name") > charsmin) //city blank from Geodat?
+                {
+                    new out[MAX_IP_LENGTH];
+                    copyc(out, charsmax(out), buffer[containi(buffer, "name") + 6], '"');
+                    replace(out, charsmax(out), ":", "");
+                    replace(out, charsmax(out), ",", "");
+                    log_amx "%n city is %s^nwas missing on local geoip", id, out
+                    server_print "%n city is %s",id, out
+                }
                 if(socket_close(g_Weather_Feed) == 1)
                 {
                     server_print "%s finished %s reading",PLUGIN, ClientName[id]
