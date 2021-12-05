@@ -45,7 +45,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Fri 26 Nov 2021
+    *(__ [__)*|\ | >< Sun 5 Dec 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -251,7 +251,7 @@ public client_putinserver(id)
         retask = 15.0
     new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
 
-    if(is_user_connected(mask) || is_user_connecting(mask) && !is_user_bot(mask) /*&& !is_user_hltv(mask) && !equal(ClientIP[mask],"")*/ )
+    if(is_user_connected(mask) || is_user_connecting(mask) && !is_user_bot(mask))
     {
         get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
         Data[SzAddress] = ClientIP[mask]
@@ -259,9 +259,7 @@ public client_putinserver(id)
         if(equal(ClientCountry[mask],""))
         #if AMXX_VERSION_NUM == 182
             geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
-        #endif
-
-        #if AMXX_VERSION_NUM != 182
+        #else
             geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
         #endif
         Data[SzCountry] = ClientCountry[mask]
@@ -456,32 +454,34 @@ public client_temp_filter(id)
 public client_temp(id)
 {
     if(is_user_connected(id) || is_user_connecting(id) && gotatemp[id] == false)
-
+        Data[ SzAddress ] = ClientIP[id]
+    if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
     {
-/*
-        new buf[9], country[ 4 ];
-
-        get_pcvar_string(g_cvar_units, buf, charsmax(buf));
+        new country[ 4 ];
 
         #if AMXX_VERSION_NUM == 182
             geoip_code3( ClientIP[id], country );
-        #endif
-
-        #if AMXX_VERSION_NUM != 182
+        #else
             geoip_code3_ex( ClientIP[id], country );
         #endif
 
-
         for (new heit;heit < sizeof faren_country;heit++)
+        
+        if(equali(country, faren_country[heit]))
+        {
+            set_pcvar_string(g_cvar_units, "imperial")
+            copy( Data[ifaren], charsmax(Data[ifaren]), "1" )
+        }
+        else 
+        {
+            set_pcvar_string(g_cvar_units, "metric")
+            copy( Data[ifaren], charsmax(Data[ifaren]), "0" )
+        }
 
-        if (equali(country, faren_country[heit]))
+        TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+        server_print "Adding Client units to check temp"
 
-            set_pcvar_string(g_cvar_units, "imperial");
 
-        else
-
-        set_pcvar_string(g_cvar_units, "metric");
-*/
         get_datadir(g_filepath, charsmax(g_filepath));
 
         //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING COPIED
@@ -622,29 +622,20 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         if(get_pcvar_num(g_debug))
             log_amx("Client_Temperature:Starting the sockets routine...");
 
-        //C or F based on country
-        new country[ 4 ]
-        #if AMXX_VERSION_NUM == 182
-            geoip_code3( ClientIP[id], country );
-        #else
-            geoip_code3_ex( ClientIP[id], country );
-        #endif
-
-        for (new heit;heit < sizeof faren_country;heit++)
-        if (equali(country, faren_country[heit]))
-            set_pcvar_string(g_cvar_units, "imperial");
-        else
-        set_pcvar_string(g_cvar_units, "metric");
-        /////////////////////////////////////////
-
         new Soc_O_ErroR2, constring[MAX_USER_INFO_LENGTH], uplink[27], units[9];
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink) );
-        get_pcvar_string(g_cvar_units, units, charsmax (units) );
         get_pcvar_string(g_cvar_token, token, charsmax (token) );
         g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
         //g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
 
+        ClientIP[id] = Data[ SzAddress ]
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
+            //Make sure client gets the right unit
+            str_to_num(Data[ifaren]) == 1 ? copy(units,charsmax(units),"imperial") : copy(units,charsmax(units),"metric")
+        else
+            get_pcvar_string(g_cvar_units, units, charsmax (units) );
 
+        //Pick what is more reliable or chosen first on cvar lon+lat or city to acquire temp
         if(get_pcvar_float(g_long) && g_lat[id] && g_lon[id] || equali(ClientCity[id], "") )
 
             formatex(constring, charsmax (constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n",g_lat[id], g_lon[id], units, token);
