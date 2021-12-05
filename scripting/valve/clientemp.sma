@@ -251,7 +251,7 @@ public client_putinserver(id)
         retask = 15.0
     new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
 
-    if(is_user_connected(mask) && !is_user_bot(mask) /*&& !is_user_hltv(mask) && !equal(ClientIP[mask],"")*/ )
+    if(is_user_connected(mask) || is_user_connecting(mask) && !is_user_bot(mask) /*&& !is_user_hltv(mask) && !equal(ClientIP[mask],"")*/ )
     {
         get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
         Data[SzAddress] = ClientIP[mask]
@@ -436,7 +436,7 @@ public client_temp_filter(id)
 
         {
             if(!task_exists(id))
-                set_task(16.0,"client_temp",id);
+                set_task(3.0,"client_temp",id);
             else
                 change_task(id,float(get_pcvar_num(g_timeout)*2))
         }
@@ -455,9 +455,10 @@ public client_temp_filter(id)
 
 public client_temp(id)
 {
-    if(is_user_connected(id) && gotatemp[id] == false)
+    if(is_user_connected(id) || is_user_connecting(id) && gotatemp[id] == false)
 
     {
+/*
         new buf[9], country[ 4 ];
 
         get_pcvar_string(g_cvar_units, buf, charsmax(buf));
@@ -472,26 +473,36 @@ public client_temp(id)
 
 
         for (new heit;heit < sizeof faren_country;heit++)
-        if (equal(country, faren_country[heit]))
+
+        if (equali(country, faren_country[heit]))
 
             set_pcvar_string(g_cvar_units, "imperial");
 
         else
 
         set_pcvar_string(g_cvar_units, "metric");
-
+*/
         get_datadir(g_filepath, charsmax(g_filepath));
 
+        //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING COPIED
         formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
         formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
-
-        if( (!file_exists(g_szFile[0])) || !file_exists(g_szFile[1]) )
+        if( (!file_exists(g_szFile[0])) && !file_exists(g_szFile[1]) )
         {
-            server_print "Check your Maxmind databases...%s|%s...halting to prevent crash.",g_szFile[0],g_szFile[1]
+            server_print "Check BOTH your Maxmind databases...%s|%s...halting to prevent crash.",g_szFile[0],g_szFile[1]
             pause("a");
         }
-
-
+        else if(!file_exists(g_szFile[0]))
+        {
+            server_print "Check your Maxmind database...%s...halting to prevent crash.",g_szFile[0]
+            pause("a")
+        }
+        else if(!file_exists(g_szFile[1]))
+        {
+            server_print "Check your Maxmind database...%s...halting to prevent crash.",g_szFile[1]
+            pause("a")
+        }
+        ///////////////////////////////////////////////////////////////////////
         if (task_exists(id+WEATHER))
             return PLUGIN_HANDLED;
 
@@ -500,7 +511,7 @@ public client_temp(id)
             server_print "%s IP shows as 127.0.0.1, stopping script!", ClientName[id]
             return PLUGIN_HANDLED;
         }
-/////////////////////////GEO COORDINATES GATHERING/////////////////////////////////
+        ////////////GEO COORDINATES GATHERING/////////////////////////////////
         g_lat[id] = geoip_latitude(ClientIP[id]);
         g_lon[id] = geoip_longitude(ClientIP[id]);
 
@@ -604,12 +615,27 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 
     new id = feeding - WEATHER;
 
-    if(is_user_connected(id))
+    if(is_user_connected(id) || is_user_connecting(id) && !gotatemp[id])
 
     {
 
         if(get_pcvar_num(g_debug))
             log_amx("Client_Temperature:Starting the sockets routine...");
+
+        //C or F based on country
+        new country[ 4 ]
+        #if AMXX_VERSION_NUM == 182
+            geoip_code3( ClientIP[id], country );
+        #else
+            geoip_code3_ex( ClientIP[id], country );
+        #endif
+
+        for (new heit;heit < sizeof faren_country;heit++)
+        if (equali(country, faren_country[heit]))
+            set_pcvar_string(g_cvar_units, "imperial");
+        else
+        set_pcvar_string(g_cvar_units, "metric");
+        /////////////////////////////////////////
 
         new Soc_O_ErroR2, constring[MAX_USER_INFO_LENGTH], uplink[27], units[9];
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink) );
@@ -714,7 +740,7 @@ public read_web(feeding)
         {
             server_print "We have a clientemp buffer"
     
-            if (get_timeleft() > 30)
+            if (get_timeleft() > 30) ///Refrain from running sockets on map change!
             {
                 server_print "%s:Ck temp",PLUGIN
                 new out[8];
