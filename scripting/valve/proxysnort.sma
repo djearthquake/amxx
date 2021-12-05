@@ -1,983 +1,614 @@
-#define PROXY_SCRIPT "proxysnort.amxx" //This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
+#define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
+//This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
 ///If you do not use it, ignore or study it.
-///https://github.com/djearthquake/amxx/blob/main/scripting/valve/proxysnort.sma
+//https://github.com/djearthquake/amxx/blob/main/scripting/valve/clientemp.sma
 //#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
 //#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
+/**
+*    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
+*
+*    Copyleft (C) March 2020 .sρiηX҉.
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as
+*    published by the Free Software Foundation, either version 3 of the
+*    License, or (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*    05/01/2020 SPiNX
+*    Change log 1.0 to 1.1
+*    -Resolve occasional Run time error 4: index out of bounds @read_web (Provider/Risk fields)
+*
+*    06/17/2020 SPiNX
+*    Change log 1.1 to 1.2
+*    -Updated Regex pattern due to 'obvious typo' and tested via regexr.com.
+*
+*    09/29/2020 SPiNX
+*    Change log 1.2 to 1.3
+*    -Bug fixes. Optimizations. Less load on CPU and no more double prints.
+*
+*    07/17/2021 SPiNX
+*    Change log 1.3 to 1.4
+*    -VPN checking.
+*    -Finished migrating the messaging into debug mode.
+*    -Spread out proxy check tasks.
+*
+*    08/02/2021 SPiNX
+*    Change log 1.4 to 1.5
+*    -Interfaced with the queue made on proxysnort.sma
+*
+*    11/026/2021 SPiNX
+*    Change log 1.5 to 1.6
+*    -Remade array based off the IP instead of client index.
+*    -Tuned plugin to be more misery when debug is off.
+*    -Assured all the GoldSrc mods can run this when putin server.
+*/
+#include <amxmodx>
+#include <amxmisc>
+#include <regex>
+#include <sockets>
+#define PLUGIN "ProxySnort"
+#define VERSION "1.6"
+#define AUTHOR "SPiNX"
+#define USER 7007
+#define USERREAD 5009
+#define USERWRITE 6016
+#define ADMIN 707
+#define WITHOUT_PORT                   1
+#define PATTERN "(127\.(0))|(10\.(42))|(172\.(0)?1[6-9]\.)|(172\.(0)?2[0-9]\.)|(172\.(0)?3[0-1]\.)|(169\.254\.)|(192\.168\.)"
+//#define DEBUG //Echoes steps.
+#define DEBUG2 //Dumps file.
+///MACROS for AMXX 1.8.2 local compile.
+#define MAX_PLAYERS                32
+#define MAX_RESOURCE_PATH_LENGTH   64
+#define MAX_MENU_LENGTH            512
+#define MAX_NAME_LENGTH            32
+#define MAX_AUTHID_LENGTH          64
+#define MAX_IP_LENGTH_V6           40
+#define MAX_USER_INFO_LENGTH       256
+#define MAX_CMD_LENGTH             128
+#define charsmin                  -1
+#define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
+new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.0^nHost: proxycheck.io^n^n"
+new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
+new proxy_socket_buffer[ MAX_MENU_LENGTH ], g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
+new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ], provider[MAX_RESOURCE_PATH_LENGTH];
+new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin, g_maxPlayers;
+new const MESSAGE[] = "Proxysnort by Spinx"
+new risk[ 4 ], g_cvar_debugger;
+new bool:IS_SOCKET_IN_USE
+new bool:g_has_been_checked[MAX_PLAYERS]
+new Trie:g_already_checked
+new g_clientemp_version
+new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH]
+new SzSave[MAX_CMD_LENGTH]
 
-/*
-    *
-    *   SSSSSSSSSSSSSSS PPPPPPPPPPPPPPPPP     iiii  NNNNNNNN        NNNNNNNNXXXXXXX       XXXXXXX
-    * SS:::::::::::::::SP::::::::::::::::P   i::::i N:::::::N       N::::::NX:::::X       X:::::X
-    *S:::::SSSSSS::::::SP::::::PPPPPP:::::P   iiii  N::::::::N      N::::::NX:::::X       X:::::X
-    *S:::::S     SSSSSSSPP:::::P     P:::::P        N:::::::::N     N::::::NX::::::X     X::::::X
-    *S:::::S              P::::P     P:::::Piiiiiii N::::::::::N    N::::::NXXX:::::X   X:::::XXX
-    *S:::::S              P::::P     P:::::Pi:::::i N:::::::::::N   N::::::N   X:::::X X:::::X
-    * S::::SSSS           P::::PPPPPP:::::P  i::::i N:::::::N::::N  N::::::N    X:::::X:::::X
-    *  SS::::::SSSSS      P:::::::::::::PP   i::::i N::::::N N::::N N::::::N     X:::::::::X
-    *    SSS::::::::SS    P::::PPPPPPPPP     i::::i N::::::N  N::::N:::::::N     X:::::::::X
-    *       SSSSSS::::S   P::::P             i::::i N::::::N   N:::::::::::N    X:::::X:::::X
-    *            S:::::S  P::::P             i::::i N::::::N    N::::::::::N   X:::::X X:::::X
-    *            S:::::S  P::::P             i::::i N::::::N     N:::::::::NXXX:::::X   X:::::XXX
-    *SSSSSSS     S:::::SPP::::::PP          i::::::iN::::::N      N::::::::NX::::::X     X::::::X
-    *S::::::SSSSSS:::::SP::::::::P          i::::::iN::::::N       N:::::::NX:::::X       X:::::X
-    *S:::::::::::::::SS P::::::::P          i::::::iN::::::N        N::::::NX:::::X       X:::::X
-    * SSSSSSSSSSSSSSS   PPPPPPPPPP          iiiiiiiiNNNNNNNN         NNNNNNNXXXXXXX       XXXXXXX
-    *
-    *──────────────────────────────▄▄
-    *──────────────────────▄▄▄▄▄▄▄▄▌▐▄
-    *─────────────────────█▄▄▄▄▄▄▄▄▌▐▄█
-    *────────────────────█▄▄▄▄▄▄▄█▌▌▐█▄█
-    *──────▄█▀▄─────────█▄▄▄▄▄▄▄▌░▀░░▀░▌
-    *────▄██▀▀▀▀▄──────▐▄▄▄▄▄▄▄▐ ▌█▐░▌█▐▌
-    *──▄███▀▀▀▀▀▀▀▄────▐▄▄▄▄▄▄▄▌░░░▄▄▌░▐
-    *▄████▀▀▀▀▀▀▀▀▀▀▄──▐▄▄▄▄▄▄▄▌░░▄▄▄▄░▐
-    *████▀▀▀▀▀▀▀▀▀▀▀▀▀▄▐▄▄▄▄▄▄▌░▄░░▀▀░░▌
-    *▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▐▄▄▄▄▄▄▌░▐▀▄▄▄▄▀
-    *▒▒▒▒▄▄▀▀▀▀▀▀▀▀▄▄▄▄▀▀█▄▄▄▄▄▌░░░░░▌
-    *▒▄▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░▌
-    *▒▌░░░░░▀▄░░░░░░░░░░░░░░░▀▄▄▄▄▄▄░▀▄▄▄▄▄
-    *▒▌░░░░░░░▀▄░░░░░░░░░░░░░░░░░░░░▀▀▀▀▄░▀▀▀▄
-    *▒▌░░░░░░░▄▀▀▄░░░░░░░░░░░░░░░▀▄░▄░▄░▄▌░▄░▄▌
-    *▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-    *
-    *
-    *
-    *
-    *
-    * __..__  .  .\  /
-    *(__ [__)*|\ | >< Fri 26 Nov 2021
-    *.__)|   || \|/  \
-    *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
-    *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
-    *    Copyleft (C) 2019 .sρiηX҉.
-    *
-    *    This program is free software: you can redistribute it and/or modify
-    *    it under the terms of the GNU Affero General Public License as
-    *    published by the Free Software Foundation, either version 3 of the
-    *    License, or (at your option) any later version.
-    *
-    *    This program is distributed in the hope that it will be useful,
-    *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    *    GNU Affero General Public License for more details.
-    *
-    *    You should have received a copy of the GNU Affero General Public License
-    *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-    */
-    #include amxmodx
-    #include amxmisc
-    #include geoip
-    #include sockets
-
-    #define PLUGIN "Client's temperature"
-    #define VERSION "1.8.6"
-    #define AUTHOR ".sρiηX҉."
-
-    #define LOG
-    #define MOTD
-    #define iQUEUE                     7451
-    #define WEATHER                    7007
-    #define ADMIN                      707
-    #define BLOCK                      307
-    #define WITHOUT_PORT               1
-
-    //MACROS for AMXX 1.8.2 local compile.
-
-    #define MAX_MENU_LENGTH            512
-    #define MAX_USER_INFO_LENGTH       256
-    #define MAX_RESOURCE_PATH_LENGTH   64
-    #define MAX_AUTHID_LENGTH          64
-    #define MAX_IP_LENGTH_V6           40
-    #define MAX_PLAYERS                32
-    #define MAX_NAME_LENGTH            32
-    #define MAX_IP_LENGTH              16
-    #define charsmin                   -1
-
-
-    new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH]
-    new ClientCountry[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
-    new ClientCity[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
-    new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
-    new ClientRegion[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
-    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
-    new g_ClientTemp[MAX_PLAYERS+1][MAX_IP_LENGTH]
-
-
-    new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
-
-    new bool:IS_SOCKET_IN_USE, mask
-
-    new const g_szRequired_Files[][]={"GeoLite2-Country.mmdb","GeoLite2-City.mmdb"};
-    new word_buffer[MAX_PLAYERS], g_debug, g_timeout, Float:g_task;
-
-    new Float:g_lat[ MAX_PLAYERS ], Float:g_lon[ MAX_PLAYERS ];
-    new g_queue_weight, g_q_weight;
-    new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ];
-    new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
-
-    new buffer[ MAX_MENU_LENGTH ];
-    new token[MAX_PLAYERS + 1];
-
-    new const SOUND_GOTATEMP[] = "misc/Temp.wav";
-    new bool:gotatemp[ MAX_PLAYERS + 1 ]
-
-    new Trie:g_client_temp
-
-    enum _:Client_temp
-    {
-        SzAddress[ MAX_IP_LENGTH_V6 ],
-        SzCountry[ MAX_RESOURCE_PATH_LENGTH ],
-        SzCity[ MAX_RESOURCE_PATH_LENGTH ],
-        SzRegion[ MAX_RESOURCE_PATH_LENGTH ],
-        iTemp[ MAX_IP_LENGTH ],
-        ifaren[2]
-    }
-    new Data[ Client_temp ]
-
-    new const faren_country[][]={
-    //Bahamas
-                "BHS",
-
-    //Cayman Islands
-                "CYM",
-
-    //Liberia
-                "LBR",
-
-    //Palau
-                "PLW",
-
-    //The Federated States of Micronesia
-                "FSM",
-
-    //Marshall Islands
-                "MHL",
-
-    //The United States of America
-                "USA"
+enum _:Client_proxy
+{
+    SzAddress[ MAX_IP_LENGTH_V6 ],
+    SzIsp[ MAX_RESOURCE_PATH_LENGTH ],
+    SzProxy[ 2 ],
+    iRisk[ 4]
 }
-
-new const DIC[] = "clientemp.txt"
+new Data[ Client_proxy ]
 
 public plugin_init()
 {
-    register_cvar("client-temp_version", VERSION, FCVAR_SERVER);
-
     register_plugin(PLUGIN, VERSION, AUTHOR);
+    hPattern = regex_compile(PATTERN, iReturnValue, szError, charsmax(szError), "is");
+    g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_SERVER|FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
+    g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
+    g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
+    g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
+    g_cvar_debugger         = register_cvar("proxy_debug", "5");
+    //proxy_action: 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
+    g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
+    g_maxPlayers = get_maxplayers()
+    //Tag positive findings by mod.
+    new mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name));
+    set_pcvar_string(g_cvar_tag, mod_name);
+    g_already_checked = TrieCreate()
+    ReadProxyFromFile( )
+}
+@init_proxy_file()
+{
+    static SzLoopback[] = "127.0.0.1"
+    Data[SzAddress] = SzLoopback
+    Data[ SzProxy ] = 1
+    if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                
+    formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+    @file_data(SzSave)
+    ReadProxyFromFile( )
 
-    if(!lang_exists(DIC))
-
-        register_dictionary(DIC);
-
-    else
-
-    {
-        log_amx("%s %s by %s paused to prevent data key leakage from missing %s.", PLUGIN, VERSION, AUTHOR, DIC);
-        pause "a";
-    }
-
-    g_cvar_units   = register_cvar("sv_units", "metric");
-    g_cvar_token   = register_cvar("sv_openweather-key", "null", FCVAR_PROTECTED);
-    g_cvar_uplink  = register_cvar("sv_uplink2", "GET /data/2.5/weather?q=");
-    g_admins       = register_cvar("temp_admin", "1");
-    g_debug        = register_cvar("temp_debug", "0");
-    g_long         = register_cvar("temp_long", "1"); //Uses longitude or city to get weather
-    g_timeout      = register_cvar("temp_block", "25"); //how long minimum in between client temp requests
-    g_queue_weight = register_cvar("temp_queue_weight", "5"); //# passes before putting queue to sleep
-
-
-    register_clcmd("say !mytemp","Speak",0,"Shows your local temp.");
-    register_clcmd("queue_test","@queue_test",ADMIN_SLAY,"Turns up the queue.");
-    register_clcmd("queue_test2","@queue_test2",ADMIN_SLAY,"Puts self unto queue.");
-
-    set_task(900.0, "@the_queue",iQUEUE,"",0,"b"); //makes sure all players temp is read minimal socket hang
-
-    g_task         = 5.0;
-    g_q_weight     = 1
-    g_client_temp = TrieCreate()
 }
 
-public plugin_precache()
+//public client_putinserver(id) //allows them to use fastDL
+public client_connect(id)
 {
-    if(file_exists("sound/misc/Temp.wav")){
-        precache_sound(SOUND_GOTATEMP);
-        precache_generic("sound/misc/Temp.wav")
-    }
+    if(is_user_bot(id))
+        return PLUGIN_HANDLED_MAIN
+
+    if(is_user_connected(id) || is_user_connecting(id) && !is_user_bot(id)/*doubling*/ && id > 0)
+    {
+        static SzLoopback[] = "127.0.0.1"
+
+        get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
+        new total = iPlayers()
+        Data[SzAddress] = ip
+
+        if(equali(ip,SzLoopback))
+            client_proxycheck(ip,id)
+
+        else if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+        {
+            new Float:retask = (float(total++)*3.0)
+            new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
+            server_print "%s task input time = %f", PLUGIN,task_expand
+            Data[SzAddress] = ip
+            TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+            if(!task_exists(id))
+                set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+        }
+        else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
+        {
+            @handle_proxy_user(id)
+            server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
+        }
         else
-    {
-        log_amx("Paused to prevent crash from missing %s.",SOUND_GOTATEMP);
-        pause "a";
+            server_print "[%s] %s is ok^n^n%s", PLUGIN, Data[ SzAddress ],Data[SzIsp]
+
+
     }
-}
-
-@queue_test(id)
-{
-    change_task(iQUEUE, 10.0)
-    client_cmd(id,"spk buttons/bell1.wav");
-    server_print "Turning on queue per request by %s.",ClientName[id]
-    return PLUGIN_HANDLED;
-}
-
-
-@queue_test2(id)
-{
-    if(is_user_connected(id))
+    else
     {
-        set_pcvar_num(g_admins, 1)
-        gotatemp[id] = false
-        client_cmd(id,"spk buttons/bell1.wav");
-        server_print "Throwing %s into queue per request by %s.",ClientName[id], ClientName[id]
-    }
-    return PLUGIN_HANDLED;
-}
-public client_putinserver(id)
-{
-    if(is_user_bot(id) /*|| is_user_hltv(id)*/)return PLUGIN_HANDLED_MAIN
-    if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
-    {
-        set_task(0.2,"@country_finder",id+WEATHER)
+        get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
+        if(!equali(ClientAuth[id], "BOT"))
+            @handle_proxy_user(id)
     }
     return PLUGIN_CONTINUE
 }
-@country_finder(Tsk)
+public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 {
-    mask = Tsk - WEATHER
-
-    new total, iHeadcount
-    iPlayers()
-    total = iHeadcount
-    new Float:retask = (float(total++)*4.5) //2 players 6 sec apart at 3.0
-    if(retask > 20.0)
-        retask = 15.0
-    new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
-
-    if(is_user_connected(mask) && !is_user_bot(mask) /*&& !is_user_hltv(mask) && !equal(ClientIP[mask],"")*/ )
+    //if (is_user_connected(id) && !is_user_connecting(id) && id > 0 )
+    if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id))
+    if ( !is_user_bot(id) )
     {
-        get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
-        Data[SzAddress] = ClientIP[mask]
-
-        if(equal(ClientCountry[mask],""))
-        #if AMXX_VERSION_NUM == 182
-            geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
-        #endif
-
-        #if AMXX_VERSION_NUM != 182
-            geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
-        #endif
-        Data[SzCountry] = ClientCountry[mask]
-
-        if(equal(ClientName[mask],""))
-            get_user_name(mask,ClientName[mask],charsmax(ClientName[]))
-        if(equal(ClientAuth[mask],""))
-            get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
-        if(equal(ClientCity[mask],""))
-            geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),1)
-        if(equal(ClientRegion[mask],""))
-            geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),2)
-
-        Data[SzCity] = ClientCity[mask]
-        Data[SzRegion] = ClientRegion[mask]
-
-        if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
+        server_print "%s %s by %s:Checking if %s is a bot or something else.",PLUGIN, VERSION, AUTHOR, name
+        get_user_name(id,name,charsmax(name))
+        //Ignore LAN clients.
+        iResult = regex_match_c(Ip, hPattern, iReturnValue);
+        switch (iResult)
         {
-            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-            server_print "Adding Client to check temp"
-        }
-        else if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        {
-            server_print "We already displayed temp to this IP"
-            gotatemp[mask] = true; //get them out of queue
-            @speakit(mask)
-            return
-        }
-
-        server_print "checking temp country"
-
-        /////////////////////DONT WANT LLAMAS COLLECT AUTHID///////////////////////////
-        for (new admin=1; admin<=32; admin++)
-        {
-            if (is_user_connected(admin) && is_user_admin(admin) && !equal(ClientCountry[mask], ""))
-                client_print(admin,print_console,"%s %s from %s appeared on %s, %s radar.", ClientName[mask], ClientAuth[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]);
-
-            if (is_user_connected(admin) && !is_user_bot(admin) /*&& !is_user_hltv(admin)*/ && !equal(ClientCity[mask], ""))
-                client_print(admin,print_console,"%s connected from %s.", ClientName[mask], ClientCity[mask]);
-        }
-
-        if(!task_exists(mask))
-            set_task(task_expand,"@que_em_up",mask)
-        server_print "Task input time = %f", task_expand
-            //set_task(1.5, "@que_em_up",m)
-
-    }
-}
-@speakit(id)
-{
-    new new_temp
-
-    if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        new_temp = Data[iTemp]
-    else
-        new_temp = str_to_num(g_ClientTemp[id])
-
-    //Speak the temperature.
-    num_to_word(new_temp, word_buffer, charsmax(word_buffer))
-    if(new_temp < 0)
-        client_cmd(id, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
-
-    else
-        client_cmd(id, "spk ^"temperature right now is %s degrees^"", word_buffer );
-
-    server_print "Spoke temp for^n^n%s",ClientName[id]
-}
-
-public Speak(id)
-{
-    if(gotatemp[id]) //remind them otherwise fetch it
-    {
-        if(is_user_admin(id))
-            (get_pcvar_num(g_admins) ? @speakit(id) : @fixadmins(id))
-        else
-            @speakit(id)
-
-    }
-    else
-    {
-        client_cmd id, "spk ^"temperature is going through now^""
-        client_temp_cmd(id) //fetch
-    }
-
-}
-
-@fixadmins(id)
-{
-    client_print id,print_chat,"Changed admin_temp 1 to allow admins to get temp."
-    set_pcvar_num(g_admins, 1)
-    gotatemp[id] = false
-    client_cmd id, "spk ^"computer malfunction. system is on zero. system is on one now for temperature control^""
-    client_temp_cmd id
-}
-
-public client_temp_cmd(id)
-    if(is_user_connected(id))
-        set_task(float(random_num(5,15)),"client_temp_filter",id)
-
-@que_em_up(m)
-{
-    server_print "q em up^nWhen somebody connects it checks all here."
-    if(is_user_connecting(m))
-    {
-        change_task(m,20.0)
-        server_print "Rescheduling %n until they connect.",m
-    }
-    else
-    {
-        server_print "%s is still connected at moment.", ClientName[m]
-
-        if(is_user_admin(m) && get_pcvar_num(g_admins) == 0)
-        gotatemp[m] = true;
-
-        if(!gotatemp[m] && m > 0)
-        {
-            ////////////////////////////////////////////////////////////////////////////////
-            new total, iHeadcount
-            iPlayers()
-            total = iHeadcount
-            new Float:retask = (float(total++)*3.0)
-            new Float:task_expand = floatround(random_float(retask+5.0,retask+8.0), floatround_ceil)*1.0
-
-            set_task(task_expand,"client_temp_cmd",m);
-            ////////////////////////////////////////////////////////////////////////////////
-            server_print "We do not have %s's temp yet.",ClientName[m]
-
-            if(task_exists(iQUEUE))
+            case REGEX_MATCH_FAIL:
             {
-
-                change_task(iQUEUE, 40.0)
-                server_print "Resuming queue per %s connected.",ClientName[m]
+                log_amx "REGEX_MATCH_FAIL! %s", szError
+            }
+            case REGEX_PATTERN_FAIL:
+            {
+                log_amx "REGEX_PATTERN_FAIL! %s", szError
+            }
+            case REGEX_NO_MATCH:
+            {
+                server_print "Sniffing a public IP address...%s, %s",Ip,name
+            }
+            default:
+            {
+                server_print "%s %s by %s: Local IP. Stopping proxycheck on %s from %s.", PLUGIN, VERSION, AUTHOR, name, Ip
+                server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
+                return PLUGIN_HANDLED_MAIN; ///comment out or do not use plugin on local servers!
             }
 
         }
-
-        if(gotatemp[m])
+        get_pcvar_string(g_cvar_token, token, charsmax (token));
+        new Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
+        if ( equal(token, "null") || equal(token, "") && is_user_admin(id) )
+            set_task(40.0, "@needan", id+ADMIN);
+        if(get_pcvar_num(g_cvar_debugger) > 1)
+            server_print"%s %s by %s:Starting to open socket!", PLUGIN, VERSION, AUTHOR
+        get_user_authid(id,authid,charsmax (authid));
+        g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
+        //g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2);
+        get_pcvar_string(g_cvar_token, token, charsmax (token));
+        get_pcvar_string(g_cvar_tag, tag, charsmax (tag));
+        formatex(constring,charsmax (constring), SzGet, Ip, token, tag, authid);
+        if(!task_exists(id+USERWRITE))
+            set_task(1.0, "@write_web", id+USERWRITE, constring, charsmax (constring) );
+        if(get_pcvar_num(g_cvar_debugger) > 2 )
         {
-            server_print "We have %s's temp already.",ClientName[m]
+            server_print "This is where we are trying to get %s from:", PLUGIN
+            server_print "telnet proxycheck.io 80 (Wait for a connection then paste.)^n%s",constring
+            server_print "Debugging enabled::copy and paste last 2 lines from above into telnet session then press ENTER twice."
+        }
+        set_task(1.5, "@read_web", id+USERREAD);return PLUGIN_CONTINUE;
+    }
+    return PLUGIN_CONTINUE;
+}
+@write_web(text[MAX_USER_INFO_LENGTH], reader)
+{
+    new id = reader - USERWRITE;
+    if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
+    {
+        if(IS_SOCKET_IN_USE)
+            set_task(10.0,"client_connect",id)
+        else
+            IS_SOCKET_IN_USE = true
+        server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
+        if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
+        if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
+        callfunc_end()
+        if(get_pcvar_num(g_cvar_debugger) > 1 )
+            server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, name
+        #if AMXX_VERSION_NUM != 182
+        if (socket_is_writable(g_proxy_socket, 100000))
+        #endif
+        socket_send(g_proxy_socket,text,charsmax (text));
+        if(get_pcvar_num(g_cvar_debugger) > 1 )
+        {
+            server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
         }
 
     }
 
 }
-
-public client_remove(id)
+stock get_user_profile(id)
 {
-    new iHeadcount
-    iPlayers()
-    if( iHeadcount == 0)
+    get_user_name(id,name,charsmax(name) );
+    get_user_authid(id,authid,charsmax(authid) );
+    get_user_ip(id,Ip,charsmax(Ip),1);
+    return authid, Ip, name
+}
+@handle_proxy_user(id)
+{
+    bright_message()
+    if(is_user_connected(id) || is_user_connecting(id))
     {
-        change_task(iQUEUE, 1800.0)
-        remove_task(id);
+        if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
+        {
+            for (new admin=1; admin<=g_maxPlayers; admin++)
+                if (is_user_connected(admin) && is_user_admin(admin))
+                    client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+            client_cmd( 0,"spk ^"bad entry detected^"" )
+        }
+        //ban steamid
+        if (get_pcvar_num(g_cvar_iproxy_action) == 3)
+            server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
+        //ban ip
+        if (get_pcvar_num(g_cvar_iproxy_action) == 2)
+            server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
+        //kick
+        if (get_pcvar_num(g_cvar_iproxy_action) == 1)
+            server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
     }
 }
-
-public client_temp_filter(id)
+@read_web(proxy_snort)
 {
-    if(is_user_connected(id) && id > 0)
-
+    new id = proxy_snort - USERREAD
+    if( id > 0 && !g_has_been_checked[id] )
+    if (!is_user_bot(id))
     {
+        get_user_profile(id)
 
-        if (is_user_bot(id)/*|| is_user_hltv(id)*/ || is_user_admin(id) && get_pcvar_num(g_admins) == 0)
-            return PLUGIN_HANDLED_MAIN;
-
-        if(IS_SOCKET_IN_USE == false && !gotatemp[id])
+        if(get_pcvar_num(g_cvar_debugger) > 1)
+            server_print "%s %s by %s:reading the socket", PLUGIN, VERSION, AUTHOR
+        #if AMXX_VERSION_NUM != 182
+        if(socket_is_readable(g_proxy_socket, 100000))
+        #endif
+        socket_recv(g_proxy_socket,proxy_socket_buffer,charsmax (proxy_socket_buffer));
+        if(!equal(proxy_socket_buffer, ""))
         {
-            set_task(get_pcvar_num(g_timeout)*1.0,"client_temp",id);
-        }
+            if(get_pcvar_num(g_cvar_debugger) > 2)
+                server_print "%s", proxy_socket_buffer
+            //Proxy user treatments
+            if (containi(proxy_socket_buffer, "yes") != charsmin || containi(proxy_socket_buffer, "Compromised") != charsmin)
+            {
+                Data[SzProxy] = 1
+                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
 
-        if(IS_SOCKET_IN_USE == true && !gotatemp[id])
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                @file_data(SzSave)
 
-        {
+                server_print "Proxy sniff...%s|%s", Ip, authid
+                log_amx "%s, %s uses a proxy!", name, authid
+                //task per data wasn't being saved, kicking too quickly
+                set_task(1.0,"@handle_proxy_user",id)
+
+            }
+            //What if they aren't on proxy or VPN?
+            if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
+            {
+                Data[SzProxy] = 0
+
+                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+
+                @file_data(SzSave)
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
+
+                server_print "No proxy found on %s, %s error-free",name,authid
+                if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
+                    g_has_been_checked[id] = true //stop double prints
+            }
+            if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
+            {
+                Data[SzProxy] = 0
+                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+
+                @file_data(SzSave)
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
+                server_print "No proxy found on %s, %s with error on packet",name,authid
+                client_print 0, print_console, "No proxy found on %s, with error on packet", name
+            }
+            //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
+            if (containi(proxy_socket_buffer, "error") != charsmin  && containi(proxy_socket_buffer, "message") != charsmin )
+            {
+                new msg[MAX_CMD_LENGTH];
+                copyc(msg, charsmax (msg), proxy_socket_buffer[containi(proxy_socket_buffer, "message") + 11], '"');
+                server_print "Message is: %s",msg
+            }
+                //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
+            if (containi(proxy_socket_buffer, "provider") > charsmin )
+            {
+                copyc(provider, charsmax (provider), proxy_socket_buffer[containi(proxy_socket_buffer, "provider") + 12], '"');
+                //Misc data and stats
+                if(get_pcvar_num(g_cvar_debugger))
+                    server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
+            }
+            if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
+            {
+                Data[SzIsp] = provider
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                if(get_pcvar_num(g_cvar_debugger) > 2 )
+                    server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+                set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
+                for (new admin=1; admin<=g_maxPlayers; admin++)
+                if (is_user_connected(admin) && is_user_admin(admin))
+                    show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+            }
+            if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
+            {
+                new risk_buffer_fix = containi(proxy_socket_buffer, "yes") != charsmin ? 7 : 5
+                copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
+                Data[iRisk] = risk
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
+                {
+                    server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                    if(get_pcvar_num(g_cvar_debugger) > 2 )
+                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                    for (new admin=1; admin<=g_maxPlayers; admin++)
+                        if (is_user_connected(admin) && is_user_admin(admin))
+                    client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                }
+                g_has_been_checked[id] = true
+                socket_close(g_proxy_socket);
+                if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
+            }
+            else if (containi(proxy_socket_buffer, "risk") == charsmin)
+            {
+                //must be here to see the risk and provider
+                set_task(3.5, "@read_web",id+USERREAD);
+            }
+            else
+            {
+                g_has_been_checked[id] = true
+                socket_close(g_proxy_socket);
+                if(get_pcvar_num(g_cvar_debugger) > 4 )bright_message();
+                if (equal(proxy_socket_buffer, "") && get_pcvar_num(g_cvar_debugger) )
+                {
+                    server_print "Buffer is now blank for %s|%s",name,authid
+                }
+                if(get_pcvar_num(g_cvar_debugger))
+                    server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
+            }
+            ///UN-Lock the socket here so other clients can be checked.
             if(!task_exists(id))
-                set_task(16.0,"client_temp",id);
-            else
-                change_task(id,float(get_pcvar_num(g_timeout)*2))
-        }
-
-        if (task_exists(id+WEATHER))
-        {
-            change_task(id+WEATHER,(get_pcvar_num(g_timeout)*3.0)/1.5);
-            server_print "Queuing %s's weather socket for %f to prevent lag", ClientName[id], get_pcvar_num(g_timeout)*3.0/1.5
-        }
-
-
-    }
-
-    return PLUGIN_CONTINUE;
-}
-
-public client_temp(id)
-{
-    if(is_user_connected(id) && gotatemp[id] == false)
-
-    {
-        new buf[9], country[ 4 ];
-
-        get_pcvar_string(g_cvar_units, buf, charsmax(buf));
-
-        #if AMXX_VERSION_NUM == 182
-            geoip_code3( ClientIP[id], country );
-        #endif
-
-        #if AMXX_VERSION_NUM != 182
-            geoip_code3_ex( ClientIP[id], country );
-        #endif
-
-
-        for (new heit;heit < sizeof faren_country;heit++)
-        if (equal(country, faren_country[heit]))
-
-            set_pcvar_string(g_cvar_units, "imperial");
-
-        else
-
-        set_pcvar_string(g_cvar_units, "metric");
-
-        get_datadir(g_filepath, charsmax(g_filepath));
-
-        formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
-        formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
-
-        if( (!file_exists(g_szFile[0])) || !file_exists(g_szFile[1]) )
-        {
-            server_print "Check your Maxmind databases...%s|%s...halting to prevent crash.",g_szFile[0],g_szFile[1]
-            pause("a");
-        }
-
-
-        if (task_exists(id+WEATHER))
-            return PLUGIN_HANDLED;
-
-        if (containi(ClientIP[id], "127.0.0.1") != charsmin)
-        {
-            server_print "%s IP shows as 127.0.0.1, stopping script!", ClientName[id]
-            return PLUGIN_HANDLED;
-        }
-/////////////////////////GEO COORDINATES GATHERING/////////////////////////////////
-        g_lat[id] = geoip_latitude(ClientIP[id]);
-        g_lon[id] = geoip_longitude(ClientIP[id]);
-
-        new Float:timing;
-        timing = g_task+5.0;
-
-        new ping, loss;
-
-        get_user_ping(id,ping,loss);
-        new Float:timing2;
-        timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
-
-        set_task( timing+timing2, "Weather_Feed", id+WEATHER, ClientIP[id], charsmax(ClientIP[]) );
-
-        g_task = timing;
-
-        if(g_task > 20.0) g_task = 5.0;
-
-
-        #if defined LOG
-        log_amx("Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], g_lat[id], g_lon[id]);
-        #endif
-
-        if(get_pcvar_num(g_debug) && is_user_admin(id) )
-            set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
-    }
-
-    if(get_pcvar_num(g_debug) > 1) //per req and updated to minimize log spam
-        log_amx("%s|%s", ClientName[id], ClientAuth[id]);
-
-    return PLUGIN_CONTINUE;
-}
-
-public needan(keymissing)
-{
-    new id = keymissing - ADMIN;
-    get_pcvar_string(g_cvar_token, token, charsmax (token));
-
-    if (equal(token, "null") || equal(token, "") )
-    {
-        if ( cstrike_running() || (is_running("dod") == 1)  )
-
-        {
-            new motd[128];
-            format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-keydetected.</center></html>");
-            show_motd(id, motd, "Invalid 32-bit API key!");
-        }
-
-        else
-
-        {
-            client_print(id,print_chat,"Check your API key validity!");
-            client_print(id,print_center,"Null sv_openweather-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION);
-            client_print(id,print_console,"Get key from openweathermap.org/appid.");
-        }
-
-    }
-
-}
-
-
-public client_disconnected(id)
-{
-    new iHeadcount
-    iPlayers()
-    if( is_user_bot(id)) return
-    if( iHeadcount > 0 )
-    {
-        for (new admin=1; admin<=iHeadcount; admin++)
-
-        if(is_user_connected(admin))
-        {
-            if (!is_user_admin(admin))
+                set_task(3.5, "@client_mark_socket", id);
+            ///UN-Lock other script I made if used in tandom to prevent socket making game unplayable
+            if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
             {
-                if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
-                client_print(admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
-
-                #if AMXX_VERSION_NUM != 182
-                client_print_color(admin,0, "^x03%n^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientCountry[id], ClientCity[id], ClientRegion[id]);
-                #endif
-            }
-
-            else
-            {
-                if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
-                client_print(admin,print_chat,"%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
-
-                #if AMXX_VERSION_NUM != 182
-                client_print_color(admin,0, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
-                #endif
+                if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
+                {
+                    new work[MAX_PLAYERS]
+                    format(work,charsmax(work),PLUGIN,"")
+                    callfunc_push_str(work)
+                    callfunc_end()
+                }
+    
             }
 
         }
-
-    }
-
-}
-
-public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
-{
-
-    new id = feeding - WEATHER;
-
-    if(is_user_connected(id))
-
-    {
-
-        if(get_pcvar_num(g_debug))
-            log_amx("Client_Temperature:Starting the sockets routine...");
-
-        new Soc_O_ErroR2, constring[MAX_USER_INFO_LENGTH], uplink[27], units[9];
-        get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink) );
-        get_pcvar_string(g_cvar_units, units, charsmax (units) );
-        get_pcvar_string(g_cvar_token, token, charsmax (token) );
-        g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
-        //g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
-
-
-        if(get_pcvar_float(g_long) && g_lat[id] && g_lon[id] || equali(ClientCity[id], "") )
-
-            formatex(constring, charsmax (constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n",g_lat[id], g_lon[id], units, token);
-
-        else
-
-            formatex(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, ClientCity[id], units, token);
-
-
-        set_task(2.5, "write_web", id+WEATHER, constring, charsmax(constring) );
-
-        if(get_pcvar_num(g_debug))
-        {
-            log_amx("This is where we are trying to get weather from");
-            log_amx(constring);
-            log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
-        }
-
-        set_task(5.5, "read_web", id+WEATHER);
-
-    }
-
-}
-
-public write_web(text[MAX_USER_INFO_LENGTH], Task)
-{
-    IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket",PROXY_SCRIPT)
-    callfunc_end()
-    new id = Task - WEATHER
-
-    server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
-    #if AMXX_VERSION_NUM != 182
-    if (socket_is_writable(g_Weather_Feed, 100000))
-    #endif
-    {
-        socket_send(g_Weather_Feed,text,charsmax (text));
-        server_print "Yes! %s:writing the web for ^n%s",PLUGIN, ClientName[id]
-    }
-
-}
-
-public read_web(feeding)
-{
-    new id = feeding - WEATHER
-    if (!is_user_bot(id) && id > 0)
-    {
-        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        {
-            gotatemp[id] = true
-            goto DOUBLE_CHECK
-        }
-
-        if(equal(ClientCity[id], ""))
-        {
-            geoip_city(ClientIP[id],ClientCity[id],charsmax(ClientCity[]),1)
-            Data[SzCity] = ClientCity[id]
-            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-        }
-
-        if(!IS_SOCKET_IN_USE && !gotatemp[id])
-        {
-            //new Float:vary;
-            //vary = floatsqroot(random_float(20.0,200.0))
-            new Float:fTask
-            switch(random(100))
-            {
-    
-                case 0 .. 25   : fTask = 1.0
-                case 26 .. 50  : fTask = 5.0
-                case 51 .. 75  : fTask = 10.0
-                case 76 .. 100 : fTask = 15.0
-            }
-            change_task(id+WEATHER,fTask);
-            server_print "Queuing %s's %s for %f to prevent lag on socket", ClientName[id], PLUGIN, fTask
-            //goto DOUBLE_CHECK
-        }
-
-        else
-        if(!IS_SOCKET_IN_USE && !gotatemp[id])
-        {
-            IS_SOCKET_IN_USE = true;
-            callfunc_begin("@lock_socket",PROXY_SCRIPT)
-            callfunc_end()
-        }
-
-        server_print "%s:reading %s temp",PLUGIN, ClientName[id]
-        #if AMXX_VERSION_NUM != 182
-        if (socket_is_readable(g_Weather_Feed, 100000))
-        #endif
-        socket_recv(g_Weather_Feed,buffer,charsmax(buffer) )
-        if (!equal(buffer, "") && IS_SOCKET_IN_USE == true && containi(buffer, "temp") > charsmin)
-        {
-            server_print "We have a clientemp buffer"
-    
-            if (get_timeleft() > 30)
-            {
-                server_print "%s:Ck temp",PLUGIN
-                new out[8];
-                copyc(out, 6, buffer[containi(buffer, "temp") + 6], '"');
-                replace(out, 6, ":", "");
-                replace(out, 6, ",", "");
-    
-                #define PITCH (random_num (90,111))
-                emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
-                gotatemp[id] = true;
-    
-                new Float:Real_Temp = floatstr(out);
-    
-                #if defined MOTD
-                    log_amx "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
-                    log_to_file("clientemp.log", "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id])
-                #endif
-    
-                formatex(g_ClientTemp[id], charsmax (g_ClientTemp[]), "%i",floatround(Real_Temp));
-                new new_temp = str_to_num(g_ClientTemp[id])
-    
-                new bufferck[8];
-                get_pcvar_string(g_cvar_units,bufferck,charsmax(bufferck));
-    
-    
-                if (containi(buffer, "imperial") > charsmin)
-    
-                {
-                    iRED_TEMP =  70;
-                    iBLU_TEMP =  45;
-                    iGRN_HI   =  69;
-                    iGRN_LO   =  46;
-                }
-    
-                else
-    
-                if (containi(buffer, "metric") > charsmin)
-    
-                {
-                    iRED_TEMP =  15;
-                    iBLU_TEMP = -15;
-                    iGRN_HI   =  14;
-                    iGRN_LO   = -14;
-                }
-    
-                #if defined LOG
-                    log_amx("%L", LANG_PLAYER, "LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp);
-                #endif
-                Data[iTemp] = new_temp
-                TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-    
-                ////////////////////////////////
-                #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
-                #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
-                ////////////////////////////////
-                server_print "New Temp is %i", new_temp
-                ////////////////////////////////
-    
-                if( new_temp >= iRED_TEMP )
-                {
-                    #define HUD_RED random_num(100,255),0,0
-                    #if AMXX_VERSION_NUM > 182
-                    set_dhudmessage(HUD_RED,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                    #endif
-                    set_hudmessage(HUD_RED,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                }
-                if( new_temp <= iBLU_TEMP )
-                {
-                    #define HUD_BLU 0,0,random_num(100,255)
-                    #if AMXX_VERSION_NUM != 182
-                    set_dhudmessage(HUD_BLU,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                    #endif
-                    set_hudmessage(HUD_BLU,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                }
-                else
-                if( (new_temp > iGRN_LO) || (new_temp < iGRN_HI) )
-                {
-                    #define HUD_GRN 0,random_num(100,255),0
-                    #if AMXX_VERSION_NUM != 182
-                    set_dhudmessage(HUD_GRN,HUD_PLACE1,0,3.0,5.0,1.0,1.5)
-                    #endif
-                    set_hudmessage(HUD_GRN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                }
-    
-                {
-                    if ( cstrike_running() || (is_running("dod") == 1)  )
-                    {
-                        #if AMXX_VERSION_NUM != 182
-                        client_print_color 0,0,"%L", LANG_PLAYER,"CS_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
-                        show_dhudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "HUD_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp)
-                        #endif
-                        show_hudmessage players_who_see_effects(),"%L", LANG_PLAYER, "HL_CLIENTEMP_PRINT", ClientCity[id], new_temp
-                    }
-                    #if AMXX_VERSION_NUM != 182
-                    else
-                    #endif
-                    {
-                        client_print 0,print_chat, "%L", LANG_PLAYER,"LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
-                        show_hudmessage (players_who_see_effects(),"%L", LANG_PLAYER,"HL_CLIENTEMP_PRINT", ClientCity[id], new_temp)
-                    }
-    
-                }
-                //Speak the temperature.
-                num_to_word(new_temp, word_buffer, charsmax(word_buffer))
-    
-                if (equal(bufferck, "imperial", charsmax(bufferck)))
-                {
-                    if(new_temp < 0)
-                        client_cmd(0, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
-    
-                    else
-                        client_cmd(0, "spk ^"temperature right now is %s degrees^"", word_buffer );
-                }
-    
-                if (equal(bufferck, "metric", charsmax(bufferck)))
-                {
-                    if(new_temp < 0)
-                        client_cmd(0, "spk ^"temperature right now is %s degrees sub zero celsius^"", word_buffer );
-    
-                    else
-                        client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
-    
-                }
-                if(socket_close(g_Weather_Feed) == 1)
-                {
-                    server_print "%s finished %s reading",PLUGIN, ClientName[id]
-                    set_task(5.0, "@mark_socket", id);
-    
-                    if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
-                    {
-                        new work[MAX_PLAYERS]
-                        format(work,charsmax(work),PLUGIN,"")
-                        callfunc_push_str(work)
-                        callfunc_end()
-                    }
-    
-    
-                }
-                return PLUGIN_CONTINUE;
-    
-            }
-            else
-            {
-                server_print "Do not see temp, yet. Reading web again."
-                set_task(1.5, "read_web",id+WEATHER)
-            }
-
-        }
-        else if(is_user_connected(id) || is_user_connecting(id) && !gotatemp[id])
-        {
-            server_print "No buffer checking again"
-            set_task(1.5, "read_web",id+WEATHER)
-        }
+        else if(is_user_connected(id) || is_user_connecting(id) && !g_has_been_checked[id])
+            set_task(3.5, "@read_web",id+USERREAD);
         else
         {
-            set_task(5.0, "@mark_socket", id);
-            if(socket_close(g_Weather_Feed) == 1)
-                server_print "%s finished %s reading",PLUGIN, ClientName[id]
+            if(task_exists(id+USERREAD))
+                remove_task(id+USERREAD)
+            socket_close(g_proxy_socket);
         }
-
-        DOUBLE_CHECK:
-        return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
-
 }
 
+@client_mark_socket(id)
+{
+    IS_SOCKET_IN_USE = false;
+    if(is_user_connected(id))
+        server_print "%s | %s unlocking socket!", PLUGIN, name
+}
 @mark_socket(work[MAX_PLAYERS])
 {
     IS_SOCKET_IN_USE = false;
     if(!equal(work, ""))
-    server_print "%s | %s locking socket!", PLUGIN, work
+    server_print "%s | %s unlocking socket!", PLUGIN, work
 }
-
 @lock_socket()
 {
     IS_SOCKET_IN_USE = true
     server_print "%s other plugin locking socket!", PLUGIN
 }
-
-@the_queue()
+@needan(keymissing)
 {
-
-    //Assure admins queue is really running
-    server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
-    //How many runs before task is put to sleep given diminished returns
-    new gopher = get_pcvar_num(g_queue_weight)
-
-    new players[ MAX_PLAYERS ], iHeadcount
-    get_players(players,iHeadcount,"ch")
-    for (new q; q < iHeadcount ; ++q)
+    new id = keymissing - ADMIN
+    if ( is_user_admin(id) )
     {
-        Data[ SzAddress ] = ClientIP[q]
-
-        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
+        if ( cstrike_running() || is_running("dod") == 1 )
         {
-            gotatemp[q] = true
-            @country_finder(q)
+            new motd[MAX_CMD_LENGTH];
+            format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://proxycheck.io/'><body BGCOLOR='#FFFFFF'><br><center>Null proxy key detected.</center></html>");
+            show_motd(id, motd, "Invalid API key!");
         }
-        //Make array of non-bot connected players who need their temp still.
-        //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        if(!gotatemp[players[q]])
+        else
         {
-            //server_print "%s queued for %s",ClientName[q],PLUGIN
-            server_print "%n queued for %s",q,PLUGIN
-            //task spread formula
-            new total = iHeadcount
-            server_print "Total players shows as: %i", total
-            new Float:retask = (float(total++)*2.0)
-            new Float:queued_task = (float(total++)*3.0)
-            server_print "Total players for math adj to: %i", total
-            get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
-            server_print "We STILL need %s's temp already.",ClientName[players[q]]
-
-            //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
-            if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
-                if(!task_exists(players[q] + WEATHER) && !IS_SOCKET_IN_USE && get_timeleft() > 60)
-                    set_task(queued_task+++5.0,"@country_finder",players[q]+WEATHER)
-
-            //if they have a task set-up already adjust it
-            if(task_exists(players[q] + WEATHER))
-                change_task(players[q] + WEATHER,retask)
-            //if they don'y have a task set-up make one
-            else
+            for (new admin=1; admin<=g_maxPlayers; admin++)
+            if (is_user_connected(admin) && is_user_admin(admin))
             {
-                set_task(queued_task,"client_temp",players[q]);
-                server_print "%f|Queue task time for %s", queued_task, ClientName[players[q]]
-                change_task(iQUEUE, 45.0)
+                client_print admin,print_chat,"Check your API key validity!"
+                client_print admin,print_center,"Null sv_proxycheckio-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION
+                client_print admin,print_console,"Get key from proxycheck.io."
             }
-
+        
         }
 
     }
-    //count the inactive passes before lengthing task time.
-    //queue counter
-    if(g_q_weight < gopher)
-    {
-        server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
-        change_task(iQUEUE, 90.0)
-        g_q_weight++ //increment the weight each inactive pass through.
-    }
-
-    //queue sleeper
-    else if(g_q_weight >= gopher)
-    {
-            change_task(iQUEUE, 500.0);
-            server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
-            g_q_weight = 1;
-    }
-    else server_print "^n------------------------------------------THE QUEUE!^n------------------------------------------"
 
 }
+@file_data(SzSave[MAX_CMD_LENGTH])
+{
+    server_print "%s|trying save", PLUGIN
+    new szFilePath[ MAX_CMD_LENGTH ]
+    get_configsdir( szFilePath, charsmax( szFilePath ) )
+    add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
 
+    write_file(szFilePath, SzSave)
+}
+
+public ReadProxyFromFile( )
+{
+    new szDataFromFile[ MAX_CMD_LENGTH ]
+    new szFilePath[ MAX_CMD_LENGTH ]
+    get_configsdir( szFilePath, charsmax( szFilePath ) )
+    add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
+    new debugger = get_pcvar_num(g_cvar_debugger)
+
+    new f = fopen( szFilePath, "rt" )
+
+    if( !f )
+    {
+        @init_proxy_file()
+        return
+    }
+
+    while( !feof( f ) )
+    {
+        fgets( f, szDataFromFile, charsmax( szDataFromFile ) )
+
+        if( !szDataFromFile[ 0 ] || szDataFromFile[ 0 ] == ';' || szDataFromFile[ 0 ] == '/' && szDataFromFile[ 1 ] == '/' )
+            continue
+
+        trim
+        (
+            szDataFromFile
+        )
+        parse
+        (
+            szDataFromFile,
+            Data[ SzAddress ], charsmax( Data[ SzAddress ] ),
+            Data[ SzProxy ], charsmax( Data[SzProxy] )
+        )
+
+        if(debugger)
+            server_print "Read %s,%i^n^nfrom file",Data[ SzAddress ], Data[ SzProxy ]
+        str_to_num(Data[ SzProxy ])
+        TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
+    }
+    fclose( f )
+    if(debugger)
+        server_print "................Proxy list from file....................."
+}
+
+public plugin_end()
+{
+    regex_free(hPattern)
+    TrieDestroy(g_already_checked)
+}
+
+public bright_message()
+{
+    new Float:xTex
+    xTex = -1.1
+    new Float:yTex
+    yTex = -0.7
+    new Float:fadeInTime = 0.5;
+    new Float:fadeOutTime = 0.5;
+    new Float:holdTime = 1.0;
+    new Float:scanTime = 1.2;
+    new effect = 2;
+    new iRainbow = random_num(100,200)
+    emessage_begin ( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
+    ewrite_byte(TE_TEXTMESSAGE);
+    ewrite_byte(0);      //(channel)
+    ewrite_short(FixedSigned16(xTex,1<<13));  //(x) charsmin = center)
+    ewrite_short(FixedSigned16(yTex,1<<13));  //(y) charsmin = center)
+    ewrite_byte(effect);  //(effect) 0 = fade in/fade out, 1 is flickery credits, 2 is write out (training room)
+    ewrite_byte(255);  //(red) - text color 255 100 75 20 25 200 175 30
+    ewrite_byte(100);  //(GRN)
+    ewrite_byte(iRainbow);  //(BLU)
+    ewrite_byte(200);  //(alpha)
+    ewrite_byte(25);  //(red) - effect color
+    ewrite_byte(200);  //(GRN)
+    ewrite_byte(iRainbow);  //(BLU)
+    ewrite_byte(25);  //(alpha)
+    ewrite_short(FixedUnsigned16(fadeInTime,1<<8));
+    ewrite_short(FixedUnsigned16(fadeOutTime,1<<8));
+    ewrite_short(FixedUnsigned16(holdTime,1<<8));
+    if (effect == 2)
+    ewrite_short(FixedUnsigned16(scanTime,1<<8));
+    ewrite_string(MESSAGE);
+    emessage_end();
+}
+stock FixedSigned16( Float:value, scale )
+// Converts floating-point number to signed 16-bit fixed-point representation
+{
+    new Output;
+    Output = floatround( value * scale )
+    if ( Output > 3276 )
+        Output = 32767
+    if ( Output < -32768 )
+        Output = -32768;
+    return  Output;
+}
+stock FixedUnsigned16( Float:value, scale )
+// Converts floating-point number to unsigned 16-bit fixed-point representation
+{
+    new Output;
+    Output = floatround( value * scale )
+    if ( Output < 0 )
+        Output = 0;
+    if ( Output > 0xFFFF )
+        Output = 0xFFFF;
+    return  Output;
+}
 stock players_who_see_effects()
 {
-    new iHeadcount;iPlayers()
-    for (new SEE; SEE<iHeadcount; SEE++)
-        return SEE;
+    new players[MAX_PLAYERS], playercount, SEE;
+    get_players(players,playercount,"ch");
+    for (SEE=0; SEE<playercount; SEE++)
+    return SEE;
     return PLUGIN_CONTINUE;
 }
-
 stock iPlayers()
 {
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
-    return iHeadcount,players
+    return iHeadcount
 }
