@@ -129,7 +129,8 @@
         SzCountry[ MAX_RESOURCE_PATH_LENGTH ],
         SzCity[ MAX_RESOURCE_PATH_LENGTH ],
         SzRegion[ MAX_RESOURCE_PATH_LENGTH ],
-        iTemp[ MAX_IP_LENGTH ]
+        iTemp[ MAX_IP_LENGTH ],
+        ifaren[2]
     }
     new Data[ Client_temp ]
 
@@ -233,7 +234,9 @@ public client_putinserver(id)
 {
     if(is_user_bot(id) /*|| is_user_hltv(id)*/)return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
+    {
         set_task(0.2,"@country_finder",id+WEATHER)
+    }
     return PLUGIN_CONTINUE
 }
 @country_finder(Tsk)
@@ -355,25 +358,8 @@ public Speak(id)
 }
 
 public client_temp_cmd(id)
-{
     if(is_user_connected(id))
-    {
-
-        if (task_exists(id+BLOCK) && gotatemp[id])
-        {
-            client_print(id,print_chat, "%L", LANG_PLAYER,"ALREADY_CHECKED", get_pcvar_num(g_timeout));
-            num_to_word(get_pcvar_num(g_timeout), word_buffer, charsmax(word_buffer));
-
-            client_cmd(id, "spk ^"Warning. We did check your temperature check platform in %s minutes^"", word_buffer );
-            change_task(id+BLOCK,get_pcvar_num(g_timeout)*60.0);
-        }
-
-        else
-
-            set_task(random_float(3.5,7.0),"client_temp_filter",id)
-    }
-    else if(task_exists(id+BLOCK))remove_task(id+BLOCK)
-}
+        set_task(float(random_num(5,15)),"client_temp_filter",id)
 
 @que_em_up(m)
 {
@@ -409,6 +395,7 @@ public client_temp_cmd(id)
                 change_task(iQUEUE, 40.0)
                 server_print "Resuming queue per %s connected.",ClientName[m]
             }
+
         }
 
         if(gotatemp[m])
@@ -437,7 +424,7 @@ public client_temp_filter(id)
 
     {
 
-        if (is_user_bot(id)/*|| is_user_hltv(id)*/ || is_user_admin(id) && get_pcvar_num(g_admins) == 0 && !task_exists(id+BLOCK))
+        if (is_user_bot(id)/*|| is_user_hltv(id)*/ || is_user_admin(id) && get_pcvar_num(g_admins) == 0)
             return PLUGIN_HANDLED_MAIN;
 
         if(IS_SOCKET_IN_USE == false && !gotatemp[id])
@@ -498,7 +485,8 @@ public client_temp(id)
         formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
         formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
 
-        if( (!file_exists(g_szFile[0])) || !file_exists(g_szFile[1]) ){
+        if( (!file_exists(g_szFile[0])) || !file_exists(g_szFile[1]) )
+        {
             server_print "Check your Maxmind databases...%s|%s...halting to prevent crash.",g_szFile[0],g_szFile[1]
             pause("a");
         }
@@ -546,26 +534,12 @@ public client_temp(id)
     return PLUGIN_CONTINUE;
 }
 
-public Block(chill)
-{
-    new player = chill - BLOCK;
-
-    if( is_user_connected(player) )
-    {
-        client_print(player,print_console,"%s block over. Ok to say !mytemp %s", PLUGIN, ClientName[player]);
-    }
-    else
-        server_print "%s block for %s possibly.", PLUGIN, ClientName[player]
-}
-
-
 public needan(keymissing)
 {
     new id = keymissing - ADMIN;
     get_pcvar_string(g_cvar_token, token, charsmax (token));
 
     if (equal(token, "null") || equal(token, "") )
-
     {
         if ( cstrike_running() || (is_running("dod") == 1)  )
 
@@ -592,10 +566,10 @@ public client_disconnected(id)
 {
     new iHeadcount
     iPlayers()
-    if( is_user_bot(id) /*|| is_user_hltv(id) */) return
+    if( is_user_bot(id)) return
     if( iHeadcount > 0 )
     {
-        for (new admin=1; admin<=32; admin++)
+        for (new admin=1; admin<=iHeadcount; admin++)
 
         if(is_user_connected(admin))
         {
@@ -605,7 +579,7 @@ public client_disconnected(id)
                 client_print(admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
 
                 #if AMXX_VERSION_NUM != 182
-                client_print_color(admin,0, "^x03%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
+                client_print_color(admin,0, "^x03%n^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientCountry[id], ClientCity[id], ClientRegion[id]);
                 #endif
             }
 
@@ -615,7 +589,7 @@ public client_disconnected(id)
                 client_print(admin,print_chat,"%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
 
                 #if AMXX_VERSION_NUM != 182
-                client_print_color(admin,0, "^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
+                client_print_color(admin,0, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
                 #endif
             }
 
@@ -645,7 +619,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         //g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
 
 
-        if(get_pcvar_float(g_long) && (!g_lat[id] || !g_lon[id]) )
+        if(get_pcvar_float(g_long) && g_lat[id] && g_lon[id] || equali(ClientCity[id], "") )
 
             formatex(constring, charsmax (constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n",g_lat[id], g_lon[id], units, token);
 
@@ -690,186 +664,221 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
 public read_web(feeding)
 {
     new id = feeding - WEATHER
-
-    if(IS_SOCKET_IN_USE && !gotatemp[id])
+    if (!is_user_bot(id) && id > 0)
     {
-        new Float:vary;
-        vary = floatsqroot(random_float(25.0,200.0))
-        change_task(id+WEATHER,vary);
-        server_print "Queuing %s's %s for %f to prevent lag on socket", ClientName[id], PLUGIN, vary
-    }
-
-    else
-    if(!IS_SOCKET_IN_USE && !gotatemp[id])
-    {
-        IS_SOCKET_IN_USE = true;
-        callfunc_begin("@lock_socket",PROXY_SCRIPT)
-        callfunc_end()
-    }
-
-    server_print "%s:reading %s temp",PLUGIN, ClientName[id]
-    #if AMXX_VERSION_NUM != 182
-    if (socket_is_readable(g_Weather_Feed, 100000))
-    #endif
-    {
-        socket_recv(g_Weather_Feed,buffer,charsmax(buffer) )
-    }
-
-    if (!equal(buffer, ""))
-
-    {
-
-        if (containi(buffer, "temp") > charsmin && !equal(ClientCity[id], ""))
-
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
         {
-            server_print "%s:Ck temp",PLUGIN
-            new out[8];
-            copyc(out, 6, buffer[containi(buffer, "temp") + 6], '"');
-            replace(out, 6, ":", "");
-            replace(out, 6, ",", "");
-
-            #define PITCH (random_num (90,111))
-            emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
-            gotatemp[id] = true;
-
-            set_task(get_pcvar_num(g_timeout)*60.0, "Block", id+BLOCK); //anti-flood
-
-            new Float:Real_Temp = floatstr(out);
-
-            #if defined MOTD
-                log_amx "Temp is %i degrees in %s.", floatround(Real_Temp), ClientRegion[id]
-                log_to_file("clientemp.log", "Temp is %i degrees in %s.", floatround(Real_Temp), ClientRegion[id])
-            #endif
-
-            formatex(g_ClientTemp[id], charsmax (g_ClientTemp[]), "%i",floatround(Real_Temp));
-            new new_temp = str_to_num(g_ClientTemp[id])
-
-            new bufferck[8];
-            get_pcvar_string(g_cvar_units,bufferck,charsmax(bufferck));
-
-
-            if (containi(buffer, "imperial") > charsmin)
-
-            {
-                iRED_TEMP =  70;
-                iBLU_TEMP =  45;
-                iGRN_HI   =  69;
-                iGRN_LO   =  46;
-            }
-
-            else
-
-            if (containi(buffer, "metric") > charsmin)
-
-            {
-                iRED_TEMP =  15;
-                iBLU_TEMP = -15;
-                iGRN_HI   =  14;
-                iGRN_LO   = -14;
-            }
-
-            #if defined LOG
-                log_amx("%L", LANG_PLAYER, "LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp);
-            #endif
-            Data[iTemp] = new_temp
-            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-
-            ////////////////////////////////
-            #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
-            #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
-            ////////////////////////////////
-            server_print "New Temp is %i", new_temp
-            ////////////////////////////////
-
-            if( new_temp >= iRED_TEMP )
-            {
-                #define HUD_RED random_num(100,255),0,0
-                #if AMXX_VERSION_NUM > 182
-                set_dhudmessage(HUD_RED,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                #endif
-                set_hudmessage(HUD_RED,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-            }
-            if( new_temp <= iBLU_TEMP )
-            {
-                #define HUD_BLU 0,0,random_num(100,255)
-                #if AMXX_VERSION_NUM != 182
-                set_dhudmessage(HUD_BLU,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                #endif
-                set_hudmessage(HUD_BLU,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-            }
-            else
-            if( (new_temp > iGRN_LO) || (new_temp < iGRN_HI) )
-            {
-                #define HUD_GRN 0,random_num(100,255),0
-                #if AMXX_VERSION_NUM != 182
-                set_dhudmessage(HUD_GRN,HUD_PLACE1,0,3.0,5.0,1.0,1.5)
-                #endif
-                set_hudmessage(HUD_GRN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-            }
-
-            {
-                if ( cstrike_running() || (is_running("dod") == 1)  )
-                {
-                    #if AMXX_VERSION_NUM != 182
-                    client_print_color 0,0,"%L", LANG_PLAYER,"CS_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
-                    show_dhudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "HUD_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp)
-                    #endif
-                    show_hudmessage players_who_see_effects(),"%L", LANG_PLAYER, "HL_CLIENTEMP_PRINT", ClientCity[id], new_temp
-                }
-                #if AMXX_VERSION_NUM != 182
-                else
-                #endif
-                {
-                    client_print 0,print_chat, "%L", LANG_PLAYER,"LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
-                    show_hudmessage (players_who_see_effects(),"%L", LANG_PLAYER,"HL_CLIENTEMP_PRINT", ClientCity[id], new_temp)
-                }
-
-            }
-            //Speak the temperature.
-            num_to_word(new_temp, word_buffer, charsmax(word_buffer))
-
-            if (equal(bufferck, "imperial", charsmax(bufferck)))
-            {
-                if(new_temp < 0)
-                    client_cmd(0, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
-
-                else
-                    client_cmd(0, "spk ^"temperature right now is %s degrees^"", word_buffer );
-            }
-
-            if (equal(bufferck, "metric", charsmax(bufferck)))
-            {
-                if(new_temp < 0)
-                    client_cmd(0, "spk ^"temperature right now is %s degrees sub zero celsius^"", word_buffer );
-
-                else
-                    client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
-
-            }
-            if(socket_close(g_Weather_Feed) == 1)
-            {
-                server_print "%s finished %s reading",PLUGIN, ClientName[id]
-                set_task(5.0, "@mark_socket", id);
-
-                if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
-                {
-                    new work[MAX_PLAYERS]
-                    format(work,charsmax(work),PLUGIN,"")
-                    callfunc_push_str(work)
-                    callfunc_end()
-                }
-
-
-            }
-            return PLUGIN_CONTINUE;
-
+            gotatemp[id] = true
+            goto DOUBLE_CHECK
         }
 
+        if(equal(ClientCity[id], ""))
+        {
+            geoip_city(ClientIP[id],ClientCity[id],charsmax(ClientCity[]),1)
+            Data[SzCity] = ClientCity[id]
+            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+        }
 
+        if(!IS_SOCKET_IN_USE && !gotatemp[id])
+        {
+            //new Float:vary;
+            //vary = floatsqroot(random_float(20.0,200.0))
+            new Float:fTask
+            switch(random(100))
+            {
+    
+                case 0 .. 25   : fTask = 1.0
+                case 26 .. 50  : fTask = 5.0
+                case 51 .. 75  : fTask = 10.0
+                case 76 .. 100 : fTask = 15.0
+            }
+            change_task(id+WEATHER,fTask);
+            server_print "Queuing %s's %s for %f to prevent lag on socket", ClientName[id], PLUGIN, fTask
+            //goto DOUBLE_CHECK
+        }
+
+        else
+        if(!IS_SOCKET_IN_USE && !gotatemp[id])
+        {
+            IS_SOCKET_IN_USE = true;
+            callfunc_begin("@lock_socket",PROXY_SCRIPT)
+            callfunc_end()
+        }
+
+        server_print "%s:reading %s temp",PLUGIN, ClientName[id]
+        #if AMXX_VERSION_NUM != 182
+        if (socket_is_readable(g_Weather_Feed, 100000))
+        #endif
+        socket_recv(g_Weather_Feed,buffer,charsmax(buffer) )
+        if (!equal(buffer, "") && IS_SOCKET_IN_USE == true && containi(buffer, "temp") > charsmin)
+        {
+            server_print "We have a clientemp buffer"
+    
+            if (get_timeleft() > 30)
+            {
+                server_print "%s:Ck temp",PLUGIN
+                new out[8];
+                copyc(out, 6, buffer[containi(buffer, "temp") + 6], '"');
+                replace(out, 6, ":", "");
+                replace(out, 6, ",", "");
+    
+                #define PITCH (random_num (90,111))
+                emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
+                gotatemp[id] = true;
+    
+                new Float:Real_Temp = floatstr(out);
+    
+                #if defined MOTD
+                    log_amx "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
+                    log_to_file("clientemp.log", "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id])
+                #endif
+    
+                formatex(g_ClientTemp[id], charsmax (g_ClientTemp[]), "%i",floatround(Real_Temp));
+                new new_temp = str_to_num(g_ClientTemp[id])
+    
+                new bufferck[8];
+                get_pcvar_string(g_cvar_units,bufferck,charsmax(bufferck));
+    
+    
+                if (containi(buffer, "imperial") > charsmin)
+    
+                {
+                    iRED_TEMP =  70;
+                    iBLU_TEMP =  45;
+                    iGRN_HI   =  69;
+                    iGRN_LO   =  46;
+                }
+    
+                else
+    
+                if (containi(buffer, "metric") > charsmin)
+    
+                {
+                    iRED_TEMP =  15;
+                    iBLU_TEMP = -15;
+                    iGRN_HI   =  14;
+                    iGRN_LO   = -14;
+                }
+    
+                #if defined LOG
+                    log_amx("%L", LANG_PLAYER, "LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp);
+                #endif
+                Data[iTemp] = new_temp
+                TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+    
+                ////////////////////////////////
+                #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
+                #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
+                ////////////////////////////////
+                server_print "New Temp is %i", new_temp
+                ////////////////////////////////
+    
+                if( new_temp >= iRED_TEMP )
+                {
+                    #define HUD_RED random_num(100,255),0,0
+                    #if AMXX_VERSION_NUM > 182
+                    set_dhudmessage(HUD_RED,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                    #endif
+                    set_hudmessage(HUD_RED,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                }
+                if( new_temp <= iBLU_TEMP )
+                {
+                    #define HUD_BLU 0,0,random_num(100,255)
+                    #if AMXX_VERSION_NUM != 182
+                    set_dhudmessage(HUD_BLU,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                    #endif
+                    set_hudmessage(HUD_BLU,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                }
+                else
+                if( (new_temp > iGRN_LO) || (new_temp < iGRN_HI) )
+                {
+                    #define HUD_GRN 0,random_num(100,255),0
+                    #if AMXX_VERSION_NUM != 182
+                    set_dhudmessage(HUD_GRN,HUD_PLACE1,0,3.0,5.0,1.0,1.5)
+                    #endif
+                    set_hudmessage(HUD_GRN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                }
+    
+                {
+                    if ( cstrike_running() || (is_running("dod") == 1)  )
+                    {
+                        #if AMXX_VERSION_NUM != 182
+                        client_print_color 0,0,"%L", LANG_PLAYER,"CS_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
+                        show_dhudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "HUD_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp)
+                        #endif
+                        show_hudmessage players_who_see_effects(),"%L", LANG_PLAYER, "HL_CLIENTEMP_PRINT", ClientCity[id], new_temp
+                    }
+                    #if AMXX_VERSION_NUM != 182
+                    else
+                    #endif
+                    {
+                        client_print 0,print_chat, "%L", LANG_PLAYER,"LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
+                        show_hudmessage (players_who_see_effects(),"%L", LANG_PLAYER,"HL_CLIENTEMP_PRINT", ClientCity[id], new_temp)
+                    }
+    
+                }
+                //Speak the temperature.
+                num_to_word(new_temp, word_buffer, charsmax(word_buffer))
+    
+                if (equal(bufferck, "imperial", charsmax(bufferck)))
+                {
+                    if(new_temp < 0)
+                        client_cmd(0, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
+    
+                    else
+                        client_cmd(0, "spk ^"temperature right now is %s degrees^"", word_buffer );
+                }
+    
+                if (equal(bufferck, "metric", charsmax(bufferck)))
+                {
+                    if(new_temp < 0)
+                        client_cmd(0, "spk ^"temperature right now is %s degrees sub zero celsius^"", word_buffer );
+    
+                    else
+                        client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
+    
+                }
+                if(socket_close(g_Weather_Feed) == 1)
+                {
+                    server_print "%s finished %s reading",PLUGIN, ClientName[id]
+                    set_task(5.0, "@mark_socket", id);
+    
+                    if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
+                    {
+                        new work[MAX_PLAYERS]
+                        format(work,charsmax(work),PLUGIN,"")
+                        callfunc_push_str(work)
+                        callfunc_end()
+                    }
+    
+    
+                }
+                return PLUGIN_CONTINUE;
+    
+            }
+            else
+            {
+                server_print "Do not see temp, yet. Reading web again."
+                set_task(1.5, "read_web",id+WEATHER)
+            }
+
+        }
+        else if(is_user_connected(id) || is_user_connecting(id) && !gotatemp[id])
+        {
+            server_print "No buffer checking again"
+            set_task(1.5, "read_web",id+WEATHER)
+        }
+        else
+        {
+            set_task(5.0, "@mark_socket", id);
+            if(socket_close(g_Weather_Feed) == 1)
+                server_print "%s finished %s reading",PLUGIN, ClientName[id]
+        }
+
+        DOUBLE_CHECK:
+        return PLUGIN_CONTINUE
     }
-    if(!gotatemp[id])
-        set_task(1.5, "read_web",id+WEATHER);
-    return PLUGIN_CONTINUE;
+    return PLUGIN_HANDLED
 
 }
 
@@ -890,28 +899,28 @@ public read_web(feeding)
 {
 
     //Assure admins queue is really running
-    server_print "---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
+    server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
     //How many runs before task is put to sleep given diminished returns
     new gopher = get_pcvar_num(g_queue_weight)
 
-    new players[ MAX_PLAYERS ];
-    new iHeadcount
-    iPlayers()
+    new players[ MAX_PLAYERS ], iHeadcount
+    get_players(players,iHeadcount,"ch")
     for (new q; q < iHeadcount ; ++q)
     {
+        Data[ SzAddress ] = ClientIP[q]
 
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
         {
             gotatemp[q] = true
+            @country_finder(q)
         }
-
         //Make array of non-bot connected players who need their temp still.
         //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        else if(!gotatemp[players[q]])
+        if(!gotatemp[players[q]])
         {
-            server_print "%s queued for %s",ClientName[q],PLUGIN
+            //server_print "%s queued for %s",ClientName[q],PLUGIN
+            server_print "%n queued for %s",q,PLUGIN
             //task spread formula
-            new iHeadcount;iPlayers()
             new total = iHeadcount
             server_print "Total players shows as: %i", total
             new Float:retask = (float(total++)*2.0)
@@ -922,9 +931,8 @@ public read_web(feeding)
 
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
-                if(!task_exists(players[q] + WEATHER))
+                if(!task_exists(players[q] + WEATHER) && !IS_SOCKET_IN_USE && get_timeleft() > 60)
                     set_task(queued_task+++5.0,"@country_finder",players[q]+WEATHER)
-            //client_putinserver(players[q])
 
             //if they have a task set-up already adjust it
             if(task_exists(players[q] + WEATHER))
@@ -935,7 +943,6 @@ public read_web(feeding)
                 set_task(queued_task,"client_temp",players[q]);
                 server_print "%f|Queue task time for %s", queued_task, ClientName[players[q]]
                 change_task(iQUEUE, 45.0)
-                //server_print "new q time is %i",
             }
 
         }
