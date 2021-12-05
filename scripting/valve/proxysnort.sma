@@ -131,12 +131,14 @@ public plugin_init()
     ReadProxyFromFile( )
 
 }
-public client_putinserver(id)
+
+//public client_putinserver(id) //allows them to use fastDL
+public client_connect(id)
 {
     if(is_user_bot(id))
         return PLUGIN_HANDLED_MAIN
 
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
+    if(is_user_connected(id) || is_user_connecting(id) && !is_user_bot(id)/*doubling*/ && id > 0)
     {
         static SzLoopback[] = "127.0.0.1"
 
