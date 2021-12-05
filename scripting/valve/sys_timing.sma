@@ -109,5 +109,6 @@ stock iPlayers()
         server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
         log_amx "Adjusting tic based on turbulence."
     }
-
+    else
+    @set_tic()
 }
