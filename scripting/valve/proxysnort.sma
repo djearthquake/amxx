@@ -239,7 +239,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
     if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
-            set_task(10.0,"client_putinserver",id)
+            set_task(10.0,"client_connect",id)
         else
             IS_SOCKET_IN_USE = true
         server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
@@ -270,14 +270,14 @@ stock get_user_profile(id)
 @handle_proxy_user(id)
 {
     bright_message()
-    if(is_user_connected(id))
+    if(is_user_connected(id) || is_user_connecting(id))
     {
         if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
         {
             for (new admin=1; admin<=g_maxPlayers; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
-            client_cmd 0,"spk ^"bad entry detected^""
+            client_cmd( 0,"spk ^"bad entry detected^"" )
         }
         //ban steamid
         if (get_pcvar_num(g_cvar_iproxy_action) == 3)
