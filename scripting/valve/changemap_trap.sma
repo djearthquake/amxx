@@ -61,7 +61,7 @@ public plugin_cfg()
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public client_connect(id)!bChecked?@void_check():server_print("Nobody is stick in bewteen maps.")
+public client_connect(id)!bChecked?@void_check():server_print("Nobody is stuck in between maps.")
 @void_check()
 {
     bChecked = true
