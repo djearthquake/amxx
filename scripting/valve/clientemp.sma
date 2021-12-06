@@ -217,8 +217,15 @@ public plugin_precache()
     server_print "Turning on queue per request by %s.",ClientName[id]
     return PLUGIN_HANDLED;
 }
-
-
+@fixadmins(id)
+{
+    client_print id,print_chat,"Changed admin_temp 1 to allow admins to get temp."
+    set_pcvar_num(g_admins, 1)
+    gotatemp[id] = false
+    client_cmd id, "spk ^"computer malfunction. system is on zero. system is on one now for temperature control^""
+    change_task(iQUEUE, 10.0)
+    client_temp_cmd(id)
+}
 @queue_test2(id)
 {
     if(is_user_connected(id))
@@ -344,15 +351,6 @@ public Speak(id)
         client_temp_cmd(id) //fetch
     }
 
-}
-
-@fixadmins(id)
-{
-    client_print id,print_chat,"Changed admin_temp 1 to allow admins to get temp."
-    set_pcvar_num(g_admins, 1)
-    gotatemp[id] = false
-    client_cmd id, "spk ^"computer malfunction. system is on zero. system is on one now for temperature control^""
-    client_temp_cmd id
 }
 
 public client_temp_cmd(id)
@@ -742,20 +740,14 @@ public read_web(feeding)
                 #define PITCH (random_num (90,111))
                 emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
                 gotatemp[id] = true;
-    
+
                 new Float:Real_Temp = floatstr(out);
-    
-                #if defined MOTD
-                    log_amx "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
-                    log_to_file("clientemp.log", "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id])
-                #endif
     
                 formatex(g_ClientTemp[id], charsmax (g_ClientTemp[]), "%i",floatround(Real_Temp));
                 new new_temp = str_to_num(g_ClientTemp[id])
     
                 new bufferck[8];
                 get_pcvar_string(g_cvar_units,bufferck,charsmax(bufferck));
-    
     
                 if (containi(buffer, "imperial") > charsmin)
     
@@ -857,13 +849,18 @@ public read_web(feeding)
                 }
                 if(equali(ClientCity[id],"") && containi(buffer, "name") > charsmin) //city blank from Geodat?
                 {
-                    new out[MAX_IP_LENGTH];
-                    copyc(out, charsmax(out), buffer[containi(buffer, "name") + 6], '"');
+                    new out[MAX_NAME_LENGTH];
+                    copyc(out, charsmax(out), buffer[containi(buffer, "name") + 7], '"');
                     replace(out, charsmax(out), ":", "");
                     replace(out, charsmax(out), ",", "");
-                    log_amx "%n city is %s^nwas missing on local geoip", id, out
+                    log_amx "%n city is %s was missing on local geoip", id, out
+                    copy(ClientCity[id],charsmax(ClientCity[]),out)
                     server_print "%n city is %s",id, out
                 }
+                #if defined MOTD
+                    log_amx "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
+                    log_to_file("clientemp.log", "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id])
+                #endif
                 if(socket_close(g_Weather_Feed) == 1)
                 {
                     server_print "%s finished %s reading",PLUGIN, ClientName[id]
@@ -933,7 +930,7 @@ public read_web(feeding)
     get_players(players,iHeadcount,"ch")
     for (new q; q < iHeadcount ; ++q)
     {
-        Data[ SzAddress ] = ClientIP[q]
+        Data[ SzAddress ] = ClientIP[players[q]]
 
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
         {
