@@ -59,16 +59,21 @@ public plugin_init()register_plugin "CHANGEMAP TRAP FIXER", "A", ".sρiηX҉."
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 public plugin_cfg()
-set_task(5.0,"@void_check",2021)
+set_task(10.0,"@void_check",2021)
 
 @void_check()
 {
     new mname[MAX_NAME_LENGTH];get_mapname(mname,charsmax(mname));
     server_print "^n^n^nValidating players^n^n^n";
     for (new client=1; client<=get_playersnum(1); client++)
-        (!is_user_bot(client)&!is_user_alive(client)&!is_user_connected(client)&!is_user_connecting(client))
-         ?server_print("Somebody looks stuck.^nWe think there is a player stuck loading.")
-         &log_amx("Player stuck in void!")
-         &server_cmd("amx_map %s",mname)
-         :server_print("Nobody is stuck in between maps.")
+    {
+        if(is_user_connecting(client) || is_user_connected(client))
+            return
+        !   is_user_bot(client)
+
+        ?
+            server_print("Somebody looks stuck.^nWe think there is a player stuck loading.")&log_amx("Player stuck in void!")&server_cmd("amx_map %s",mname)
+        :
+            server_print("Nobody is stuck in between maps.")            
+    }
 }
