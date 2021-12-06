@@ -35,6 +35,7 @@ new g_MaxPlayers,bool:bChecked
 *▒▌░░░░░░░▄▀▀▄░░░░░░░░░░░░░░░▀▄░▄░▄░▄▌░▄░▄▌
 *▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 */
+#define MAX_NAME_LENGTH            32
 public plugin_init()
     g_MaxPlayers = get_maxplayers()
 
@@ -64,14 +65,15 @@ public plugin_cfg()
 public client_putinserver(id)
 (!bChecked&!task_exists(2021))
 ?server_print("Nobody is stuck in between maps.")
-:set_task(0.2,"@void_check",2021)&server_print("Somebody looks stuck")
+:set_task(1.0,"@void_check",2021)&server_print("Somebody looks stuck.")
 @void_check()
 {
+    new mname[MAX_NAME_LENGTH];get_mapname(mname,charsmax(mname));
     bChecked = true
     server_print "^n^n^nValidating players^n^n^n"
     for (new client=1; client<=g_MaxPlayers; client++)
     if(!is_user_bot(client) && !is_user_alive(client))
         (!is_user_connected(client)|!is_user_connecting(client)) ?
-    /*server_cmd("reload")*/server_print("We think there is a player stuck loading") & log_amx("Player stuck in void!") :
+    server_cmd("changelevel %s",mname/*"reload"*/)&server_print("We think there is a player stuck loading.") & log_amx("Player stuck in void!") :
     server_print("no need to reload")
 }
