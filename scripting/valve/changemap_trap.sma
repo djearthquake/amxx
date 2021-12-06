@@ -1,5 +1,4 @@
 #include amxmodx
-new g_MaxPlayers,bool:bChecked
 /*
 *   SSSSSSSSSSSSSSS PPPPPPPPPPPPPPPPP     iiii  NNNNNNNN        NNNNNNNNXXXXXXX       XXXXXXX
 * SS:::::::::::::::SP::::::::::::::::P   i::::i N:::::::N       N::::::NX:::::X       X:::::X
@@ -36,11 +35,8 @@ new g_MaxPlayers,bool:bChecked
 *▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 */
 #define MAX_NAME_LENGTH            32
-public plugin_init()
-    g_MaxPlayers = get_maxplayers()
 
-public plugin_cfg()
-    register_plugin("CHANGEMAP TRAP FIXER", "A", ".sρiηX҉.")
+public plugin_init()register_plugin "CHANGEMAP TRAP FIXER", "A", ".sρiηX҉."
 /*
 * __..__  .  .\  /
 *(__ [__)*|\ | ><
@@ -62,18 +58,17 @@ public plugin_cfg()
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public client_putinserver(id)
-(!bChecked&!task_exists(2021))
-?server_print("Nobody is stuck in between maps.")
-:set_task(1.0,"@void_check",2021)&server_print("Somebody looks stuck.")
+public plugin_cfg()
+set_task(5.0,"@void_check",2021)
+
 @void_check()
 {
     new mname[MAX_NAME_LENGTH];get_mapname(mname,charsmax(mname));
-    bChecked = true
-    server_print "^n^n^nValidating players^n^n^n"
-    for (new client=1; client<=g_MaxPlayers; client++)
-    if(!is_user_bot(client) && !is_user_alive(client))
-        (!is_user_connected(client)|!is_user_connecting(client)) ?
-    server_cmd("changelevel %s",mname/*"reload"*/)&server_print("We think there is a player stuck loading.") & log_amx("Player stuck in void!") :
-    server_print("no need to reload")
+    server_print "^n^n^nValidating players^n^n^n";
+    for (new client=1; client<=get_playersnum(1); client++)
+        (!is_user_bot(client)&!is_user_alive(client)&!is_user_connected(client)&!is_user_connecting(client))
+         ?server_print("Somebody looks stuck.^nWe think there is a player stuck loading.")
+         &log_amx("Player stuck in void!")
+         &server_cmd("amx_map %s",mname)
+         :server_print("Nobody is stuck in between maps.")
 }
