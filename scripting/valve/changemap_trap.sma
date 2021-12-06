@@ -61,13 +61,13 @@ public plugin_cfg()
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public client_connect(id)!bChecked?@void_check():server_print("Nobody is stuck in between maps.")
+public client_putinserver(id)(!bChecked&!task_exists(2021))?set_task(1.0,"@void_check",2021)&server_print("Somebody looks stuck"):server_print("Nobody is stuck in between maps.")
 @void_check()
 {
     bChecked = true
     server_print "^n^n^nValidating players^n^n^n"
     for (new client=1; client<=g_MaxPlayers; client++)
-    !(is_user_connected(client)|is_user_connecting(client)) ?
-    server_cmd("reload") & log_amx("Player stuck in void!") :
+    (!is_user_connected(client)|!is_user_connecting(client)) ?
+    /*server_cmd("reload")*/server_print("We think there is a player stuck loading") & log_amx("Player stuck in void!") :
     server_print("no need to reload")
 }
