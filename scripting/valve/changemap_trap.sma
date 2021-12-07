@@ -70,10 +70,12 @@ set_task(7.0,"@void_check",2021)
         if(is_user_connecting(client))
             return //downloader
             is_user_alive(client)
-
         ?
             server_print("Somebody looks stuck.^nWe think there is a player stuck loading.")&log_amx("Player stuck in void!")&server_cmd("amx_map %s",mname)
         :
             server_print("Nobody is stuck in between maps.")            
     }
+
+
+
 }
