@@ -80,6 +80,11 @@ public plugin_init()
         checktime = cstrike_running() ? 15.0 : 5.0 ;
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
+    new mapname[MAX_NAME_LENGTH], TIME_LEFT_SEC
+    get_mapname(mapname, charsmax(mapname))
+
+    if(containi(mapname, "op4c") > charsmin || cstrike_running())
+        TIME_LEFT_SEC = 1
 
 #if AMXX_VERSION_NUM == 182
     g_mp_chattime     = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
@@ -87,23 +92,28 @@ public plugin_init()
     g_rnds            = get_cvar_pointer("mp_maxrounds")
     g_frags           = get_cvar_pointer("mp_fraglimit")
     g_frags_remaining = get_cvar_pointer("mp_fragleft")
-    g_timelim         = get_cvar_pointer("mp_timeleft")
+
+    if(TIME_LEFT_SEC)
+        g_timelim     = get_cvar_pointer("mp_timeleft")
+
     g_votetime        = get_cvar_pointer("amx_vote_time")
+
 #else
     g_coloredMenus = colored_menus()
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
 
     if(get_cvar_pointer("mp_winlimit"))
         bind_pcvar_num(get_cvar_pointer("mp_winlimit"),g_wins)
-    
+
     if(get_cvar_pointer("mp_maxrounds"))
         bind_pcvar_num(get_cvar_pointer("mp_maxrounds"),g_rnds)
 
     if(get_cvar_pointer("mp_fraglimit"))
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags_remaining)
 
-    if(get_cvar_pointer("mp_fragsleft"))
-        bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
+    if(TIME_LEFT_SEC)
+        if(get_cvar_pointer("mp_fragsleft"))
+            bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
 
     if(get_cvar_pointer("mp_timelimit"))
         bind_pcvar_num(get_cvar_pointer("mp_timeleft"),g_timelim)
@@ -141,7 +151,7 @@ public checkVotes()
 
         get_mapname(mapname, charsmax(mapname))
         new Float:steptime = get_pcvar_float(g_step)
-    
+
         //Half-Life Frags
         new timeleft = get_timeleft()
         if(g_frags && g_frags_remaining && timeleft > 129 )
@@ -182,7 +192,7 @@ public checkVotes()
         if(g_mp_chattime < 2)g_mp_chattime = 5
         set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
     }
-    
+
     if(g_frags && g_frags_remaining < 2)
     {
         log_amx"HL server frag limit map change"
@@ -283,7 +293,7 @@ public voteNextmap()
     #endif
     {
         new c = g_wins - 2
-        
+
         if ((c > g_teamScore[0]) && (c > g_teamScore[1]))
         {
             g_selected = false
