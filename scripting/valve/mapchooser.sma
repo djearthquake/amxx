@@ -275,9 +275,14 @@ stock random_map_pick()
 public voteNextmap()
 {
     new timeleft = get_timeleft()
-    new intercept = cstrike_running() ? 129 : g_votetime + 5
+    #if AMXX_VERSION_NUM == 182
+    new votetime = get_pcvar_num(g_votetime)
+    #else
+    votetime = g_votetime
+    #endif
+    new vote_menu_display = cstrike_running() ? 129 : votetime + 5
 
-    if(!cstrike_running())
+    if(vote_menu_display != 129)
     {
         #if AMXX_VERSION_NUM == 182
         if(get_pcvar_num(g_timelim))
@@ -315,13 +320,13 @@ public voteNextmap()
     #if AMXX_VERSION_NUM == 182
     else if(g_frags)
     {
-        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (intercept + intercept) && !g_rtv )
+        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (vote_menu_display + (votetime * 2)) && !g_rtv )
 
     #else
     else if (g_frags)
     {
 
-        if ( g_frags_remaining > 5 && timeleft > (intercept + intercept) && !g_rtv )
+        if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + (votetime * 2)) && !g_rtv )
         #endif
         {
             g_selected = false
@@ -329,7 +334,7 @@ public voteNextmap()
         }
 
     } else {
-        if (timeleft < 1 || timeleft > (intercept + intercept) && !g_rtv)
+        if (timeleft < 1 || timeleft > (vote_menu_display + (votetime * 2)) && !g_rtv)
         {
             g_selected = false
             return
