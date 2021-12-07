@@ -80,11 +80,8 @@ public plugin_init()
         checktime = cstrike_running() ? 15.0 : 5.0 ;
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
-    new mapname[MAX_NAME_LENGTH], TIME_LEFT_SEC
+    new mapname[MAX_NAME_LENGTH]
     get_mapname(mapname, charsmax(mapname))
-
-    if(containi(mapname, "op4c") > charsmin || cstrike_running())
-        TIME_LEFT_SEC = 1
 
 #if AMXX_VERSION_NUM == 182
     g_mp_chattime     = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
@@ -92,10 +89,7 @@ public plugin_init()
     g_rnds            = get_cvar_pointer("mp_maxrounds")
     g_frags           = get_cvar_pointer("mp_fraglimit")
     g_frags_remaining = get_cvar_pointer("mp_fragleft")
-
-    if(TIME_LEFT_SEC)
-        g_timelim     = get_cvar_pointer("mp_timeleft")
-
+    g_timelim         = get_cvar_pointer("mp_timelimit")
     g_votetime        = get_cvar_pointer("amx_vote_time")
 
 #else
@@ -111,12 +105,11 @@ public plugin_init()
     if(get_cvar_pointer("mp_fraglimit"))
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags_remaining)
 
-    if(TIME_LEFT_SEC)
-        if(get_cvar_pointer("mp_fragsleft"))
+    if(get_cvar_pointer("mp_fragsleft"))
             bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
 
     if(get_cvar_pointer("mp_timelimit"))
-        bind_pcvar_num(get_cvar_pointer("mp_timeleft"),g_timelim)
+        bind_pcvar_num(get_cvar_pointer("mp_timelimit"),g_timelim)
 
     if(get_cvar_num("amx_vote_time"))
         bind_pcvar_num(get_cvar_pointer("amx_vote_time"),g_votetime)
