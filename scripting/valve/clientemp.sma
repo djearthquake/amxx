@@ -464,13 +464,13 @@ public client_temp(id)
         #endif
 
         for (new heit;heit < sizeof faren_country;heit++)
-        
+
         if(equali(country, faren_country[heit]))
         {
             set_pcvar_string(g_cvar_units, "imperial")
             copy( Data[ifaren], charsmax(Data[ifaren]), "1" )
         }
-        else 
+        else
         {
             set_pcvar_string(g_cvar_units, "metric")
             copy( Data[ifaren], charsmax(Data[ifaren]), "0" )
@@ -701,7 +701,7 @@ public read_web(feeding)
             new Float:fTask
             switch(random(100))
             {
-    
+
                 case 0 .. 25   : fTask = 1.0
                 case 26 .. 50  : fTask = 5.0
                 case 51 .. 75  : fTask = 10.0
@@ -728,7 +728,7 @@ public read_web(feeding)
         if (!equal(buffer, "") && IS_SOCKET_IN_USE == true && containi(buffer, "temp") > charsmin)
         {
             server_print "We have a clientemp buffer"
-    
+
             if (get_timeleft() > 30) ///Refrain from running sockets on map change!
             {
                 server_print "%s:Ck temp",PLUGIN
@@ -736,52 +736,52 @@ public read_web(feeding)
                 copyc(out, 6, buffer[containi(buffer, "temp") + 6], '"');
                 replace(out, 6, ":", "");
                 replace(out, 6, ",", "");
-    
+
                 #define PITCH (random_num (90,111))
                 emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
                 gotatemp[id] = true;
 
                 new Float:Real_Temp = floatstr(out);
-    
+
                 formatex(g_ClientTemp[id], charsmax (g_ClientTemp[]), "%i",floatround(Real_Temp));
                 new new_temp = str_to_num(g_ClientTemp[id])
-    
+
                 new bufferck[8];
                 get_pcvar_string(g_cvar_units,bufferck,charsmax(bufferck));
-    
+
                 if (containi(buffer, "imperial") > charsmin)
-    
+
                 {
                     iRED_TEMP =  70;
                     iBLU_TEMP =  45;
                     iGRN_HI   =  69;
                     iGRN_LO   =  46;
                 }
-    
+
                 else
-    
+
                 if (containi(buffer, "metric") > charsmin)
-    
+
                 {
                     iRED_TEMP =  15;
                     iBLU_TEMP = -15;
                     iGRN_HI   =  14;
                     iGRN_LO   = -14;
                 }
-    
+
                 #if defined LOG
                     log_amx("%L", LANG_PLAYER, "LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp);
                 #endif
                 Data[iTemp] = new_temp
                 TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-    
+
                 ////////////////////////////////
                 #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
                 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
                 ////////////////////////////////
                 server_print "New Temp is %i", new_temp
                 ////////////////////////////////
-    
+
                 if( new_temp >= iRED_TEMP )
                 {
                     #define HUD_RED random_num(100,255),0,0
@@ -807,7 +807,7 @@ public read_web(feeding)
                     #endif
                     set_hudmessage(HUD_GRN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
                 }
-    
+
                 {
                     if ( cstrike_running() || (is_running("dod") == 1)  )
                     {
@@ -824,28 +824,28 @@ public read_web(feeding)
                         client_print 0,print_chat, "%L", LANG_PLAYER,"LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
                         show_hudmessage (players_who_see_effects(),"%L", LANG_PLAYER,"HL_CLIENTEMP_PRINT", ClientCity[id], new_temp)
                     }
-    
+
                 }
                 //Speak the temperature.
                 num_to_word(new_temp, word_buffer, charsmax(word_buffer))
-    
+
                 if (equal(bufferck, "imperial", charsmax(bufferck)))
                 {
                     if(new_temp < 0)
                         client_cmd(0, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
-    
+
                     else
                         client_cmd(0, "spk ^"temperature right now is %s degrees^"", word_buffer );
                 }
-    
+
                 if (equal(bufferck, "metric", charsmax(bufferck)))
                 {
                     if(new_temp < 0)
                         client_cmd(0, "spk ^"temperature right now is %s degrees sub zero celsius^"", word_buffer );
-    
+
                     else
                         client_cmd(0, "spk ^"temperature right now is %s degrees celsius^"", word_buffer );
-    
+
                 }
                 if(equali(ClientCity[id],"") && containi(buffer, "name") > charsmin) //city blank from Geodat?
                 {
@@ -865,7 +865,7 @@ public read_web(feeding)
                 {
                     server_print "%s finished %s reading",PLUGIN, ClientName[id]
                     set_task(5.0, "@mark_socket", id);
-    
+
                     if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
                     {
                         new work[MAX_PLAYERS]
@@ -873,11 +873,11 @@ public read_web(feeding)
                         callfunc_push_str(work)
                         callfunc_end()
                     }
-    
-    
+
+
                 }
                 return PLUGIN_CONTINUE;
-    
+
             }
             else
             {
