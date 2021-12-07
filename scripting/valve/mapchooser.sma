@@ -286,15 +286,6 @@ public voteNextmap()
     #endif
     new vote_menu_display = cstrike_running() ? 129 : votetime + 5
 
-    if(vote_menu_display != 129)
-    {
-        #if AMXX_VERSION_NUM == 182
-        if(get_pcvar_num(g_timelim))
-        #else
-        if (g_timelim)
-        #endif
-            return
-    }
     #if AMXX_VERSION_NUM == 182
     if(g_wins & get_pcvar_num(g_wins))
     #else
