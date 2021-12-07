@@ -23,17 +23,11 @@
 
 
 #define MAX_PLAYERS                32
-
 #define MAX_RESOURCE_PATH_LENGTH   64
-
 #define MAX_MENU_LENGTH            512
-
 #define MAX_NAME_LENGTH            32
-
 #define MAX_AUTHID_LENGTH          64
-
 #define MAX_IP_LENGTH              16
-
 #define MAX_USER_INFO_LENGTH       256
 
 #define charsmin                  -1
@@ -65,6 +59,9 @@ public plugin_init()
 
     format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
     register_menucmd(register_menuid(MenuName), (charsmin^(charsmin<<(SELECTMAPS+2))), "countVote")
+    #if !defined create_cvar
+    #define create_cvar register_cvar
+    #endif
     g_max       = create_cvar("amx_extendmap_max", "90")
     g_step      = create_cvar("amx_extendmap_step", "15")
     g_auto_pick = create_cvar("mapchooser_auto", "0")
@@ -83,6 +80,16 @@ public plugin_init()
         checktime = cstrike_running() ? 15.0 : 5.0 ;
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
+
+#if AMXX_VERSION_NUM == 182
+    g_mp_chattime     = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
+    g_wins            = get_cvar_pointer("mp_winlimit")
+    g_rnds            = get_cvar_pointer("mp_maxrounds")
+    g_frags           = get_cvar_pointer("mp_fraglimit")
+    g_frags_remaining = get_cvar_pointer("mp_fragleft")
+    g_timelim         = get_cvar_pointer("mp_timeleft")
+    g_votetime        = get_cvar_pointer("amx_vote_time")
+#else
     g_coloredMenus = colored_menus()
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
 
@@ -93,19 +100,20 @@ public plugin_init()
         bind_pcvar_num(get_cvar_pointer("mp_maxrounds"),g_rnds)
 
     if(get_cvar_pointer("mp_fraglimit"))
-        bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
+        bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags_remaining)
 
     if(get_cvar_pointer("mp_fragsleft"))
         bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
 
     if(get_cvar_pointer("mp_timelimit"))
-        bind_pcvar_num(get_cvar_pointer("mp_timelimit"),g_timelim)
+        bind_pcvar_num(get_cvar_pointer("mp_timeleft"),g_timelim)
 
     if(get_cvar_num("amx_vote_time"))
         bind_pcvar_num(get_cvar_pointer("amx_vote_time"),g_votetime)
 
     if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
         register_event("TeamScore", "team_score", "a")
+#endif
 }
 
 @rtv(id)
@@ -234,7 +242,9 @@ bool:isInMenu(id)
 
     for (new m=0; m<playercount; ++m)
     {
+        #if defined amxclient_cmd
         amxclient_cmd(players[m],random_map_pick()) //hooks all with unknown command
+        #endif
         server_print "Trying amxclient_cmd..."
         console_cmd(players[m],random_map_pick())
         server_print "Trying console_cmd..."
@@ -257,7 +267,20 @@ public voteNextmap()
     new timeleft = get_timeleft()
     new intercept = cstrike_running() ? 129 : g_votetime + 5
 
+    if(!cstrike_running())
+    {
+        #if AMXX_VERSION_NUM == 182
+        if(get_pcvar_num(g_timelim))
+        #else
+        if (g_timelim)
+        #endif
+            return
+    }
+    #if AMXX_VERSION_NUM == 182
+    if(g_wins & get_pcvar_num(g_wins))
+    #else
     if (g_wins)
+    #endif
     {
         new c = g_wins - 2
         
@@ -267,7 +290,11 @@ public voteNextmap()
             return
         }
     }
+    #if AMXX_VERSION_NUM == 182
+    else if(g_rnds & get_pcvar_num(g_rnds))
+    #else
     else if (g_rnds)
+    #endif
     {
         if ((g_rnds - 2) > (g_teamScore[0] + g_teamScore[1]))
         {
@@ -275,9 +302,17 @@ public voteNextmap()
             return
         }
     }
+    #if AMXX_VERSION_NUM == 182
+    else if(g_frags)
+    {
+        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (intercept + intercept) && !g_rtv )
+
+    #else
     else if (g_frags)
     {
+
         if ( g_frags_remaining > 5 && timeleft > (intercept + intercept) && !g_rtv )
+        #endif
         {
             g_selected = false
             return
