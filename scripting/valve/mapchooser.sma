@@ -13,6 +13,7 @@
 
 #include <amxmodx>
 #include <amxmisc>
+#include <engine_stocks>
 
 #define SELECTMAPS  8
 
@@ -24,6 +25,7 @@
 
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
+#define MAX_CMD_LENGTH             128
 #define MAX_MENU_LENGTH            512
 #define MAX_NAME_LENGTH            32
 #define MAX_AUTHID_LENGTH          64
@@ -34,6 +36,9 @@
 
 new Array:g_mapName;
 new g_mapNums;
+new Pcvar_captures
+new g_counter
+new bool:b_set_caps
 
 new g_nextName[SELECTMAPS]
 new g_voteCount[SELECTMAPS + 2]
@@ -69,7 +74,7 @@ public plugin_init()
     get_localinfo("lastMap", g_lastMap, charsmax(g_lastMap))
     set_localinfo("lastMap", "")
 
-    new maps_ini_file[64]
+    new maps_ini_file[MAX_RESOURCE_PATH_LENGTH]
     get_configsdir(maps_ini_file, charsmax(maps_ini_file));
     format(maps_ini_file, charsmax(maps_ini_file), "%s/maps.ini", maps_ini_file);
 
@@ -80,8 +85,21 @@ public plugin_init()
         checktime = cstrike_running() ? 15.0 : 5.0 ;
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
-    new mapname[MAX_NAME_LENGTH]
-    get_mapname(mapname, charsmax(mapname))
+
+    new op4c_map
+    if(find_ent(-1,"info_ctfdetect") > 0)
+        op4c_map = 1
+    else if(Pcvar_captures)
+        set_pcvar_num(Pcvar_captures, 5)
+    
+
+    if(op4c_map)
+    {
+        g_counter = get_pcvar_num(Pcvar_captures)
+        (b_set_caps) ? g_counter : set_pcvar_num(Pcvar_captures, 5) &g_counter
+        server_print "CAPTURE POINT MAP DETECTED!"
+        register_event("CTFScore", "@count", "a", "0=CapturedFlag")
+    }
 
 #if AMXX_VERSION_NUM == 182
     g_mp_chattime     = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
@@ -286,7 +304,6 @@ public voteNextmap()
     #endif
     {
         new c = g_wins - 2
-
         if ((c > g_teamScore[0]) && (c > g_teamScore[1]))
         {
             g_selected = false
@@ -316,6 +333,15 @@ public voteNextmap()
 
         if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + chatime + (votetime * 2)) && !g_rtv )
         #endif
+        {
+            g_selected = false
+            return
+        }
+    }
+
+    else if (Pcvar_captures)
+    {
+        if(get_pcvar_num(Pcvar_captures) > 1)
         {
             g_selected = false
             return
@@ -465,4 +491,25 @@ public plugin_end()
     set_localinfo("lastMap", current_map)
 
     ArrayDestroy(g_mapName)
+}
+
+public pfn_keyvalue( ent )
+{
+    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+    Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
+
+    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+
+    if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
+    {
+        set_pcvar_num(Pcvar_captures, str_to_num(value))
+        b_set_caps = true
+    }
+}
+
+@count()
+{
+    g_counter--
+    set_pcvar_num(Pcvar_captures,g_counter)
+    server_print "[AMX]FLAG CAPTURED"
 }
