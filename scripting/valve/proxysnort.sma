@@ -125,20 +125,18 @@ public plugin_init()
     Data[ SzProxy ] = 1
     if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-                
+
     formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
     @file_data(SzSave)
     ReadProxyFromFile( )
 
 }
-
-//public client_putinserver(id) //allows them to use fastDL
-public client_connect(id)
+public client_putinserver(id)
 {
-    if(is_user_bot(id))
+    if(is_user_bot(id) || g_has_been_checked[id])
         return PLUGIN_HANDLED_MAIN
 
-    if(is_user_connected(id) || is_user_connecting(id) && !is_user_bot(id)/*doubling*/ && id > 0)
+    if(is_user_connected(id) || is_user_connecting(id) && !is_user_bot(id) && id > 0)
     {
         static SzLoopback[] = "127.0.0.1"
 
@@ -180,7 +178,7 @@ public client_connect(id)
 public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 {
     //if (is_user_connected(id) && !is_user_connecting(id) && id > 0 )
-    if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id))
+    if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id])
     if ( !is_user_bot(id) )
     {
         server_print "%s %s by %s:Checking if %s is a bot or something else.",PLUGIN, VERSION, AUTHOR, name
@@ -423,7 +421,7 @@ stock get_user_profile(id)
                     callfunc_push_str(work)
                     callfunc_end()
                 }
-    
+
             }
 
         }
@@ -476,7 +474,7 @@ stock get_user_profile(id)
                 client_print admin,print_center,"Null sv_proxycheckio-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION
                 client_print admin,print_console,"Get key from proxycheck.io."
             }
-        
+
         }
 
     }
