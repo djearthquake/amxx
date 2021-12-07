@@ -275,8 +275,9 @@ stock random_map_pick()
 public voteNextmap()
 {
     new timeleft = get_timeleft()
+    new votetime
     #if AMXX_VERSION_NUM == 182
-    new votetime = get_pcvar_num(g_votetime)
+    votetime = get_pcvar_num(g_votetime)
     #else
     votetime = g_votetime
     #endif
