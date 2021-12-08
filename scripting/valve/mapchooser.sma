@@ -39,6 +39,7 @@ new g_mapNums;
 new Pcvar_captures
 new g_counter
 new bool:b_set_caps
+new bool:B_op4c_map
 
 new g_nextName[SELECTMAPS]
 new g_voteCount[SELECTMAPS + 2]
@@ -86,21 +87,23 @@ public plugin_init()
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
 
-    new op4c_map
-    if(find_ent(-1,"info_ctfdetect") > 0)
-        op4c_map = 1
-    else if(Pcvar_captures)
-        set_pcvar_num(Pcvar_captures, 5)
-    
-
-    if(op4c_map)
+    if (is_running("gearbox") == 1 )
     {
-        g_counter = get_pcvar_num(Pcvar_captures)
-        (b_set_caps) ? g_counter : set_pcvar_num(Pcvar_captures, 5) &g_counter
-        server_print "CAPTURE POINT MAP DETECTED!"
-        register_event("CTFScore", "@count", "a", "0=CapturedFlag")
-    }
+        B_op4c_map = false
+        if(find_ent(-1,"info_ctfdetect") > 0)
+            B_op4c_map = true
+        else if(Pcvar_captures)
+            set_pcvar_num(Pcvar_captures, 5)
 
+        if(B_op4c_map)
+        {
+            g_counter = get_pcvar_num(Pcvar_captures)
+            (b_set_caps) ? g_counter : set_pcvar_num(Pcvar_captures, 5) &g_counter
+            server_print "CAPTURE POINT MAP DETECTED!"
+            register_event("CTFScore", "@count", "a", "0=CapturedFlag")
+        }
+
+    }
 #if AMXX_VERSION_NUM == 182
     g_mp_chattime     = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
     g_wins            = get_cvar_pointer("mp_winlimit")
@@ -121,7 +124,7 @@ public plugin_init()
         bind_pcvar_num(get_cvar_pointer("mp_maxrounds"),g_rnds)
 
     if(get_cvar_pointer("mp_fraglimit"))
-        bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags_remaining)
+        bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
 
     if(get_cvar_pointer("mp_fragsleft"))
             bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
@@ -295,8 +298,9 @@ public voteNextmap()
     votetime = g_votetime
     chatime = g_mp_chattime
     #endif
-    new vote_menu_display = cstrike_running() ? 129 : votetime + 5
-
+    new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
+    if (g_selected)
+        return
     #if AMXX_VERSION_NUM == 182
     if(g_wins & get_pcvar_num(g_wins))
     #else
@@ -309,6 +313,15 @@ public voteNextmap()
             g_selected = false
             return
         }
+    }
+    else if (B_op4c_map)
+    {
+        if(get_pcvar_num(Pcvar_captures) > 1)
+        {
+            g_selected = false
+            return
+        }
+
     }
     #if AMXX_VERSION_NUM == 182
     else if(g_rnds & get_pcvar_num(g_rnds))
@@ -325,35 +338,26 @@ public voteNextmap()
     #if AMXX_VERSION_NUM == 182
     else if(g_frags)
     {
-        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (vote_menu_display + chatime +  (votetime * 2)) && !g_rtv )
+        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
 
     #else
     else if (g_frags)
     {
-
-        if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + chatime + (votetime * 2)) && !g_rtv )
+        if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
         #endif
         {
             g_selected = false
             return
         }
     }
-
-    else if (Pcvar_captures)
+    
+    else
     {
-        if(get_pcvar_num(Pcvar_captures) > 1)
+        if (timeleft < 1 || timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv)
         {
             g_selected = false
             return
         }
-
-    } else {
-        if (timeleft < 1 || timeleft > (vote_menu_display + chatime +  (votetime * 2)) && !g_rtv)
-        {
-            g_selected = false
-            return
-        }
-
     }
     if (g_selected)
         return
@@ -495,15 +499,18 @@ public plugin_end()
 
 public pfn_keyvalue( ent )
 {
-    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
-    Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
-
-    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
-
-    if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
+    if (is_running("gearbox") == 1 )
     {
-        set_pcvar_num(Pcvar_captures, str_to_num(value))
-        b_set_caps = true
+        new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
+
+        copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+
+        if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
+        {
+            set_pcvar_num(Pcvar_captures, str_to_num(value))
+            b_set_caps = true
+        }
     }
 }
 
