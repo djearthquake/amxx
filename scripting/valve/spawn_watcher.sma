@@ -10,6 +10,8 @@ new g_Trail, g_protecton
 new g_shell, g_time, g_msg
 new HamHook:XhookDamage_spawn
 new spawn_sync_msg
+new Buffer_copy[3]
+new g_spawn_time[MAX_PLAYERS]
 
 public plugin_init()
 {
@@ -187,6 +189,7 @@ if(is_user_alive(id) && get_pcvar_num(g_protecton))
 
 public protect(id) // This is the function for the task_on godmode
 {
+    new new_time
     if(is_user_alive(id) && get_pcvar_num(g_protecton))
     {
         new SPSecs  = get_pcvar_num(g_time)
@@ -195,9 +198,14 @@ public protect(id) // This is the function for the task_on godmode
         new shell = get_pcvar_num(g_shell)
         new FTime = get_cvar_pointer("mp_freezetime")
 
-        set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, (SPTime+FTime)*1.0, 0.1, 1.0, floatround(SPTime+FTime))
+        new_time = floatround(SPTime+FTime)
+
         if(get_pcvar_num(g_msg) && !is_user_bot(id))
-            ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",floatround(SPTime+FTime)
+        {
+            num_to_str(new_time,Buffer_copy,charsmax(Buffer_copy))
+            set_task(1.0,"@hud_timer", id, Buffer_copy, charsmax(Buffer_copy), "a", new_time)
+            g_spawn_time[id] = new_time
+        }
 
         set_user_godmode(id, 1)
 
@@ -208,6 +216,13 @@ public protect(id) // This is the function for the task_on godmode
         set_task(SPTime+FTime, "sp_off", id)
     }
     return PLUGIN_HANDLED
+}
+
+@hud_timer(Buffer_copy[3],id, new_time)
+{
+    new_time = str_to_num(Buffer_copy)
+    set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1)
+    ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]
 }
 
 public sp_off(id) // This is the function for the task_off godmode
