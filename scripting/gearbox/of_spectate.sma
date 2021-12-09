@@ -31,8 +31,12 @@ public plugin_init()
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
     RegisterHam(Ham_Spawn, "player", "@play", 1);
 }
+
 @play(id)
+{
+    if(is_user_alive(id) && !is_user_bot(id))
     set_task(1.5,"@reset",id)
+}
 
 @reset(id)
 {
@@ -52,47 +56,48 @@ public client_putinserver(id)
 OK)(get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id))
 
 @go_spec(id)
-{ 
-    fm_strip_user_weapons(id)
-    OK)
+{
+    if(!is_user_bot(id))
     {
-        if(g_spectating[id])
+        fm_strip_user_weapons(id)
+        OK)
         {
-            dllfunc(DLLFunc_SpectatorConnect, id)
-
-            g_spectating[id] = false 
-            set_view(id, CAMERA_3RDPERSON)
-            //pev(id, pev_flags) & FL_SPECTATOR|FL_NOTARGET|FL_PROXY
-            new effects = pev(id, pev_effects)
-            set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_DORMANT));
-            console_cmd(id, "default_fov 150")
-            get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
-            //formatex(motd, charsmax(motd), "")
-            set_user_godmode(id,true) // I was killing specs while amusing it isn't ideal!!
-            show_motd(id, g_motd, "SPECTATOR MODE")
+            if(g_spectating[id])
+            {
+                dllfunc(DLLFunc_SpectatorConnect, id)
+    
+                g_spectating[id] = false 
+                set_view(id, CAMERA_3RDPERSON)
+                //pev(id, pev_flags) & FL_SPECTATOR|FL_NOTARGET|FL_PROXY
+                new effects = pev(id, pev_effects)
+                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_DORMANT));
+                console_cmd(id, "default_fov 150")
+                get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
+                //formatex(motd, charsmax(motd), "")
+                set_user_godmode(id,true) // I was killing specs while amusing it isn't ideal!!
+                show_motd(id, g_motd, "SPECTATOR MODE")
+                change_task(id, 10.0) //iform client they are in spec
+            }
+            else
+            {
+                dllfunc(DLLFunc_ClientPutInServer, id)
+                dllfunc(DLLFunc_SpectatorDisconnect, id)
+                set_user_godmode(id,false)
+                g_spectating[id] = true
+                set_view(id, CAMERA_NONE)
+                console_cmd(id, "default_fov 100")
+                change_task(id, 60.0) //less spam
+            }
+            set_task(30.0,"@update_player",id,_,_,"b")
         }
-        else
-        {
-            dllfunc(DLLFunc_ClientPutInServer, id)
-            dllfunc(DLLFunc_SpectatorDisconnect, id)
-            set_user_godmode(id,false)
-            g_spectating[id] = true
-            set_view(id, CAMERA_NONE)
-            console_cmd(id, "default_fov 100")
-        }
-        set_task(30.0,"@update_player",id,_,_,"a",3)
+    
     }
 
 }
 
 @update_player(id)
 if(is_user_connected(id))
-{
-    if(!g_spectating[id])
-        client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
-    else
-        client_print(id,print_chat,"Regular mode.^nSay !spec to spectate.")
-}
+    !g_spectating[id] ? client_print(id,print_chat,"Spectator mode.^nSay !spec to play.") : client_print(id,print_chat,"Regular mode.^nSay !spec to spectate.")
 
 public random_view(id)
 {
@@ -106,3 +111,9 @@ public random_view(id)
     engfunc(EngFunc_SetView, id, ent);
     return PLUGIN_HANDLED;
 }
+#if !defined client_disconnected
+#define client_disconnect client_disconnected
+#endif
+public client_disconnected(id)
+if(task_exists(id))
+    remove_task(id)
