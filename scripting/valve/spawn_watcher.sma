@@ -40,10 +40,6 @@ public plugin_precache()
 public client_disconnected(id)
     remove_task(id)
 
-public client_putinserver(id)
-if(is_user_connected(id))
-    set_task(0.1,"sp_on",id)
-
 public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
 {
     if(is_user_alive(attacker))
@@ -201,7 +197,7 @@ public protect(id) // This is the function for the task_on godmode
 
         if(get_pcvar_num(g_msg) && !is_user_bot(id))
         {
-            set_task(1.0,"@hud_timer", id, _, _, "a", new_time)
+            set_task(1.0,"@hud_timer", id, _, _, "a", new_time+1)
             g_spawn_time[id] = new_time
         }
 
@@ -219,12 +215,12 @@ public protect(id) // This is the function for the task_on godmode
 @hud_timer(id)
 {
     set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1)
-    if(g_spawn_time[id] > 0)
-        ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]
-    else
+    switch(g_spawn_time[id])
     {
-        set_hudmessage 0, 255, 50, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1
-        ShowSyncHudMsg id, spawn_sync_msg,"Spawn protection and godmode over^n^nSHOOT!"
+        case 6..300: ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1
+        case 3..5: set_hudmessage(255, 165, 0, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id,spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1)
+        case 1..2: set_hudmessage(221, 228, 27, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id,spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1)
+        default: set_hudmessage(0, 255, 50, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id, spawn_sync_msg,"Spawn protection and godmode over^n^nSHOOT!")
     }
 
 }
