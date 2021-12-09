@@ -663,7 +663,7 @@ burn_victim(id,killer,tk){
     return PLUGIN_CONTINUE
 }
 
-public on_fire(args[]){
+public on_fire(args[], headshot){
 
     new hp,rx,ry,rz,forigin[3]
     new id = args[0]
@@ -764,7 +764,7 @@ public on_fire(args[]){
         write_byte(id)
         write_short(get_user_frags(id))
         write_short(get_user_deaths(id))
-        if(cstrike_running())
+        if(csmod_running)
         {
             //FATAL ERROR (shutting down): User Msg 'ScoreInfo': 9 bytes written, expected 5
             write_short(0)
@@ -773,12 +773,19 @@ public on_fire(args[]){
         message_end()
 
         //Replaced HUD death message
-        message_begin( MSG_BROADCAST, gmsgDeathMsg,{0,0,0},0)
-        write_byte(killer)
-        write_byte(id)
-        write_byte(0)
-        write_string("flamethrower")
-        message_end()
+        emessage_begin( MSG_BROADCAST, gmsgDeathMsg,{0,0,0},0)
+        ewrite_byte(killer)
+        ewrite_byte(id)
+ 
+        if(csmod_running)
+            ewrite_byte(headshot);
+        if (get_pcvar_num(g_teams) == 1 || csmod_running
+        &&
+        equal(teama,teamv))
+            ewrite_string("teammate");
+        else
+        ewrite_string("flamethrower")
+        emessage_end()
 
     }
     return PLUGIN_CONTINUE
