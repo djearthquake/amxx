@@ -10,7 +10,6 @@ new g_Trail, g_protecton
 new g_shell, g_time, g_msg
 new HamHook:XhookDamage_spawn
 new spawn_sync_msg
-new Buffer_copy[3]
 new g_spawn_time[MAX_PLAYERS]
 
 public plugin_init()
@@ -202,8 +201,7 @@ public protect(id) // This is the function for the task_on godmode
 
         if(get_pcvar_num(g_msg) && !is_user_bot(id))
         {
-            num_to_str(new_time,Buffer_copy,charsmax(Buffer_copy))
-            set_task(1.0,"@hud_timer", id, Buffer_copy, charsmax(Buffer_copy), "a", new_time)
+            set_task(1.0,"@hud_timer", id, _, _, "a", new_time)
             g_spawn_time[id] = new_time
         }
 
@@ -218,11 +216,17 @@ public protect(id) // This is the function for the task_on godmode
     return PLUGIN_HANDLED
 }
 
-@hud_timer(Buffer_copy[3],id, new_time)
+@hud_timer(id)
 {
-    new_time = str_to_num(Buffer_copy)
     set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1)
-    ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]
+    if(g_spawn_time[id] > 0)
+        ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]
+    else
+    {
+        set_hudmessage 0, 255, 50, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1
+        ShowSyncHudMsg id, spawn_sync_msg,"Spawn protection and godmode over^n^nSHOOT!"
+    }
+
 }
 
 public sp_off(id) // This is the function for the task_off godmode
@@ -238,8 +242,7 @@ public sp_off(id) // This is the function for the task_off godmode
             set_user_rendering(id, kRenderFxGlowShell, 0, 0,0, kRenderNormal, shell);
             if(!is_user_bot(id) && is_user_alive(id))
             {
-                client_cmd(id,"spk buttons/bell1.wav");
-                client_print id, print_center, "Spawn protection and godmode over^n^nSHOOT!"
+                client_cmd(id,"spk fvox/safe_day.wav");
             }
 
         }
