@@ -237,7 +237,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
     if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
-            set_task(10.0,"client_connect",id)
+            set_task(10.0,"client_putinserver",id)
         else
             IS_SOCKET_IN_USE = true
         server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
