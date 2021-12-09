@@ -9,10 +9,11 @@
 new g_Trail, g_protecton
 new g_shell, g_time, g_msg
 new HamHook:XhookDamage_spawn
+new spawn_sync_msg
 
 public plugin_init()
 {
-    register_plugin("Spawn Protection", "8.1", "SPiNX|Peli") // Peli maintained up until 7.0. Profile:https://forums.alliedmods.net/member.php?u=86
+    register_plugin("Spawn Protection", "8.2", "SPiNX|Peli") // Peli maintained up until 7.0. Profile:https://forums.alliedmods.net/member.php?u=86
     //Peli's plugin https://forums.alliedmods.net/showthread.php?t=1886
     
     register_concmd("amx_spawn_time", "cmd_sptime", ADMIN_CVAR, "1 through 10 to set Spawn Protection time") // Concmd (Console Command) for the CVAR time
@@ -26,6 +27,7 @@ public plugin_init()
     
     RegisterHam(Ham_Spawn, "player", "sp_on", 1);
     XhookDamage_spawn = RegisterHam(Ham_TakeDamage, "player", "Event_Damage", 1)
+    spawn_sync_msg   = CreateHudSyncObj( )
 }
 
 public plugin_precache()
@@ -56,7 +58,7 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
             if(damage > 99.0 || pev(victim,pev_health) - damage <= 1.0 )
             {
                 client_print(0,print_chat,"Killing %n for spawn violation",attacker);
-                fakedamage(attacker,"Spawn kill in godmode.",1000.0,DMG_TIMEBASED)
+                fakedamage(attacker,"Spawn kill in godmode.",1000.0,DMG_RADIATION)
             }
             new VictimN[MAX_NAME_LENGTH]
             get_user_name(victim,VictimN,charsmax(VictimN))
@@ -193,9 +195,9 @@ public protect(id) // This is the function for the task_on godmode
         new shell = get_pcvar_num(g_shell)
         new FTime = get_cvar_pointer("mp_freezetime")
 
-        set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, (SPTime)*1.0, 0.1, 1.0, 4)
+        set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, (SPTime+FTime)*1.0, 0.1, 1.0, floatround(SPTime+FTime))
         if(get_pcvar_num(g_msg) && !is_user_bot(id))
-            show_hudmessage(id, "Spawn Protection is enabled. Attacks are mirrored back.")
+            ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",floatround(SPTime+FTime)
 
         set_user_godmode(id, 1)
 
@@ -203,7 +205,6 @@ public protect(id) // This is the function for the task_on godmode
             get_user_team(id) == 1 ? set_user_rendering(id, kRenderFxGlowShell, 255, 0, 0, kRenderNormal, shell) : set_user_rendering(id, kRenderFxGlowShell, 0, 0, 255, kRenderNormal, shell)
         else
             is_user_bot(id) ? set_user_rendering(id, kRenderFxGlowShell, 0, 255, 255, kRenderNormal, shell) : set_user_rendering(id, kRenderFxGlowShell, 255, 255, 25, kRenderNormal, shell)
-
         set_task(SPTime+FTime, "sp_off", id)
     }
     return PLUGIN_HANDLED
@@ -220,13 +221,22 @@ public sp_off(id) // This is the function for the task_off godmode
         {
             set_user_godmode(id, 0)
             set_user_rendering(id, kRenderFxGlowShell, 0, 0,0, kRenderNormal, shell);
+            if(!is_user_bot(id) && is_user_alive(id))
+            {
+                client_cmd(id,"spk buttons/bell1.wav");
+                client_print id, print_center, "Spawn protection and godmode over^n^nSHOOT!"
+            }
+
         }
         return PLUGIN_HANDLED
     }
+
 }
 
 public clcmd_fullupdate(id)
     return PLUGIN_HANDLED
-
-/*Change log 7.0 to 8.0. HL and bot glow support, Mirror damage, easier part name search commands, Synced spawn message with spawn time, Attackers lose protection and turn green and trail!*/
-/*Change log 8.0 to 8.1. Optimize script to ham and pcvars.*/
+/*
+Change log 7.0 to 8.0. HL and bot glow support, Mirror damage, easier part name search commands, Synced spawn message with spawn time, Attackers lose protection and turn green and trail!
+Change log 8.0 to 8.1. Optimize script to ham and pcvars.
+Change log 8.1 to 8.2. More descriptive and syncronized messaging including object for hud.
+*/
