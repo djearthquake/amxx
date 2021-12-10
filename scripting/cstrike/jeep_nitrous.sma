@@ -1,6 +1,5 @@
 #include amxmodx
 #include engine
-#include engine_stocks
 #define MAX_NAME_LENGTH 32
 #define MAX_CMD_LENGTH 128
 #define charsmin        -1
