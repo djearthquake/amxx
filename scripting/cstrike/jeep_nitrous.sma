@@ -10,13 +10,13 @@ new const CARS[]= "func_vehicle"
 new const VRMM[]= "speed"
 
 //Nitrous stages
-new const norm[]= "650"
-new const fast[]= "1300"
+//new const norm[]= "650"
+//new const fast[]= "1300"
 new const realfast[]= "1500"
 
 //Super-chargers
-new const blower1[]= "9"
-new const blower2[]= "11"
+//new const blower1[]= "9"
+//new const blower2[]= "11"
 new const blower3[]= "15"
 new g_hotroded
 
@@ -31,7 +31,6 @@ public pfn_keyvalue( ent )
     new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
     copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
     //new nitros = register_cvar("jeep_nitros", "1")
-    //new blower = register_cvar("jeep_blower", "1")
     if(containi(Classname,CARS) > charsmin)
     {
         if(equali(key,ACCEL))
