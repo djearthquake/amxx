@@ -738,8 +738,10 @@ public on_fire(args[], headshot){
         }
 
         //Kill the victim and block the messages
-        set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
         set_msg_block(gmsgScoreInfo,BLOCK_ONCE)
+
+        //csmod_running ? set_msg_block(gmsgScoreInfo, BLOCK_ONCE) : set_msg_block(gmsgDeathMsg, BLOCK_SET)
+
         //user_kill(id,1)
         fakedamage(id,"Flame Thrower",50.0,DMG_SLOWBURN|DMG_NEVERGIB)
 
@@ -747,30 +749,37 @@ public on_fire(args[], headshot){
         isburning[id] = 0
 
         //Update killers scorboard with new info
-        message_begin(MSG_BROADCAST,gmsgScoreInfo)
-        write_byte(killer)
-        write_short(get_user_frags(killer))
-        write_short(get_user_deaths(killer))
-        if(cstrike_running())
-        {
-            //FATAL ERROR (shutting down): User Msg 'ScoreInfo': 9 bytes written, expected 5
-            write_short(0)
-            write_short(get_user_team(killer))
-        }
-        message_end()
-
-        //Update victims scoreboard with correct info
-        message_begin(MSG_BROADCAST,gmsgScoreInfo)
-        write_byte(id)
-        write_short(get_user_frags(id))
-        write_short(get_user_deaths(id))
+        emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
+        ewrite_byte(killer)
+        ewrite_short(get_user_frags(killer))
+        //ewrite_short(get_user_deaths(killer));
+        #define kDEATHS 422
+        new living = get_pdata_int(killer, kDEATHS)
+        ewrite_short(living)
         if(csmod_running)
         {
             //FATAL ERROR (shutting down): User Msg 'ScoreInfo': 9 bytes written, expected 5
-            write_short(0)
-            write_short(get_user_team(id))
+            ewrite_short(0)
+            ewrite_short(get_user_team(killer))
         }
-        message_end()
+        emessage_end()
+    
+        set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
+        //Update victims scoreboard with correct info
+        emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
+        ewrite_byte(id)
+        ewrite_short(get_user_frags(id))
+        //ewrite_short(get_user_deaths(id))
+        #define vDEATHS 422
+        new dead = get_pdata_int(id, vDEATHS)
+        ewrite_short(dead)
+        if(csmod_running)
+        {
+            //FATAL ERROR (shutting down): User Msg 'ScoreInfo': 9 bytes written, expected 5
+            ewrite_short(0)
+            ewrite_short(get_user_team(id))
+        }
+        emessage_end()
 
         //Replaced HUD death message
         emessage_begin( MSG_BROADCAST, gmsgDeathMsg,{0,0,0},0)
@@ -823,11 +832,11 @@ public client_connect(id){
     return PLUGIN_CONTINUE
 }
 
-#if AMXX_VERSION_NUM < 183;
-public client_disconnect(id)
-#else
-public client_disconnected(id)
+#if !defined client_disconnect
+#define client_disconnected client_disconnect
 #endif
+
+public client_disconnected(id)
 {
     isburning[id] = 0
     tkcount[id] = 0
