@@ -51,11 +51,11 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
         if(get_user_team(victim) == get_user_team(attacker) && victim != attacker && task_exists(attacker) || task_exists(attacker))
         {
             set_user_godmode(attacker, 0)
-            fakedamage(attacker,"Spawn Hacking",damage*1.0,DMG_TIMEBASED)
+            fakedamage(attacker,"Spawn Hacking",damage*1.0,DMG_PARALYZE)
             if(damage > 99.0 || pev(victim,pev_health) - damage <= 1.0 )
             {
                 client_print(0,print_chat,"Killing %n for spawn violation",attacker);
-                fakedamage(attacker,"Spawn kill in godmode.",1000.0,DMG_RADIATION)
+                fakedamage(attacker,"Spawn kill in godmode.",1000.0,DMG_ENERGYBEAM)
             }
             new VictimN[MAX_NAME_LENGTH]
             get_user_name(victim,VictimN,charsmax(VictimN))
