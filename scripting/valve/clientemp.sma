@@ -613,7 +613,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 
     new id = feeding - WEATHER;
 
-    if(is_user_connected(id) || is_user_connecting(id) && !gotatemp[id])
+    if(is_user_connected(id) && !gotatemp[id])
 
     {
 
@@ -939,10 +939,10 @@ public read_web(feeding)
         }
         //Make array of non-bot connected players who need their temp still.
         //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        if(!gotatemp[players[q]])
+        if(!gotatemp[players[q]] && is_user_connected(players[q]))
         {
             //server_print "%s queued for %s",ClientName[q],PLUGIN
-            server_print "%n queued for %s",q,PLUGIN
+            server_print "%n queued for %s",players[q],PLUGIN
             //task spread formula
             new total = iHeadcount
             server_print "Total players shows as: %i", total
