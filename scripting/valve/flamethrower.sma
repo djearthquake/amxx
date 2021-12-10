@@ -19,7 +19,7 @@
 *
 ****************************************************************************
 *
-*   Version 5.3.6 = Date: 09/19/2019
+*   Version 5.3.7 = Date: 12/09/2021
 *
 *   Original by Eric Lidman aka "Ludwig van" <ejlmozart@hotmail.com>
 *   Homepage: http://lidmanmusic.com/cs/plugins.html
@@ -123,8 +123,10 @@
 *                 ******** Engine Module REQUIRED ********
 *
 *  Changelog:
+*  v5.3.7 - SPiNX - 12/09/2021
+*   - Correct Death messages for all mods. Assure deaths occur.
 *  v5.3.6 - SPiNX - 09/19/2019
-*   - Finished porting to plugins other than Counter-Striek 1.6.
+*   - Finished porting to plugins other than Counter-Strike 1.6.
 *   - Designed for Amxx1.8.2 and tested on Amxx1.9.0.
 *
 *  v5.3.5 - JTP10181 - 10/16/04
@@ -510,7 +512,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
                     server_print "SHOULD START BURNING NOW"
                 }
             }
-            else 
+            else
             {
                 if(get_user_team(tid) == get_user_team(id))
                     burn_victim(tid,id,1)
@@ -569,7 +571,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
                 }
 
             }
-            else 
+            else
             {
                 if((is_user_alive(i) == 1) && (i != id))
                 {
@@ -588,7 +590,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
                 }
             }
         }
-        else 
+        else
         {
             if((is_user_alive(i) == 1) && (i != id))
             {
@@ -710,7 +712,7 @@ public on_fire(args[]){
     {
         set_user_health(id,hp - 10)
     }
-    else 
+    else
     {
         new namek[32],namev[32],authida[35],authidv[35],teama[32],teamv[32]
         get_user_name(id,namev,31)
@@ -741,11 +743,7 @@ public on_fire(args[]){
         //Kill the victim and block the messages
         set_msg_block(gmsgScoreInfo,BLOCK_ONCE)
         set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
-        //csmod_running ? set_msg_block(gmsgScoreInfo, BLOCK_ONCE) && set_msg_block(gmsgDeathMsg, BLOCK_ONCE) : set_msg_block(gmsgScoreInfo, BLOCK_SET), set_msg_block(gmsgDeathMsg, BLOCK_SET)
-
-        //user_kill(id,1)
         fakedamage(id,"Flame Thrower",50.0,DMG_SLOWBURN|DMG_NEVERGIB)
-
         //Makes them stop burning
         isburning[id] = 0
 
@@ -753,13 +751,11 @@ public on_fire(args[]){
         emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
         ewrite_byte(killer)
         ewrite_short(get_user_frags(killer))
-        //ewrite_short(get_user_deaths(killer));
-        #define kDEATHS 422
-        new living = get_pdata_int(killer, kDEATHS)
+        #define DEATHS 422
+        new living = get_pdata_int(killer, DEATHS)
         ewrite_short(living)
         if(csmod_running)
         {
-            //FATAL ERROR (shutting down): User Msg 'ScoreInfo': 9 bytes written, expected 5
             ewrite_short(0)
             ewrite_short(get_user_team(killer))
         }
@@ -769,13 +765,10 @@ public on_fire(args[]){
         emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
         ewrite_byte(id)
         ewrite_short(get_user_frags(id))
-        //ewrite_short(get_user_deaths(id))
-        #define vDEATHS 422
-        new dead = get_pdata_int(id, vDEATHS)
+        new dead = get_pdata_int(id, DEATHS)
         ewrite_short(dead)
         if(csmod_running)
         {
-            //FATAL ERROR (shutting down): User Msg 'ScoreInfo': 9 bytes written, expected 5
             ewrite_short(0)
             ewrite_short(get_user_team(id))
         }
@@ -785,7 +778,7 @@ public on_fire(args[]){
         emessage_begin( MSG_BROADCAST, gmsgDeathMsg,{0,0,0},0)
         ewrite_byte(killer)
         ewrite_byte(id)
- 
+
         if(csmod_running)
             ewrite_byte(headshot);
         if (get_pcvar_num(g_teams) == 1 || csmod_running
@@ -919,7 +912,7 @@ public flamet_motd(id){
 ************************************************************/
 
 public plugin_init(){
-    register_plugin("Flame Thrower","5.3.6","EJL/JTP10181/SPINX")
+    register_plugin("Flame Thrower","5.3.7","SPINX") //original by EJL. Port to Amxx EJL
     register_concmd("amx_flamethrowers","amx_fl",ADMIN_LEVEL_H,"- toggles flamethrowers on and off")
     register_concmd("amx_flamethrowers_cost","amx_fl_c",ADMIN_LEVEL_H,"- sets flamethrowers cost in money or armor amount")
     register_concmd("amx_flamethrowers_buytype","amx_fl_b",ADMIN_LEVEL_H,"- toggles flamethrowers buytype between armor and money")
@@ -953,10 +946,17 @@ public plugin_init(){
 
 public plugin_precache(){
     fire = precache_model("sprites/explode1.spr")
+    precache_generic("sprites/explode1.spr")
     smoke = precache_model("sprites/steam1.spr")
+    precache_generic("sprites/steam1.spr")
     burning = precache_model("sprites/xfire.spr")
+    precache_generic("sprites/xfire.spr")
     precache_sound("ambience/burning1.wav")
+    precache_generic("sound/ambience/burning1.wav")
     precache_sound("ambience/flameburst1.wav")
+    precache_generic("sound/ambience/flameburst1.wav")
     precache_sound("scientist/c1a0_sci_catscream.wav")
+    precache_generic("sound/scientist/c1a0_sci_catscream.wav")
     precache_sound("vox/_period.wav")
+    precache_generic("sound/vox/_period.wav")
 }
