@@ -663,12 +663,13 @@ burn_victim(id,killer,tk){
     return PLUGIN_CONTINUE
 }
 
-public on_fire(args[], headshot){
+public on_fire(args[]){
 
     new hp,rx,ry,rz,forigin[3]
     new id = args[0]
     new killer = args[1]
     new tk = args[2]
+    new headshot = args[3]
 
     if(isburning[id] == 0)
         return PLUGIN_CONTINUE
@@ -739,8 +740,8 @@ public on_fire(args[], headshot){
 
         //Kill the victim and block the messages
         set_msg_block(gmsgScoreInfo,BLOCK_ONCE)
-
-        //csmod_running ? set_msg_block(gmsgScoreInfo, BLOCK_ONCE) : set_msg_block(gmsgDeathMsg, BLOCK_SET)
+        set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
+        //csmod_running ? set_msg_block(gmsgScoreInfo, BLOCK_ONCE) && set_msg_block(gmsgDeathMsg, BLOCK_ONCE) : set_msg_block(gmsgScoreInfo, BLOCK_SET), set_msg_block(gmsgDeathMsg, BLOCK_SET)
 
         //user_kill(id,1)
         fakedamage(id,"Flame Thrower",50.0,DMG_SLOWBURN|DMG_NEVERGIB)
@@ -763,8 +764,7 @@ public on_fire(args[], headshot){
             ewrite_short(get_user_team(killer))
         }
         emessage_end()
-    
-        set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
+
         //Update victims scoreboard with correct info
         emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
         ewrite_byte(id)
