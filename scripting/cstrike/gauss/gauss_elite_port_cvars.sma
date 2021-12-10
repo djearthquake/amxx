@@ -100,8 +100,9 @@ new const g_szSoundElectro3[ ] = "weapons/electro6.wav"
 
 // Max. bp ammo amount
 new const MAXBPAMMO[] = { -1, 52, -1, 90, 1, 32, 1, 100, 90, 1, 120, 100, 100, 90, 90, 90, 100, 120,
-    5, 300, 900, // This is gauss max bp ammo.Change it if you want!
+    5, 100, 900, // This is gauss max bp ammo.Change it if you want!
 32, 90, 120, 90, 2, 35, 90, 90, -1, 100 }
+
 
 // Player variables
 new g_iHasGauss[ MaxPlayers+1 ] // Whether player has gauss
@@ -133,6 +134,7 @@ new g_pClip
 
 // Global varibles
 new g_gauss_color_beam //beam color override CVAR
+new g_debug
 new g_iMaxPlayers // Maxplayers
 new bool:g_bGameRestart // Detect game restart
 
@@ -152,7 +154,6 @@ new gmsgScreenFade // Screen fade
 //Decal
 new g_decal;
 new const choice[ ] = "{GAUSSSHOT1" //DECALS.WAD
-
 
 // CS Offsets
 const m_pPlayer = 41
@@ -221,7 +222,7 @@ public plugin_precache( )
     precache_sound( g_szSoundElectro1 )
     precache_sound( g_szSoundElectro2 )
     precache_sound( g_szSoundElectro3 )
-    precache_sound( "items/9mmclip1.wav" )
+    precache_sound( "weapons/357_cock1.wav" )
 
     // Sprites
     g_iBeam0y = precache_model( "sprites/gauss_beam0.spr" )
@@ -270,7 +271,7 @@ public plugin_init( )
     register_clcmd("buy_gauss","cmd_give_tso",0,"Acquire HL Elite Gauss.");
 
     // Events
-    register_event( "CurWeapon", "EV_CurWeapon", "be", "1=1" )
+    register_event( "CurWeapon", "EV_CurWeapon", "b", "1=1" )
     register_event( "DeathMsg", "EV_DeathMsg", "a" )
 
     if(cstrike_running())
@@ -301,6 +302,7 @@ public plugin_init( )
 
     // Store maxplayers in a global variable
     g_iMaxPlayers = get_maxplayers( )
+    g_debug = register_cvar("gauss_debug", "0")
 }
 
 // Configuration
@@ -340,7 +342,7 @@ public cmd_give_tso(Player, level, cid)
         return PLUGIN_HANDLED;
 
     buy_gauss(Player);
-    //server_print("Acquiring the ported gauss");
+    //if(get_pcvar_num(g_debug))server_print("Acquiring the ported gauss");
     return PLUGIN_HANDLED;
 }
 
@@ -411,6 +413,18 @@ public EV_CurWeapon( Player )
 
     // Update
     g_iCurrentWeapon[ Player ] = read_data( 2 )
+    
+   /* 
+    //Get and check weapon ID
+    new weaponID = read_data( 2 )
+
+    if(weaponID==CSW_C4 || weaponID==CSW_KNIFE || weaponID==CSW_HEGRENADE || weaponID==CSW_SMOKEGRENADE || weaponID==CSW_FLASHBANG)
+        return PLUGIN_CONTINUE
+
+    if(weaponID==CSW_M249)
+        if (cs_get_user_bpammo(Player, weaponID) != CSW_MAXAMMO[weaponID])
+            cs_set_user_bpammo(Player, weaponID, CSW_MAXAMMO[weaponID])
+    */
 
     return PLUGIN_CONTINUE
 }
@@ -781,46 +795,49 @@ public fw_UpdateClientData_Post ( Player, SendWeapons, CD_Handle )
 // Player pre think
 public fw_PlayerPreThink( Player )
 {
-    // Not alive / dont have gauss/ not m249
-    if ( !g_bIsAlive [ Player ] || !g_iHasGauss [ Player ] || g_iCurrentWeapon [ Player ] != CSW_M249 )
-        return
-
-    // Play aftershock discharge
-    if( g_fflPlayAfterShock[ Player ] && g_fflPlayAfterShock[ Player ] < get_gametime( ) )
+    if(is_user_connected( Player ))
     {
-        // Randomly play sound
-        switch( random_num(0, 3 ) )
+        // Not alive / dont have gauss/ not m249
+        if ( !g_bIsAlive [ Player ] || !g_iHasGauss [ Player ] || g_iCurrentWeapon [ Player ] != CSW_M249 )
+            return
+    
+        // Play aftershock discharge
+        if( g_fflPlayAfterShock[ Player ] && g_fflPlayAfterShock[ Player ] < get_gametime( ) )
         {
-            case 0: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro1,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
-                case 1: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro2,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
-                case 2: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro3,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
-                case 3: return // No sound
-            }
-
-        // Reset discharge
-        g_fflPlayAfterShock[ Player ] = 0.0
-    }
-
-    // Check if we are in a middle of attack
-    if( g_bInAttack[ Player ] != 0 )
-    {
-        // Check if have released attack2 button
-        if( get_gametime( ) - g_flLastShotTime[ Player ] > 0.2 )
-        {
-            // Start to fire
-            StartFire( Player )
-
-            // Reset attack state
-            g_bInAttack[ Player ] = 0
-
-            // Next idle time
-            g_flWeaponIdleTime[ Player ] = get_gametime( ) + 2.0
+            // Randomly play sound
+            switch( random_num(0, 3 ) )
+            {
+                case 0: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro1,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
+                    case 1: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro2,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
+                    case 2: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro3,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
+                    case 3: return // No sound
+                }
+    
+            // Reset discharge
+            g_fflPlayAfterShock[ Player ] = 0.0
         }
-    }
-    else
-    {
-        // Force to idle
-        WeaponIdle( Player )
+    
+        // Check if we are in a middle of attack
+        if( g_bInAttack[ Player ] != 0 )
+        {
+            // Check if have released attack2 button
+            if( get_gametime( ) - g_flLastShotTime[ Player ] > 0.2 )
+            {
+                // Start to fire
+                StartFire( Player )
+    
+                // Reset attack state
+                g_bInAttack[ Player ] = 0
+    
+                // Next idle time
+                g_flWeaponIdleTime[ Player ] = get_gametime( ) + 2.0
+            }
+        }
+        else
+        {
+            // Force to idle
+            WeaponIdle( Player )
+        }
     }
 }
 
@@ -835,7 +852,7 @@ public fw_PlayerSpawn_Post( Player )
     g_bIsAlive[ Player ] = true
 }
 
-// Guass deploy
+// Gauss deploy
 public fw_TCannonDeploy_Post( iEnt )
 {
     // Get owner
@@ -848,10 +865,6 @@ public fw_TCannonDeploy_Post( iEnt )
     if ( g_iHasGauss[ Player ] )
     {
         // Replace models
-    /*    if(is_user_admin( Player ))
-            set_pev( Player, pev_viewmodel2, g_szModelGaussV2 )
-        else
-    */
         set_pev( Player, pev_viewmodel2, g_szModelGaussV )
 
         set_pev( Player, pev_weaponmodel2, g_szModelGaussP )
@@ -1168,7 +1181,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
         // Its first beam
         if( fFirstBeam )
         {
-            server_print("Doing 1st gauss beam!");
+            if(get_pcvar_num(g_debug))server_print("Doing 1st gauss beam!");
             // Add muzzleflash
             set_pev( Player, pev_effects, pev(Player, pev_effects) | EF_MUZZLEFLASH )
 
@@ -1244,7 +1257,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
         }
         else
         {
-            server_print("Doing subsequent gauss beam!");
+            if(get_pcvar_num(g_debug))server_print("Doing subsequent gauss beam!");
             // Draw beam
             engfunc( EngFunc_MessageBegin, MSG_PVS, SVC_TEMPENTITY, vecSrc, 0 )
             write_byte( TE_BEAMPOINTS ) // Temp. entity ID
@@ -1316,7 +1329,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
         // Check if this entity should take any damage
         if( pev( pEntity, pev_takedamage ) != DAMAGE_NO )
         {
-            server_print("Gauss damage no");
+            if(get_pcvar_num(g_debug))server_print("Gauss damage no");
             // Check if this is player and zombie
             if( pEntity != Player) //no foot shooting!
             {
@@ -1343,7 +1356,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
                 else
                 {
                     // Die
-                    server_print("Gauss damage kill")
+                    if(get_pcvar_num(g_debug))server_print("Gauss damage kill")
                     g_bKilledByLaser[ pEntity ] = true
                     ExecuteHamB( Ham_Killed, pEntity, Player, 2 )
                     g_bKilledByLaser[ pEntity ] = false
@@ -1354,7 +1367,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
         // Check if this entity should reflect our beam
         if( ReflectGauss( pEntity ) )
         {
-            server_print("Gauss should reflect?")
+            if(get_pcvar_num(g_debug))server_print("Gauss should reflect?")
             static Float:n
 
             // Return normal vector in a spot we hit
@@ -1403,7 +1416,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
             }
             else
             {
-                server_print("Gauss decal")
+                if(get_pcvar_num(g_debug))server_print("Gauss decal")
                 // Add gun shot decal on the world
                 FX_GunShotDecal( vecEnd, pEntity )
 
@@ -1520,7 +1533,7 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
                         // fire, so leave a little glowy bit and make some balls
                         FX_TempSprite( vecEnd, 6, floatround( flDamage / 255.0 ) )
                         FX_SpriteTrail( vecEnd, vecDir, BALL_AMOUNT, 15, 3, 25, 25 )
-                        server_print("Gauss sprite Trail")
+                        if(get_pcvar_num(g_debug))server_print("Gauss sprite Trail")
                     }
 
                     flDamage = 0.0
@@ -1540,9 +1553,9 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
 public Load_Cvars( )
 {
     cvar_oneround = register_cvar( "ze_tcannon_oneround", "0" )
-    cvar_dmgprim = register_cvar( "ze_tcannon_dmgprim", "200" )
+    cvar_dmgprim = register_cvar( "ze_tcannon_dmgprim", "20" )
     cvar_dmgsec = register_cvar( "ze_tcannon_dmgsec", "500" )
-    cvar_clip = register_cvar( "ze_tcannon_clip", "100" )
+    cvar_clip = register_cvar( "ze_tcannon_clip", "500" )
 
     g_pOneRound = get_pcvar_num( cvar_oneround )
     g_pDmgPrim = get_pcvar_float( cvar_dmgprim )
@@ -1601,7 +1614,7 @@ UTIL_PlayWeaponAnimation( const Player, const Sequence )
 // Make ScreenFade
 UTIL_ScreenFade( Player, Duration, HoldTime, Flags, iRed, iGreen, iBlue, iAlpha )
 {
-    server_print("Gauss screen fade")
+    if(get_pcvar_num(g_debug))server_print("Gauss screen fade")
     message_begin( MSG_ONE_UNRELIABLE, gmsgScreenFade, _, Player )
     write_short( Duration )
     write_short( HoldTime )
@@ -1723,7 +1736,7 @@ FX_GunShotDecal( Float:flPos[ ], pEntity )
     engfunc( EngFunc_WriteCoord, flPos[ 1 ] ) // Position Y
     engfunc( EngFunc_WriteCoord, flPos[ 2 ] ) // Position Z
     write_short( pEntity ) // Which entity to mark?
-    server_print("Gauss trying to do te_gunshotdecal")
+    if(get_pcvar_num(g_debug))server_print("Gauss trying to do te_gunshotdecal")
     write_byte( g_decal ) // Texture name from decals.wad
     message_end( )
 
@@ -1733,7 +1746,7 @@ FX_GunShotDecal( Float:flPos[ ], pEntity )
 FX_TempSprite( Float:flPos[ ], iScale, iSize )
 {
     clamp(get_pcvar_num(g_gauss_color),0,10);
-    server_print("Gauss trying to do glows")
+    if(get_pcvar_num(g_debug))server_print("Gauss trying to do glows")
     engfunc( EngFunc_MessageBegin, MSG_PVS, SVC_TEMPENTITY, flPos, 0 )
     write_byte( TE_GLOWSPRITE ) // Temp.entity ID
     engfunc( EngFunc_WriteCoord, flPos[ 0 ] ) // Position X
@@ -1788,7 +1801,7 @@ FX_SpriteTrail( Float:vecStart[ ], Float:vecDest[ ], iCount, iLife, iScale, iVel
 {
     //floatround(get_pcvar_num(g_gauss_color))
     clamp(get_pcvar_num(g_gauss_color),0,10);
-    server_print("Gauss trying to do trail")
+    if(get_pcvar_num(g_debug))server_print("Gauss trying to do trail")
     message_begin( MSG_BROADCAST, SVC_TEMPENTITY)
     write_byte( TE_SPRITETRAIL ) // Sprite trail
     engfunc( EngFunc_WriteCoord, vecStart[ 0 ] ) // Position X
@@ -1842,4 +1855,3 @@ FX_SpriteTrail( Float:vecStart[ ], Float:vecDest[ ], iCount, iLife, iScale, iVel
     write_byte( iRnd ) // Randomness of velocity
     message_end( )
 }
-
