@@ -34,7 +34,7 @@ public plugin_init()
 
 public client_putinserver(id)
 {
-    if(is_user_connected(id) &&  id > 0)// /*&& !is_user_bot(id) && id > 0*/)
+    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
     {
         if(!task_exists(id))
             set_task(1.0,"@get_user_data", id)
