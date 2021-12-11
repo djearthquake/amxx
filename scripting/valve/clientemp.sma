@@ -634,13 +634,17 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
             get_pcvar_string(g_cvar_units, units, charsmax (units) );
 
         //Pick what is more reliable or chosen first on cvar lon+lat or city to acquire temp
-        if(get_pcvar_float(g_long) && g_lat[id] && g_lon[id] || equali(ClientCity[id], "") )
+        if(get_pcvar_float(g_long) && g_lat[id] == 0.0 && g_lon[id] == 0.0 || equali(ClientCity[id], "") )
 
             formatex(constring, charsmax (constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n",g_lat[id], g_lon[id], units, token);
 
         else
-
-            formatex(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, ClientCity[id], units, token);
+        {
+            new city_space_remover[MAX_RESOURCE_PATH_LENGTH]
+            copy(city_space_remover,charsmax(city_space_remover),ClientCity[id])
+            replace(city_space_remover,charsmax(city_space_remover)," ", "")
+            formatex(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, city_space_remover, units, token);
+        }
 
 
         set_task(2.5, "write_web", id+WEATHER, constring, charsmax(constring) );
@@ -942,7 +946,7 @@ public read_web(feeding)
         if(!gotatemp[players[q]] && is_user_connected(players[q]))
         {
             //server_print "%s queued for %s",ClientName[q],PLUGIN
-            server_print "%n queued for %s",players[q],PLUGIN
+            server_print "%s queued for %s",ClientName[players[q]],PLUGIN
             //task spread formula
             new total = iHeadcount
             server_print "Total players shows as: %i", total
