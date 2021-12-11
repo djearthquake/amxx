@@ -7,7 +7,8 @@
 #define AUTHOR ".sρiηX҉."
 
 #define COORD 3245
-
+#define READ 777
+#define WRITE 4444
 #define charsmin                   -1
 #define WITHOUT_PORT               1
 #define MAX_IP_LENGTH              16
@@ -19,20 +20,24 @@
 #define MAX_MENU_LENGTH            512
 #define MAX_MOTD_LENGTH            1536
 
+public plugin_init()
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+
+new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
+
 new buffer[ MAX_MOTD_LENGTH ];
 new bool:got_coords[ MAX_PLAYERS + 1 ]
 new const api[]= "ipwhois.app"
 
-new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
-new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
+///////////COPY AND PASTE HERE BELOW TO UTILIZE IP TO LON&LAT API INTO EXISTING SOCKETS PLUGIN
 new ClientLON[MAX_PLAYERS+1][8]
 new ClientLAT[MAX_PLAYERS+1][8]
 
 new g_socket_pass[MAX_PLAYERS+1]
 
 new ip_api_socket
-public plugin_init()
-    register_plugin(PLUGIN, VERSION, AUTHOR);
+
 
 public client_putinserver(id)
 {
@@ -40,36 +45,36 @@ public client_putinserver(id)
     if(is_user_connected(id) && !is_user_bot(id) && id > 0)
     {
         if(!task_exists(id))
-        set_task(1.0,"get_user_data", id)
+        set_task(1.0,"@get_user_data", id)
     }
 }
-public get_user_data(id)
+@get_user_data(id)
 
 {
     get_user_name(id, ClientName[id],charsmax(ClientName[]))
     get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
     server_print "%s,%s",ClientName[id],ClientIP[id]
-    set_task(1.0,"get_client_data", id)
+    set_task(1.0,"@get_client_data", id+COORD)
 }
 
-public get_client_data(id)
+@get_client_data(goldsrc)
 {
     new Soc_O_ErroR2
+    new id = goldsrc - COORD  
     if(is_user_connected(id))
     {
         new constring[MAX_USER_INFO_LENGTH]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
         formatex(constring, charsmax (constring), "GET http://%s/json/%s HTTP/1.0^nHost: %s^n^n", api, ClientIP[id], api)
         server_print "%s",constring
-    
-        set_task(0.5, "write_web", id+COORD, constring, charsmax(constring) );
-        set_task(1.5, "read_web", id+COORD);
+        set_task(0.5, "@write_api", id+WRITE, constring, charsmax(constring) );
+        set_task(1.5, "@read_api", id+READ);
     }
 }
-public write_web(text[MAX_USER_INFO_LENGTH], Task)
+@write_api(text[MAX_USER_INFO_LENGTH], Task)
 {
 
-    new id = Task - COORD
+    new id = Task - WRITE
     if(is_user_connected(id))
     #if AMXX_VERSION_NUM != 182
     if (socket_is_writable(ip_api_socket, 100000))
@@ -81,9 +86,9 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
     }
 
 }
-public read_web(Tsk)
+@read_api(Tsk)
 {
-    new id = Tsk - COORD
+    new id = Tsk - READ
     server_print "%s:reading %s coords",PLUGIN, ClientName[id]
     #if AMXX_VERSION_NUM != 182
     if (socket_is_readable(ip_api_socket, 100000))
@@ -110,7 +115,7 @@ public read_web(Tsk)
     else if(!got_coords[id] && g_socket_pass[id] < 10)
     {
         server_print "No buffer checking again"
-        set_task(1.5, "read_web",id+COORD)
+        set_task(0.3, "@read_api",id+COORD)
         g_socket_pass[id]++
         server_print "pass:%i",g_socket_pass[id]
     }
