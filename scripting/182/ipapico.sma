@@ -20,10 +20,6 @@
 #define MAX_MENU_LENGTH            512
 #define MAX_MOTD_LENGTH            1536
 
-#if !defined SOCK_NON_BLOCKING
- #error Go make a new script or post and wait on forums/Discord if you are not autodidactic.
-#endif
-
 public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR);
 
@@ -35,6 +31,9 @@ new bool:got_coords[ MAX_PLAYERS + 1 ]
 new const api[]= "ipwhois.app"
 
 ///////////COPY AND PASTE HERE BELOW TO UTILIZE IP TO LON&LAT API INTO EXISTING SOCKETS PLUGIN
+#if !defined SOCK_NON_BLOCKING
+ #error Go make a new script or post and wait on forums/Discord if you are not autodidactic.
+#endif
 new ClientLON[MAX_PLAYERS+1][8]
 new ClientLAT[MAX_PLAYERS+1][8]
 
