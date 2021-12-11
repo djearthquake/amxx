@@ -20,6 +20,10 @@
 #define MAX_MENU_LENGTH            512
 #define MAX_MOTD_LENGTH            1536
 
+#if !defined SOCK_NON_BLOCKING
+ #error Go make a new script or post and wait on forums/Discord if you are not autodidactic.
+#endif
+
 public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR);
 
@@ -35,9 +39,7 @@ new ClientLON[MAX_PLAYERS+1][8]
 new ClientLAT[MAX_PLAYERS+1][8]
 
 new g_socket_pass[MAX_PLAYERS+1]
-
 new ip_api_socket
-
 
 public client_putinserver(id)
 {
@@ -55,13 +57,14 @@ public client_putinserver(id)
 {
     get_user_name(id, ClientName[id],charsmax(ClientName[]))
     get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+
     server_print "%s,%s",ClientName[id],ClientIP[id]
     set_task(0.5,"@get_client_data", id+COORD)
 }
 @get_client_data(goldsrc)
 {
     new Soc_O_ErroR2
-    new id = goldsrc - COORD  
+    new id = goldsrc - COORD
     if(is_user_connected(id))
     {
         new constring[MAX_CMD_LENGTH]
@@ -86,8 +89,7 @@ public client_putinserver(id)
     #endif
     {
         socket_send(ip_api_socket,text,charsmax (text));
-        get_user_name(id, ClientName[id],charsmax(ClientName[]))
-        server_print("Yes! %s:writing the web for ^n%s",PLUGIN, ClientName[id])
+        server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
     }
 
 }
@@ -107,25 +109,26 @@ public client_putinserver(id)
             copyc(lat, 6, buffer[containi(buffer, "latitude") + 11], '"');
             replace(lat, 6, ":", "");
             replace(lat, 6, ",", "");
-    
+
             copy(ClientLAT[id], charsmax( ClientLAT[] ),lat)
-    
+
             copyc(lon, 6, buffer[containi(buffer, "longitude") + 12], '"');
             replace(lon, 6, ":", "");
             replace(lon, 6, ",", "");
-    
+
             copy(ClientLON[id], charsmax( ClientLON[] ),lon)
-    
-            server_print("%s's^n^nlat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
+
+            server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
             got_coords[id] = true
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
             else
-                server_print "%s already closed the socket!",api
+                server_print "%s already closed the socket on %s!",api,ClientName[id]
+
         }
         else if(!got_coords[id] && g_socket_pass[id] < 10)
         {
-            server_print "No buffer checking again"
+            server_print "No %s buffer checking again",ClientName[id]
             set_task(0.2, "@read_api",id+READ)
             g_socket_pass[id]++
             server_print "pass:%i",g_socket_pass[id]
