@@ -28,7 +28,7 @@ new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
 
 new buffer[ MAX_MENU_LENGTH ];
 new bool:got_coords[ MAX_PLAYERS + 1 ]
-new const api[]= "ipwhois.app"
+new const api[]= "ipwhois.app" //will see unassigned.psychz.net on NETSTAT DO NOT blacklist!
 
 ///////////COPY AND PASTE HERE BELOW TO UTILIZE IP TO LON&LAT API INTO EXISTING SOCKETS PLUGIN
 #if !defined SOCK_NON_BLOCKING
