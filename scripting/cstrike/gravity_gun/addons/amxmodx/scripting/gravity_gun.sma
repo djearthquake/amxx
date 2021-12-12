@@ -190,7 +190,7 @@ public plugin_init()
     roundstart()
 
   gMsgDeathMsg = get_user_msgid("DeathMsg")
-  set_task(0.5, "createSpawns", 0, "", 0)
+  //set_task(0.5, "createSpawns", 0, "", 0) //stack errors amx182 unreliable
 }
 
 
@@ -580,52 +580,54 @@ public log_kill(killer, victim, weapon[])
 
 public extra_damage(killer, victim)
 {
-  if(get_cvar_num("mp_friendlyfire") == 0 && get_user_team(killer) == get_user_team(victim))
-    return PLUGIN_CONTINUE
-
-  new health = get_user_health(victim) - get_pcvar_num(g_damage)
-
-  if(health > 0)
+  if(is_user_connected(killer) && is_user_connected(victim))
   {
-    set_user_godmode(victim, 1)
-    set_user_health(victim, health)
-    if(!get_pcvar_num(g_all))
-      set_user_godmode(victim, 1)
-  }
-  else
-  {
-    set_user_godmode(victim, 0)
-    emit_sound(victim, CHAN_BODY, "player/headshot1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-    set_msg_block(gMsgDeathMsg, BLOCK_SET)
-    set_user_health(victim, 0)
-    set_msg_block(gMsgDeathMsg, BLOCK_NOT)
-    log_kill(killer, victim, "throw")
-#if defined CSTRIKE
-    if(get_user_team(killer) != get_user_team(victim))
-    {
-      set_user_frags(victim, get_user_frags(victim) + 1)
-      set_user_frags(killer, get_user_frags(killer) + 1)
-      new money = get_user_money(killer)
-      if(money < 16000)
-        set_user_money(killer, money + 300)
-    }
-    else
-    {
-      set_user_frags(victim, get_user_frags(victim) + 1)
-      set_user_frags(killer, get_user_frags(killer) - 2)
-      new money = get_user_money(killer)
-      if (money != 0)
-        set_user_money(killer, money - 150)
-    }
-#endif
-    message_begin(MSG_BROADCAST, get_user_msgid("DeathMsg"), {0,0,0}, 0)
-    write_byte(killer)
-    write_byte(victim)
-    write_byte(0)
-    write_string("throw")
-    message_end()
-  }
+      if(get_cvar_num("mp_friendlyfire") == 0 && get_user_team(killer) == get_user_team(victim))
+        return PLUGIN_CONTINUE
 
+      new health = get_user_health(victim) - get_pcvar_num(g_damage)
+
+      if(health > 0)
+      {
+        set_user_godmode(victim, 1)
+        set_user_health(victim, health)
+        if(!get_pcvar_num(g_all))
+          set_user_godmode(victim, 1)
+      }
+      else
+      {
+        set_user_godmode(victim, 0)
+        emit_sound(victim, CHAN_BODY, "player/headshot1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+        set_msg_block(gMsgDeathMsg, BLOCK_SET)
+        set_user_health(victim, 0)
+        set_msg_block(gMsgDeathMsg, BLOCK_NOT)
+        log_kill(killer, victim, "throw")
+    #if defined CSTRIKE
+        if(get_user_team(killer) != get_user_team(victim))
+        {
+          set_user_frags(victim, get_user_frags(victim) + 1)
+          set_user_frags(killer, get_user_frags(killer) + 1)
+          new money = get_user_money(killer)
+          if(money < 16000)
+            set_user_money(killer, money + 300)
+        }
+        else
+        {
+          set_user_frags(victim, get_user_frags(victim) + 1)
+          set_user_frags(killer, get_user_frags(killer) - 2)
+          new money = get_user_money(killer)
+          if (money != 0)
+            set_user_money(killer, money - 150)
+        }
+    #endif
+        message_begin(MSG_BROADCAST, get_user_msgid("DeathMsg"), {0,0,0}, 0)
+        write_byte(killer)
+        write_byte(victim)
+        write_byte(0)
+        write_string("throw")
+        message_end()
+      }
+  }
   return PLUGIN_CONTINUE
 }
 
