@@ -51,6 +51,6 @@ public pfn_keyvalue( ent )
     }
     if(containi(Classname,"ambient_generic") > charsmin)
 
-    if(equali(key,"message") && equali(key,"ambience/warn3.wav"))
+    if(equali(key,"message") && equali(value,"ambience/warn3.wav"))
         DispatchKeyValue("message","ambience/warn2.wav")
 }
