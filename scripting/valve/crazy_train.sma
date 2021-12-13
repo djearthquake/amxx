@@ -40,7 +40,7 @@ public pfn_keyvalue( ent )
         }
         else if(equali(key,LIFE))
             DispatchKeyValue(LIFE,"-1")
-        
+
         else if(equali(key,WOT))
         {
             DispatchKeyValue(WOT,fast)
@@ -51,6 +51,6 @@ public pfn_keyvalue( ent )
     }
     if(containi(Classname,"ambient_generic") > charsmin)
 
-    if(equali(key,"message"))
+    if(equali(key,"message") && equali(key,"ambience/warn3.wav"))
         DispatchKeyValue("message","ambience/warn2.wav")
 }
