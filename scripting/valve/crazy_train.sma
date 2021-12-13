@@ -46,7 +46,7 @@ public pfn_keyvalue( ent )
             DispatchKeyValue(WOT,fast)
             g_fun_train++
         }
-        else if(equali(key,volume))
+        else if(equali(key,"volume"))
             DispatchKeyValue("volume","0")///emit something else later
     }
     if(containi(Classname,"ambient_generic") > charsmin)
