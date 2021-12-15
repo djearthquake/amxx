@@ -1,9 +1,9 @@
-/*Fix Amxx not getting lon and lat*/
+/*Geo API*/
 #include amxmodx
 #include sockets
 
 #define PLUGIN "Geo API"
-#define VERSION "1.0"
+#define VERSION "1.1"
 #define AUTHOR ".sρiηX҉."
 
 #define COORD 3245
@@ -24,18 +24,48 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR);
 
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
-new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
+new ClientIP[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+//new ClientSuccess[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+//new ClientType[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientContinent[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientContinent_code[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCountry[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCountry_code[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+//new ClientCountry_flag[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCountry_capital[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+//new ClientCountry_phone[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+//new ClientCountry_neighbours[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientRegion[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCity[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientLatitude[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientLongitude[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+/*
+new ClientAsn[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientOrg[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientTimezone[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientTimezone_name[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientTimezone_dstoffset[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientTimezone_gmtoffset[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientTimezone_gmt[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+*/
+new ClientIsp[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCurrency[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCurrency_code[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCurrency_symbol[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+new ClientCurrency_rates[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+//new ClientCurrency_plural[MAX_PLAYERS+1][MAX_NAME_LENGTH] 
+//new ClientCompleted_requests[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 
-new buffer[ MAX_MENU_LENGTH ];
+
+new geo_data[MAX_PLAYERS][MAX_NAME_LENGTH]
+
+new buffer[MAX_MOTD_LENGTH];
 new bool:got_coords[ MAX_PLAYERS + 1 ]
-new const api[]= "ipwhois.app" //will see unassigned.psychz.net on NETSTAT DO NOT blacklist!
+new const api[]= "ipwhois.app"
 
-///////////COPY AND PASTE HERE BELOW TO UTILIZE IP TO LON&LAT API INTO EXISTING SOCKETS PLUGIN
 #if !defined SOCK_NON_BLOCKING
  #error Go make a new script or post and wait on forums/Discord if you are not autodidactic.
 #endif
-new ClientLON[MAX_PLAYERS+1][8]
-new ClientLAT[MAX_PLAYERS+1][8]
 
 new g_socket_pass[MAX_PLAYERS+1]
 new ip_api_socket
@@ -48,7 +78,6 @@ public client_putinserver(id)
         if(!task_exists(id))
         {
             set_task(0.5,"@get_user_data", id)
-            g_socket_pass[id] = 0
         }
     }
 }
@@ -97,33 +126,43 @@ public client_putinserver(id)
     new id = Tsk - READ
     if(is_user_connected(id))
     {
+        new msg[MAX_MOTD_LENGTH]
         server_print "%s:reading %s coords",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
         if (socket_is_readable(ip_api_socket, 100000))
         #endif
         socket_recv(ip_api_socket,buffer,charsmax(buffer) )
-        if (!equal(buffer, "") && containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
+        if (!equal(buffer, "") && containi(buffer,"completed_requests") > charsmin)
         {
-            new float:lat[8],float:lon[8];
-            copyc(lat, 6, buffer[containi(buffer, "latitude") + 11], '"');
-            replace(lat, 6, ":", "");
-            replace(lat, 6, ",", "");
-
-            copy(ClientLAT[id], charsmax( ClientLAT[] ),lat)
-
-            copyc(lon, 6, buffer[containi(buffer, "longitude") + 12], '"');
-            replace(lon, 6, ":", "");
-            replace(lon, 6, ",", "");
-
-            copy(ClientLON[id], charsmax( ClientLON[] ),lon)
-
-            server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
-            got_coords[id] = true
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
             else
                 server_print "%s already closed the socket on %s!",api,ClientName[id]
+            copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
+            //new len = strlen(msg);
+            //new infinity = explode_string(msg, ",", geo_data, MAX_RESOURCE_PATH_LENGTH, MAX_PLAYERS, false)
+            //","
+            new infinity = explode_string(msg, ",", geo_data, MAX_RESOURCE_PATH_LENGTH, MAX_PLAYERS, false)
+            log_to_file "geo_data.txt","%s",infinity
+            new list = 1
+            for(new parameters;parameters < sizeof geo_data[];parameters++)
+                server_print("%d:%s",list++,geo_data[parameters])
 
+            copy(ClientLatitude[id],charsmax(ClientLatitude[]),geo_data[15][containi(geo_data[15],"latitude")+10])
+            copy(ClientLongitude[id],charsmax(ClientLongitude[]),geo_data[16][containi(geo_data[16],"longitude")+11])
+            copyc(ClientIsp[id],charsmax(ClientIsp[]),geo_data[19][containi(geo_data[19],"isp")+6],'"')
+            copy(ClientCurrency[id],charsmax(ClientCurrency[]),geo_data[25][containi(geo_data[25],"currency")+10])
+            copy(ClientCurrency_code[id],charsmax(ClientCurrency_code[]),geo_data[26][containi(geo_data[26],"currency_code")+15])
+            copy(ClientCurrency_rates[id],charsmax(ClientCurrency_rates[]),geo_data[28][containi(geo_data[28],"currency_rates")+16])
+            copy(ClientCurrency_symbol[id],charsmax(ClientCurrency_symbol[]),geo_data[27][containi(geo_data[27],"currency_symbol")+17])
+            copy(ClientContinent[id],charsmax(ClientContinent[]),geo_data[3][containi(geo_data[3],"continent")+11])
+            copy(ClientContinent_code[id],charsmax(ClientContinent_code[]),geo_data[4][containi(geo_data[4],"continent_code")+17])
+            copy(ClientCountry[id],charsmax(ClientCountry[]),geo_data[5][containi(geo_data[5],"country")+9])
+            copy(ClientCity[id],charsmax(ClientCity[]),geo_data[14][containi(geo_data[14],"country_city")+14])
+            copy(ClientRegion[id],charsmax(ClientRegion[]),geo_data[13][containi(geo_data[13],"region")+8])
+            copy(ClientCountry_code[id],charsmax(ClientCountry_code[]),geo_data[6][containi(geo_data[6],"country_code")+14])
+            copy(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),geo_data[8][containi(geo_data[8],"country_capital")+17])
+            server_print"%s's coords: %s %s^nISP:%s. Paid in %s %s %s rate is %s. Capital of %s is %s. County code %s. %s %s",ClientName[id], ClientLatitude[id], ClientLongitude[id], ClientIsp[id], ClientCurrency_code[id], ClientCurrency_symbol[id], ClientCurrency[id], ClientCurrency_rates[id], ClientCountry[id], ClientCountry_capital[id], ClientCountry_code[id], ClientContinent[id], ClientContinent_code[id]
         }
         else if(!got_coords[id] && g_socket_pass[id] < 10)
         {
@@ -137,11 +176,20 @@ public client_putinserver(id)
             if(task_exists(id+READ))
             {
                 remove_task(id)
+                remove_task(id+READ)
+                remove_task(id+WRITE)
                 server_print"Removed task %d",id
             }
             server_print "Could not get a read =("
             client_putinserver(id)
         }
+        else if(g_socket_pass[id]>15 && task_exists(id+READ))
+        {
+            remove_task(id)
+            server_print"Removed task %d",id
+            server_print"CAN NOT CONNECT!"
+        }
+        
         else
         {
             if(socket_close(ip_api_socket) == 1)
