@@ -121,13 +121,13 @@ public nice(show)
     fm_set_kvd( g_defuse_sfx , "texture",        "sprites/laserbeam.spr" );
     fm_set_kvd( g_defuse_sfx , "renderamt",      "100"                   );
     fm_set_kvd( g_defuse_sfx , "rendercolor",    "53 200 140"            );
-    fm_set_kvd( g_defuse_sfx , "Radius",         "500"                   );
-    fm_set_kvd( g_defuse_sfx , "BoltWidth",      "200"                   );
-    fm_set_kvd( g_defuse_sfx , "TextureScroll",  "35"                    );
+    fm_set_kvd( g_defuse_sfx , "Radius",         "3"                     );
+    fm_set_kvd( g_defuse_sfx , "BoltWidth",      "5"                     );
+    fm_set_kvd( g_defuse_sfx , "TextureScroll",  "5"                     );
     fm_set_kvd( g_defuse_sfx , "StrikeTime",     "1"                     );
     fm_set_kvd( g_defuse_sfx , "damage",         "-20"                   );
-    fm_set_kvd( g_defuse_sfx , "life",           "40"                    );
-    fm_set_kvd( g_defuse_sfx , "NoiseAmplitude", "40"                    );
+    fm_set_kvd( g_defuse_sfx , "life",           "3"                     );
+    fm_set_kvd( g_defuse_sfx , "NoiseAmplitude", "0"                     );
     fm_set_kvd( g_defuse_sfx , "targetname",     "defuser_sfx"           );
     fm_set_kvd( g_defuse_sfx , "LightningStart", "playerorigin"          );
     fm_set_kvd( g_defuse_sfx , "LightningEnd",   "C4_origin"             );
