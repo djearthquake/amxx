@@ -10,15 +10,18 @@
 #define IDENTIFY register_plugin("c4 Experience","1.0","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
+#define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
 #define charsmin -1
 
-new g_fExperience_offset, g_iNeutral, g_iSatchel_timer;
+new g_fExperience_offset, g_iNeutral
 static Float:g_fUninhibited_Walk = 272.0;
-new g_iC4_base_time, g_szName[MAX_NAME_LENGTH];
+new g_iC4_base_time
 new g_defuse_sfx
 new g_fire
 new g_boomtime
+new g_weapon_c4_index
+new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 
 public plugin_precache()
 g_fire = precache_model("sprites/laserbeam.spr")
@@ -36,15 +39,18 @@ public plugin_init()
         register_logevent("fnReset_C4",2,"1=Round_Start");
         register_logevent("FnPlant",3,"2=Planted_The_Bomb");
         register_event("BarTime", "fnDefusal", "be", "1=5", "1=10");
-    
-        g_iC4_base_time  = get_cvar_pointer("mp_c4timer");
-        g_iNeutral       = register_cvar("exp_base",  "40");
+
         g_fExperience_offset = register_cvar("exp_offset",  "1.03");
     }
     else
     {
         pause( "a" );
     }
+}
+public client_putinserver(id)
+{
+    if(equal(ClientName[id],""))
+        get_user_name(id,ClientName[id],charsmax(ClientName[]))
 }
 
 public fnReset_C4()
@@ -54,37 +60,41 @@ public FnPlant()
 {
     //get username via log
     new id = get_loguser_index();
-    
+
     //If T has frags it affects the timer for the next round.
+    g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
+
     new Float:fC4_factor = ( ( get_user_frags(id) * get_pcvar_float(g_fExperience_offset) ) * (-1.0) )
-    
-    g_iSatchel_timer = clamp (floatround(  (get_pcvar_num(g_iNeutral)) + (fC4_factor) ), 15,60);
-    //Adj C4 based on exp. *Works on next round.
-    set_pcvar_num(g_iC4_base_time,g_iSatchel_timer);
+    cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
+
     //Multi-task
     entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-    //Advert
-    get_user_name(id,g_szName,charsmax (g_szName));
-    client_print(0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_iSatchel_timer,g_szName);
-    
-    
+    new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+    g_boomtime = iBoom_time
+    set_task(1.0,"@count_down",5656,_,0,"b")
+    client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+
     return;
 }
 
 public fnDefusal(id)
 {
     new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
-    g_iSatchel_timer = clamp(floatround(get_pcvar_num(g_iNeutral)+fC4_factor),15,60);
-    
+    cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
+
+    new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+    g_boomtime = iBoom_time
+    new Float:fplayervector[3];
+    entity_get_vector(id, EV_VEC_origin, fplayervector);
+    client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+
+
     if(!is_user_bot(id))
         entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-    set_pcvar_num(g_iC4_base_time,g_iSatchel_timer);
-    
-    get_user_name(id,g_szName,charsmax (g_szName));
-    client_print(0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_iSatchel_timer,g_szName);
+
     set_task(0.1, "nice", id+911);
     return;
-}                           
+}
 
 stock get_loguser_index()
 {
@@ -93,12 +103,9 @@ stock get_loguser_index()
     parse_loguser(loguser, name, charsmax(name))
     return get_user_index(name)
 }
-//@count_down(iBoom_time, SzBoom_time[1], ct_defusing)
 @count_down()
 {
-    //iBoom_time = str_to_num(SzBoom_time)
     client_print 0, print_center, "Explode time:%i", --g_boomtime
-    //client_print ct_defusing , print_chat, "Explode time (in sec):%i", --iBoom_time
 }
 @round_start()
 if(task_exists(5656))
@@ -108,28 +115,9 @@ public nice(show)
 {
     new ct_defusing = show - 911;
     new playerorigin[3];
-    new Float:fplayervector[3];
     new Float:C4_origin[3];
 
-    new weapon_c4 = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
-    //weapon_c4  = engfunc(EngFunc_FindEntityByString, weapon_c4, "targetname","weapon_c4")
-
-    new Float:fC4_factor = get_user_frags(ct_defusing)*get_pcvar_float(g_fExperience_offset)
-    cs_set_c4_explode_time(weapon_c4,cs_get_c4_explode_time(weapon_c4)+fC4_factor)
-
-    new iBoom_time =  floatround(cs_get_c4_explode_time(weapon_c4) - get_gametime())
-    new SzBoom_time[1]
-    num_to_str(iBoom_time,SzBoom_time,charsmax(SzBoom_time))
-
-    client_print 0, print_chat, "Explode time:%i", iBoom_time
-    client_print ct_defusing , print_center, "Explode time (in sec):%i", iBoom_time
-    //set_task(1.0,"@count_down",5656,SzBoom_time, charsmax(SzBoom_time),"a",iBoom_time)
-    set_task(1.0,"@count_down",5656,_,0,"b")
-    g_boomtime = iBoom_time
-
-    entity_get_vector(ct_defusing, EV_VEC_origin, fplayervector);
-    //entity_get_vector(weapon_c4, EV_VEC_origin, fC4_origin);
-    fm_get_brush_entity_origin(weapon_c4, C4_origin)
+    fm_get_brush_entity_origin(g_weapon_c4_index, C4_origin)
     //server_print("making the bolt of lightening");
     //client_print 0, print_chat, "making the bolt of lightening"
     //c4-white-lightening
@@ -140,12 +128,12 @@ public nice(show)
     ewrite_coord(floatround(C4_origin[0]))       // start position
     ewrite_coord(floatround(C4_origin[1]))
     ewrite_coord(floatround(C4_origin[2]))
-    ewrite_coord(playerorigin[0])      // end position 
+    ewrite_coord(playerorigin[0])      // end position
     ewrite_coord(playerorigin[1])
     ewrite_coord(playerorigin[2])
-    ewrite_byte(1000)        // life in 0.1's 
-    ewrite_byte(1000)        // width in 0.1's 
-    ewrite_byte(700) // amplitude in 0.01's 
+    ewrite_byte(1000)        // life in 0.1's
+    ewrite_byte(1000)        // width in 0.1's
+    ewrite_byte(700) // amplitude in 0.01's
     ewrite_short(g_fire)     // sprite model index
     emessage_end()
 
