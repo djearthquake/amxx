@@ -21,6 +21,7 @@ new g_fire
 new g_boomtime
 new g_weapon_c4_index
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+new bool:Client_C4_adjusted_already[MAX_PLAYERS+1]
 
 public plugin_precache()
 g_fire = precache_model("sprites/laserbeam.spr")
@@ -76,7 +77,7 @@ public FnPlant()
 
 public fnDefusal(id)
 {
-    if(is_user_alive(id))
+    if(is_user_alive(id) && !Client_C4_adjusted_already[id])
     {
         new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
         cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
@@ -94,6 +95,7 @@ public fnDefusal(id)
             entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
     
         set_task(0.1, "nice", id+911);
+        Client_C4_adjusted_already[id] = true
     }
     return;
 }
@@ -111,7 +113,7 @@ public nice(show)
     //c4-white-lightening
     #define TE_LIGHTNING 7          // TE_BEAMPOINTS with simplified parameters
     get_user_origin(ct_defusing,playerorigin,3);
-    emessage_begin(0,23);
+    emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY);
     ewrite_byte(TE_LIGHTNING)
     ewrite_coord(floatround(C4_origin[0]))       // start position
     ewrite_coord(floatround(C4_origin[1]))
@@ -119,9 +121,9 @@ public nice(show)
     ewrite_coord(playerorigin[0])      // end position
     ewrite_coord(playerorigin[1])
     ewrite_coord(playerorigin[2])
-    ewrite_byte(g_boomtime)        // life in 0.1's
-    ewrite_byte(10)        // width in 0.1's
-    ewrite_byte(70) // amplitude in 0.01's
+    ewrite_byte(g_boomtime*60)        // life in 0.1's
+    ewrite_byte(30)        // width in 0.1's
+    ewrite_byte(7) // amplitude in 0.01's
     ewrite_short(g_fire)     // sprite model index
     emessage_end()
 
@@ -134,7 +136,7 @@ public nice(show)
     fm_set_kvd( g_defuse_sfx , "TextureScroll",  "35"                     );
     fm_set_kvd( g_defuse_sfx , "StrikeTime",     "1"                     );
     fm_set_kvd( g_defuse_sfx , "damage",         "-20"                   );
-    fm_set_kvd( g_defuse_sfx , "life",           "50"                     );
+    fm_set_kvd( g_defuse_sfx , "life",           "300"                     );
     fm_set_kvd( g_defuse_sfx , "NoiseAmplitude", "5"                     );
     fm_set_kvd( g_defuse_sfx , "targetname",     "defuser_sfx"           );
     fm_set_kvd( g_defuse_sfx , "LightningStart", "playerorigin"          );
@@ -145,8 +147,13 @@ public nice(show)
 }
 
 @round_start()
-if(task_exists(5656))
-    remove_task(5656)
+{
+    if(task_exists(5656))
+        remove_task(5656)
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"e", "CT")
+    for(new CT;CT < sizeof players;CT++)
+    Client_C4_adjusted_already[players[CT]] = false
+}
 
 @round_end()@round_start()
 
@@ -156,4 +163,9 @@ stock get_loguser_index()
     read_logargv(0, loguser, charsmax(loguser))
     parse_loguser(loguser, name, charsmax(name))
     return get_user_index(name)
+}
+stock iPlayers()
+{
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
+    return iHeadcount
 }
