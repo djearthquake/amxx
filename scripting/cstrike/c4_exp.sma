@@ -46,47 +46,55 @@ public plugin_init()
 }
 
 public client_putinserver(id)
-    if(equal(ClientName[id],""))
+    if(is_user_connected(id) && !is_user_bot(id) && equal(ClientName[id],""))
         get_user_name(id,ClientName[id],charsmax(ClientName[]))
-
 public FnPlant()
 {
     //get username via log
     new id = get_loguser_index();
-
-    g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
-
-    new Float:fC4_factor = ( ( get_user_frags(id) * get_pcvar_float(g_fExperience_offset) ) * (-1.0) )
-    cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
-
-    //Multi-task
-    entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-
-    new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
-    if(iBoom_time)
-        g_boomtime = iBoom_time
-    set_task(1.0,"@count_down",5656,_,0,"b")
-    client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+    if(is_user_alive(id))
+    {
+        g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
+    
+        new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
+        cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
+    
+        //Multi-task
+        entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+    
+        new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+        if(iBoom_time > 0)
+            g_boomtime = iBoom_time
+        else
+            return
+        set_task(1.0,"@count_down",5656,_,0,"b")
+        client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+    }
 
     return;
 }
 
 public fnDefusal(id)
 {
-    new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
-    cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
-
-    new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
-    if(iBoom_time)
-        g_boomtime = iBoom_time
-    new Float:fplayervector[3];
-    entity_get_vector(id, EV_VEC_origin, fplayervector);
-    client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
-
-    if(!is_user_bot(id))
-        entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-
-    set_task(0.1, "nice", id+911);
+    if(is_user_alive(id))
+    {
+        new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
+        cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
+    
+        new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+        if(iBoom_time > 0)
+            g_boomtime = iBoom_time
+        else
+            return
+        new Float:fplayervector[3];
+        entity_get_vector(id, EV_VEC_origin, fplayervector);
+        client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+    
+        if(!is_user_bot(id))
+            entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+    
+        set_task(0.1, "nice", id+911);
+    }
     return;
 }
 
@@ -111,9 +119,9 @@ public nice(show)
     ewrite_coord(playerorigin[0])      // end position
     ewrite_coord(playerorigin[1])
     ewrite_coord(playerorigin[2])
-    ewrite_byte(1000)        // life in 0.1's
-    ewrite_byte(1000)        // width in 0.1's
-    ewrite_byte(700) // amplitude in 0.01's
+    ewrite_byte(g_boomtime)        // life in 0.1's
+    ewrite_byte(10)        // width in 0.1's
+    ewrite_byte(70) // amplitude in 0.01's
     ewrite_short(g_fire)     // sprite model index
     emessage_end()
 
@@ -121,13 +129,13 @@ public nice(show)
     fm_set_kvd( g_defuse_sfx , "texture",        "sprites/laserbeam.spr" );
     fm_set_kvd( g_defuse_sfx , "renderamt",      "100"                   );
     fm_set_kvd( g_defuse_sfx , "rendercolor",    "53 200 140"            );
-    fm_set_kvd( g_defuse_sfx , "Radius",         "3"                     );
-    fm_set_kvd( g_defuse_sfx , "BoltWidth",      "5"                     );
-    fm_set_kvd( g_defuse_sfx , "TextureScroll",  "5"                     );
+    fm_set_kvd( g_defuse_sfx , "Radius",         "200"                     );
+    fm_set_kvd( g_defuse_sfx , "BoltWidth",      "50"                     );
+    fm_set_kvd( g_defuse_sfx , "TextureScroll",  "35"                     );
     fm_set_kvd( g_defuse_sfx , "StrikeTime",     "1"                     );
     fm_set_kvd( g_defuse_sfx , "damage",         "-20"                   );
-    fm_set_kvd( g_defuse_sfx , "life",           "3"                     );
-    fm_set_kvd( g_defuse_sfx , "NoiseAmplitude", "0"                     );
+    fm_set_kvd( g_defuse_sfx , "life",           "50"                     );
+    fm_set_kvd( g_defuse_sfx , "NoiseAmplitude", "5"                     );
     fm_set_kvd( g_defuse_sfx , "targetname",     "defuser_sfx"           );
     fm_set_kvd( g_defuse_sfx , "LightningStart", "playerorigin"          );
     fm_set_kvd( g_defuse_sfx , "LightningEnd",   "C4_origin"             );
