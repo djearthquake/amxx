@@ -146,7 +146,9 @@ public ReadFakeFromFile( )
 public plugin_end()
 {
     TrieDestroy(g_fakeclients)
-    server_cmd "meta unload bot_played_time_faker_mm_i386.so"
+    new debugger = get_pcvar_num(g_cvar_debugger)
+    if(debugger < -1)
+        server_cmd "meta unload bot_played_time_faker_mm_i386.so"
 }
 
 @make_fake(new_bot_spec)
@@ -217,7 +219,9 @@ public plugin_cfg()
         server_print "^n[%s] adjusted max fakes to %d to avoid filling server entirely^n",PLUGIN, unfill_server
     }
     set_task(float(get_pcvar_num(g_ifakesMx))*1.0, "@make_fake",new_bot_spec,_,_,"a", get_pcvar_num(g_ifakesMx));
-    server_cmd "meta load addons/bot_played_time_faker/bot_played_time_faker_mm_i386.so"
+    new debugger = get_pcvar_num(g_cvar_debugger)
+    if(debugger < -1)
+        server_cmd "meta load addons/bot_played_time_faker/bot_played_time_faker_mm_i386.so"
 }
 
 public client_infochanged(id)
