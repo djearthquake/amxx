@@ -105,7 +105,7 @@ public client_putinserver(id)
         if (!equal(buffer, "") && containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
         {
             new float:lat[8],float:lon[8];
-            copyc(lat, 6, buffer[containi(buffer, "latitude") + 11], '"');
+            copyc(lat, 6, buffer[containi(buffer, "latitude") + 10], '"');
             replace(lat, 6, ":", "");
             replace(lat, 6, ",", "");
 
