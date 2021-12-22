@@ -1169,7 +1169,7 @@ public client_putinserver_now(id)
 
             copy(ClientLAT[id], charsmax( ClientLAT[] ),lat)
 
-            copyc(lon, 6, buffer[containi(buffer, "longitude") + 12], '"');
+            copyc(lon, 6, buffer[containi(buffer, "longitude") + 11], '"');
             replace(lon, 6, ":", "");
             replace(lon, 6, ",", "");
 
