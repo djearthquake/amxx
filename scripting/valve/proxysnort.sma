@@ -126,7 +126,7 @@ public plugin_init()
     if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
 
-    formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+    formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
     @file_data(SzSave)
     ReadProxyFromFile( )
 
@@ -136,7 +136,7 @@ public client_putinserver(id)
     if(is_user_bot(id) || g_has_been_checked[id])
         return PLUGIN_HANDLED_MAIN
 
-    if(is_user_connected(id) || is_user_connecting(id) && !is_user_bot(id) && id > 0)
+    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
     {
         static SzLoopback[] = "127.0.0.1"
 
