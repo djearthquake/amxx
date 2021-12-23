@@ -314,7 +314,7 @@ public client_putinserver(id)
         {
             TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
             server_print "Adding Client to check temp"
-            formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^" ^"%s^"", Data[SzAddress], Data[SzRegion], Data[fLatitude], Data[fLongitude] ) ///likes quotes not comma TAB
+            formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^"", Data[SzAddress], Data[SzCity], Data[SzRegion], Data[SzCountry], Data[fLatitude], Data[fLongitude] ) ///likes quotes not comma TAB
             @file_data(SzSave)
         }
         else if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
@@ -391,7 +391,7 @@ public client_temp_cmd(id)
         if(is_user_admin(m) && get_pcvar_num(g_admins) == 0)
         gotatemp[m] = true;
 
-        if(!gotatemp[m] && m > 0)
+        else if(!gotatemp[m] && m > 0)
         {
             ////////////////////////////////////////////////////////////////////////////////
             new total, iHeadcount
@@ -412,7 +412,7 @@ public client_temp_cmd(id)
 
         }
 
-        if(gotatemp[m])
+        else if(gotatemp[m])
         {
             server_print "We have %s's temp already.",ClientName[m]
         }
@@ -681,7 +681,8 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 
     }
 
-}/*
+}
+
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
@@ -699,8 +700,8 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
     }
 
 }
-*/
 
+/*
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     new id = Task - WEATHER
@@ -735,7 +736,7 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
     }
     else server_print "%s| Socket in use", PLUGIN
 }
-
+*/
 public read_web(feeding)
 {
     new id = feeding - WEATHER
@@ -914,12 +915,12 @@ public read_web(feeding)
                 if(equali(ClientCity[id],"") && containi(buffer, "name") > charsmin) //city blank from Geodat?
                 {
                     new out[MAX_NAME_LENGTH];
-                    copyc(out, charsmax(out), buffer[containi(buffer, "name") + 7], '"');
+                    copyc(out, charsmax(out), buffer[containi(buffer, "name") + 6], '"');
                     replace(out, charsmax(out), ":", "");
                     replace(out, charsmax(out), ",", "");
                     log_amx "%s city is %s was missing on local geoip", ClientName[id], out
                     copy(ClientCity[id],charsmax(ClientCity[]),out)
-                    server_print "%n city is %s",id, out
+                    server_print "%s city is %s",ClientName[id], out
                 }
                 #if defined MOTD
                     log_amx "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
@@ -997,11 +998,6 @@ public read_web(feeding)
     {
         Data[ SzAddress ] = ClientIP[players[q]]
 
-        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        {
-            gotatemp[players[q]] = true
-            //@country_finder(players[q]+WEATHER)
-        }
         //Make array of non-bot connected players who need their temp still.
         //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
         if(!gotatemp[players[q]] && is_user_connected(players[q]))
@@ -1020,11 +1016,12 @@ public read_web(feeding)
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             //if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
             if(get_pcvar_num(g_long) > 0 && !got_coords[players[q]])
-                if(!task_exists(players[q] + WEATHER) && !IS_SOCKET_IN_USE && get_timeleft() > 60)
+            {
+                if(!task_exists(players[q] + WEATHER) && get_timeleft() > 60)
                     set_task(queued_task+++get_pcvar_num(g_timeout)*1.0,"@country_finder",players[q]+WEATHER)
                 else
                     client_print 0, print_chat, "Map is about to change. Cancelling %s's weather reading.", ClientName[players[q]]
-
+            }
             //if they have a task set-up already adjust it
             if(task_exists(players[q] + WEATHER))
                 change_task(players[q] + WEATHER,retask)
@@ -1179,11 +1176,29 @@ public client_putinserver_now(id)
             else if(containi(buffer, "region") > charsmin)
             {
                 new region[MAX_NAME_LENGTH]
-                copyc(region, charsmax(region), buffer[containi(buffer, "region") + 9], '"')
+                copyc(region, charsmax(region), buffer[containi(buffer, "region") + 8], '"')
                 replace(region, 6, ":", "");
                 replace(region, 6, ",", "");
                 server_print region
                 copy(ClientRegion[id],charsmax(ClientRegion[]),region)
+            }
+            else if(containi(buffer, "city") > charsmin)
+            {
+                new city[MAX_NAME_LENGTH]
+                copyc(city, charsmax(city), buffer[containi(buffer, "city") + 6], '"')
+                replace(city, 6, ":", "");
+                replace(city, 6, ",", "");
+                server_print city
+                copy(ClientCity[id],charsmax(ClientCity[]),city)
+            }
+            else if(containi(buffer, "country") > charsmin)
+            {
+                new country[MAX_NAME_LENGTH]
+                copyc(country, charsmax(country), buffer[containi(buffer, "country") + 9], '"')
+                replace(country, 6, ":", "");
+                replace(country, 6, ",", "");
+                server_print country
+                copy(ClientCountry[id],charsmax(ClientCountry[]),country)
             }
             set_task(0.2,"@country_finder",id+WEATHER)
             if(socket_close(ip_api_socket) == 1)
@@ -1248,13 +1263,15 @@ public ReadClientFromFile( )
         (
             szDataFromFile,
             Data[ SzAddress ], charsmax( Data[ SzAddress ] ),
+            Data[ SzCity ], charsmax( Data[ SzCity ] ),
             Data[ SzRegion ], charsmax( Data[ SzRegion ] ),
+            Data[ SzCountry ], charsmax( Data[ SzCountry] ),
             Data[ fLatitude ], charsmax( Data[ fLatitude ] ),
             Data[ fLongitude ], charsmax( Data[ fLongitude ] )
         )
 
         if(debugger)
-            server_print "Read %s %s %s %s from file.", Data[ SzAddress ], Data[ SzRegion ], Data[ fLatitude ], Data[ fLongitude ]
+            server_print "Read %s:: %s, %s, %s, %s, %s from file.", Data[ SzAddress ], Data[ SzCity ], Data[ SzRegion ], Data[ SzCountry ], Data[ fLatitude ], Data[ fLongitude ]
 
         TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
         g_clients_saved++
