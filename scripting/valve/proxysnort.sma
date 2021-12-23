@@ -374,8 +374,8 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
-                new risk_buffer_fix = containi(proxy_socket_buffer, "yes") != charsmin ? 7 : 5
-                copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + risk_buffer_fix])
+                //plus buffer much be size of including quotes
+                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 6], '}')
                 Data[iRisk] = risk
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
