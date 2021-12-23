@@ -26,6 +26,7 @@ new sleepy[MAX_PLAYERS + 1], g_spec
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_mname[MAX_NAME_LENGTH]
 new bool:b_Op4c
+new afk_sync_msg, download_sync_msg
 
 #define ALRT 84641
 #define FADE_HOLD (1<<2)
@@ -48,6 +49,9 @@ public plugin_init()
     get_mapname(g_mname, charsmax(g_mname))
     if(containi(g_mname, "op4c") == charmin)
         b_Op4c=true
+    //no over-lapping
+    afk_sync_msg        = CreateHudSyncObj( )
+    download_sync_msg   = CreateHudSyncObj( )
 }
 
 public client_putinserver(index)
@@ -97,7 +101,7 @@ public new_users()
                 #if AMXX_VERSION_NUM == 182
 
                 client_print 0,print_chat,"%s is connecting...", ClientName[players[downloader]]
-                server_print "%s is connecting...", ClientName[players[downloader]
+                server_print "%s is connecting...", ClientName[players[downloader]]
 
                 #else
                 client_print 0,print_chat,"%n is connecting...", players[downloader]
@@ -110,13 +114,16 @@ public new_users()
             {
                 #if AMXX_VERSION_NUM == 182
 
-                show_hudmessage 0, "%s is downloading...", ClientName[players[downloader]]
+                //show_hudmessage 0, "%s is downloading...", ClientName[players[downloader]]
+                ShowSyncHudMsg 0, download_sync_msg, "%s is downloading...", ClientName[players[downloader]]
+
                 client_print 0,print_chat,"%s is downloading...", ClientName[players[downloader]]
                 server_print "%s is downloading...", ClientName[players[downloader]]
 
                 #else
 
-                show_hudmessage 0, "%n is downloading...", players[downloader]
+                //show_hudmessage 0, "%n is downloading...", players[downloader]
+                ShowSyncHudMsg 0, download_sync_msg, "%n is downloading...", players[downloader]
                 client_print 0,print_chat,"%n is downloading...", players[downloader]
                 server_print "%n is downloading...", players[downloader]
 
@@ -128,8 +135,12 @@ public new_users()
         if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]))
         {
             new uptime = sleepy[players[downloader]]++
+            new spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
 
-            if (uptime > get_pcvar_num(g_afk_spec_player))
+            if(!spec_screensaver_engage < 0)
+                //return PLUGIN_HANDLED_MAIN
+
+            if (uptime > spec_screensaver_engage)
             {
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
 
@@ -148,17 +159,14 @@ public new_users()
                 }
                 else
                 {
-                    show_hudmessage 0, "%s is NO LONGER active...", ClientName[players[downloader]]
-                    //client_print 0, print_chat, "%s is NO LONGER active...", ClientName[players[downloader]]
+                    ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
                     screensaver(players[downloader], uptime)
-                    //sleepy[players[downloader]] = 1
                 }
             }
             else
             {
-                show_hudmessage 0, "%s is NO LONGER active...", ClientName[players[downloader]]
+                ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
                 client_print players[downloader],print_chat, "AFK time:%i", uptime
-                //client_print 0, print_console, "%s is NO LONGER active...", ClientName[players[downloader]]
             }
         }
     }
