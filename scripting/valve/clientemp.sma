@@ -111,7 +111,6 @@
     new const g_szRequired_Files[][]={"GeoLite2-Country.mmdb","GeoLite2-City.mmdb"};
     new word_buffer[MAX_PLAYERS], g_debug, g_timeout, Float:g_task;
 
-    //////new Float:g_lat[ MAX_PLAYERS ], Float:g_lon[ MAX_PLAYERS ];
     new g_queue_weight, g_q_weight;
     new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ];
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
@@ -122,7 +121,7 @@
     new const SOUND_GOTATEMP[] = "misc/Temp.wav";
     new bool:gotatemp[ MAX_PLAYERS + 1 ]
 
-    ////new g_clients_saved
+    new g_clients_saved
     new SzSave[MAX_CMD_LENGTH]
 
     new Trie:g_client_temp
@@ -315,7 +314,7 @@ public client_putinserver(id)
         {
             TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
             server_print "Adding Client to check temp"
-            formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^"", Data[SzAddress], Data[fLatitude], Data[fLongitude] ) ///likes quotes not comma TAB
+            formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^" ^"%s^"", Data[SzAddress], Data[SzRegion], Data[fLatitude], Data[fLongitude] ) ///likes quotes not comma TAB
             @file_data(SzSave)
         }
         else if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
@@ -649,23 +648,25 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             //Make sure client gets the right unit
             str_to_num(Data[ifaren]) == 1 ? copy(units,charsmax(units),"imperial") : copy(units,charsmax(units),"metric")
-        /*else
-            get_pcvar_string(g_cvar_units, units, charsmax (units) );*/
 
         //Pick what is more reliable or chosen first on cvar lon+lat or city to acquire temp
-        //if(get_pcvar_float(g_long) && g_lat[id] == 0.0 && g_lon[id] == 0.0 || equali(ClientCity[id], "") )
         if(get_pcvar_float(g_long) && got_coords[id])
         {
             formatex(constring, charsmax(constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]), units, token)   // g_lat[id], g_lon[id], units, token);
         }
-        else
+        else if (!equali(ClientCity[id], ""))
         {
             new city_space_remover[MAX_RESOURCE_PATH_LENGTH]
             copy(city_space_remover,charsmax(city_space_remover),ClientCity[id])
             replace(city_space_remover,charsmax(city_space_remover)," ", "")
             formatex(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, city_space_remover, units, token);
         }
-
+        else
+        {
+            server_print "Unable to get %s due to no city nor lon and lat!! on %s", PLUGIN, ClientName[id]
+            log_amx "Unable to get %s due to no city nor lon and lat!! on %s", PLUGIN, ClientName[id]
+            return
+        }
 
         set_task(1.0, "write_web", id+WEATHER, constring, charsmax(constring) );
 
@@ -680,8 +681,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
 
     }
 
-}
-
+}/*
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
@@ -699,8 +699,8 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
     }
 
 }
+*/
 
-/*
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     new id = Task - WEATHER
@@ -733,11 +733,9 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
         }
 
     }
-    else server_print "Server is getting overloaded with instructions...%s", PLUGIN
+    else server_print "%s| Socket in use", PLUGIN
 }
-* 
-* 
-* */
+
 public read_web(feeding)
 {
     new id = feeding - WEATHER
@@ -1100,7 +1098,6 @@ public client_putinserver_now(id)
     copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
 
     server_print "%s,%s",ClientName[id],ClientIP[id]
-    //if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )) //ClientIP[id]
     if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
     {
         server_print "%s is already accounted for.", ClientName[id]
@@ -1148,35 +1145,46 @@ public client_putinserver_now(id)
         server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
     }
 
-}
+}   
 @read_api(Tsk)
 {
     new id = Tsk - READ
     if(is_user_connected(id))
     {
-        new buffer[ MAX_MENU_LENGTH ];
         server_print "%s:reading %s coords",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
         if (socket_is_readable(ip_api_socket, 100000))
         #endif
         socket_recv(ip_api_socket,buffer,charsmax(buffer) )
-        if (!equal(buffer, "") && containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
+        if(!equal(buffer, "") && containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin && containi(buffer, "region") > charsmin)
         {
-            new float:lat[8],float:lon[8];
-            copyc(lat, 6, buffer[containi(buffer, "latitude") + 10], '"');
-            replace(lat, 6, ":", "");
-            replace(lat, 6, ",", "");
-
-            copy(ClientLAT[id], charsmax( ClientLAT[] ),lat)
-
-            copyc(lon, 6, buffer[containi(buffer, "longitude") + 11], '"');
-            replace(lon, 6, ":", "");
-            replace(lon, 6, ",", "");
-
-            copy(ClientLON[id], charsmax( ClientLON[] ),lon)
-
-            server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
-            got_coords[id] = true
+            if(containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
+            {
+                new float:lat[8],float:lon[8];
+                copyc(lat, 6, buffer[containi(buffer, "latitude") + 10], '"');
+                replace(lat, 6, ":", "");
+                replace(lat, 6, ",", "");
+    
+                copy(ClientLAT[id], charsmax( ClientLAT[] ),lat)
+    
+                copyc(lon, 6, buffer[containi(buffer, "longitude") + 11], '"');
+                replace(lon, 6, ":", "");
+                replace(lon, 6, ",", "");
+    
+                copy(ClientLON[id], charsmax( ClientLON[] ),lon)
+    
+                server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
+                got_coords[id] = true
+            }
+            else if(containi(buffer, "region") > charsmin)
+            {
+                new region[MAX_NAME_LENGTH]
+                copyc(region, charsmax(region), buffer[containi(buffer, "region") + 9], '"')
+                replace(region, 6, ":", "");
+                replace(region, 6, ",", "");
+                server_print region
+                copy(ClientRegion[id],charsmax(ClientRegion[]),region)
+            }
             set_task(0.2,"@country_finder",id+WEATHER)
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
@@ -1222,7 +1230,6 @@ public ReadClientFromFile( )
 
     if( !f )
     {
-        //@init_fake_file()
         return
     }
 
@@ -1241,21 +1248,22 @@ public ReadClientFromFile( )
         (
             szDataFromFile,
             Data[ SzAddress ], charsmax( Data[ SzAddress ] ),
+            Data[ SzRegion ], charsmax( Data[ SzRegion ] ),
             Data[ fLatitude ], charsmax( Data[ fLatitude ] ),
             Data[ fLongitude ], charsmax( Data[ fLongitude ] )
         )
 
         if(debugger)
-            server_print "Read %s %s %s from file.",Data[ SzAddress ], Data[ fLatitude ], Data[ fLongitude ]
+            server_print "Read %s %s %s %s from file.", Data[ SzAddress ], Data[ SzRegion ], Data[ fLatitude ], Data[ fLongitude ]
 
         TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-        //g_clients_saved++
+        g_clients_saved++
 
     }
-    END:
+    ///END:
     fclose( f )
     if(debugger)
-        server_print "................Client Temp data file....................."
+        server_print "................Client Temp data file has %d IP addresses cached already.....................", g_clients_saved
 }
 
 @file_data(SzSave[MAX_CMD_LENGTH])
