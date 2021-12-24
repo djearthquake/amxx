@@ -13,6 +13,11 @@
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
 #define charsmin -1
+// find c4 ent
+#define m_bIsC4                    385
+#define INT_BYTES                    4
+#define BYTE_BITS                    8
+#define SHORT_BYTES                  2
 
 new g_fExperience_offset
 static Float:g_fUninhibited_Walk = 272.0;
@@ -47,22 +52,36 @@ public plugin_init()
 }
 
 public client_putinserver(id)
-    if(is_user_connected(id) && !is_user_bot(id) && equal(ClientName[id],""))
-        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+{
+    if(is_user_connected(id))
+    {
+        Client_C4_adjusted_already[id] = false
+
+        if(equal(ClientName[id],""))
+            get_user_name(id,ClientName[id],charsmax(ClientName[]))
+    }
+}
+
 public FnPlant()
 {
-    //get username via log
     new id = get_loguser_index();
     if(is_user_alive(id))
     {
-        g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
-    
+        new ent = charsmin
+        while ((ent = find_ent(ent,"grenade")))
+        {
+            if(pev_valid(ent) && get_pdata_bool(ent, m_bIsC4, 5))
+            {
+                g_weapon_c4_index = ent
+                break;
+            }
+        }
         new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
         cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
-    
+
         //Multi-task
         entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-    
+
         new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
         if(iBoom_time > 0)
             g_boomtime = iBoom_time
@@ -81,7 +100,7 @@ public fnDefusal(id)
     {
         new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
         cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
-    
+
         new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
         if(iBoom_time > 0)
             g_boomtime = iBoom_time
@@ -90,10 +109,10 @@ public fnDefusal(id)
         new Float:fplayervector[3];
         entity_get_vector(id, EV_VEC_origin, fplayervector);
         client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
-    
+
         if(!is_user_bot(id))
             entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-    
+
         set_task(0.1, "nice", id+911);
         Client_C4_adjusted_already[id] = true
     }
@@ -150,7 +169,7 @@ public nice(show)
 {
     if(task_exists(5656))
         remove_task(5656)
-    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"e", "CT")
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount)
     for(new CT;CT < sizeof players;CT++)
     Client_C4_adjusted_already[players[CT]] = false
 }
@@ -164,6 +183,12 @@ stock get_loguser_index()
     parse_loguser(loguser, name, charsmax(name))
     return get_user_index(name)
 }
+#if AMXX_VERSION_NUM == 182
+stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
+{
+    return !!(get_pdata_int(ent, charbased_offset / INT_BYTES, intbase_linuxdiff) & (0xFF<<((charbased_offset % INT_BYTES) * BYTE_BITS)))
+}
+#endif
 stock iPlayers()
 {
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
