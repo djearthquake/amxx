@@ -310,7 +310,7 @@ stock get_user_profile(id)
             if (containi(proxy_socket_buffer, "yes") != charsmin || containi(proxy_socket_buffer, "Compromised") != charsmin)
             {
                 Data[SzProxy] = 1
-                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
 
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 @file_data(SzSave)
