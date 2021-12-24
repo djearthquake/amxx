@@ -106,7 +106,7 @@
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
 
-    new bool:IS_SOCKET_IN_USE, mask
+    new bool:IS_SOCKET_IN_USE, bool:bServer, mask
 
     new const g_szRequired_Files[][]={"GeoLite2-Country.mmdb","GeoLite2-City.mmdb"};
     new word_buffer[MAX_PLAYERS], g_debug, g_timeout, Float:g_task;
@@ -306,6 +306,7 @@ public client_putinserver(id)
             Data[fLatitude] = ClientLAT[mask]
             Data[fLongitude] = ClientLON[mask]
         }
+        else client_putinserver_now(mask)
 
         Data[SzCity] = ClientCity[mask]
         Data[SzRegion] = ClientRegion[mask]
@@ -329,9 +330,10 @@ public client_putinserver(id)
 
         client_print 0, print_chat, "%s from %s appeared on %s, %s radar.", ClientName[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]
         server_print "%s from %s appeared on %s, %s radar.", ClientName[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]
-        task_exists(mask) ?  set_task(task_expand,"@que_em_up",mask)&server_print("Task input time = %f", task_expand) : change_task(mask, 5.0) &server_print("Task input time = 5.0")
+        //task_exists(mask) ?  change_task(mask, 5.0) &server_print("Task input time = 5.0") : set_task(task_expand,"@que_em_up",mask) &server_print("Task input time = %f", task_expand)
+        if(!IS_SOCKET_IN_USE)
+            set_task(task_expand,"@que_em_up",mask)
 
-        //server_print "Task input time = %f", task_expand
     }
 }
 @speakit(id)
@@ -406,7 +408,7 @@ public client_temp_cmd(id)
 
             if(task_exists(iQUEUE))
             {
-                change_task(iQUEUE, get_pcvar_num(g_timeout)*1.0)
+                change_task(iQUEUE, 30.0)
                 server_print "Resuming queue per %s connected.",ClientName[m]
             }
 
@@ -469,95 +471,98 @@ public client_temp_filter(id)
 
 public client_temp(id)
 {
-    if(is_user_connected(id) && gotatemp[id] == false)
-        Data[ SzAddress ] = ClientIP[id]
-    if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
+    if(is_user_connected(id) && gotatemp[id] == false && !bServer)
     {
-        new country[ 4 ];
-
-        #if AMXX_VERSION_NUM == 182
-            geoip_code3( ClientIP[id], country );
-        #else
-            geoip_code3_ex( ClientIP[id], country );
-        #endif
-
-        for (new heit;heit < sizeof faren_country;heit++)
-
-        if(equali(country, faren_country[heit]))
+        bServer = true
+        Data[ SzAddress ] = ClientIP[id]
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
-            set_pcvar_string(g_cvar_units, "imperial")
-            copy( Data[ifaren], charsmax(Data[ifaren]), "1" )
+            new country[ 4 ];
+    
+            #if AMXX_VERSION_NUM == 182
+                geoip_code3( ClientIP[id], country );
+            #else
+                geoip_code3_ex( ClientIP[id], country );
+            #endif
+    
+            for (new heit;heit < sizeof faren_country;heit++)
+    
+            if(equali(country, faren_country[heit]))
+            {
+                set_pcvar_string(g_cvar_units, "imperial")
+                copy( Data[ifaren], charsmax(Data[ifaren]), "1" )
+            }
+            else
+            {
+                set_pcvar_string(g_cvar_units, "metric")
+                copy( Data[ifaren], charsmax(Data[ifaren]), "0" )
+            }
+    
+            TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+            server_print "Adding Client units to check temp"
+    
+    
+            get_datadir(g_filepath, charsmax(g_filepath));
+    
+            //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING COPIED
+            formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
+            formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
+            if( (!file_exists(g_szFile[0])) && !file_exists(g_szFile[1]) )
+            {
+                server_print "Check BOTH your Maxmind databases...%s|%s...halting to prevent crash.",g_szFile[0],g_szFile[1]
+                pause("a");
+            }
+            else if(!file_exists(g_szFile[0]))
+            {
+                server_print "Check your Maxmind database...%s...halting to prevent crash.",g_szFile[0]
+                pause("a")
+            }
+            else if(!file_exists(g_szFile[1]))
+            {
+                server_print "Check your Maxmind database...%s...halting to prevent crash.",g_szFile[1]
+                pause("a")
+            }
+            ///////////////////////////////////////////////////////////////////////
+            if (task_exists(id+WEATHER))
+                return PLUGIN_HANDLED;
+    
+            if (containi(ClientIP[id], "127.0.0.1") != charsmin)
+            {
+                server_print "%s IP shows as 127.0.0.1, stopping script!", ClientName[id]
+                return PLUGIN_HANDLED;
+            }
+            ////////////GEO COORDINATES GATHERING/////////////////////////////////
+            ///Amxx module w/ Maxmind geoip database
+            ///g_lat[id] = geoip_latitude(ClientIP[id]);
+            ///g_lon[id] = geoip_longitude(ClientIP[id]);
+            new Float:timing;
+            timing = g_task+5.0;
+    
+            new ping, loss;
+    
+            get_user_ping(id,ping,loss);
+            new Float:timing2;
+            timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
+    
+            set_task( timing+timing2, "Weather_Feed", id+WEATHER, ClientIP[id], charsmax(ClientIP[]) );
+    
+            g_task = timing;
+    
+            if(g_task > 20.0) g_task = 5.0;
+    
+    
+            #if defined LOG
+            log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], str_to_float(ClientLAT[id]), str_to_float(ClientLON[id]) // g_lat[id], g_lon[id]);
+            #endif
+    
+            if(get_pcvar_num(g_debug) && is_user_admin(id) )
+                set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
         }
-        else
-        {
-            set_pcvar_string(g_cvar_units, "metric")
-            copy( Data[ifaren], charsmax(Data[ifaren]), "0" )
-        }
+    
+        if(get_pcvar_num(g_debug) > 1) //per req and updated to minimize log spam
+            log_amx("%s|%s", ClientName[id], ClientAuth[id]);
 
-        TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-        server_print "Adding Client units to check temp"
-
-
-        get_datadir(g_filepath, charsmax(g_filepath));
-
-        //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING COPIED
-        formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
-        formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
-        if( (!file_exists(g_szFile[0])) && !file_exists(g_szFile[1]) )
-        {
-            server_print "Check BOTH your Maxmind databases...%s|%s...halting to prevent crash.",g_szFile[0],g_szFile[1]
-            pause("a");
-        }
-        else if(!file_exists(g_szFile[0]))
-        {
-            server_print "Check your Maxmind database...%s...halting to prevent crash.",g_szFile[0]
-            pause("a")
-        }
-        else if(!file_exists(g_szFile[1]))
-        {
-            server_print "Check your Maxmind database...%s...halting to prevent crash.",g_szFile[1]
-            pause("a")
-        }
-        ///////////////////////////////////////////////////////////////////////
-        if (task_exists(id+WEATHER))
-            return PLUGIN_HANDLED;
-
-        if (containi(ClientIP[id], "127.0.0.1") != charsmin)
-        {
-            server_print "%s IP shows as 127.0.0.1, stopping script!", ClientName[id]
-            return PLUGIN_HANDLED;
-        }
-        ////////////GEO COORDINATES GATHERING/////////////////////////////////
-        ///Amxx module w/ Maxmind geoip database
-        ///g_lat[id] = geoip_latitude(ClientIP[id]);
-        ///g_lon[id] = geoip_longitude(ClientIP[id]);
-        new Float:timing;
-        timing = g_task+5.0;
-
-        new ping, loss;
-
-        get_user_ping(id,ping,loss);
-        new Float:timing2;
-        timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
-
-        set_task( timing+timing2, "Weather_Feed", id+WEATHER, ClientIP[id], charsmax(ClientIP[]) );
-
-        g_task = timing;
-
-        if(g_task > 20.0) g_task = 5.0;
-
-
-        #if defined LOG
-        log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], str_to_float(ClientLAT[id]), str_to_float(ClientLON[id]) // g_lat[id], g_lon[id]);
-        #endif
-
-        if(get_pcvar_num(g_debug) && is_user_admin(id) )
-            set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
     }
-
-    if(get_pcvar_num(g_debug) > 1) //per req and updated to minimize log spam
-        log_amx("%s|%s", ClientName[id], ClientAuth[id]);
-
     return PLUGIN_CONTINUE;
 }
 
@@ -974,6 +979,7 @@ public read_web(feeding)
 @mark_socket(work[MAX_PLAYERS])
 {
     IS_SOCKET_IN_USE = false;
+    bServer = false //unbusy for next in queue
     if(!equal(work, ""))
     server_print "%s | %s locking socket!", PLUGIN, work
 }
@@ -1007,8 +1013,8 @@ public read_web(feeding)
             //task spread formula
             new total = iHeadcount
             server_print "Total players shows as: %i", total
-            new Float:retask = (float(total++)*2.0)
-            new Float:queued_task = (float(total++)*3.0)
+            new retask = ((total++)*2)
+            new queued_task = ((total++)*3)
             server_print "Total players for math adj to: %i", total
             get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
             server_print "We STILL need %s's temp already.",ClientName[players[q]]
@@ -1024,13 +1030,13 @@ public read_web(feeding)
             }
             //if they have a task set-up already adjust it
             if(task_exists(players[q] + WEATHER))
-                change_task(players[q] + WEATHER,retask)
+                change_task(players[q] + WEATHER,(retask++)*1.0)
             //if they don'y have a task set-up make one
             else
             {
-                set_task(queued_task,"client_temp",players[q]);
-                server_print "%f|Queue task time for %s", queued_task, ClientName[players[q]]
-                change_task(iQUEUE, get_pcvar_num(g_timeout)*1.0)
+                set_task((queued_task++)*1.0,"client_temp",q);
+                server_print "%f|Queue task time for %s", queued_task, ClientName[q]
+                change_task(iQUEUE, 60.0)
             }
 
         }
@@ -1041,14 +1047,14 @@ public read_web(feeding)
     if(g_q_weight < gopher)
     {
         server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
-        change_task(iQUEUE, get_pcvar_num(g_timeout)*5.0)
+        change_task(iQUEUE, get_pcvar_num(g_timeout)*10.0)
         g_q_weight++ //increment the weight each inactive pass through.
     }
 
     //queue sleeper
     else if(g_q_weight >= gopher)
     {
-            change_task(iQUEUE, get_pcvar_num(g_timeout)*20.0);
+            change_task(iQUEUE, get_pcvar_num(g_timeout)*15.0);
             server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
             g_q_weight = 1;
     }
@@ -1171,7 +1177,8 @@ public client_putinserver_now(id)
                 copy(ClientLON[id], charsmax( ClientLON[] ),lon)
     
                 server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
-                got_coords[id] = true
+                got_coords[id] = true //stop this process
+                @country_finder(id+WEATHER) //start another 
             }
             else if(containi(buffer, "region") > charsmin)
             {
