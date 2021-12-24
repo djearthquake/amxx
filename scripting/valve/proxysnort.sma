@@ -103,7 +103,7 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
     hPattern = regex_compile(PATTERN, iReturnValue, szError, charsmax(szError), "is");
-    g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_SERVER|FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
+    g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
     g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
     g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
