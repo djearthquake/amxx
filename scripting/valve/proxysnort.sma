@@ -310,7 +310,7 @@ stock get_user_profile(id)
             if (containi(proxy_socket_buffer, "yes") != charsmin || containi(proxy_socket_buffer, "Compromised") != charsmin)
             {
                 Data[SzProxy] = 1
-                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
+                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[ SzProxy ])
 
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 @file_data(SzSave)
@@ -326,7 +326,7 @@ stock get_user_profile(id)
             {
                 Data[SzProxy] = 0
 
-                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[SzProxy])
 
                 @file_data(SzSave)
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
@@ -338,7 +338,7 @@ stock get_user_profile(id)
             if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
                 Data[SzProxy] = 0
-                formatex(SzSave,charsmax(SzSave),"%s %i", Data[ SzAddress ],Data[SzProxy])
+                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
 
                 @file_data(SzSave)
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
