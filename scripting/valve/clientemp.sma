@@ -215,6 +215,11 @@ public plugin_init()
     ReadClientFromFile( )
 }
 
+public plugin_end()
+{
+    TrieDestroy(g_client_temp)
+}
+
 public plugin_precache()
 {
     if(file_exists("sound/misc/Temp.wav")){
@@ -257,7 +262,7 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id) )return PLUGIN_HANDLED_MAIN
+    if(is_user_bot(id) /*|| is_user_hltv(id)*/)return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
     {
         client_putinserver_now(id)
@@ -552,7 +557,9 @@ public client_temp(id)
     
     
             #if defined LOG
-            log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], str_to_float(ClientLAT[id]), str_to_float(ClientLON[id]) // g_lat[id], g_lon[id]);
+            //log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], str_to_float(ClientLAT[id]), str_to_float(ClientLON[id]) // g_lat[id], g_lon[id]);
+            log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion], str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]) // g_lat[id], g_lon[id]);
+
             #endif
     
             if(get_pcvar_num(g_debug) && is_user_admin(id) )
@@ -597,8 +604,16 @@ public needan(keymissing)
 public client_disconnected(id)
 {
     new iHeadcount
-    iPlayers()
     if( is_user_bot(id)) return
+
+    iPlayers()
+    Data[ SzAddress ] = ClientIP[id]
+
+    if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
+        TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+    else
+        return
+
     if( iHeadcount > 0 )
     {
         for (new admin=1; admin<=iHeadcount; admin++)
@@ -608,27 +623,26 @@ public client_disconnected(id)
             if (!is_user_admin(admin))
             {
                 if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
-                client_print(admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
-
+                client_print admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
                 #if AMXX_VERSION_NUM != 182
-                client_print_color(admin,0, "^x03%n^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientCountry[id], ClientCity[id], ClientRegion[id]);
+                client_print_color admin,0, "^x03%n^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, Data[SzCountry], Data[SzCity], Data[SzRegion]
                 #endif
             }
 
             else
             {
                 if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
-                client_print(admin,print_chat,"%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
+                client_print admin,print_chat,"%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 
                 #if AMXX_VERSION_NUM != 182
-                client_print_color(admin,0, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]);
+                client_print_color admin,0, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
                 #endif
             }
 
         }
 
     }
-
+    server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 }
 
 public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
@@ -749,6 +763,14 @@ public read_web(feeding)
     {
         Data[SzAddress] = ClientIP[id]
         /////////////////////////////////////////////////////
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
+        {
+            server_print "We already displayed temp to this IP"
+            gotatemp[id] = true; //get them out of queue
+            set_task(5.0,"@speakit",id) //repeat for same IP instead of go to sockets
+            goto DOUBLE_CHECK //substitute return
+        }
+
         if(equal(ClientCity[id], ""))
         {
             geoip_city(ClientIP[id],ClientCity[id],charsmax(ClientCity[]),1)
@@ -982,6 +1004,79 @@ public read_web(feeding)
     server_print "%s other plugin locking socket!", PLUGIN
 }
 
+/*
+@the_queue()
+{
+
+    //Assure admins queue is really running
+    server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
+    //How many runs before task is put to sleep given diminished returns
+    new gopher = get_pcvar_num(g_queue_weight)
+
+    new players[ MAX_PLAYERS ], iHeadcount
+    get_players(players,iHeadcount,"ch")
+    for (new q; q < iHeadcount ; ++q)
+    {
+        Data[ SzAddress ] = ClientIP[players[q]]
+
+        //Make array of non-bot connected players who need their temp still.
+        //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
+        if(!gotatemp[players[q]] && is_user_connected(players[q]))
+        {
+            //server_print "%s queued for %s",ClientName[q],PLUGIN
+            server_print "%s queued for %s",ClientName[players[q]],PLUGIN
+            //task spread formula
+            new total = iHeadcount
+            server_print "Total players shows as: %i", total
+            new retask = ((total++)*2)
+            new queued_task = ((total++)*3)
+            server_print "Total players for math adj to: %i", total
+            get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
+            server_print "We STILL need %s's temp already.",ClientName[players[q]]
+
+            //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
+            //if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
+            if(get_pcvar_num(g_long) > 0 && !got_coords[players[q]])
+            {
+                if(!task_exists(players[q] + WEATHER) && get_timeleft() > 60)
+                    set_task(queued_task+++get_pcvar_num(g_timeout)*1.0,"@country_finder",players[q]+WEATHER)
+                else
+                    client_print 0, print_chat, "Map is about to change. Cancelling %s's weather reading.", ClientName[players[q]]
+            }
+            //if they have a task set-up already adjust it
+            if(task_exists(players[q] + WEATHER))
+                change_task(players[q] + WEATHER,(retask++)*1.0)
+            //if they don'y have a task set-up make one
+            else
+            {
+                set_task((queued_task++)*1.0,"client_temp",q);
+                server_print "%f|Queue task time for %s", queued_task, ClientName[q]
+                change_task(iQUEUE, 60.0)
+            }
+
+        }
+
+    }
+    //count the inactive passes before lengthing task time.
+    //queue counter
+    if(g_q_weight < gopher)
+    {
+        server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
+        change_task(iQUEUE, get_pcvar_num(g_timeout)*10.0)
+        g_q_weight++ //increment the weight each inactive pass through.
+    }
+
+    //queue sleeper
+    else if(g_q_weight >= gopher)
+    {
+            change_task(iQUEUE, get_pcvar_num(g_timeout)*15.0);
+            server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
+            g_q_weight = 1;
+    }
+    else server_print "^n------------------------------------------^n```THE QUEUE!^n------------------------------------------"
+
+}
+*/
 @the_queue(q)
 {
 
@@ -1054,7 +1149,7 @@ public read_web(feeding)
         }
 
     }
-    server_print "^n------------------------------------------^n``THE QUEUE!^n------------------------------------------"
+    server_print "^n^n---------------- The Q -------------------^n"
 }
 
 stock players_who_see_effects()
