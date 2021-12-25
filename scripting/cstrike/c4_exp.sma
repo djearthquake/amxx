@@ -1,3 +1,4 @@
+
 ///C4 time is adjusted based on experience (frags).
 
 #include amxmodx
@@ -61,21 +62,31 @@ public client_putinserver(id)
             get_user_name(id,ClientName[id],charsmax(ClientName[]))
     }
 }
-
+#if AMXX_VERSION_NUM == 182
+stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
+{
+    return !!(get_pdata_int(ent, charbased_offset / INT_BYTES, intbase_linuxdiff) & (0xFF<<((charbased_offset % INT_BYTES) * BYTE_BITS)))
+}
+#endif
 public FnPlant()
 {
+    //get username via log
     new id = get_loguser_index();
     if(is_user_alive(id))
     {
+    /*
         new ent = charsmin
         while ((ent = find_ent(ent,"grenade")))
         {
-            if(pev_valid(ent) && get_pdata_bool(ent, m_bIsC4, 5))
+            if(pev_valid(ent) && get_pdata_bool(ent, m_bIsC4, 5) && ent > 0)
             {
                 g_weapon_c4_index = ent
                 break;
             }
         }
+    */
+        g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
+
         new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
         cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
 
@@ -169,6 +180,7 @@ public nice(show)
 {
     if(task_exists(5656))
         remove_task(5656)
+    //new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"e", "CT")
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount)
     for(new CT;CT < sizeof players;CT++)
     Client_C4_adjusted_already[players[CT]] = false
@@ -183,12 +195,6 @@ stock get_loguser_index()
     parse_loguser(loguser, name, charsmax(name))
     return get_user_index(name)
 }
-#if AMXX_VERSION_NUM == 182
-stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
-{
-    return !!(get_pdata_int(ent, charbased_offset / INT_BYTES, intbase_linuxdiff) & (0xFF<<((charbased_offset % INT_BYTES) * BYTE_BITS)))
-}
-#endif
 stock iPlayers()
 {
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
