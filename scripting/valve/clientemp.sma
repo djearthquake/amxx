@@ -257,7 +257,7 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id) /*|| is_user_hltv(id)*/)return PLUGIN_HANDLED_MAIN
+    if(is_user_bot(id) )return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
     {
         client_putinserver_now(id)
@@ -749,14 +749,6 @@ public read_web(feeding)
     {
         Data[SzAddress] = ClientIP[id]
         /////////////////////////////////////////////////////
-        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        {
-            server_print "We already displayed temp to this IP"
-            gotatemp[id] = true; //get them out of queue
-            set_task(5.0,"@speakit",id) //repeat for same IP instead of go to sockets
-            goto DOUBLE_CHECK //substitute return
-        }
-
         if(equal(ClientCity[id], ""))
         {
             geoip_city(ClientIP[id],ClientCity[id],charsmax(ClientCity[]),1)
@@ -990,7 +982,7 @@ public read_web(feeding)
     server_print "%s other plugin locking socket!", PLUGIN
 }
 
-@the_queue()
+@the_queue(q)
 {
 
     //Assure admins queue is really running
@@ -1001,65 +993,68 @@ public read_web(feeding)
     new players[ MAX_PLAYERS ], iHeadcount
     get_players(players,iHeadcount,"ch")
     for (new q; q < iHeadcount ; ++q)
+    if(is_user_connected(players[q]))
     {
-        Data[ SzAddress ] = ClientIP[players[q]]
+        new Array_of_player_indexes = players[q]
 
         //Make array of non-bot connected players who need their temp still.
         //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        if(!gotatemp[players[q]] && is_user_connected(players[q]))
+        if(!gotatemp[Array_of_player_indexes])
         {
+           // Data[ SzAddress ] = ClientIP[Array_of_player_indexes]
             //server_print "%s queued for %s",ClientName[q],PLUGIN
-            server_print "%s queued for %s",ClientName[players[q]],PLUGIN
+            server_print "%s queued for %s",ClientName[Array_of_player_indexes],PLUGIN
             //task spread formula
             new total = iHeadcount
             server_print "Total players shows as: %i", total
-            new retask = ((total++)*2)
-            new queued_task = ((total++)*3)
+            new retask = (total++)*2
+            new queued_task = (total++)*3
             server_print "Total players for math adj to: %i", total
-            get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
-            server_print "We STILL need %s's temp already.",ClientName[players[q]]
+            get_user_name(Array_of_player_indexes,ClientName[Array_of_player_indexes],charsmax(ClientName[]))
+            server_print "We STILL need %s's temp already.",ClientName[Array_of_player_indexes]
 
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
-            //if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
-            if(get_pcvar_num(g_long) > 0 && !got_coords[players[q]])
+            if(get_pcvar_num(g_long) > 0 && !got_coords[Array_of_player_indexes])
             {
-                if(!task_exists(players[q] + WEATHER) && get_timeleft() > 60)
-                    set_task(queued_task+++get_pcvar_num(g_timeout)*1.0,"@country_finder",players[q]+WEATHER)
+                if(!task_exists(Array_of_player_indexes + WEATHER) && get_timeleft() > 60)
+                    set_task(get_pcvar_num(g_timeout)+(queued_task++)*1.0,"@country_finder",Array_of_player_indexes+WEATHER)
                 else
-                    client_print 0, print_chat, "Map is about to change. Cancelling %s's weather reading.", ClientName[players[q]]
+                    client_print 0, print_chat, "Map is about to change. Cancelling %s's weather reading.", ClientName[Array_of_player_indexes]
             }
-            //if they have a task set-up already adjust it
-            if(task_exists(players[q] + WEATHER))
-                change_task(players[q] + WEATHER,(retask++)*1.0)
-            //if they don'y have a task set-up make one
+            //If they have a task set-up already adjust it
+            if(task_exists(Array_of_player_indexes + WEATHER))
+                change_task(Array_of_player_indexes + WEATHER,float(retask++))
+            //If they don't have a task set-up make one
             else
             {
-                set_task((queued_task++)*1.0,"client_temp",q);
-                server_print "%f|Queue task time for %s", queued_task, ClientName[q]
+                //new iOne_player_without_temp = players[0]
+                //Array_of_player_indexes
+                set_task(queued_task++*1.0,"client_temp",Array_of_player_indexes);
+                server_print "Index#:%d queued", Array_of_player_indexes
+
+                server_print "%f|Queue task time for %s", queued_task++*1.0, ClientName[Array_of_player_indexes]
                 change_task(iQUEUE, 60.0)
             }
 
         }
-
-    }
-    //count the inactive passes before lengthing task time.
-    //queue counter
-    if(g_q_weight < gopher)
-    {
-        server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
-        change_task(iQUEUE, get_pcvar_num(g_timeout)*10.0)
-        g_q_weight++ //increment the weight each inactive pass through.
-    }
-
-    //queue sleeper
-    else if(g_q_weight >= gopher)
-    {
+        //Count the inactive passes before lengthing task time.
+        //Queue counter
+        else if(gotatemp[Array_of_player_indexes] && g_q_weight < gopher)
+        {
+            server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
+            change_task(iQUEUE, get_pcvar_num(g_timeout)*10.0)
+            g_q_weight++ //increment the weight each inactive pass through.
+        }
+        //queue sleeper
+        else if(g_q_weight >= gopher)
+        {
             change_task(iQUEUE, get_pcvar_num(g_timeout)*15.0);
             server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
             g_q_weight = 1;
-    }
-    else server_print "^n------------------------------------------THE QUEUE!^n------------------------------------------"
+        }
 
+    }
+    server_print "^n------------------------------------------^n``THE QUEUE!^n------------------------------------------"
 }
 
 stock players_who_see_effects()
