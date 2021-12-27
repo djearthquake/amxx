@@ -45,7 +45,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Wed 22 Dec 2021
+    *(__ [__)*|\ | >< Wed 26 Dec 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -275,7 +275,7 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id) /*|| is_user_hltv(id)*/)return PLUGIN_HANDLED_MAIN
+    if(is_user_bot(id))return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
     {
         client_putinserver_now(id)
@@ -348,7 +348,6 @@ public client_putinserver(id)
 
         client_print 0, print_chat, "%s from %s appeared on %s, %s radar.", ClientName[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]
         server_print "%s from %s appeared on %s, %s radar.", ClientName[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]
-        //task_exists(mask) ?  change_task(mask, 5.0) &server_print("Task input time = 5.0") : set_task(task_expand,"@que_em_up",mask) &server_print("Task input time = %f", task_expand)
         if(!IS_SOCKET_IN_USE)
             set_task(task_expand,"@que_em_up",mask)
 
@@ -443,7 +442,6 @@ public client_temp_cmd(id)
 
 public client_remove(id)
 {
-    //new iHeadcount
     iPlayers()
     if( g_iHeadcount == 0)
     {
@@ -581,10 +579,6 @@ public client_temp(id)
         else
             client_putinserver(id)
 
-        /*
-        if(get_pcvar_num(g_debug) > 1) //per req and updated to minimize log spam
-            log_amx("%s|%s", ClientName[id], ClientAuth[id]);
-        */
     }
     return PLUGIN_CONTINUE;
 }
@@ -745,42 +739,6 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
 
 }
 
-/*
-public write_web(text[MAX_USER_INFO_LENGTH], Task)
-{
-    new id = Task - WEATHER
-    Data[SzAddress] = ClientIP[id]
-    if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-    {
-        server_print "We already displayed temp to this IP"
-        gotatemp[id] = true; //get them out of queue
-        @speakit(id)
-        return
-    }
-
-    else if(!IS_SOCKET_IN_USE && !gotatemp[id])
-    {
-        IS_SOCKET_IN_USE = true;
-
-        {
-            callfunc_begin("@lock_socket",PROXY_SCRIPT)
-            callfunc_end()
-    
-            server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
-            #if AMXX_VERSION_NUM != 182
-            if (socket_is_writable(g_Weather_Feed, 100000))
-            #endif
-            {
-                socket_send(g_Weather_Feed,text,charsmax (text));
-                server_print "Yes! %s:writing the web for ^n%s",PLUGIN, ClientName[id]
-            }
-
-        }
-
-    }
-    else server_print "%s| Socket in use", PLUGIN
-}
-*/
 public read_web(feeding)
 {
     new id = feeding - WEATHER
@@ -788,13 +746,9 @@ public read_web(feeding)
     {
         Data[SzAddress] = ClientIP[id]
         /////////////////////////////////////////////////////
-        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        {
-            server_print "We already displayed temp to this IP"
-            gotatemp[id] = true; //get them out of queue
-            set_task(5.0,"@speakit",id) //repeat for same IP instead of go to sockets
-            goto DOUBLE_CHECK //substitute return
-        }
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
+            TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+        //if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], "")) //~20 min exp date instead. works across maps
 
         if(equal(ClientCity[id], ""))
         {
@@ -805,8 +759,6 @@ public read_web(feeding)
 
         if(IS_SOCKET_IN_USE && !gotatemp[id])
         {
-            //new Float:vary;
-            //vary = floatsqroot(random_float(20.0,200.0))
             new Float:fTask
             switch(random(101))
             {
@@ -817,8 +769,7 @@ public read_web(feeding)
                 case 76 .. 100 : fTask = 15.0
             }
             change_task(id+WEATHER,fTask);
-            server_print "Queuing %s's %s for %f to prevent lag on socket", ClientName[id], PLUGIN, fTask
-            //goto DOUBLE_CHECK
+            server_print "Queuing %s's %s for %f to prevent lag on socket", ClientName[id], PLUGIN, fTaskK
         }
 
         else
@@ -1030,82 +981,6 @@ public read_web(feeding)
     server_print "%s other plugin locking socket!", PLUGIN
 }
 
-/*
-@the_queue()
-{
-
-    //Assure admins queue is really running
-    server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
-    //How many runs before task is put to sleep given diminished returns
-    new gopher = get_pcvar_num(g_queue_weight)
-
-    new players[ MAX_PLAYERS ], iHeadcount
-    get_players(players,iHeadcount,"ch")
-    for (new q; q < iHeadcount ; ++q)
-    {
-        Data[ SzAddress ] = ClientIP[players[q]]
-
-        //Make array of non-bot connected players who need their temp still.
-        //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        if(!gotatemp[players[q]] && is_user_connected(players[q]))
-        {
-            //server_print "%s queued for %s",ClientName[q],PLUGIN
-            server_print "%s queued for %s",ClientName[players[q]],PLUGIN
-            //task spread formula
-            new total = iHeadcount
-            server_print "Total players shows as: %i", total
-            new retask = ((total++)*2)
-            new queued_task = ((total++)*3)
-            server_print "Total players for math adj to: %i", total
-            get_user_name(players[q],ClientName[players[q]],charsmax(ClientName[]))
-            server_print "We STILL need %s's temp already.",ClientName[players[q]]
-
-            //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
-            //if(get_pcvar_num(g_long) > 0 && g_lat[players[q]] == 0.0 || g_lat[players[q]] == 0.0)
-            if(get_pcvar_num(g_long) > 0 && !got_coords[players[q]])
-            {
-                if(!task_exists(players[q] + WEATHER) && get_timeleft() > 60)
-                    set_task(queued_task+++get_pcvar_num(g_timeout)*1.0,"@country_finder",players[q]+WEATHER)
-                else
-                    client_print 0, print_chat, "Map is about to change. Cancelling %s's weather reading.", ClientName[players[q]]
-            }
-            //if they have a task set-up already adjust it
-            if(task_exists(players[q] + WEATHER))
-                change_task(players[q] + WEATHER,(retask++)*1.0)
-            //if they don'y have a task set-up make one
-            else
-            {
-                set_task((queued_task++)*1.0,"client_temp",q);
-                server_print "%f|Queue task time for %s", queued_task, ClientName[q]
-                change_task(iQUEUE, 60.0)
-            }
-
-        }
-
-    }
-    //count the inactive passes before lengthing task time.
-    //queue counter
-    if(g_q_weight < gopher)
-    {
-        server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
-        change_task(iQUEUE, get_pcvar_num(g_timeout)*10.0)
-        g_q_weight++ //increment the weight each inactive pass through.
-    }
-
-    //queue sleeper
-    else if(g_q_weight >= gopher)
-    {
-            change_task(iQUEUE, get_pcvar_num(g_timeout)*15.0);
-            server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
-            g_q_weight = 1;
-    }
-    else server_print "^n------------------------------------------^n```THE QUEUE!^n------------------------------------------"
-
-}
-*/
-
-
-
 @the_queue(player)
 {
 
@@ -1113,10 +988,7 @@ public read_web(feeding)
     server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
     //How many runs before task is put to sleep given diminished returns
     new gopher = get_pcvar_num(g_queue_weight)
-    //new iHeadcount
-    //new players[ MAX_PLAYERS ], iHeadcount
-    //get_players(players,iHeadcount,"ch")
-    //for (new q; q < iHeadcount ; ++q)
+
     for (new player=1; player<=g_maxPlayers; ++player)
     if(is_user_connected(player) && player > 0 && player < 33 && !is_user_bot(player))
     {
@@ -1125,8 +997,7 @@ public read_web(feeding)
         if(!gotatemp[player] && !somebody_is_being_help)
         {
             somebody_is_being_help = true
-           // Data[ SzAddress ] = ClientIP[Array_of_player_indexes]
-            //server_print "%s queued for %s",ClientName[q],PLUGIN
+
             server_print "%s queued for %s",ClientName[player],PLUGIN
             //task spread formula
             iPlayers()
@@ -1137,10 +1008,8 @@ public read_web(feeding)
             server_print "Total players for math adj to: %i", total
             get_user_name(player,ClientName[player],charsmax(ClientName[]))
             server_print "We STILL need %s's temp already.",ClientName[player]
-            //new chosen_one = random(!gotatemp[player])
             server_print "QUEUE NEXT::ID:%d %s",player, ClientName[player]
-            // if(is_user_connected(chosen_one) && chosen_one > 0)
-            // {/*The Next Innline2021*/
+
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             if(get_pcvar_num(g_long) > 0 && !got_coords[player] && !task_exists(player + WEATHER))
             {
@@ -1189,7 +1058,6 @@ public read_web(feeding)
 
 stock players_who_see_effects()
 {
-    //new iHeadcount;
     iPlayers()
     for (new SEE; SEE<g_iHeadcount; SEE++)
         return SEE;
@@ -1198,10 +1066,8 @@ stock players_who_see_effects()
 
 stock iPlayers()
 {
-    //new players[ MAX_PLAYERS ],iHeadcount;
     get_players(g_players,g_iHeadcount,"ch")
     return g_iHeadcount
-    //return g_players[MAX_PLAYERS]
 }
 
 //////DUE TO GEO DATABASE AND MODULE BEING ASKEW TOO OFTEN
