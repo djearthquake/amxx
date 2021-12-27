@@ -45,7 +45,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Wed 26 Dec 2021
+    *(__ [__)*|\ | >< Mon 27 Dec 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -102,7 +102,6 @@
     new ClientRegion[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
     new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
     new g_ClientTemp[MAX_PLAYERS+1][MAX_IP_LENGTH]
-    //new g_maxPlayers
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
 
@@ -224,7 +223,6 @@ public plugin_init()
     g_q_weight     = 1
     g_client_temp = TrieCreate()
     ReadClientFromFile( )
-    ///g_maxPlayers = get_maxplayers()
 }
 
 public plugin_end()
@@ -274,10 +272,19 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id))return PLUGIN_HANDLED_MAIN
-    if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(mask)) ) //will do server's weather
+    if(is_user_bot(id))
+        return PLUGIN_HANDLED_MAIN
+    if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
     {
-        client_putinserver_now(id)
+        get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
+        if (equali(ClientIP[id], "127.0.0.1"))
+        {
+            server_print "%s IP shows as 127.0.0.1, stopping %s script!", ClientName[id], PLUGIN
+            server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
+            return PLUGIN_HANDLED;
+        }
+        else
+            client_putinserver_now(id)
     }
     return PLUGIN_CONTINUE
 }
@@ -288,7 +295,9 @@ public client_putinserver(id)
     new Float:task_expand = random_num(5,10)*1.0
     if(is_user_connected(mask))
     {
-        get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
+        if(equal(ClientIP[mask],""))
+            get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
+
         Data[SzAddress] = ClientIP[mask]
 
         TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
@@ -303,11 +312,13 @@ public client_putinserver(id)
 
         if(equal(ClientName[mask],""))
             get_user_name(mask,ClientName[mask],charsmax(ClientName[]))
+
         if(equal(ClientAuth[mask],""))
             get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
 
         if(equal(ClientCity[mask],""))
             geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),1)
+
         if(equal(ClientRegion[mask],""))
             geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),2)
 
@@ -409,14 +420,6 @@ public client_temp_cmd(id)
 
         else if(!gotatemp[m] && m > 0)
         {
-            ////////////////////////////////////////////////////////////////////////////////
-           /* new total
-            iPlayers()
-            total = g_iHeadcount
-            new Float:retask = (float(total++)*3.0)
-            new Float:task_expand = floatround(random_float(retask+5.0,retask+8.0), floatround_ceil)*1.0*/
-
-            //set_task(task_expand,"client_temp_cmd",m);
             set_task(random_num(5,12)*1.0,"client_temp_cmd",m)
             ////////////////////////////////////////////////////////////////////////////////
             server_print "We do not have %s's temp yet.",ClientName[m]
@@ -683,9 +686,10 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
             equali(ClientCountry[id],"United States") ? copy(units,charsmax(units),"imperial") : copy(units,charsmax(units),"metric")
         }
         //USA SHOULD NEVER SLIP METRIC DUE TO ANY ERROR ON MY PART
-        if(equali(ClientCountry[id],"United States")) //array later
+        for(new imperial = 1; imperial < sizeof faren_countries;imperial++)
+        //if(equali(ClientCountry[id],"United States")) //array later
+        if(containi(ClientCountry[id],faren_countries[imperial]) > charsmin)
             copy(units,charsmax(units),"imperial")
-
         else //Handful of countries are like USA
             copy(units,charsmax(units),"metric")
 
@@ -932,13 +936,7 @@ public read_web(feeding)
                 IS_SOCKET_IN_USE = false
                 return PLUGIN_CONTINUE;
 
-            }/*
-            else
-            {
-                server_print "Do not see temp, yet. Reading web again."
-                set_task(1.5, "read_web",id+WEATHER)
-            }*/
-
+            }
         }
         else if(is_user_connected(id) && !gotatemp[id] &&  g_socket_pass[id] <15)
         {
@@ -954,7 +952,6 @@ public read_web(feeding)
             IS_SOCKET_IN_USE = false
         }
 
-        //DOUBLE_CHECK:
         return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
@@ -1019,7 +1016,7 @@ public read_web(feeding)
             get_user_name(client,ClientName[client],charsmax(ClientName[]))
             server_print "We STILL need %s's temp already.",ClientName[client]
             server_print "QUEUE NEXT::ID:%d %s",client, ClientName[client]
-            change_task(iQUEUE, 60.0)
+            change_task(iQUEUE, 30.0)
 
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             if(get_pcvar_num(g_long) > 0 && !got_coords[client] && !task_exists(client + WEATHER))
@@ -1037,7 +1034,6 @@ public read_web(feeding)
             //If they don't have a task set-up make one
             else
             {
-                //new iOne_player_without_temp = players[0]
                 if(!somebody_is_being_help)
                 {
                     set_task(queued_task++*1.0,"@country_finder",client+WEATHER);
@@ -1059,13 +1055,13 @@ public read_web(feeding)
             if(g_q_weight < gopher)
             {
                 server_print "Pass: %i of %i: the Queue is going idle..^n------------------------------------------", g_q_weight, gopher
-                change_task(iQUEUE, get_pcvar_num(g_timeout)*10.0)
+                change_task(iQUEUE, 60.0)
                 g_q_weight++ //increment the weight each inactive pass through.
             }
             //queue sleeper
             else if(g_q_weight >= gopher)
             {
-                change_task(iQUEUE, get_pcvar_num(g_timeout)*15.0);
+                change_task(iQUEUE, 600.0)
                 server_print "Pass: %i: the Queue is going to sleep.^n------------------------------------------", gopher
                 g_q_weight = 1;
             }
@@ -1075,7 +1071,7 @@ public read_web(feeding)
     }
     server_print "^n^n---------------- The Q -------------------^n"
     bAssisted = false
-    somebody_is_being_help = false //otherwise gets gummed up
+    somebody_is_being_help = false
 }
 
 stock players_who_see_effects()
@@ -1301,7 +1297,6 @@ public ReadClientFromFile( )
         g_clients_saved++
 
     }
-    ///END:
     fclose( f )
     if(debugger)
         server_print "................Client Temp data file has %d IP addresses cached already.....................", g_clients_saved
