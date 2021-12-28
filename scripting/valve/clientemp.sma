@@ -297,31 +297,49 @@ public client_putinserver(id)
     if(is_user_connected(mask))
     {
         if(equal(ClientIP[mask],""))
+        {
+            server_print"We did not have the network address captured right."
             get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
+        }
 
         Data[SzAddress] = ClientIP[mask]
 
         TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
 
         if(equal(ClientCountry[mask],""))
-        #if AMXX_VERSION_NUM == 182
-            geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
-        #else
-            geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
-        #endif
+        {
+            server_print"We did not have the COUNTRY captured right.^nUsing Maxmind."
+            #if AMXX_VERSION_NUM == 182
+                geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
+            #else
+                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
+            #endif
+        }
         Data[SzCountry] = ClientCountry[mask]
 
         if(equal(ClientName[mask],""))
+        {
+            server_print"We did not have the name captured right."
             get_user_name(mask,ClientName[mask],charsmax(ClientName[]))
+        }
 
         if(equal(ClientAuth[mask],""))
+        {
+            server_print"We did not have the AuthID captured."
             get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
+        }
 
         if(equal(ClientCity[mask],""))
+        {
+            server_print"We did not have the CITY captured right.^nUsing Maxmind."
             geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),1)
+        }
 
         if(equal(ClientRegion[mask],""))
+        {
+            server_print"We did not have the REGION captured right.^nUsing Maxmind."
             geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),2)
+        }
 
         //Transfer coords from other API into this one.
         if(got_coords[mask])
@@ -453,6 +471,7 @@ public client_remove(id)
     iPlayers()
     if( g_iHeadcount == 0)
     {
+        server_print "NOBODY IS ONLINE HIBERNATING THE QUEUE CYCLE"
         change_task(iQUEUE, 1800.0)
         remove_task(id);
     }
@@ -460,13 +479,13 @@ public client_remove(id)
 
 public client_temp_filter(id)
 {
+    server_print "CLIENT TEMP FILTER FUNCTION"
     if(is_user_connected(id) && id > 0)
-
     {
 
         if (is_user_bot(id) || is_user_admin(id) && get_pcvar_num(g_admins) == 0)
             return PLUGIN_HANDLED_MAIN;
-
+        server_print "Temp task will be accessed soon"
         if(IS_SOCKET_IN_USE == false && !gotatemp[id])
         {
             client_temp(id)
@@ -500,9 +519,11 @@ public client_temp_filter(id)
 
 public client_temp(id)
 {
+    server_print "client_temp function"
     if(is_user_connected(id) && gotatemp[id] == false && !bServer)
     {
         bServer = true
+        server_print "Server made busy"
         Data[ SzAddress ] = ClientIP[id]
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
@@ -1126,6 +1147,13 @@ public client_putinserver_now(id)
 
         copy( ClientLAT[id], charsmax(ClientLAT[]), Data[ fLatitude ])
         copy( ClientLON[id], charsmax(ClientLAT[]), Data[ fLongitude ])
+        
+        //Not using Maxmind for GeoTrio. Using newly built cache. Have yet to see omitted city and region as Maxmind does often in Middle East especially.
+        copy(ClientCountry[id],charsmax(ClientCountry[]), Data[ SzCountry ])
+
+        copy(ClientCity[id],charsmax(ClientCity[]), Data[ SzCity ])
+    
+        copy(ClientRegion[id],charsmax(ClientRegion[]), Data[ SzRegion ])
 
         got_coords[id] = true
 
@@ -1205,7 +1233,7 @@ public client_putinserver_now(id)
                 copyc(region, charsmax(region), buffer[containi(buffer, "region") + 8], '"')
                 replace(region, 6, ":", "");
                 replace(region, 6, ",", "");
-                server_print "%s", region
+                server_print "EXTRACTED %s", region
                 copy(ClientRegion[id],charsmax(ClientRegion[]),region)
             }
             else if(containi(buffer, "city") > charsmin)
@@ -1214,7 +1242,7 @@ public client_putinserver_now(id)
                 copyc(city, charsmax(city), buffer[containi(buffer, "city") + 6], '"')
                 replace(city, 6, ":", "");
                 replace(city, 6, ",", "");
-                server_print "%s", city
+                server_print "EXTRACTED %s", city
                 copy(ClientCity[id],charsmax(ClientCity[]),city)
             }
             else if(containi(buffer, "country") > charsmin)
@@ -1223,15 +1251,15 @@ public client_putinserver_now(id)
                 copyc(country, charsmax(country), buffer[containi(buffer, "country") + 9], '"')
                 replace(country, 6, ":", "");
                 replace(country, 6, ",", "");
-                server_print "%s", country
+                server_print "EXTRACTED %s", country
                 copy(ClientCountry[id],charsmax(ClientCountry[]),country)
             }
-            set_task(0.2,"@country_finder",id+WEATHER)
-
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
             else
                 server_print "%s already closed the socket on %s!",api,ClientName[id]
+
+            set_task(random_num(5,9)*1.0,"@country_finder",id+WEATHER)
 
         }
         else if(!got_coords[id] && g_socket_pass[id] < 10)
