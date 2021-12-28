@@ -401,8 +401,14 @@ public Speak(id)
 }
 
 public client_temp_cmd(id)
+{
+    server_print "client_temp_cmd for slot:%d|%s", id, ClientName[id]
     if(is_user_connected(id))
+    {
         set_task(random_num(8,16)*1.0,"client_temp_filter",id)
+        server_print "Making a filter task for %s", ClientName[id]
+    }
+}
 
 @que_em_up(m)
 {
