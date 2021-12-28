@@ -520,10 +520,9 @@ public client_temp_filter(id)
 public client_temp(id)
 {
     server_print "client_temp function"
-    if(is_user_connected(id) && gotatemp[id] == false && !bServer)
+    if(is_user_connected(id) && gotatemp[id] == false)
     {
-        bServer = true
-        server_print "Server made busy"
+
         Data[ SzAddress ] = ClientIP[id]
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
@@ -595,7 +594,7 @@ public client_temp(id)
             timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
     
             set_task( timing+timing2, "Weather_Feed", id+WEATHER, ClientIP[id], charsmax(ClientIP[]) );
-    
+
             g_task = timing;
     
             if(g_task > 20.0) g_task = 5.0;
@@ -643,7 +642,9 @@ public needan(keymissing)
 
 }
 
-
+#if !defined client_disconnected
+#define client_disconnected client_disconnect
+#endif
 public client_disconnected(id)
 {
     new iHeadcount
@@ -660,7 +661,7 @@ public client_disconnected(id)
     {
         for (new admin=1; admin<=iHeadcount; admin++)
 
-        if(is_user_connected(admin))
+        if(is_user_connected(admin) && !is_user_bot(admin))
         {
             if (!is_user_admin(admin))
             {
@@ -674,7 +675,7 @@ public client_disconnected(id)
             else
             {
                 if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
-                client_print admin,print_chat,"%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
+                client_print admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 
                 #if AMXX_VERSION_NUM != 182
                 client_print_color admin,0, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
@@ -684,6 +685,9 @@ public client_disconnected(id)
         }
 
     }
+    #if AMXX_VERSION_NUM == 182
+        set_task(5.0,"client_remove",id)
+    #endif
     server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 }
 
@@ -724,7 +728,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         //Pick what is more reliable or chosen first on cvar lon+lat or city to acquire temp
         if(get_pcvar_float(g_long) && got_coords[id])
         {
-            formatex(constring, charsmax(constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]), units, token)   // g_lat[id], g_lon[id], units, token);
+            formatex(constring, charsmax(constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]), units, token)
         }
         else if (!equali(ClientCity[id], ""))
         {
@@ -739,17 +743,24 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
             log_amx "Unable to get %s due to no city nor lon and lat!! on %s", PLUGIN, ClientName[id]
             return
         }
-
-        set_task(1.0, "write_web", id+WEATHER, constring, charsmax(constring) );
-
-        if(get_pcvar_num(g_debug))
+        server_print "Is server busy?"
+        if(!bServer)
         {
-            log_amx("This is where we are trying to get weather from");
-            log_amx(constring);
-            log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
+            set_task(1.0, "write_web", id+WEATHER, constring, charsmax(constring) );
+    
+            if(get_pcvar_num(g_debug))
+            {
+                log_amx("This is where we are trying to get weather from");
+                log_amx(constring);
+                log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
+            }
+    
+            set_task(1.5, "read_web", id+WEATHER);
+            bServer = true
+            server_print "Server made busy"
         }
-
-        set_task(1.5, "read_web", id+WEATHER);
+        else
+            server_print "Server shows busy"
 
     }
 
