@@ -45,7 +45,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Mon 27 Dec 2021
+    *(__ [__)*|\ | >< Tues 28th Dec 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -169,7 +169,8 @@ new const faren_countries[][]={
     "Liberia",
     "Palau",
     "Federated States of Micronesia",
-    "Marshall Islands"
+    "Marshall Islands",
+    "United States"
 }
 
 //New Geo API v.187+/////////////////////////////////////
@@ -356,8 +357,8 @@ public client_putinserver(id)
 
         client_print 0, print_chat, "%s from %s appeared on %s, %s radar.", ClientName[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]
         server_print "%s from %s appeared on %s, %s radar.", ClientName[mask], ClientCountry[mask], ClientCity[mask], ClientRegion[mask]
-        if(!IS_SOCKET_IN_USE)
-            set_task(task_expand,"@que_em_up",mask)
+        ///if(!IS_SOCKET_IN_USE)
+        set_task(task_expand,"@que_em_up",mask)
 
     }
 }
