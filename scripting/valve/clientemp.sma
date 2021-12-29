@@ -91,8 +91,10 @@
     #define MAX_IP_LENGTH_V6           40
     #define MAX_PLAYERS                32
     #define MAX_NAME_LENGTH            32
+    #define MAX_IP_WITH_PORT_LENGTH    22
     #define MAX_IP_LENGTH              16
     #define charsmin                   -1
+    #define MAX_MOTD_LENGTH            1536
 
 
     new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH]
@@ -108,13 +110,16 @@
     new bool:IS_SOCKET_IN_USE, bool:bServer, mask
 
     new const g_szRequired_Files[][]={"GeoLite2-Country.mmdb","GeoLite2-City.mmdb"};
-    new word_buffer[MAX_PLAYERS], g_debug, g_timeout, Float:g_task;
+    new word_buffer[MAX_PLAYERS]
+    new g_debug, g_timeout, Float:g_task;
 
     new g_queue_weight, g_q_weight;
     new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ];
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
 
-    new buffer[ MAX_MENU_LENGTH ];
+    //new buffer[ MAX_MENU_LENGTH ]; //ok for coords only
+    //new buffer[ MAX_MOTD_LENGTH ] //be able to explode string without touching json module
+    new buffer[ MAX_MOTD_LENGTH ]
     new token[MAX_PLAYERS + 1];
 
     new const SOUND_GOTATEMP[] = "misc/Temp.wav";
@@ -124,6 +129,8 @@
 
     new g_clients_saved
     new SzSave[MAX_CMD_LENGTH]
+    
+    new geo_data[MAX_PLAYERS][MAX_NAME_LENGTH]
 
     new Trie:g_client_temp
 
@@ -1206,19 +1213,48 @@ public client_putinserver_now(id)
         server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
     }
 
-}   
+}
+
+
+stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter )
+{///https://forums.alliedmods.net/showpost.php?p=63298&postcount=14 //xeroblood
+    new nIdx = 0, l = strlen(p_szInput)
+    new nLen = (1 + copyc( p_szOutput[nIdx], p_nSize, p_szInput, p_szDelimiter ))
+    while( (nLen < l) && (++nIdx < p_nMax) )
+        nLen += (1 + copyc( p_szOutput[nIdx], p_nSize, p_szInput[nLen], p_szDelimiter ))
+    return PLUGIN_CONTINUE
+}
+
+
 @read_api(Tsk)
 {
     new id = Tsk - READ
     if(is_user_connected(id))
     {
+        new msg[MAX_MOTD_LENGTH]
         server_print "%s:reading %s coords",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
         if (socket_is_readable(ip_api_socket, 100000))
         #endif
         socket_recv(ip_api_socket,buffer,charsmax(buffer) )
-        if(!equal(buffer, "") && containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin && containi(buffer, "region") > charsmin)
+        if(!equal(buffer, "") )
         {
+            copyc(msg, charsmax(msg), buffer[containi(buffer, "{") + 1], '}')
+            //replace(msg, charsmax(msg), "^",^"",  "^"_^"" ); //need this so fields are not destroyed
+            new infinity =  ExplodeString(geo_data, charsmax(geo_data), charsmax(geo_data[]), msg, ',')
+            ///log_to_file "geo_data.txt","%s",infinity
+
+            new list = 1
+            for(new parameters;parameters < sizeof geo_data[];parameters++)
+                server_print("%d:%s",list++,geo_data[parameters])
+      
+            new test[MAX_PLAYERS]
+            //copyc(test, charsmax(test),geo_data[?][containi(geo_data, "currency_symbol") + 18], '"');
+            
+            //if(containi(infinity, "currency_symbol") > charsmin)
+             //   server_print "Currency %s", infinity
+
+    
             if(containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
             {
                 new float:lat[8],float:lon[8];
@@ -1235,45 +1271,46 @@ public client_putinserver_now(id)
                 copy(ClientLON[id], charsmax( ClientLON[] ),lon)
     
                 server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
-
-                got_coords[id] = true
             }
-            else if(containi(buffer, "region") > charsmin)
+            if(containi(buffer, "region") > charsmin)
             {
                 new region[MAX_NAME_LENGTH]
-                copyc(region, charsmax(region), buffer[containi(buffer, "region") + 8], '"')
-                replace(region, 6, ":", "");
-                replace(region, 6, ",", "");
+                copyc(region, charsmax(region), buffer[containi(buffer, "region") + 9], '"')
+                replace(region, charsmax(region), ":", "");
+                replace(region, charsmax(region), ",", "");
                 server_print "EXTRACTED %s", region
                 copy(ClientRegion[id],charsmax(ClientRegion[]),region)
             }
-            else if(containi(buffer, "city") > charsmin)
+            if(containi(buffer, "city") > charsmin)
             {
                 new city[MAX_NAME_LENGTH]
-                copyc(city, charsmax(city), buffer[containi(buffer, "city") + 6], '"')
-                replace(city, 6, ":", "");
-                replace(city, 6, ",", "");
+                copyc(city, charsmax(city), buffer[containi(buffer, "city") + 7], '"')
+                replace(city, charsmax(city), ":", "");
+                replace(city, charsmax(city), ",", "");
                 server_print "EXTRACTED %s", city
                 copy(ClientCity[id],charsmax(ClientCity[]),city)
+                got_coords[id] = true
             }
-            else if(containi(buffer, "country") > charsmin)
+            if(containi(buffer, "country") > charsmin)
             {
                 new country[MAX_NAME_LENGTH]
-                copyc(country, charsmax(country), buffer[containi(buffer, "country") + 9], '"')
-                replace(country, 6, ":", "");
-                replace(country, 6, ",", "");
+                copyc(country, charsmax(country), buffer[containi(buffer, "country") + 10], '"')
+                replace(country, charsmax(country), ":", "");
+                replace(country, charsmax(country), ",", "");
                 server_print "EXTRACTED %s", country
                 copy(ClientCountry[id],charsmax(ClientCountry[]),country)
             }
+
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
             else
                 server_print "%s already closed the socket on %s!",api,ClientName[id]
 
-            set_task(random_num(5,9)*1.0,"@country_finder",id+WEATHER)
+            if(!somebody_is_being_help)
+                set_task(random_num(2,7)*1.0,"@country_finder",id+WEATHER);
 
         }
-        else if(!got_coords[id] && g_socket_pass[id] < 10)
+        else if(!got_coords[id] || equal(ClientCountry[id],"") || equal(ClientCity[id],"") || equal(ClientRegion[id],"") && g_socket_pass[id] < 10)
         {
             server_print "No %s buffer checking again",ClientName[id]
             set_task(0.2, "@read_api",id+READ)
@@ -1294,6 +1331,7 @@ public client_putinserver_now(id)
         {
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
+            
         }
 
     }
