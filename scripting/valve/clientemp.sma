@@ -735,14 +735,14 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         //Pick what is more reliable or chosen first on cvar lon+lat or city to acquire temp
         if(get_pcvar_float(g_long) && got_coords[id])
         {
-            formatex(constring, charsmax(constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]), units, token)
+            formatex(constring, charsmax(constring), "GET /data/2.5/weather?lat=%f&lon=%f&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]), units, token)
         }
         else if (!equali(ClientCity[id], ""))
         {
             new city_space_remover[MAX_RESOURCE_PATH_LENGTH]
             copy(city_space_remover,charsmax(city_space_remover),ClientCity[id])
             replace(city_space_remover,charsmax(city_space_remover)," ", "")
-            formatex(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, city_space_remover, units, token);
+            formatex(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", uplink, city_space_remover, units, token);
         }
         else
         {
@@ -961,8 +961,8 @@ public read_web(feeding)
                     server_print "%s city is %s",ClientName[id], out
                 }
                 #if defined MOTD
-                    log_amx "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
-                    log_to_file("clientemp.log", "Temp is %i degrees in %s, %s, %s.", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id])
+                    log_amx "^"Temp is %i degrees in %s, %s, %s.^"", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id]
+                    log_to_file("clientemp.log", "^"Temp is %i degrees in %s, %s, %s.^"", floatround(Real_Temp), ClientCity[id], ClientRegion[id], ClientCountry[id])
                 #endif
                 if(socket_close(g_Weather_Feed) == 1)
                 {
@@ -1190,7 +1190,7 @@ public client_putinserver_now(id)
     {
         new constring[MAX_CMD_LENGTH]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        formatex(constring, charsmax (constring), "GET http://%s/json/%s HTTP/1.0^nHost: %s^n^n", api, ClientIP[id], api)
+        formatex(constring, charsmax (constring), "GET http://%s/json/%s HTTP/1.1^nHost: %s^n^n", api, ClientIP[id], api)
         server_print "%s",constring
 
         if(!task_exists(id+WRITE))
@@ -1395,3 +1395,28 @@ public ReadClientFromFile( )
 
     write_file(szFilePath, SzSave)
 }
+
+/*
+#~/bin/sh
+#Sample MOTD bash script with jq translating the Unicode
+SERVICE="opfor.so" #Use whatever dll your mod uses
+#declare -g mod=gearbox
+ID=`whoami`
+if (lsof -w | grep "$SERVICE" > /dev/null)
+then
+    {
+        MYAD=`date +L%Y%m%d.log`
+        #MYAD=`grep date +%m/%0e/%Y clientemp.log`
+        cd /home/$ID/Steam/steamapps/common/Half-Life/gearbox/addons/amxmodx/logs
+        touch `date +L%Y%m%d.log` #prevents spam.
+#57-120
+        grep degree $MYAD |cut -c 43-180 > /tmp/_temps.txt
+        #$MYAD |cut -c 57-180 > /tmp/_temps.txt
+        cat /tmp/_temps.txt | sort | uniq > /tmp/temps.txt
+        sleep 1
+        grep degree $MYAD |cut -c 43-180 |tail -n 30 | tac > /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt
+        #$MYAD |cut -c 57-180 |tail -n 30 | tac > /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt
+        cat /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt | sort | uniq | jq . > /home/$ID/Steam/steamapps/common/Half-Life/valve/motd.txt
+    }
+fi
+*/
