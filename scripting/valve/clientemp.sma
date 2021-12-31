@@ -45,7 +45,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Tues 28th Dec 2021
+    *(__ [__)*|\ | >< Fri 31st Dec 2021
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -129,7 +129,7 @@
 
     new g_clients_saved
     new SzSave[MAX_CMD_LENGTH]
-    
+
     new geo_data[MAX_PLAYERS][MAX_NAME_LENGTH]
 
     new Trie:g_client_temp
@@ -534,15 +534,15 @@ public client_temp(id)
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
             new country[ 4 ];
-    
+
             #if AMXX_VERSION_NUM == 182
                 geoip_code3( ClientIP[id], country );
             #else
                 geoip_code3_ex( ClientIP[id], country );
             #endif
-    
+
             for (new heit;heit < sizeof faren_country;heit++)
-    
+
             if(equali(country, faren_country[heit]))
             {
                 set_pcvar_string(g_cvar_units, "imperial")
@@ -553,13 +553,13 @@ public client_temp(id)
                 set_pcvar_string(g_cvar_units, "metric")
                 copy( Data[ifaren], charsmax(Data[ifaren]), "0" )
             }
-    
+
             TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
             server_print "Adding Client units to check temp"
-    
-    
+
+
             get_datadir(g_filepath, charsmax(g_filepath));
-    
+
             //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING COPIED
             formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
             formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
@@ -581,7 +581,7 @@ public client_temp(id)
             ///////////////////////////////////////////////////////////////////////
             if (task_exists(id+WEATHER))
                 return PLUGIN_HANDLED;
-    
+
             if (containi(ClientIP[id], "127.0.0.1") != charsmin)
             {
                 server_print "%s IP shows as 127.0.0.1, stopping script!", ClientName[id]
@@ -593,25 +593,25 @@ public client_temp(id)
             ///g_lon[id] = geoip_longitude(ClientIP[id]);
             new Float:timing;
             timing = g_task+5.0;
-    
+
             new ping, loss;
-    
+
             get_user_ping(id,ping,loss);
             new Float:timing2;
             timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
-    
+
             set_task( timing+timing2, "Weather_Feed", id+WEATHER, ClientIP[id], charsmax(ClientIP[]) );
 
             g_task = timing;
-    
+
             if(g_task > 20.0) g_task = 5.0;
-    
-    
+
+
             #if defined LOG
             //log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], str_to_float(ClientLAT[id]), str_to_float(ClientLON[id]) // g_lat[id], g_lon[id]);
             log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion], str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]) // g_lat[id], g_lon[id]);
             #endif
-    
+
             if(get_pcvar_num(g_debug) && is_user_admin(id) )
                 set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
         }
@@ -754,14 +754,14 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         if(!bServer)
         {
             set_task(1.0, "write_web", id+WEATHER, constring, charsmax(constring) );
-    
+
             if(get_pcvar_num(g_debug))
             {
                 log_amx("This is where we are trying to get weather from");
                 log_amx(constring);
                 log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
             }
-    
+
             set_task(1.5, "read_web", id+WEATHER);
             bServer = true
             server_print "Server made busy"
@@ -1165,12 +1165,12 @@ public client_putinserver_now(id)
 
         copy( ClientLAT[id], charsmax(ClientLAT[]), Data[ fLatitude ])
         copy( ClientLON[id], charsmax(ClientLAT[]), Data[ fLongitude ])
-        
+
         //Not using Maxmind for GeoTrio. Using newly built cache. Have yet to see omitted city and region as Maxmind does often in Middle East especially.
         copy(ClientCountry[id],charsmax(ClientCountry[]), Data[ SzCountry ])
 
         copy(ClientCity[id],charsmax(ClientCity[]), Data[ SzCity ])
-    
+
         copy(ClientRegion[id],charsmax(ClientRegion[]), Data[ SzRegion ])
 
         got_coords[id] = true
@@ -1180,7 +1180,7 @@ public client_putinserver_now(id)
     else if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         set_task(0.5,"@get_client_data", id+COORD)
 
-    
+
 }
 @get_client_data(goldsrc)
 {
@@ -1247,34 +1247,34 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
             new list = 1
             for(new parameters;parameters < sizeof geo_data[];parameters++)
                 server_print("%d:%s",list++,geo_data[parameters])
-      
+
             new test[MAX_PLAYERS]
             //copyc(test, charsmax(test),geo_data[?][containi(geo_data, "currency_symbol") + 18], '"');
-            
+
             //if(containi(infinity, "currency_symbol") > charsmin)
              //   server_print "Currency %s", infinity
 
-    
+
             if(containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
             {
                 new float:lat[8],float:lon[8];
                 copyc(lat, 6, buffer[containi(buffer, "latitude") + 10], '"');
                 replace(lat, 6, ":", "");
                 replace(lat, 6, ",", "");
-    
+
                 copy(ClientLAT[id], charsmax( ClientLAT[] ),lat)
-    
+
                 copyc(lon, 6, buffer[containi(buffer, "longitude") + 11], '"');
                 replace(lon, 6, ":", "");
                 replace(lon, 6, ",", "");
-    
+
                 copy(ClientLON[id], charsmax( ClientLON[] ),lon)
-    
+
                 server_print("%s's lat:%f|lon:%f",ClientName[id],str_to_float(ClientLAT[id]),str_to_float(ClientLON[id]))
             }
             if(containi(buffer, "region") > charsmin)
             {
-                new region[MAX_NAME_LENGTH]
+                new region[MAX_RESOURCE_PATH_LENGTH]
                 copyc(region, charsmax(region), buffer[containi(buffer, "region") + 9], '"')
                 replace(region, charsmax(region), ":", "");
                 replace(region, charsmax(region), ",", "");
@@ -1283,7 +1283,7 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
             }
             if(containi(buffer, "city") > charsmin)
             {
-                new city[MAX_NAME_LENGTH]
+                new city[MAX_RESOURCE_PATH_LENGTH]
                 copyc(city, charsmax(city), buffer[containi(buffer, "city") + 7], '"')
                 replace(city, charsmax(city), ":", "");
                 replace(city, charsmax(city), ",", "");
@@ -1293,7 +1293,7 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
             }
             if(containi(buffer, "country") > charsmin)
             {
-                new country[MAX_NAME_LENGTH]
+                new country[MAX_RESOURCE_PATH_LENGTH]
                 copyc(country, charsmax(country), buffer[containi(buffer, "country") + 10], '"')
                 replace(country, charsmax(country), ":", "");
                 replace(country, charsmax(country), ",", "");
@@ -1331,7 +1331,7 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
         {
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
-            
+
         }
 
     }
@@ -1395,7 +1395,6 @@ public ReadClientFromFile( )
 
     write_file(szFilePath, SzSave)
 }
-
 /*
 #~/bin/sh
 #Sample MOTD bash script with jq translating the Unicode
