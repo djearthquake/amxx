@@ -102,7 +102,7 @@
     new ClientCity[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
     new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
     new ClientRegion[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
-    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
+    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH_V6]
     new g_ClientTemp[MAX_PLAYERS+1][MAX_IP_LENGTH]
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
@@ -280,7 +280,7 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id))
+    if(is_user_bot(id) || is_user_hltv(id))
         return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
     {
@@ -527,7 +527,7 @@ public client_temp_filter(id)
 public client_temp(id)
 {
     server_print "client_temp function"
-    if(is_user_connected(id) && gotatemp[id] == false)
+    if(is_user_connected(id) && gotatemp[id] == false && !is_user_hltv(id))
     {
 
         Data[ SzAddress ] = ClientIP[id]
@@ -1397,8 +1397,7 @@ public ReadClientFromFile( )
 }
 /*
 #~/bin/sh
-#Sample MOTD bash script with jq translating the Unicode
-SERVICE="opfor.so" #Use whatever dll your mod uses
+SERVICE="opfor.so"
 #declare -g mod=gearbox
 ID=`whoami`
 if (lsof -w | grep "$SERVICE" > /dev/null)
@@ -1415,7 +1414,8 @@ then
         sleep 1
         grep degree $MYAD |cut -c 43-180 |tail -n 30 | tac > /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt
         #$MYAD |cut -c 57-180 |tail -n 30 | tac > /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt
-        cat /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt | sort | uniq | jq . > /home/$ID/Steam/steamapps/common/Half-Life/valve/motd.txt
+        cat /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt | sort -du | jq . > /home/$ID/Steam/steamapps/common/Half-Life/valve/
+        #cat /home/$ID/Steam/steamapps/common/Half-Life/valve/_motd.txt | sort -du > /home/$ID/Steam/steamapps/common/Half-Life/valve/motd.txt
     }
 fi
 */
