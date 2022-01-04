@@ -177,7 +177,7 @@ public plugin_init()
   
   register_event("DeathMsg","death_event","a")
   
-  register_forward(FM_EmitSound, "FmEmitSound")
+  register_forward(FM_EmitSound, "FmEmitSound") //was going off too often
 
   register_touch("player","*", "gg_touch")
 
@@ -190,7 +190,9 @@ public plugin_init()
     roundstart()
 
   gMsgDeathMsg = get_user_msgid("DeathMsg")
-  //set_task(0.5, "createSpawns", 0, "", 0) //stack errors amx182 unreliable
+  ///set_task(0.5, "createSpawns", 0, "", 0) //stack errors amx182 unreliable
+  //set_task(1.0, "createSpawns", 0, "", 0, "b", "4")
+  set_task(1.0,"createSpawns", 0, _, _, "a", get_pcvar_num(g_objects))
 }
 
 
@@ -203,7 +205,8 @@ public FmEmitSound(id, channel, const sample[], Float:volume, Float:attenuation,
 
         return FMRES_SUPERCEDE
     }
-    client_cmd(id, "mp3 play %s", gg_snd)
+    if( get_user_weapon( id ) == CSW_KNIFE )
+        client_cmd(id, "mp3 play %s", gg_snd)
   }
   return FMRES_IGNORED
 }
@@ -376,6 +379,15 @@ public roundstart()
     active=false
   }
   else
+
+  /*
+  active=true
+  
+  SPAWNS_ENABLED = 1
+  OBJECTS_ENABLED = 1
+  * //comment other part out this ELSE wilk make grav_gun work independ if it can spawn debris
+  */
+
   {
     if(SPAWNS_ENABLED == 1 && OBJECTS_ENABLED == 1)
     {
@@ -402,6 +414,7 @@ public roundstart()
 
   }
   return PLUGIN_CONTINUE
+
 }
 
 public endround()
@@ -918,13 +931,13 @@ public createSpawns() //taken from Bail's Root Plugin
   }
   if(tbase_origin[2]>ctbase_origin[2])
   {
-    square_o1[2] = tbase_origin[2]+1000
-    square_o2[2] = ctbase_origin[2]-1000
+    square_o1[2] = tbase_origin[2]+250
+    square_o2[2] = ctbase_origin[2]-250
   }
   else
   {
-    square_o1[2] = ctbase_origin[2]+1000
-    square_o2[2] = tbase_origin[2]-1000
+    square_o1[2] = ctbase_origin[2]+250
+    square_o2[2] = tbase_origin[2]-250
   }
 
 
@@ -952,8 +965,8 @@ public createSpawns() //taken from Bail's Root Plugin
         ia[2] = tbase_origin[2]+16.0
         baseswitcher = true
       }
-      ia[0] = float(floatround(ia[0]) + random(130)-65)
-      ia[1] = float(floatround(ia[1]) + random(130)-65)
+      ia[0] = float(floatround(ia[0]) + (random_num(2,130)-65))
+      ia[1] = float(floatround(ia[1]) + (random_num(3,130)-65))
       ia[2] = float(floatround(ia[2]))
       if( PointContents(ia) == CONTENTS_EMPTY && !xyused[counterx][countery])
       {
@@ -978,8 +991,8 @@ public createSpawns() //taken from Bail's Root Plugin
       for(ia[0]=square_o2[0];ia[0] <=square_o1[0] && SPAWNS<MAX_SPAWNS;ia[0]+=xadd)
       {
         counterx++
-        ia[0] = float(floatround(ia[0]) + random_num(1,45) )
-        ia[1] = float(floatround(ia[1]) + random_num(1,45) )
+        ia[0] = float(floatround(ia[0]) + random_num(2,5))
+        ia[1] = float(floatround(ia[1]) + random_num(2,5))
         ia[2] = float(floatround(ia[2]))
 
         if( PointContents(ia) == CONTENTS_EMPTY && !xyused[counterx][countery])
@@ -987,8 +1000,8 @@ public createSpawns() //taken from Bail's Root Plugin
           xyused[counterx][countery] = true
           SPAWNS++
           SPAWN[SPAWNS][0] = floatround(ia[0])
-          ia[0] = float(floatround(ia[0]) + random_num(1,45) )
-          ia[1] = float(floatround(ia[1]) + random_num(1,45) )
+          ia[0] = float(floatround(ia[0]) + random_num(2,5))
+          ia[1] = float(floatround(ia[1]) + random_num(2,5))
         }
       }
     }
