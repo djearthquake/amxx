@@ -1,8 +1,7 @@
 #include amxmodx
 #include engine
 #include fakemeta
-#include fakemeta_util //dispatch key values
-#define MAGIC_NUMBER 0
+#include fakemeta_util
 #define MAX_PLAYERS 32
 
 new g_angles[3]
@@ -56,11 +55,8 @@ public plugin_precache()
     //precache_model(szModel);
 
     precache_model(apache1)
-
     precache_model(apache2)
-
     precache_model(apache3)
-
     precache_model(light)
 
     precache_model("models/metalplategibs_green.mdl")
@@ -142,10 +138,6 @@ public clcmd_test2(id)
         new apache = create_entity("monster_apache");
     
         set_pev(apache, pev_spawnflags, SF_SPRITE_STARTON)
-    
-        //DispatchKeyValue(entity, "KeyName", "Value");
-        //fm_set_kvd(apache, "gibmodel", "models/w_battery.mdl");
-    
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
     
         fplayerorigin[1] += 50.0
@@ -175,11 +167,10 @@ public clcmd_test2(id)
         set_pev( apache, pev_angles, g_angles)
     
         dllfunc( DLLFunc_Spawn, apache )
+        return PLUGIN_HANDLED;
     }
     else
    
         client_print id, print_center, "We already have a copter dispatched!^n^nOne will have to due."
-        
-
-    return PLUGIN_HANDLED;
+    return PLUGIN_CONTINUE;
 }
