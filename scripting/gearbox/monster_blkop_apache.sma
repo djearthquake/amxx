@@ -80,7 +80,7 @@ public clcmd_way(id)
 
         fplayerorigin[1] += 50.0
         entity_set_origin(ent, fplayerorigin);
-        
+
         set_pev(ent, pev_owner, id)
 
         dllfunc( DLLFunc_Spawn, ent )
@@ -99,16 +99,16 @@ public clcmd_monster(id)
         new arg[MAX_PLAYERS]
         read_argv(1,arg,charsmax(arg))
         new Float:fplayerorigin[3];
-    
+
         new apache = create_entity("monster_blkop_apache");
-    
+
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
-    
+
         fplayerorigin[1] += 50.0 //offside
-        fplayerorigin[2] += 2000.0 //overhead
+        fplayerorigin[2] += 100.0 //overhead
 
         entity_set_origin(apache, fplayerorigin);
-    
+
         set_pev(apache, pev_owner, id)
 
         fm_set_kvd(apache, "rendermode", "0"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
@@ -123,7 +123,7 @@ public clcmd_monster(id)
         return PLUGIN_HANDLED;
     }
     else
-   
+
         client_print id, print_center, "We already have a blk ops copter dispatched!^n^nOne will have to due."
     return PLUGIN_CONTINUE;
 }
