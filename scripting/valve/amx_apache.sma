@@ -10,10 +10,6 @@ new g_angles[3]
 new g_puff_hp
 new g_puff_scale
 
-/*
-new const battery[]  = "models/w_battery.mdl"
-new const medkit[]   = "models/w_medkit.mdl"
-*/
 new const apache1[]  = "models/apachet.mdl"
 new const apache2[]  = "models/apache.mdl"
 new const apache3[]  = "models/HVR.mdl"
@@ -80,66 +76,55 @@ public plugin_precache()
     precache_model(smoker_precache);
 }
 
-
 public clcmd_test(id)
 {
-    new arg[MAX_PLAYERS]
-    read_argv(1,arg,charsmax(arg))
-    new Float:velocity[3];
-    new Float:fplayerorigin[3];
-    new ent = create_entity("env_smoker");
-    new Float:fsizer
-    fsizer = g_puff_scale ? get_pcvar_num(g_puff_scale)*1.0 : random_float(-2.25,5.5)
-    new SzScale[MAX_PLAYERS]
+    if(!find_ent_by_tname(-1, "apache_way_point"))
+    {
 
-    float_to_str(fsizer, SzScale, charsmax(SzScale))
-    entity_set_float(ent, EV_FL_scale, fsizer);
+        new arg[MAX_PLAYERS]
+        read_argv(1,arg,charsmax(arg))
+        new Float:velocity[3];
+        new Float:fplayerorigin[3];
+        new ent = create_entity("env_smoker");
+        new Float:fsizer
+        fsizer = g_puff_scale ? get_pcvar_num(g_puff_scale)*1.0 : random_float(-2.25,5.5)
+        new SzScale[MAX_PLAYERS]
 
-    
-    set_pev(ent, pev_spawnflags, SF_PUSH_BREAKABLE)
-    set_pev(ent, pev_takedamage, DAMAGE_AIM);
+        float_to_str(fsizer, SzScale, charsmax(SzScale))
+        entity_set_float(ent, EV_FL_scale, fsizer);
 
-    set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
+        set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
+        fm_set_kvd(ent, "scale" , SzScale);
+        fm_set_kvd(ent, "targetname", "apache_way_point")
 
-    fm_set_kvd(ent, "scale" , SzScale);
+        entity_get_vector(id, EV_VEC_origin, fplayerorigin);
 
-    fm_set_kvd(ent, "targetname", "apache_way_point")
-    fm_set_kvd(ent, "angles", "0 0 0");
+        fplayerorigin[1] += 50.0
+        entity_set_origin(ent, fplayerorigin);
 
-    entity_get_vector(id, EV_VEC_origin, fplayerorigin);
+        //Set it away from you or make yourself owner momentarily
+        set_pev(ent, pev_owner, id)
 
-    fplayerorigin[1] += 50.0
-    entity_set_origin(ent, fplayerorigin);
+        VelocityByAim(id,str_to_num(arg),velocity)
 
-    //Set it away from you or make yourself owner momentarily
-    set_pev(ent, pev_owner, id)
+        new Float:mins[3], Float:maxs[3]
 
-    VelocityByAim(id,str_to_num(arg),velocity)
+        mins[0] = -150.0
+        mins[1] = -150.0
+        mins[2] = -250.0
 
+        maxs[0] = 250.0
+        maxs[1] = 250.0
+        maxs[2] = 120.0
 
-    new Float:mins[3], Float:maxs[3]
-
-    mins[0] = -150.0
-    mins[1] = -150.0
-    mins[2] = -250.0
-
-    maxs[0] = 250.0
-    maxs[1] = 250.0
-    maxs[2] = 120.0
+        set_pev( ent, pev_frame, 0.0 )
+        set_pev( ent, pev_framerate, 10.0 )
 
 
-    entity_set_int(ent, EV_INT_movetype, MOVETYPE_FLY);
-
-    set_pev(ent,pev_solid, MOVETYPE_PUSH)
-
-    ///entity_set_model(ent, szModel);
-
-    set_pev( ent, pev_frame, 0.0 )
-    set_pev( ent, pev_framerate, 10.0 )
-
-    set_pev( ent, pev_angles, g_angles)
-
-    dllfunc( DLLFunc_Spawn, ent )
+        dllfunc( DLLFunc_Spawn, ent )
+    }
+    else
+        client_print id, print_center, "We have a waypoint already!"
 
     return PLUGIN_HANDLED;
 }
@@ -172,17 +157,13 @@ public clcmd_test2(id)
     set_pev(apache,pev_solid, MOVETYPE_STEP) //SOLID_TRIGGER) // 1 trigger btw  solid_bsp needs MOVETYPE_PUSH  //3 slidebox fn box!
     entity_set_model(apache, apache1);
 
-    //entity_set_size(apache, Float:{-30000.0,-30000.0,-30000.0}, Float:{30000.0,30000.0,30000.0});
     entity_set_size(apache, Float:{-3.0,-3.0,-3.0}, Float:{3.0,3.0,3.0});
     set_pev( apache, pev_frame, 0.0 )
     set_pev( apache, pev_framerate, 10.0 )
 
-    ///////////////entity_set_float(apache, EV_FL_scale, random_float(0.1,0.5));
-
-
     fm_set_kvd(apache, "rendermode", "5"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
     fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
-    //fm_set_kvd(apache, "skin", "-16"); //ladder
+    ///fm_set_kvd(apache, "skin", "-16"); //ladder  later
     fm_set_kvd(apache, "speed", "64")
     fm_set_kvd(apache, "renderfx", "14"); //4 slow wide pulse //16holo 14 glow 10 fast strobe
     fm_set_kvd(apache, "rendercolor", "150 25 200")
