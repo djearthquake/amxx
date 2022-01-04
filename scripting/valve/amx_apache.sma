@@ -44,8 +44,8 @@ public plugin_init()
     register_concmd(".monster","clcmd_test2",ADMIN_RCON,".monster")
 
     g_angles = { 0.0, 0.0, 0.0 }
-    g_puff_hp = register_cvar("smoke_puff_hp", "200") //20- crash easy just floating
-    g_puff_scale = register_cvar("smoke_puff_scale", "10")
+    g_puff_hp = register_cvar("smoke_puff_hp", "7")
+    g_puff_scale = register_cvar("smoke_puff_scale", "500")
 }
 
 
@@ -132,47 +132,54 @@ public clcmd_test(id)
 
 public clcmd_test2(id)
 {
-    new arg[MAX_PLAYERS]
-    read_argv(1,arg,charsmax(arg))
-    new Float:velocity[3];
-    new Float:fplayerorigin[3];
-
-    new apache = create_entity("monster_apache");
-
-    set_pev(apache, pev_spawnflags, SF_SPRITE_STARTON)
-
-    //DispatchKeyValue(entity, "KeyName", "Value");
-    //fm_set_kvd(apache, "gibmodel", "models/w_battery.mdl");
-
-    entity_get_vector(id, EV_VEC_origin, fplayerorigin);
-
-    fplayerorigin[1] += 50.0
-    entity_set_origin(apache, fplayerorigin);
-
-    //Set it away from you or make yourself owner momentarily
-    set_pev(apache, pev_owner, id)
-
-    VelocityByAim(id,str_to_num(arg),velocity)
-
-    set_pev(apache,pev_solid, MOVETYPE_STEP) //SOLID_TRIGGER) // 1 trigger btw  solid_bsp needs MOVETYPE_PUSH  //3 slidebox fn box!
-    entity_set_model(apache, apache1);
-
-    entity_set_size(apache, Float:{-3.0,-3.0,-3.0}, Float:{3.0,3.0,3.0});
-    set_pev( apache, pev_frame, 0.0 )
-    set_pev( apache, pev_framerate, 10.0 )
-
-    fm_set_kvd(apache, "rendermode", "5"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
-    fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
-    ///fm_set_kvd(apache, "skin", "-16"); //ladder  later
-    fm_set_kvd(apache, "speed", "64")
-    fm_set_kvd(apache, "renderfx", "14"); //4 slow wide pulse //16holo 14 glow 10 fast strobe
-    fm_set_kvd(apache, "rendercolor", "150 25 200")
-    fm_set_kvd(apache, "targetname", "amx_monster_apache")
-    fm_set_kvd(apache, "target", "apache_way_point")
-
-    set_pev( apache, pev_angles, g_angles)
-
-    dllfunc( DLLFunc_Spawn, apache )
+    if(!find_ent(-1, "monster_apache"))
+    {
+        new arg[MAX_PLAYERS]
+        read_argv(1,arg,charsmax(arg))
+        new Float:velocity[3];
+        new Float:fplayerorigin[3];
+    
+        new apache = create_entity("monster_apache");
+    
+        set_pev(apache, pev_spawnflags, SF_SPRITE_STARTON)
+    
+        //DispatchKeyValue(entity, "KeyName", "Value");
+        //fm_set_kvd(apache, "gibmodel", "models/w_battery.mdl");
+    
+        entity_get_vector(id, EV_VEC_origin, fplayerorigin);
+    
+        fplayerorigin[1] += 50.0
+        entity_set_origin(apache, fplayerorigin);
+    
+        //Set it away from you or make yourself owner momentarily
+        set_pev(apache, pev_owner, id)
+    
+        VelocityByAim(id,str_to_num(arg),velocity)
+    
+        set_pev(apache,pev_solid, MOVETYPE_STEP) //SOLID_TRIGGER) // 1 trigger btw  solid_bsp needs MOVETYPE_PUSH  //3 slidebox fn box!
+        entity_set_model(apache, apache1);
+    
+        entity_set_size(apache, Float:{-3.0,-3.0,-3.0}, Float:{3.0,3.0,3.0});
+        set_pev( apache, pev_frame, 0.0 )
+        set_pev( apache, pev_framerate, 10.0 )
+    
+        fm_set_kvd(apache, "rendermode", "5"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
+        fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
+        ///fm_set_kvd(apache, "skin", "-16"); //ladder  later
+        fm_set_kvd(apache, "speed", "64")
+        fm_set_kvd(apache, "renderfx", "14"); //4 slow wide pulse //16holo 14 glow 10 fast strobe
+        fm_set_kvd(apache, "rendercolor", "150 25 200")
+        fm_set_kvd(apache, "targetname", "amx_monster_apache")
+        fm_set_kvd(apache, "target", "apache_way_point")
+    
+        set_pev( apache, pev_angles, g_angles)
+    
+        dllfunc( DLLFunc_Spawn, apache )
+    }
+    else
+   
+        client_print id, print_center, "We already have a copter dispatched!^n^nOne will have to due."
+        
 
     return PLUGIN_HANDLED;
 }
