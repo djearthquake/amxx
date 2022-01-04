@@ -90,17 +90,19 @@ public clcmd_test(id)
     new ent = create_entity("env_smoker");
     new Float:fsizer
     fsizer = g_puff_scale ? get_pcvar_num(g_puff_scale)*1.0 : random_float(-2.25,5.5)
+    new SzScale[MAX_PLAYERS]
 
+    float_to_str(fsizer, SzScale, charsmax(SzScale))
     entity_set_float(ent, EV_FL_scale, fsizer);
 
-
+    
     set_pev(ent, pev_spawnflags, SF_PUSH_BREAKABLE)
     set_pev(ent, pev_takedamage, DAMAGE_AIM);
-    
+
     set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
 
-    fm_set_kvd(ent, "scale" , "10000");
-    
+    fm_set_kvd(ent, "scale" , SzScale);
+
     fm_set_kvd(ent, "targetname", "apache_way_point")
     fm_set_kvd(ent, "angles", "0 0 0");
 
@@ -167,16 +169,15 @@ public clcmd_test2(id)
 
     VelocityByAim(id,str_to_num(arg),velocity)
 
-
-
-
     set_pev(apache,pev_solid, MOVETYPE_STEP) //SOLID_TRIGGER) // 1 trigger btw  solid_bsp needs MOVETYPE_PUSH  //3 slidebox fn box!
     entity_set_model(apache, apache1);
 
-    entity_set_size(apache, Float:{-30000.0,-30000.0,-30000.0}, Float:{30000.0,30000.0,30000.0});
+    //entity_set_size(apache, Float:{-30000.0,-30000.0,-30000.0}, Float:{30000.0,30000.0,30000.0});
+    entity_set_size(apache, Float:{-3.0,-3.0,-3.0}, Float:{3.0,3.0,3.0});
     set_pev( apache, pev_frame, 0.0 )
     set_pev( apache, pev_framerate, 10.0 )
-    entity_set_float(apache, EV_FL_scale, random_float(0.1,0.5));
+
+    ///////////////entity_set_float(apache, EV_FL_scale, random_float(0.1,0.5));
 
 
     fm_set_kvd(apache, "rendermode", "5"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
@@ -188,11 +189,9 @@ public clcmd_test2(id)
     fm_set_kvd(apache, "targetname", "amx_monster_apache")
     fm_set_kvd(apache, "target", "apache_way_point")
 
-
     set_pev( apache, pev_angles, g_angles)
 
     dllfunc( DLLFunc_Spawn, apache )
-
 
     return PLUGIN_HANDLED;
 }
