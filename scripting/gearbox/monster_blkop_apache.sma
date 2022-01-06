@@ -40,8 +40,8 @@ new const apache_snds[][] =
 public plugin_init()
 {
     //blk apache
-    register_concmd(".sprite_blk_ops","clcmd_way",ADMIN_CHAT,".sprite_blk_ops - waypoint blkop apache")
-    register_concmd(".monster_blk_ops","clcmd_monster",ADMIN_RCON,".monster_blk_ops - monster blkop apache")
+    register_concmd(".apache_blk","clcmd_way",ADMIN_CHAT,".apache - waypoint blkop apache")
+    register_concmd(".apache_way_blk","clcmd_monster",ADMIN_RCON,".apache_way2 - monster blkop apache")
     //waypointing
     g_puff_hp = register_cvar("smoke_puff_hp", "7")
     g_puff_scale = register_cvar("smoke_puff_scale", "500")
@@ -101,7 +101,7 @@ public clcmd_apache_waypoint(id)
         dllfunc( DLLFunc_Spawn, ent )
     }
     else
-        client_print id, print_center, "We have an apache waypoint already!"
+        client_print id, print_center, "Apache waypoint already defined."
 
     return PLUGIN_HANDLED;
 }
@@ -139,7 +139,7 @@ public clcmd_apache(id)
     }
     else
 
-        client_print id, print_center, "We already have a blk ops copter dispatched!^n^nOne will have to due."
+        client_print id, print_center, "We already have Apache dispatched!^n^nOne will have to due."
     return PLUGIN_CONTINUE;
 }
 
@@ -174,7 +174,7 @@ public clcmd_way(id)
         dllfunc( DLLFunc_Spawn, ent )
     }
     else
-        client_print id, print_center, "We have a waypoint already!"
+        client_print id, print_center, "Blk Ops Apache already defined."
 
     return PLUGIN_HANDLED;
 }
@@ -212,6 +212,6 @@ public clcmd_monster(id)
     }
     else
 
-        client_print id, print_center, "We already have a blk ops copter dispatched!^n^nOne will have to due."
+        client_print id, print_center, "Black Ops Apache is dispatched already!^n^nOne will have to due."
     return PLUGIN_CONTINUE;
 }
