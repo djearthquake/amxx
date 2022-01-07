@@ -37,12 +37,37 @@ new const apache_snds[][] =
 
 public plugin_init()
 {
+    //Sensors
+    register_touch("monster_apache", "monster_blkop_apache", "@Apache_Sensor")
+    register_touch("monster_apache", "worldspawn", "@Apache_World")
+    register_touch("monster_blkop_apache", "world", "@Apache_World")
+    register_touch("monster_apache", "player", "@Apache_Player")
+    register_touch("monster_blkop_apache", "player", "@Apache_Player")
+
+    
     //waypointing
-    g_puff_hp = register_cvar("smoke_puff_hp", "7")
-    g_puff_scale = register_cvar("smoke_puff_scale", "500")
+    g_puff_hp = register_cvar("smoke_puff_hp", "15")
+    g_puff_scale = register_cvar("smoke_puff_scale", "25")
     //Apache
+    register_concmd(".apache_buy","clcmd_freelance",ADMIN_CHAT,".apache_buy - Befriend the apache")
     register_concmd(".apache","clcmd_apache",ADMIN_CHAT,".apache - makes apache. Add black to make BlackOps")
     register_concmd(".apache_way","clcmd_apache_waypoint",ADMIN_RCON,".apache_way - makes apache waypoint. Append black to make BlackOps")
+    register_dictionary("common.txt")
+}
+
+@Apache_Sensor(Apache, Sensor)
+{
+     client_print 0, print_center, "Apache is next to Apache"
+}
+
+@Apache_Player(Apache, Player)
+{
+    client_print 0, print_center, "Apache is on %n", Player
+}
+
+@Apache_World(Apache, World)
+{
+    client_print 0, print_center, "Apache is on world"
 }
 
 public plugin_precache()
@@ -64,7 +89,21 @@ public plugin_precache()
     }
 
 }
-
+public clcmd_apache_buy(id)
+{
+    new bool:bOps
+    if(is_user_alive(id))
+    {
+        new arg[MAX_PLAYERS]
+        read_argv(1,arg,charsmax(arg))
+        set_pev(apache, pev_owner, id)
+        //Rapid Hookgrab makes crashing server an easy task.
+        client_print 0, print_chat, "%n owns an Apache!^n^nHookgrab disabled.", id
+        server_cmd "sv_hook 0"
+    }
+    else
+        client_print 0 print_chat, "Hey everybody %n thinks he can own Apache as a dead man!", id
+}
 public clcmd_apache_waypoint(id)
 {
     new bool:bOps
@@ -102,16 +141,18 @@ public clcmd_apache_waypoint(id)
         fplayerorigin[1] += 50.0
         entity_set_origin(ent, fplayerorigin);
 
-
-        dllfunc( DLLFunc_Spawn, ent )
+        if(is_valid_ent(ent) && ent > 0)
+            dllfunc( DLLFunc_Spawn, ent )
     }
     else
     {
         PRINT:
-        if(bOps)
-            client_print(id, print_center, "Apache waypoint already defined.")
-        else
-            client_print(id, print_center, "Black Ops Apache waypoint already defined.")
+        client_print id, print_center, "%L", LANG_PLAYER, "NO_ACC_COM"
+        new SzMessage[64]
+        new const SzWay[]= "waypoint already defined."
+
+        formatex(SzMessage, charsmax(SzMessage), bOps ? "Black Ops Apache %s" : "Apache %s",SzWay)
+        client_print id, print_center, "%s", SzMessage
     }
 
     return PLUGIN_HANDLED;
@@ -147,8 +188,6 @@ public clcmd_apache(id)
 
         entity_set_origin(apache, fplayerorigin);
 
-        //set_pev(apache, pev_owner, id) //If you want credit for it's work. Rapid Hookgrab makes crashing server an easy task.
-
         fm_set_kvd(apache, "rendermode", "0"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
         fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
         fm_set_kvd(apache, "speed", "64")
@@ -164,17 +203,20 @@ public clcmd_apache(id)
             fm_set_kvd(apache, "targetname", "amx_monster_apache")
             fm_set_kvd(apache, "target", "apache_way_point")
         }
-
-        dllfunc( DLLFunc_Spawn, apache )
+        if(is_valid_ent(apache) && apache > 0)
+            dllfunc( DLLFunc_Spawn, apache )
         return PLUGIN_HANDLED;
     }
     else
     {
         PRINT:
-        if(bOps)
-            client_print(id, print_center, "Black Ops Apache is dispatched already!^n^nOne will have to due.")
-        else
-            client_print(id, print_center, "We already have Apache dispatched!^n^nOne will have to due.")
+        client_print id, print_center, "%L", LANG_PLAYER, "NO_ACC_COM"
+        new SzMessage[128]
+        new const SzWay[]= "is dispatched already!^n^nOne will have to due."
+
+        formatex(SzMessage, charsmax(SzMessage), bOps ? "Black Ops Apache %s":"Apache %s",SzWay)
+        client_print id, print_center, "%s", SzMessage
+
     }
     return PLUGIN_CONTINUE;
 }
