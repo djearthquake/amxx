@@ -35,19 +35,14 @@ new const apache_snds[][] =
     "turret/tu_fire1.wav"
 }
 
-
-
 public plugin_init()
 {
-    //blk apache
-    register_concmd(".apache_blk","clcmd_way",ADMIN_CHAT,".apache - waypoint blkop apache")
-    register_concmd(".apache_way_blk","clcmd_monster",ADMIN_RCON,".apache_way2 - monster blkop apache")
     //waypointing
     g_puff_hp = register_cvar("smoke_puff_hp", "7")
     g_puff_scale = register_cvar("smoke_puff_scale", "500")
-    //grn apache
-    register_concmd(".apache","clcmd_apache",ADMIN_CHAT,".sprite - makes a waypoint for apache")
-    register_concmd(".apache_way","clcmd_apache_waypoint",ADMIN_RCON,".monster - makes apache")
+    //Apache
+    register_concmd(".apache","clcmd_apache",ADMIN_CHAT,".apache - makes apache. Add black to make BlackOps")
+    register_concmd(".apache_way","clcmd_apache_waypoint",ADMIN_RCON,".apache_way - makes apache waypoint. Append black to make BlackOps")
 }
 
 public plugin_precache()
@@ -70,14 +65,24 @@ public plugin_precache()
 
 }
 
-
 public clcmd_apache_waypoint(id)
 {
-    if(!find_ent_by_tname(-1, "apache_way_point"))
+    new bool:bOps
+    if(is_user_alive(id))
     {
-
         new arg[MAX_PLAYERS]
         read_argv(1,arg,charsmax(arg))
+        new way_type[MAX_PLAYERS]
+
+        if(containi(arg,"black") > -1 && !find_ent_by_tname(-1, "blk_apache_way_point"))
+        {
+            way_type = "blk_apache_way_point"
+            bOps = true
+        }
+        else if(!find_ent_by_tname(-1, "apache_way_point"))
+            way_type = "apache_way_point"
+        else goto PRINT
+        
         new Float:fplayerorigin[3];
         new ent = create_entity("env_smoker");
         new Float:fsizer
@@ -89,7 +94,8 @@ public clcmd_apache_waypoint(id)
 
         set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
         fm_set_kvd(ent, "scale" , SzScale);
-        fm_set_kvd(ent, "targetname", "apache_way_point")
+        
+        bOps ? fm_set_kvd(ent, "targetname", "blk_apache_way_point") : fm_set_kvd(ent, "targetname", "apache_way_point")
 
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
 
@@ -101,21 +107,39 @@ public clcmd_apache_waypoint(id)
         dllfunc( DLLFunc_Spawn, ent )
     }
     else
-        client_print id, print_center, "Apache waypoint already defined."
+    {
+        PRINT:
+        if(bOps)
+            client_print(id, print_center, "Apache waypoint already defined.")
+        else
+            client_print(id, print_center, "Black Ops Apache waypoint already defined.")
+    }
 
     return PLUGIN_HANDLED;
 }
-
 
 public clcmd_apache(id)
 {
-    if(!find_ent(-1, "monster_apache"))
+    new bool:bOps
+    if(is_user_alive(id))
     {
         new arg[MAX_PLAYERS]
+        
         read_argv(1,arg,charsmax(arg))
+        new plane_type[MAX_PLAYERS]
+
+        if(containi(arg,"black") > -1 && !find_ent(-1, "monster_blkop_apache"))
+        {
+            plane_type = "monster_blkop_apache"
+            bOps = true
+        }
+        else if(!find_ent(-1, "monster_apache"))
+            plane_type = "monster_apache"
+        else goto PRINT
+
         new Float:fplayerorigin[3];
 
-        new apache = create_entity("monster_apache");
+        new apache = create_entity(plane_type);
 
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
 
@@ -131,87 +155,27 @@ public clcmd_apache(id)
         fm_set_kvd(apache, "speed", "64")
         fm_set_kvd(apache, "renderfx", "14"); //4 slow wide pulse //16holo 14 glow 10 fast strobe
         fm_set_kvd(apache, "rendercolor", "150 25 200")
-        fm_set_kvd(apache, "targetname", "amx_monster_apache")
-        fm_set_kvd(apache, "target", "apache_way_point")
+        if(bOps)
+        {
+            fm_set_kvd(apache, "targetname", "blk_amx_monster_apache")
+            fm_set_kvd(apache, "target", "blk_apache_way_point")
+        }
+        else
+        {
+            fm_set_kvd(apache, "targetname", "amx_monster_apache")
+            fm_set_kvd(apache, "target", "apache_way_point")
+        }
 
         dllfunc( DLLFunc_Spawn, apache )
         return PLUGIN_HANDLED;
     }
     else
-
-        client_print id, print_center, "We already have Apache dispatched!^n^nOne will have to due."
-    return PLUGIN_CONTINUE;
-}
-
-
-public clcmd_way(id)
-{
-    if(!find_ent_by_tname(-1, "blk_apache_way_point"))
     {
-
-        new arg[MAX_PLAYERS]
-        read_argv(1,arg,charsmax(arg))
-        new Float:fplayerorigin[3];
-        new ent = create_entity("env_smoker");
-        new Float:fsizer
-        fsizer = g_puff_scale ? get_pcvar_num(g_puff_scale)*1.0 : random_float(-2.25,5.5)
-        new SzScale[MAX_PLAYERS]
-
-        float_to_str(fsizer, SzScale, charsmax(SzScale))
-        entity_set_float(ent, EV_FL_scale, fsizer);
-
-        set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
-        fm_set_kvd(ent, "scale" , SzScale);
-        fm_set_kvd(ent, "targetname", "blk_apache_way_point")
-
-        entity_get_vector(id, EV_VEC_origin, fplayerorigin);
-
-        fplayerorigin[1] += 50.0
-        entity_set_origin(ent, fplayerorigin);
-
-        //set_pev(ent, pev_owner, id)
-
-        dllfunc( DLLFunc_Spawn, ent )
+        PRINT:
+        if(bOps)
+            client_print(id, print_center, "Black Ops Apache is dispatched already!^n^nOne will have to due.")
+        else
+            client_print(id, print_center, "We already have Apache dispatched!^n^nOne will have to due.")
     }
-    else
-        client_print id, print_center, "Blk Ops Apache already defined."
-
-    return PLUGIN_HANDLED;
-}
-
-
-public clcmd_monster(id)
-{
-    if(!find_ent(-1, "monster_blkop_apache"))
-    {
-        new arg[MAX_PLAYERS]
-        read_argv(1,arg,charsmax(arg))
-        new Float:fplayerorigin[3];
-
-        new apache = create_entity("monster_blkop_apache");
-
-        entity_get_vector(id, EV_VEC_origin, fplayerorigin);
-
-        fplayerorigin[1] += 50.0 //offside
-        fplayerorigin[2] += 100.0 //overhead
-
-        entity_set_origin(apache, fplayerorigin);
-
-        //set_pev(apache, pev_owner, id)
-
-        fm_set_kvd(apache, "rendermode", "0"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
-        fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
-        fm_set_kvd(apache, "speed", "64")
-        fm_set_kvd(apache, "renderfx", "14"); //4 slow wide pulse //16holo 14 glow 10 fast strobe
-        fm_set_kvd(apache, "rendercolor", "150 25 200")
-        fm_set_kvd(apache, "targetname", "blk_amx_monster_apache")
-        fm_set_kvd(apache, "target", "blk_apache_way_point")
-
-        dllfunc( DLLFunc_Spawn, apache )
-        return PLUGIN_HANDLED;
-    }
-    else
-
-        client_print id, print_center, "Black Ops Apache is dispatched already!^n^nOne will have to due."
     return PLUGIN_CONTINUE;
 }
