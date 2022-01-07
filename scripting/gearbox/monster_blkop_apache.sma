@@ -3,7 +3,7 @@
 #include fakemeta
 #include fakemeta_util
 #define MAX_PLAYERS 32
-
+#define PERMISSION ADMIN_ALL //ADMIN_CHAT
 new g_puff_hp
 new g_puff_scale
 
@@ -44,14 +44,16 @@ public plugin_init()
     register_touch("monster_apache", "player", "@Apache_Player")
     register_touch("monster_blkop_apache", "player", "@Apache_Player")
 
-    
     //waypointing
     g_puff_hp = register_cvar("smoke_puff_hp", "15")
     g_puff_scale = register_cvar("smoke_puff_scale", "25")
+
     //Apache
-    register_concmd(".apache_buy","clcmd_freelance",ADMIN_CHAT,".apache_buy - Befriend the apache")
-    register_concmd(".apache","clcmd_apache",ADMIN_CHAT,".apache - makes apache. Add black to make BlackOps")
-    register_concmd(".apache_way","clcmd_apache_waypoint",ADMIN_RCON,".apache_way - makes apache waypoint. Append black to make BlackOps")
+
+    register_concmd(".apache_buy","clcmd_apache_buy",PERMISSION,".apache_buy - Befriend the apache")
+    register_concmd(".apache","clcmd_apache",PERMISSION,".apache - makes apache. Add black to make BlackOps")
+    register_concmd(".apache_way","clcmd_apache_waypoint",PERMISSION,".apache_way - makes apache waypoint. Append black to make BlackOps")
+
     register_dictionary("common.txt")
 }
 
@@ -91,19 +93,51 @@ public plugin_precache()
 }
 public clcmd_apache_buy(id)
 {
-    new bool:bOps
+    new bool:bApache_Owner_lock
+    new bool:bSpec_Apache_Owner_lock
     if(is_user_alive(id))
     {
         new arg[MAX_PLAYERS]
+        new black_plane
+        new plane
         read_argv(1,arg,charsmax(arg))
-        set_pev(apache, pev_owner, id)
-        //Rapid Hookgrab makes crashing server an easy task.
-        client_print 0, print_chat, "%n owns an Apache!^n^nHookgrab disabled.", id
-        server_cmd "sv_hook 0"
+
+        black_plane = find_ent(-1, "monster_blkop_apache")
+        plane = find_ent(-1, "monster_apache")
+
+        if(black_plane && containi(arg,"black") > -1)
+        {
+            if(!bSpec_Apache_Owner_lock)
+            {
+                client_print(0, print_chat, "%n tried to acquire %n Spec Ops Apache", id, pev(black_plane, pev_owner)) 
+                set_pev(black_plane, pev_owner, id)
+                bSpec_Apache_Owner_lock = true
+            }
+            else
+            client_print(0, print_chat, "%n tried to steal %n Apache", id, pev(black_plane, pev_owner))
+        }
+        else if(plane)
+        {
+            if(!bApache_Owner_lock)
+            {
+                client_print(0, print_chat, "%n tried to acquire %n Apache", id, pev(plane, pev_owner))
+                set_pev(plane, pev_owner, id)
+                bApache_Owner_lock = true
+            }
+            else
+            client_print(0, print_chat, "%n tried to steal %n Apache", id, pev(plane, pev_owner) )
+        }
+
+        server_cmd "sv_hook 0"//Rapid Hookgrab possibly makes crashing server an easy task.
+
+        client_print 0, print_chat, "%n made an Apache grab attempt.", id
     }
     else
-        client_print 0 print_chat, "Hey everybody %n thinks he can own Apache as a dead man!", id
+        client_print 0, print_chat, "Hey everybody %n thinks he can own Apache as a dead man!", id
+
+    return PLUGIN_HANDLED;
 }
+
 public clcmd_apache_waypoint(id)
 {
     new bool:bOps
@@ -121,7 +155,7 @@ public clcmd_apache_waypoint(id)
         else if(!find_ent_by_tname(-1, "apache_way_point"))
             way_type = "apache_way_point"
         else goto PRINT
-        
+
         new Float:fplayerorigin[3];
         new ent = create_entity("env_smoker");
         new Float:fsizer
@@ -133,8 +167,8 @@ public clcmd_apache_waypoint(id)
 
         set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
         fm_set_kvd(ent, "scale" , SzScale);
-        
-        fm_set_kvd(ent, "targetname", way_type) 
+
+        fm_set_kvd(ent, "targetname", way_type)
 
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
 
@@ -164,7 +198,7 @@ public clcmd_apache(id)
     if(is_user_alive(id))
     {
         new arg[MAX_PLAYERS]
-        
+
         read_argv(1,arg,charsmax(arg))
         new plane_type[MAX_PLAYERS]
 
@@ -183,8 +217,8 @@ public clcmd_apache(id)
 
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
 
-        fplayerorigin[1] += 50.0 //offside
-        fplayerorigin[2] += 100.0 //overhead
+        fplayerorigin[1] += 150.0 //offside offset
+        fplayerorigin[2] += 250.0 //overhead offset
 
         entity_set_origin(apache, fplayerorigin);
 
