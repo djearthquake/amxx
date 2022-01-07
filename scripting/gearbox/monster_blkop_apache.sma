@@ -95,14 +95,13 @@ public clcmd_apache_waypoint(id)
         set_pev(ent, pev_health, get_pcvar_float(g_puff_hp)); //ctrl how long smoke lasts
         fm_set_kvd(ent, "scale" , SzScale);
         
-        bOps ? fm_set_kvd(ent, "targetname", "blk_apache_way_point") : fm_set_kvd(ent, "targetname", "apache_way_point")
+        fm_set_kvd(ent, "targetname", way_type) 
 
         entity_get_vector(id, EV_VEC_origin, fplayerorigin);
 
         fplayerorigin[1] += 50.0
         entity_set_origin(ent, fplayerorigin);
 
-        //set_pev(ent, pev_owner, id)
 
         dllfunc( DLLFunc_Spawn, ent )
     }
@@ -148,7 +147,7 @@ public clcmd_apache(id)
 
         entity_set_origin(apache, fplayerorigin);
 
-        //set_pev(apache, pev_owner, id)
+        //set_pev(apache, pev_owner, id) //If you want credit for it's work. Rapid Hookgrab makes crashing server an easy task.
 
         fm_set_kvd(apache, "rendermode", "0"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
         fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
