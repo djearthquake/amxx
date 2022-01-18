@@ -3,6 +3,7 @@
 #include amxmodx
 #include amxmisc
 #define MAX_CMD_LENGTH             128
+#define MAX_MOTD_LENGTH            1536
 #define PLUGIN  "safe_mode"
 new Xsafe
 new SzSave[MAX_CMD_LENGTH]
@@ -38,7 +39,7 @@ public plugin_init()
 
 public ReadSafeModeFromFile( )
 {
-    new szDataFromFile[ MAX_CMD_LENGTH ]
+    new szDataFromFile[ MAX_MOTD_LENGTH ]
     new szFilePath[ MAX_CMD_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), "/safe_mode.ini" )
