@@ -13,7 +13,13 @@ new g_cvar_debugger
 enum _:Safe_Mode
 {
     SzMaps[ MAX_NAME_LENGTH ],
-    SzPlugins[ MAX_NAME_LENGTH ]
+    SzPlugin1[ MAX_NAME_LENGTH ],
+    SzPlugin2[ MAX_NAME_LENGTH ],
+    SzPlugin3[ MAX_NAME_LENGTH ],
+    SzPlugin4[ MAX_NAME_LENGTH ],
+    SzPlugin5[ MAX_NAME_LENGTH ],
+    SzPlugin6[ MAX_NAME_LENGTH ],
+    SzPlugin7[ MAX_NAME_LENGTH ]
 }
 new Data[ Safe_Mode ]
 
@@ -61,11 +67,18 @@ public ReadSafeModeFromFile( )
         (
             szDataFromFile,
             Data[ SzMaps], charsmax( Data[ SzMaps ] ),
-            Data[ SzPlugins ], charsmax( Data[SzPlugins] )
+            Data[ SzPlugin1 ], charsmax( Data[SzPlugin1] ),
+            Data[ SzPlugin2 ], charsmax( Data[SzPlugin2] ),
+            Data[ SzPlugin3 ], charsmax( Data[SzPlugin3] ),
+            Data[ SzPlugin4 ], charsmax( Data[SzPlugin4] ),
+            Data[ SzPlugin5 ], charsmax( Data[SzPlugin5] ),
+            Data[ SzPlugin6 ], charsmax( Data[SzPlugin6] ),
+            Data[ SzPlugin7 ], charsmax( Data[SzPlugin7] )
         )
 
         if(debugger)
-            server_print "Read %s,%i^n^nfrom file",Data[ SzMaps ], Data[ SzPlugins ]
+            server_print "Read %s^n%s^n%s^n%s^n%s^n%s^n%s,%i^n^nfrom file",Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ], Data[ SzPlugin5 ], Data[ SzPlugin6 ], Data[ SzPlugin7 ]
+
         TrieSetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data )
 
     }
@@ -105,7 +118,15 @@ public ReadSafeModeFromFile( )
 
         write_file(szFilePath, SzSave)
 
-        write_file(szFilePath, Data[ SzPlugins ])
+        //write_file(szFilePath, Data[ SzPlugins ])
+        write_file(szFilePath, Data[ SzPlugin1 ])
+        write_file(szFilePath, Data[ SzPlugin2 ])
+        write_file(szFilePath, Data[ SzPlugin3 ])
+        write_file(szFilePath, Data[ SzPlugin4 ])
+        write_file(szFilePath, Data[ SzPlugin5 ])
+        write_file(szFilePath, Data[ SzPlugin6 ])
+        write_file(szFilePath, Data[ SzPlugin7 ])
+
 
         client_print 0,print_chat, "reloading %s", mname
         server_print"reloading %s", mname
