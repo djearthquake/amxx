@@ -21,7 +21,7 @@ new g_fun_train, g_path_corn
 
 public plugin_init()
 {
-    register_plugin("Crzzy Train", "A", ".sρiηX҉.");
+    register_plugin("Crazy Train", "A", ".sρiηX҉.");
     server_print "%i trains modified!",g_fun_train
     server_print "%i paths modified!",g_path_corn
 }
