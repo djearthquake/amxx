@@ -14,7 +14,7 @@
 #define MAX_USER_INFO_LENGTH       256
 #define charsmin                  -1
 
-#define OK if(is_user_connected(id) && !is_user_bot(id)
+#define OK if(is_user_connected(id) //|| is_user_hltv(id) /*&& !is_user_bot(id)*/
 new bool:g_spectating[MAX_PLAYERS]
 new g_spec_msg
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
@@ -40,7 +40,7 @@ public plugin_init()
 
 @reset(id)
 {
-    if(!g_spectating[id] && is_user_connected(id) && !is_user_bot(id))
+    if(!g_spectating[id] && is_user_connected(id) || is_user_hltv(id) && !is_user_bot(id) && !is_user_hltv(id))
     {
         set_user_godmode(id,false)
         g_spectating[id] = false
@@ -53,11 +53,15 @@ public plugin_init()
 }
 
 public client_putinserver(id)
-OK)(get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id))
+OK)
+{
+    get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id)
+}
 
 @go_spec(id)
 {
-    if(!is_user_bot(id))
+    if(!is_user_bot(id) && !is_user_hltv(id))
+    if(is_user_alive(id))
     {
         fm_strip_user_weapons(id)
         OK)
