@@ -102,7 +102,7 @@
     new ClientCity[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
     new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
     new ClientRegion[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
-    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH_V6]
+    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
     new g_ClientTemp[MAX_PLAYERS+1][MAX_IP_LENGTH]
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
@@ -136,7 +136,7 @@
 
     enum _:Client_temp
     {
-        SzAddress[ MAX_IP_LENGTH_V6 ],
+        SzAddress[ MAX_IP_LENGTH ],
         SzCountry[ MAX_RESOURCE_PATH_LENGTH ],
         SzCity[ MAX_RESOURCE_PATH_LENGTH ],
         SzRegion[ MAX_RESOURCE_PATH_LENGTH ],
