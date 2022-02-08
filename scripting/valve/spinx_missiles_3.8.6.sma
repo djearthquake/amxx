@@ -1,4 +1,5 @@
-//#define CSTRIKE /*uncomment for continued cstrike buy system.*/
+
+#define CSTRIKE /*uncomment for continued cstrike buy system.*/
 ///comment or uncomment to switch between cstrike or non-cstrike mods
 //#define TEST //missile menu shoots non-lethal
 /**
@@ -329,6 +330,23 @@
 *  *END* customizable section of code. other changes can be done with the cvars    *
 *                                                                                  *
 ************************************************************************************/
+#define MAX_PLAYERS                32
+
+#define MAX_RESOURCE_PATH_LENGTH   64
+
+#define MAX_MENU_LENGTH            512
+
+#define MAX_NAME_LENGTH            32
+
+#define MAX_AUTHID_LENGTH          64
+
+#define MAX_IP_LENGTH              16
+
+#define MAX_USER_INFO_LENGTH       256
+
+#define MAX_MOTD_LENGTH            1536
+
+#define charsmin                  -1
 
 #define DT 0.1
 #define PI 3.1415926535897932384626433832795
@@ -795,10 +813,6 @@ do_victim(victim,attacker,damage,unarmed,tk){
                 set_user_frags(attacker,get_user_frags(attacker) - 1 )
             }
 
-            //set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
-            if(cstrike_running())
-                set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-            if(!cstrike_running())
                 set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
 
             fakedamage(victim," Missile",500.0,DMG_MORTAR);
@@ -1732,7 +1746,7 @@ public guide_rocket_het(args[]){
     origin[2] = floatround(fl_origin[2])
 
     new soutput[8],output
-    get_user_info(args[6],"info_target",soutput,7)
+    get_user_info(args[6],"info_target",soutput,charsmax(soutput))
     output = str_to_num(soutput)
     if(hookgrabtask[args[6]] == 1)
         output = 1
@@ -1754,7 +1768,7 @@ public guide_rocket_het(args[]){
         for(new i = 0 ;i < inum ;++i){
             if(players[i] != id){
                 setc(soutput,8,0)
-                get_user_info(players[i],"info_target",soutput,7)
+                get_user_info(players[i],"info_target",soutput,charsmax(soutput))
                 output = str_to_num(soutput)
                 if(hookgrabtask[players[i]] == 1)
                     output = 1
