@@ -68,13 +68,38 @@
 #include <amxmisc>
 #include <engine>
 #include <fakemeta>
+#include fakemeta_util
 #include <cstrike>
 #include <fun>
+#include <hamsandwich>
+#define MAX_PLAYERS                32
+
+#define MAX_RESOURCE_PATH_LENGTH   64
+
+#define MAX_MENU_LENGTH            512
+
+#define MAX_NAME_LENGTH            32
+
+#define MAX_AUTHID_LENGTH          64
+
+#define MAX_IP_LENGTH              16
+
+#define MAX_USER_INFO_LENGTH       256
+
+#define charsmin                  -1
+
+#if !defined get_pcvar_bool
+#define get_pcvar_bool get_pcvar_num
+#define true 1
+#define false 0
+#endif
 
 new bool:has_parachute[ MAX_PLAYERS +1 ]
 new para_ent[ MAX_PLAYERS +1 ]
 new gCStrike = 0
 new pDetach, pFallSpeed, pEnabled, pCost, pPayback, pAutoDeploy /*MAY2020*/,pAutoRules /*MAY2020*/;
+new g_safemode //op4 crashes when destroying parachute
+new character_parachute_model[MAX_NAME_LENGTH +1][MAX_NAME_LENGTH +1]
 
 new const LOST_CHUTE_SOUND[] = "misc/erriewind.wav"
 new const PARA_MODELO[] = "models/parachute.mdl"
@@ -82,12 +107,11 @@ new const PARA_MODELW[] = "models/Parachute_wings.mdl"
 new const PARA_MODEL[] = "models/parachute2.mdl"
 //new const PARA_MODELV[] = "models/parachute_new.mdl" //future
 
-new g_model, Float:g_fbox, g_packHP;
+new g_model, g_modelw, g_modelo, Float:g_fbox, g_packHP;
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
-#define g_fbox 35.0 //chute pack size. Can make into cvar.
-#define g_packHP 35
-
+#define g_fbox 15.0 //chute pack size. Can make into cvar.
+new const battery[]  = "models/w_battery.mdl"
 public plugin_init()
 {
     register_plugin("Parachute", "1.7", "SPiNX/KRoT@L/JTP")
@@ -96,6 +120,8 @@ public plugin_init()
     pDetach     = register_cvar("parachute_detach", "1")
     pAutoDeploy = register_cvar("parachute_autorip", "200")
     pAutoRules  = register_cvar("parachute_autoadmin", "2") //0|off 1|admin 2|all
+    g_safemode  = register_cvar("parachute_safemode", "true")
+    g_packHP    = register_cvar("parachute_health", "75")
     if (cstrike_running()) gCStrike = true
 
     if (gCStrike) {
@@ -109,9 +135,12 @@ public plugin_init()
     register_clcmd("say", "HandleSay")
     register_clcmd("say_team", "HandleSay")
 
-    register_event("ResetHUD", "newSpawn", "be")
-    register_event("DeathMsg", "death_event", "a")
-    register_forward(FM_PlayerPreThink, "client_prethink")
+    //register_event("ResetHUD", "newSpawn", "be")
+    RegisterHam(Ham_Spawn, "player", "newSpawn", 1);
+    RegisterHam(Ham_Killed, "player", "death_event", 1);
+    //RegisterHam(Ham_Use, "player", "parachute_think", 1);
+    //register_event("DeathMsg", "death_event", "a")
+    register_forward(FM_PlayerPreThink, "parachute_think", 1)
 
     //Setup jtp10181 CVAR
     new cvarString[MAX_USER_INFO_LENGTH], shortName[MAX_IP_LENGTH]
@@ -154,13 +183,35 @@ public native_filter(const name[], index, trap)
 
 public plugin_precache()
 {
+    precache_model("models/w_battery.mdl")
+    precache_generic("models/w_battery.mdl")
+
     precache_sound(LOST_CHUTE_SOUND);
-    precache_generic("sound/debris/bustglass1.wav");
-    precache_model("models/glassgibs.mdl");
+    precache_generic("sound/misc/erriewind.wav")
+
+    g_model = precache_model("models/glassgibs.mdl");
+    precache_generic("models/glassgibs.mdl");
+
+    precache_sound("debris/bustglass2.wav");
     precache_generic("sound/debris/bustglass2.wav");
+    
+    precache_sound("debris/bustglass1.wav");
+    precache_generic("sound/debris/bustglass1.wav");
+
+    precache_sound("debris/metal1.wav");
+    precache_generic("sound/debris/metal1.wav");
+    
+    precache_sound("/debris/metal2.wav");
+    precache_generic("sound/debris/metal2.wav");
+
+    precache_model("sprites/fexplo.spr")
+    precache_generic("sprites/fexplo.spr")
 
     if (file_exists(PARA_MODEL))
-        precache_model(PARA_MODEL);
+    {
+        precache_model(PARA_MODEL)
+        precache_generic(PARA_MODEL);
+    }
 
     else
 
@@ -170,7 +221,10 @@ public plugin_precache()
         }
 
     if (file_exists(PARA_MODELO))
-        precache_model(PARA_MODELO);
+    {
+        precache_model(PARA_MODELO)
+        precache_generic(PARA_MODELO)
+    }
 
     else
 
@@ -180,8 +234,10 @@ public plugin_precache()
         }
 
     if (file_exists(PARA_MODELW))
-        g_model = precache_model(PARA_MODELW);
-
+    {
+        precache_model(PARA_MODELW)
+        precache_generic(PARA_MODELW);
+    }
     else
 
         {
@@ -190,10 +246,347 @@ public plugin_precache()
         }
 }
 
-public client_connect(id)
+
+parachute_reset(id)
 {
-    parachute_reset(id)
+    if(is_user_connected(id) && is_user_bot(id) || is_user_connected(id) && !is_user_bot(id))
+    {
+        set_user_gravity(id, 1.0)
+        server_print "Resetting chute for %n", id
+        if(task_exists(id))remove_task(id);
+        server_print "Removed chute task for %n", id
+        server_print "reset task for %n", id
+        //para_ent[id] = 0
+        server_print "Set ent to 0 for %n", id
+        para_ent[id] = 0
+        if(para_ent[id] > 0)
+        {
+            server_print "PAST Set ent to 0 for %n", id
+            if (is_valid_ent(para_ent[id])) {
+                server_print "Removing para_ent for %n", id
+                //if(cstrike_running())
+                //set_pev(para_ent[id], pev_flags, pev(para_ent[id], pev_flags) | FL_KILLME);
+                remove_entity(para_ent[id])
+                //else pev(para_ent[id],FL_KILLME)
+            }
+        }
+    }
 }
+
+public newSpawn(id)
+{
+    if( (para_ent[id] > 0) && is_valid_ent(para_ent[id]) )
+    {
+        remove_entity(para_ent[id])
+        set_user_gravity(id, 1.0)
+        para_ent[id] = 0
+    }
+
+    if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0)
+        has_parachute[id] = true
+}
+
+public parachute_think(id)
+{
+    /*
+     * parachute.mdl animation information
+     * 0 - deploy - 84 frames
+     * 1 - idle - 39 frames
+     * 2 - detach - 29 frames
+     */
+    if(is_user_alive(id))
+    {
+
+        new Rip_Cord = get_pcvar_num(pAutoDeploy);
+        new AUTO;
+    
+        if (get_pcvar_num(pAutoRules) == 1 && is_user_admin(id) || get_pcvar_num(pAutoRules) == 2)
+            AUTO = (pev(id,pev_flFallVelocity) >= (get_pcvar_num(pFallSpeed) + Rip_Cord) )
+
+
+        if (pev(id,pev_flFallVelocity) < (get_pcvar_num(pFallSpeed)) && !is_user_bot(id) ) //Destroyed chute whirlwind sound stop
+            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+    
+        if (!get_pcvar_num(pEnabled)) return
+    
+        //if (!is_user_alive(id) || !is_user_connected(id)/*fix jkbotti*/|| !has_parachute[id]) return //possible postthink
+    
+        if (has_parachute[id])
+        {
+            new Float:frame
+        
+            new button = get_user_button(id)
+            new oldbutton = get_user_oldbutton(id)
+        
+            new flags = get_entity_flags(id)
+            new Float:fallspeed = get_pcvar_float(pFallSpeed) * -1.0
+        
+            if( (is_valid_ent(para_ent[id])) && (para_ent[id] > 0 && (flags & FL_ONGROUND)) )
+            {
+        
+                if (get_pcvar_num(pDetach))
+                {
+                    if (is_user_alive(id))
+                    if (get_user_gravity(id) == 0.1)
+                    set_user_gravity(id, 1.0)
+                    if( (is_valid_ent(para_ent[id]))(entity_get_int(para_ent[id],EV_INT_sequence) != 2) )
+                    {
+                        if(is_valid_ent(para_ent[id]))entity_set_int(para_ent[id], EV_INT_sequence, 2)
+                        if(is_valid_ent(para_ent[id]))entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
+                        if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_frame, 0.0)
+                        if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
+                        if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_animtime, 0.0)
+                        if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_framerate, 0.0)
+                        return
+                    }
+        
+                    frame = entity_get_float(para_ent[id],EV_FL_fuser1) + 2.0
+                    entity_set_float(para_ent[id],EV_FL_fuser1,frame)
+                    entity_set_float(para_ent[id],EV_FL_frame,frame)
+        
+                    if (frame > 254.0)
+                    {
+                        remove_entity(para_ent[id])
+                        para_ent[id] = 0
+                        if(task_exists(id))remove_task(id);
+                    }
+                }
+                else
+                {
+                    remove_entity(para_ent[id])
+                    set_user_gravity(id, 1.0)
+                    para_ent[id] = 0
+                }
+        
+                return
+            }
+        
+        
+            if(button & IN_USE|AUTO && has_parachute[id])
+            {
+                new Float:velocity[3]
+                entity_get_vector(id, EV_VEC_velocity, velocity)
+        
+                if (velocity[2] < 0.0)
+                {
+        
+                    if(para_ent[id] <= 0)
+                    {
+        
+                        new Float:minbox[3] = { -g_fbox, -g_fbox, -g_fbox }
+                        new Float:maxbox[3] = { g_fbox, g_fbox, 2.0 }
+                        new Float:angles[3] = { 0.0, 0.0, 0.0 }
+        
+                        if ( cstrike_running() ||  is_running("dod") == 1 || is_running("gearbox") == 1 && !get_pcvar_bool(g_safemode)) 
+                        //update mod list at your own risk. DoD should be fine.
+                        {
+                            para_ent[id] = create_entity("func_breakable")
+                            //para_ent[id] = create_entity("env_smoker")
+                            set_pev(para_ent[id],pev_classname,"parachute")
+                        }
+        
+                        else
+                        if(is_running("gearbox") == 1 && get_pcvar_bool(g_safemode))
+                        para_ent[id] = create_entity("info_target")
+        
+                        if(para_ent[id] > 0)
+        
+                        {
+                            entity_set_string(para_ent[id],EV_SZ_targetname,"player_parachute")
+                            entity_set_edict(para_ent[id], EV_ENT_aiment, id)
+                            entity_set_edict(para_ent[id], EV_ENT_owner, id)
+                            entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
+    
+                            if( is_user_bot(id) )
+                                entity_set_model(para_ent[id], PARA_MODELW);
+        
+                            if( is_user_admin(id) )
+                                entity_set_model(para_ent[id], PARA_MODEL);
+        
+                            if( !is_user_bot(id) && !is_user_admin(id) )
+        
+                            {
+                                entity_set_model(para_ent[id], PARA_MODELO);
+                                //set_task(0.1, "colorize", id, "", 0, "b");
+                            }
+    
+                            entity_set_size(para_ent[id], minbox, maxbox )
+                            set_pev(para_ent[id],pev_angles,angles)
+                            set_pev(para_ent[id],pev_solid,SOLID_BBOX)
+        
+                            if ( is_running("gearbox") == 1 && get_pcvar_bool(g_safemode))
+                                set_pev(para_ent[id],pev_takedamage, DAMAGE_NO) //unstable could cause crash
+        
+                            if(cstrike_running() || (is_running("gearbox") == 1 && get_pcvar_bool(g_safemode) == false ))
+                            {
+                                DispatchKeyValue(para_ent[id], "explodemagnitude", "50")
+                                set_pev(para_ent[id],pev_takedamage, DAMAGE_YES)  //DAMAGE_AIM
+                            }
+        
+                            //Give the parachute health so we can destory it later in a fight.
+                            entity_set_float(para_ent[id], EV_FL_health, get_pcvar_float(g_packHP))
+        
+                            entity_set_int(para_ent[id], EV_INT_sequence, 0)
+                            entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
+                            entity_set_float(para_ent[id], EV_FL_frame, 0.0)
+                            entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
+                            //DispatchKeyValue(para_ent[id], "gibmodel", "models/w_battery.mdl");
+                            //DispatchKeyValue(para_ent[id], "material", "1")
+                            //DispatchKeyValue(para_ent[id], "spawnobject", "1")
+                             /*
+                            new Float:origin[3];
+                            fm_get_brush_entity_origin(para_ent[id], origin)
+                            new Float:mins[3], Float:maxs[3]
+                    
+                            mins[0] = origin[0] - g_fbox
+                            mins[1] = origin[1] - g_fbox
+                            mins[2] = origin[2] + 25.0
+                    
+                            maxs[0] = origin[0] + g_fbox
+                            maxs[1] = origin[1] + g_fbox
+                            maxs[2] = origin[2] + 2.0
+                    
+                            message_begin(0,23);
+                            write_byte(TE_BOX);
+                            write_coord(floatround(maxs[0]));
+                            write_coord(floatround(maxs[1]));
+                            write_coord(floatround(maxs[2]));
+                            write_coord(floatround(mins[0]));
+                            write_coord(floatround(mins[1]));
+                            write_coord(floatround(mins[2]));
+                            write_short(random_num(500,1000));   //(life in 0.1's)
+                            write_byte(random_num(50,255));     //(red)
+                            write_byte(random_num(50,255));   //(green)
+                            write_byte(random_num(0,255));   //(blue)
+                            message_end();
+                            */
+            
+                        }
+                    }
+                    if (is_valid_ent(para_ent[id]) && para_ent[id] > 0)
+                    {
+                        entity_set_int(id, EV_INT_sequence, 3)
+                        entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
+                        entity_set_int(id, EV_INT_gaitsequence, 1)
+                        entity_set_float(id, EV_FL_frame, 1.0)
+                        entity_set_float(id, EV_FL_framerate, 1.0)
+                        set_user_gravity(id, 0.1)
+                        //fm_set_kvd(para_ent[id], "gibmodel", "models/w_battery.mdl")
+        
+        
+                        velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
+                        entity_set_vector(id, EV_VEC_velocity, velocity)
+        
+                        if( (is_valid_ent(para_ent[id])) && (entity_get_int(para_ent[id],EV_INT_sequence) == 0) )
+                        {
+        
+                            frame = entity_get_float(para_ent[id],EV_FL_fuser1) + 1.0
+                            entity_set_float(para_ent[id],EV_FL_fuser1,frame)
+                            entity_set_float(para_ent[id],EV_FL_frame,frame)
+        
+                            if (frame > 100.0 && is_valid_ent(para_ent[id]))
+                            {
+                                entity_set_float(para_ent[id], EV_FL_animtime, 0.0)
+                                entity_set_float(para_ent[id], EV_FL_framerate, 0.4)
+                                entity_set_int(para_ent[id], EV_INT_sequence, 1)
+                                entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
+                                entity_set_float(para_ent[id], EV_FL_frame, 0.0)
+                                entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
+                            }
+                        }
+                    }
+                    if ( para_ent[id] < 1 || !is_valid_ent(para_ent[id]) || (pev(para_ent[id],pev_health)) < 20.0 )
+                    {
+                        !is_user_bot(id)
+                        ?
+                        emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
+                        :
+                        set_user_rendering(id, kRenderFxGlowShell,0,0,0,kRenderNormal,25)
+                        //3 ways end ent. dispatch it, remove, killme
+
+                        //remove_entity(para_ent[id]) 
+                        //set_pev(para_ent[id], pev_flags, pev(para_ent[id], pev_flags) | FL_KILLME);
+                        set_user_gravity(id, 1.0)
+                        //para_ent[id] = 0
+
+                        //Let player know they shot the chute not the player.
+                        set_task(1.5,"chute_pop",id)
+                        server_print "%n parachute destroyed!", id
+                        client_print 0, print_console, "%n parachute destroyed!", id
+                        return;
+                    }
+                }
+                else if (para_ent[id] > 0 && is_valid_ent(para_ent[id]))
+                {
+                    remove_entity(para_ent[id])
+                    set_user_gravity(id, 1.0)
+                    para_ent[id] = 0
+                }
+            }
+            else if ((oldbutton & IN_USE) && para_ent[id] > 0 && is_valid_ent(para_ent[id]))
+            {
+                remove_entity(para_ent[id])
+                set_user_gravity(id, 1.0)
+                para_ent[id] = 0
+            }
+        }
+    }
+}
+
+
+
+
+
+//effects
+public colorize(id)
+{
+    if(is_user_alive(id))
+        set_user_rendering(id,kRenderFxGlowShell,random_num(0,255),random_num(0,255),random_num(0,255),kRenderNormal,25);
+}
+
+public chute_pop(id)
+{
+    //if(is_user_connected(id)) //&& !is_user_bot(id) && cstrike_running()
+    if(is_user_connected(id) && !task_exists(id))
+
+
+    {
+        has_parachute[id] = false
+        server_print("chute pop effect start");
+
+        #define TE_EXPLODEMODEL 107
+        new Origin[3];
+
+        pev(id, pev_origin, Origin)
+
+        message_begin(MSG_BROADCAST,23);
+
+        write_byte(TE_EXPLODEMODEL);
+        write_coord(floatround(Origin[0]+random_float(-11.0,11.0)));
+        write_coord(floatround(Origin[1]-random_float(-11.0,11.0)));
+        write_coord(floatround(Origin[2]+random_float(1.0,75.0)));
+        write_coord(random_num(-150,1000));  //vel
+        write_short(g_model); //model
+        write_short(3); //quantity
+        write_byte(random_num(20,100)); //size
+
+        message_end();
+
+        server_print("chute pop effect ended");
+    }
+    else
+        server_print("Stopped possible chute bug...");
+}
+
+
+
+
+//administrative code/////////////////////////////////
+
+public client_connect(id)
+if(is_user_connected(id) && is_user_bot(id) || is_user_connected(id) && !is_user_bot(id))
+    parachute_reset(id)
+
 
     #if AMXX_VERSION_NUM == 182;
 
@@ -204,46 +597,14 @@ public client_disconnect(id)
 public client_disconnected(id)
 
     #endif
-{
+
     parachute_reset(id)
-}
+
 
 public death_event()
 {
     new id = read_data(2)
     parachute_reset(id)
-}
-
-parachute_reset(id)
-{
-    if(para_ent[id] > 0) {
-        if (is_valid_ent(para_ent[id])) {
-            remove_entity(para_ent[id])
-        }
-    }
-
-    if (is_user_connected(id))
-
-        {
-            set_user_gravity(id, 1.0)
-            if(task_exists(id))remove_task(id);
-            has_parachute[id] = false
-            para_ent[id] = 0
-        }
-}
-
-public newSpawn(id)
-{
-    if( (para_ent[id] > 0) && is_valid_ent(para_ent[id]) ) {
-        remove_entity(para_ent[id])
-        set_user_gravity(id, 1.0)
-        para_ent[id] = 0
-    }
-
-    if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0) {
-        has_parachute[id] = true
-        //set_view(id, CAMERA_3RDPERSON)
-    }
 }
 
 public HandleSay(id)
@@ -434,230 +795,4 @@ public admin_give_parachute(id, level, cid) {
         log_amx("^"%s<%d><%s><>^" gave a parachute to ^"%s<%d><%s><>^"", name,get_user_userid(id),authid,name2,get_user_userid(player),authid2)
     }
     return PLUGIN_HANDLED
-}
-
-public client_prethink(id)
-{
-    /*
-     * parachute.mdl animation information
-     * 0 - deploy - 84 frames
-     * 1 - idle - 39 frames
-     * 2 - detach - 29 frames
-     */
-
-    new Rip_Cord = get_pcvar_num(pAutoDeploy);
-    new AUTO;
-
-    if (get_pcvar_num(pAutoRules) == 1 && is_user_admin(id) || get_pcvar_num(pAutoRules) == 2){
-    AUTO = (pev(id,pev_flFallVelocity) >= (get_pcvar_num(pFallSpeed) + Rip_Cord) );}
-
-    if (pev(id,pev_flFallVelocity) < (get_pcvar_num(pFallSpeed)) ) //Destroyed chute whirlwind sound stop
-    emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-
-    if (!get_pcvar_num(pEnabled)) return
-
-    //if (!is_user_alive(id) || !is_user_connected(id)/*fix jkbotti*/|| !has_parachute[id]) return //possible postthink
-
-    if (is_user_alive(id) && has_parachute[id])
-
-    {
-
-
-    new Float:frame
-
-    new button = get_user_button(id)
-    new oldbutton = get_user_oldbutton(id)
-
-    new flags = get_entity_flags(id)
-    new Float:fallspeed = get_pcvar_float(pFallSpeed) * -1.0
-
-    if( (is_valid_ent(para_ent[id])) && (para_ent[id] > 0 && (flags & FL_ONGROUND)) ){
-
-        if (get_pcvar_num(pDetach)) {
-            if (is_user_alive(id))
-            if (get_user_gravity(id) == 0.1)
-            set_user_gravity(id, 1.0)
-            if( (is_valid_ent(para_ent[id]))(entity_get_int(para_ent[id],EV_INT_sequence) != 2) ) {
-                if(is_valid_ent(para_ent[id]))entity_set_int(para_ent[id], EV_INT_sequence, 2)
-                if(is_valid_ent(para_ent[id]))entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
-                if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_frame, 0.0)
-                if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
-                if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_animtime, 0.0)
-                if(is_valid_ent(para_ent[id]))entity_set_float(para_ent[id], EV_FL_framerate, 0.0)
-                return
-            }
-
-            frame = entity_get_float(para_ent[id],EV_FL_fuser1) + 2.0
-            entity_set_float(para_ent[id],EV_FL_fuser1,frame)
-            entity_set_float(para_ent[id],EV_FL_frame,frame)
-
-            if (frame > 254.0) {
-                remove_entity(para_ent[id])
-                para_ent[id] = 0
-                set_user_rendering(id, kRenderFxGlowShell,0,0,0,kRenderNormal,25);
-                if(task_exists(id))remove_task(id);
-            }
-        }
-        else {
-            remove_entity(para_ent[id])
-            set_user_gravity(id, 1.0)
-            para_ent[id] = 0
-        }
-
-        return
-        }
-
-
-    if(button & IN_USE|AUTO) {
-        new Float:velocity[3]
-        entity_get_vector(id, EV_VEC_velocity, velocity)
-
-        if (velocity[2] < 0.0) {
-
-            if(para_ent[id] <= 0) {
-
-                new Float:minbox[3] = { -g_fbox, -g_fbox, -g_fbox }
-                new Float:maxbox[3] = { g_fbox, g_fbox, g_fbox }
-                new Float:angles[3] = { 0.0, 0.0, 0.0 }
-
-                if ( cstrike_running() ||  is_running("dod") == 1 ) //update mod list at your own risk. DoD should be fine.
-
-                para_ent[id] = create_entity("func_breakable") //take off clipper list!!!
-
-                else
-                para_ent[id] = create_entity("info_target")
-
-                if(para_ent[id] > 0)
-
-                {
-                    entity_set_string(para_ent[id],EV_SZ_targetname,"parachute")
-                    entity_set_edict(para_ent[id], EV_ENT_aiment, id)
-                    entity_set_edict(para_ent[id], EV_ENT_owner, id)
-                    entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
-
-                    if( is_user_bot(id) )
-                        entity_set_model(para_ent[id], PARA_MODELW);
-
-                    if( is_user_admin(id) )
-                        entity_set_model(para_ent[id], PARA_MODEL);
-
-                    if( !is_user_bot(id) && !is_user_admin(id) )
-
-                        {
-                            entity_set_model(para_ent[id], PARA_MODELO);
-                            //set_task(0.1, "colorize", id, "", 0, "b");
-                        }
-
-                    entity_set_size(para_ent[id], minbox, maxbox )
-                    set_pev(para_ent[id],pev_angles,angles)
-                    set_pev(para_ent[id],pev_solid,SOLID_BBOX)
-
-                    if ( is_running("gearbox") == 1 )
-                        set_pev(para_ent[id],pev_takedamage, DAMAGE_NO) //unstable could cause crash
-
-                    if(cstrike_running() && is_user_alive(id) )
-                        set_pev(para_ent[id],pev_takedamage, DAMAGE_YES)  //DAMAGE_AIM
-
-                    //Give the parachute health so we can destory it later in a fight.
-                    entity_set_float(para_ent[id], EV_FL_health, g_packHP*1.0) //Cvar later?
-
-                    entity_set_int(para_ent[id], EV_INT_sequence, 0)
-                    entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
-                    entity_set_float(para_ent[id], EV_FL_frame, 0.0)
-                    entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
-                }
-            }
-            if (is_valid_ent(para_ent[id]))
-            if(para_ent[id] > 0) {
-                entity_set_int(id, EV_INT_sequence, 3)
-                entity_set_int(id, EV_INT_gaitsequence, 1)
-                entity_set_float(id, EV_FL_frame, 1.0)
-                entity_set_float(id, EV_FL_framerate, 1.0)
-                set_user_gravity(id, 0.1)
-
-
-
-                if ( is_valid_ent(para_ent[id]) && (pev(para_ent[id],pev_health)) < 5.0 )
-                {
-                    emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH);
-                    //Let player know they shot the chute not the player.
-                    chute_pop(id);
-                    server_print("Parachute destroyed!");
-                    parachute_reset(id);
-                    return;
-
-                }
-
-                velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
-                entity_set_vector(id, EV_VEC_velocity, velocity)
-
-                if( (is_valid_ent(para_ent[id])) && (entity_get_int(para_ent[id],EV_INT_sequence) == 0) ){
-
-                    frame = entity_get_float(para_ent[id],EV_FL_fuser1) + 1.0
-                    entity_set_float(para_ent[id],EV_FL_fuser1,frame)
-                    entity_set_float(para_ent[id],EV_FL_frame,frame)
-
-                    if (frame > 100.0) {
-                        entity_set_float(para_ent[id], EV_FL_animtime, 0.0)
-                        entity_set_float(para_ent[id], EV_FL_framerate, 0.4)
-                        entity_set_int(para_ent[id], EV_INT_sequence, 1)
-                        entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
-                        entity_set_float(para_ent[id], EV_FL_frame, 0.0)
-                        entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
-                    }
-                }
-            }
-        }
-        else if (para_ent[id] > 0 ) {
-            remove_entity(para_ent[id])
-            set_user_gravity(id, 1.0)
-            para_ent[id] = 0
-        }
-    }
-    else if ((oldbutton & IN_USE) && para_ent[id] > 0 ) {
-        remove_entity(para_ent[id])
-        set_user_gravity(id, 1.0)
-        para_ent[id] = 0
-    }
-
-    }
-
-
-}
-
-public colorize(id)
-{
-    if(is_user_connected(id))
-        set_user_rendering(id,kRenderFxGlowShell,random_num(0,255),random_num(0,255),random_num(0,255),kRenderNormal,25);
-}
-
-public chute_pop(id)
-{
-
-    if(is_user_connected(id) && !is_user_bot(id) && cstrike_running())
-
-    {
-        server_print("chute pop effect start");
-        #define TE_EXPLODEMODEL 107
-        new Origin[3];
-
-        pev(id, pev_origin, Origin)
-
-        emessage_begin(MSG_BROADCAST,23);
-
-        ewrite_byte(TE_EXPLODEMODEL);
-        ewrite_coord(floatround(Origin[0]+random_float(-11.0,11.0)));
-        ewrite_coord(floatround(Origin[1]-random_float(-11.0,11.0)));
-        ewrite_coord(floatround(Origin[2]+random_float(1.0,75.0)));
-        ewrite_coord(random_num(-150,1000)); 
-        ewrite_short(g_model);
-        ewrite_short(1);
-        ewrite_byte(random_num(20,100));
-
-        emessage_end();
-
-        server_print("chute pop effect ended");
-    }
-    else
-        server_print("Stopped possible chute bug...");
 }
