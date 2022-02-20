@@ -44,18 +44,23 @@
 *    Change log 1.4 to 1.5
 *    -Interfaced with the queue made on proxysnort.sma
 *
-*    11/026/2021 SPiNX
+*    11/26/2021 SPiNX
 *    Change log 1.5 to 1.6
 *    -Remade array based off the IP instead of client index.
 *    -Tuned plugin to be more misery when debug is off.
 *    -Assured all the GoldSrc mods can run this when putin server.
+*
+*    02/19/2022 SPiNX
+*    Change log 1.6 to 1.7
+*    -Added type https://proxycheck.io/api/#type_responses
+*
 */
 #include <amxmodx>
 #include <amxmisc>
 #include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.6"
+#define VERSION "1.7"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -76,26 +81,30 @@
 #define MAX_CMD_LENGTH             128
 #define charsmin                  -1
 #define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
-new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.0^nHost: proxycheck.io^n^n"
+new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
 new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new proxy_socket_buffer[ MAX_MENU_LENGTH ], g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
-new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ], provider[MAX_RESOURCE_PATH_LENGTH];
+new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ];
+new provider[MAX_RESOURCE_PATH_LENGTH], type[ MAX_NAME_LENGTH ];
 new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin, g_maxPlayers;
 new const MESSAGE[] = "Proxysnort by Spinx"
-new risk[ 4 ], g_cvar_debugger;
-new bool:IS_SOCKET_IN_USE
-new bool:g_has_been_checked[MAX_PLAYERS]
-new Trie:g_already_checked
-new g_clientemp_version
-new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH]
-new SzSave[MAX_CMD_LENGTH]
+new const SzBootmsg[] = "^"Anonymizing is NOT allowed!^""
+new risk[ 3 ];
+new g_cvar_debugger;
+new bool:IS_SOCKET_IN_USE;
+new bool:g_has_been_checked[MAX_PLAYERS];
+new Trie:g_already_checked;
+new g_clientemp_version;
+new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
+new SzSave[MAX_CMD_LENGTH];
 
 enum _:Client_proxy
 {
     SzAddress[ MAX_IP_LENGTH_V6 ],
     SzIsp[ MAX_RESOURCE_PATH_LENGTH ],
-    SzProxy[ 2 ],
-    iRisk[ 4]
+    SzType[ MAX_NAME_LENGTH ],
+    SzProxy[ 3 ],
+    iRisk[ 3 ]
 }
 new Data[ Client_proxy ]
 
@@ -270,23 +279,29 @@ stock get_user_profile(id)
     bright_message()
     if(is_user_connected(id) || is_user_connecting(id))
     {
+        new iAction = g_cvar_iproxy_action
         if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
         {
             for (new admin=1; admin<=g_maxPlayers; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
-            client_cmd( 0,"spk ^"bad entry detected^"" )
+            client_cmd 0, "spk ^"bad entry detected^""
         }
-        //ban steamid
-        if (get_pcvar_num(g_cvar_iproxy_action) == 3)
-            server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
-        //ban ip
-        if (get_pcvar_num(g_cvar_iproxy_action) == 2)
-            server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
-        //kick
-        if (get_pcvar_num(g_cvar_iproxy_action) == 1)
-            server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
+        switch(iAction)
+        {
+            //ban steamid
+            case 3:
+                server_cmd "amx_addban ^"%s^" ^"60^" %s", authid, SzBootmsg
+            //ban ip
+            case 2:
+                server_cmd "amx_addban ^"%s^" ^"0^" %s", Ip, SzBootmsg
+            //kick
+            case 1:
+                server_cmd "kick #%d SzBootmsg", get_user_userid(id)
+        }
+
     }
+
 }
 @read_web(proxy_snort)
 {
@@ -374,22 +389,59 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
-                //plus buffer much be size of including quotes
-                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 6], '}')
+                //plus buffer much be size of including quotes .. have had history of run-time errors out of bounds on risk strictly. Exploding string would work finer except not allowing tolerences yet.
+                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 9], '"')
+                /*
+                ///https://proxycheck.io/api/#test_console
+                {
+                    "status": "ok",
+                    "1.10.176.179": {
+                        "proxy": "yes",
+                        "type": "SOCKS",
+                        "risk": "96",
+                        "attack history": {
+                            "Total": "32",
+                            "Vulnerability Probing": "7",
+                            "Forum Spam": "5",
+                            "Login Attempt": "10",
+                            "Registration Attempt": "10"
+                        }
+                    }
+                }
+                * */
+                //copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 9])
                 Data[iRisk] = risk
+
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
                 {
-                    server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                    new iRisk_conv = str_to_num(Data[iRisk])
+                    server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
                     if(get_pcvar_num(g_cvar_debugger) > 2 )
-                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
                     for (new admin=1; admin<=g_maxPlayers; admin++)
                         if (is_user_connected(admin) && is_user_admin(admin))
-                    client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, str_to_num(risk)
+                    client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
                 }
+                if (containi(proxy_socket_buffer, "type") != charsmin)
+                {
+                    copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer, "type") + 9], ',')
+                    if( !equal(type, "") )
+                    {
+                        Data[SzType] = type
+                        TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                        for (new admin=1; admin<=g_maxPlayers; admin++)
+                            if (is_user_connected(admin) && is_user_admin(admin))
+                        client_print admin, print_chat, "%s is on %s.", name, type
+                    }
+
+                }
+
                 g_has_been_checked[id] = true
                 socket_close(g_proxy_socket);
-                if(get_pcvar_num(g_cvar_debugger) > 4 ) bright_message();
+
+                if(get_pcvar_num(g_cvar_debugger) > 4 )
+                    bright_message();
             }
             else if (containi(proxy_socket_buffer, "risk") == charsmin)
             {
@@ -436,7 +488,6 @@ stock get_user_profile(id)
     }
     return PLUGIN_HANDLED
 }
-
 @client_mark_socket(id)
 {
     IS_SOCKET_IN_USE = false;
@@ -489,7 +540,6 @@ stock get_user_profile(id)
 
     write_file(szFilePath, SzSave)
 }
-
 public ReadProxyFromFile( )
 {
     new szDataFromFile[ MAX_CMD_LENGTH ]
