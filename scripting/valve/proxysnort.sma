@@ -390,7 +390,7 @@ stock get_user_profile(id)
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
                 //plus buffer much be size of including quotes .. have had history of run-time errors out of bounds on risk strictly. Exploding string would work finer except not allowing tolerences yet.
-                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 9], '"')
+                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8], '"')
                 /*
                 ///https://proxycheck.io/api/#test_console
                 {
@@ -409,7 +409,7 @@ stock get_user_profile(id)
                     }
                 }
                 * */
-                //copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 9])
+                //copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8])
                 Data[iRisk] = risk
 
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
@@ -425,7 +425,7 @@ stock get_user_profile(id)
                 }
                 if (containi(proxy_socket_buffer, "type") != charsmin)
                 {
-                    copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer, "type") + 9], ',')
+                    copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer, "type") + 8], '"')
                     if( !equal(type, "") )
                     {
                         Data[SzType] = type
