@@ -97,7 +97,6 @@ new Trie:g_already_checked;
 new g_clientemp_version;
 new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
 new SzSave[MAX_CMD_LENGTH];
-
 enum _:Client_proxy
 {
     SzAddress[ MAX_IP_LENGTH_V6 ],
@@ -107,7 +106,6 @@ enum _:Client_proxy
     iRisk[ 3 ]
 }
 new Data[ Client_proxy ]
-
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
@@ -134,55 +132,51 @@ public plugin_init()
     Data[ SzProxy ] = 1
     if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-
     formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
     @file_data(SzSave)
     ReadProxyFromFile( )
-
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id) || g_has_been_checked[id])
-        return PLUGIN_HANDLED_MAIN
-
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
+    if(is_user_connected(id))
     {
-        static SzLoopback[] = "127.0.0.1"
-
-        get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
-        new total = iPlayers()
-        Data[SzAddress] = ip
-
-        if(equali(ip,SzLoopback))
-            client_proxycheck(ip,id)
-
-        else if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+        if(is_user_bot(id) || g_has_been_checked[id] || id == 0)
+            return PLUGIN_HANDLED_MAIN
+        if(!is_user_bot(id) && id > 0)
         {
-            new Float:retask = (float(total++)*3.0)
-            new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
-            server_print "%s task input time = %f", PLUGIN,task_expand
+            static SzLoopback[] = "127.0.0.1"
+            get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
+            new total = iPlayers()
             Data[SzAddress] = ip
-            TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-            if(!task_exists(id))
-                set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
-        }
-        else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
-        {
-            @handle_proxy_user(id)
-            server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
+            if(equali(ip,SzLoopback))
+                client_proxycheck(ip,id)
+            else if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+            {
+                new Float:retask = (float(total++)*3.0)
+                new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
+                server_print "%s task input time = %f", PLUGIN,task_expand
+                Data[SzAddress] = ip
+                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                if(!task_exists(id))
+                    set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+            }
+            else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
+            {
+                @handle_proxy_user(id)
+                server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
+            }
+            else
+                server_print "[%s] %s is ok^n^n%s", PLUGIN, Data[ SzAddress ],Data[SzIsp]
         }
         else
-            server_print "[%s] %s is ok^n^n%s", PLUGIN, Data[ SzAddress ],Data[SzIsp]
-
-
+        {
+            get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
+            if(!equali(ClientAuth[id], "BOT"))
+                @handle_proxy_user(id)
+        }
+        return PLUGIN_CONTINUE
     }
-    else
-    {
-        get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
-        if(!equali(ClientAuth[id], "BOT"))
-            @handle_proxy_user(id)
-    }
-    return PLUGIN_CONTINUE
+    return PLUGIN_HANDLED
 }
 public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
 {
@@ -214,7 +208,6 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
                 server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
                 return PLUGIN_HANDLED_MAIN; ///comment out or do not use plugin on local servers!
             }
-
         }
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         new Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
@@ -263,9 +256,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
         {
             server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
         }
-
     }
-
 }
 stock get_user_profile(id)
 {
@@ -299,9 +290,7 @@ stock get_user_profile(id)
             case 1:
                 server_cmd "kick #%d SzBootmsg", get_user_userid(id)
         }
-
     }
-
 }
 @read_web(proxy_snort)
 {
@@ -310,7 +299,6 @@ stock get_user_profile(id)
     if (!is_user_bot(id))
     {
         get_user_profile(id)
-
         if(get_pcvar_num(g_cvar_debugger) > 1)
             server_print "%s %s by %s:reading the socket", PLUGIN, VERSION, AUTHOR
         #if AMXX_VERSION_NUM != 182
@@ -326,26 +314,20 @@ stock get_user_profile(id)
             {
                 Data[SzProxy] = 1
                 formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[ SzProxy ])
-
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 @file_data(SzSave)
-
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
                 //task per data wasn't being saved, kicking too quickly
                 set_task(1.0,"@handle_proxy_user",id)
-
             }
             //What if they aren't on proxy or VPN?
             if (containi(proxy_socket_buffer, "no") != charsmin && containi(proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
             {
                 Data[SzProxy] = 0
-
                 formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[SzProxy])
-
                 @file_data(SzSave)
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
-
                 server_print "No proxy found on %s, %s error-free",name,authid
                 if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
                     g_has_been_checked[id] = true //stop double prints
@@ -354,10 +336,8 @@ stock get_user_profile(id)
             {
                 Data[SzProxy] = 0
                 formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
-
                 @file_data(SzSave)
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-
                 server_print "No proxy found on %s, %s with error on packet",name,authid
                 client_print 0, print_console, "No proxy found on %s, with error on packet", name
             }
@@ -389,10 +369,21 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
+                //Run time error 4: index out of bounds, @read_web (line 393)
                 //plus buffer much be size of including quotes .. have had history of run-time errors out of bounds on risk strictly. Exploding string would work finer except not allowing tolerences yet.
                 copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8], '"')
                 /*
                 ///https://proxycheck.io/api/#test_console
+                {
+                {
+                    "status": "ok",
+                    "node": "PROMETHEUS",
+                    "98.75.2.4": {
+                        "proxy": "no",
+                        "type": "Residential",
+                        "risk": "0"
+                    }
+                }
                 {
                     "status": "ok",
                     "1.10.176.179": {
@@ -408,10 +399,9 @@ stock get_user_profile(id)
                         }
                     }
                 }
-                * */
+                */
                 //copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8])
                 Data[iRisk] = risk
-
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
                 {
@@ -434,12 +424,9 @@ stock get_user_profile(id)
                             if (is_user_connected(admin) && is_user_admin(admin))
                         client_print admin, print_chat, "%s is on %s.", name, type
                     }
-
                 }
-
                 g_has_been_checked[id] = true
                 socket_close(g_proxy_socket);
-
                 if(get_pcvar_num(g_cvar_debugger) > 4 )
                     bright_message();
             }
@@ -473,9 +460,7 @@ stock get_user_profile(id)
                     callfunc_push_str(work)
                     callfunc_end()
                 }
-
             }
-
         }
         else if(is_user_connected(id) || is_user_connecting(id) && !g_has_been_checked[id])
             set_task(3.5, "@read_web",id+USERREAD);
@@ -525,11 +510,8 @@ stock get_user_profile(id)
                 client_print admin,print_center,"Null sv_proxycheckio-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION
                 client_print admin,print_console,"Get key from proxycheck.io."
             }
-
         }
-
     }
-
 }
 @file_data(SzSave[MAX_CMD_LENGTH])
 {
@@ -537,7 +519,6 @@ stock get_user_profile(id)
     new szFilePath[ MAX_CMD_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
-
     write_file(szFilePath, SzSave)
 }
 public ReadProxyFromFile( )
@@ -547,22 +528,17 @@ public ReadProxyFromFile( )
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
     new debugger = get_pcvar_num(g_cvar_debugger)
-
     new f = fopen( szFilePath, "rt" )
-
     if( !f )
     {
         @init_proxy_file()
         return
     }
-
     while( !feof( f ) )
     {
         fgets( f, szDataFromFile, charsmax( szDataFromFile ) )
-
         if( !szDataFromFile[ 0 ] || szDataFromFile[ 0 ] == ';' || szDataFromFile[ 0 ] == '/' && szDataFromFile[ 1 ] == '/' )
             continue
-
         trim
         (
             szDataFromFile
@@ -573,24 +549,20 @@ public ReadProxyFromFile( )
             Data[ SzAddress ], charsmax( Data[ SzAddress ] ),
             Data[ SzProxy ], charsmax( Data[SzProxy] )
         )
-
         if(debugger)
             server_print "Read %s,%i^n^nfrom file",Data[ SzAddress ], Data[ SzProxy ]
         str_to_num(Data[ SzProxy ])
         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-
     }
     fclose( f )
     if(debugger)
         server_print "................Proxy list from file....................."
 }
-
 public plugin_end()
 {
     regex_free(hPattern)
     TrieDestroy(g_already_checked)
 }
-
 public bright_message()
 {
     new Float:xTex
