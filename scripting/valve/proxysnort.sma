@@ -270,27 +270,32 @@ stock get_user_profile(id)
     bright_message()
     if(is_user_connected(id) || is_user_connecting(id))
     {
-        new iAction = g_cvar_iproxy_action
-        if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
+        new iAction = get_pcvar_num(g_cvar_iproxy_action)
+
+        switch(iAction)
+        {
+            //ban steamid
+            case 1:
+                server_cmd("kick #%d SzBootmsg", get_user_userid(id))
+            //ban ip
+            case 2:
+                server_cmd ("amx_addban ^"%s^" ^"0^" %s", Ip, SzBootmsg)
+            //kick
+            case 3:
+                server_cmd ("amx_addban ^"%s^" ^"60^" %s", authid, SzBootmsg)
+
+        }
+        if (iAction <= 4)
         {
             for (new admin=1; admin<=g_maxPlayers; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+
             client_cmd 0, "spk ^"bad entry detected^""
         }
-        switch(iAction)
-        {
-            //ban steamid
-            case 3:
-                server_cmd "amx_addban ^"%s^" ^"60^" %s", authid, SzBootmsg
-            //ban ip
-            case 2:
-                server_cmd "amx_addban ^"%s^" ^"0^" %s", Ip, SzBootmsg
-            //kick
-            case 1:
-                server_cmd "kick #%d SzBootmsg", get_user_userid(id)
-        }
+    
     }
+
 }
 @read_web(proxy_snort)
 {
