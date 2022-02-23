@@ -88,7 +88,6 @@ new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ M
 new provider[MAX_RESOURCE_PATH_LENGTH], type[ MAX_NAME_LENGTH ];
 new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin, g_maxPlayers;
 new const MESSAGE[] = "Proxysnort by Spinx"
-new const SzBootmsg[] = "^"Anonymizing is NOT allowed!^""
 new risk[ 3 ];
 new g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE;
@@ -270,32 +269,23 @@ stock get_user_profile(id)
     bright_message()
     if(is_user_connected(id) || is_user_connecting(id))
     {
-        new iAction = get_pcvar_num(g_cvar_iproxy_action)
-
-        switch(iAction)
-        {
-            //ban steamid
-            case 1:
-                server_cmd("kick #%d SzBootmsg", get_user_userid(id))
-            //ban ip
-            case 2:
-                server_cmd ("amx_addban ^"%s^" ^"0^" %s", Ip, SzBootmsg)
-            //kick
-            case 3:
-                server_cmd ("amx_addban ^"%s^" ^"60^" %s", authid, SzBootmsg)
-
-        }
-        if (iAction <= 4)
+        if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
         {
             for (new admin=1; admin<=g_maxPlayers; admin++)
                 if (is_user_connected(admin) && is_user_admin(admin))
                     client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
-
-            client_cmd 0, "spk ^"bad entry detected^""
+            client_cmd( 0,"spk ^"bad entry detected^"" )
         }
-    
+        //ban steamid
+        if (get_pcvar_num(g_cvar_iproxy_action) == 3)
+            server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
+        //ban ip
+        if (get_pcvar_num(g_cvar_iproxy_action) == 2)
+            server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
+        //kick
+        if (get_pcvar_num(g_cvar_iproxy_action) == 1)
+            server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
     }
-
 }
 @read_web(proxy_snort)
 {
