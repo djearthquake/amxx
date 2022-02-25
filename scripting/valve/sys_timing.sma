@@ -45,19 +45,35 @@ new g_timing, g_iTic_quota, g_iTic_sleep, g_iTic;
 
 public plugin_init()
 {
-    register_plugin("Variable sys_ticrate", "B", ".sρiηX҉.");
+    register_plugin("Variable sys_ticrate", "C", ".sρiηX҉.");
     g_timing     = register_cvar("sys_timing",  "1"); //0|1 disables|enables plugin.
     g_iTic_sleep = register_cvar("sys_sleep",  "32"); //Tic hibernation rate.
     g_iTic_quota = register_cvar("sys_quota", "32"); //Tic rate quota.
     g_iTic       = get_cvar_pointer("sys_ticrate"); //Base tic rate. Only used to launch server with.
     set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
+
+    if ( is_running("gearbox") == 1 )
+        set_task(3.5, "@check_map", 2022)
+}
+
+@check_map()
+{
+    new mname[MAX_NAME_LENGTH];
+    server_print "Found Gearbox running."
+    get_mapname(mname,charsmax(mname));
+
+    if(containi(mname, "op4c") > -1 )
+    {
+        set_pcvar_num(g_iTic,35) //per HPB bots will speedhack otherwise 
+        pause("a")
+    }
 }
 
 public client_putinserver(id)
 if (get_pcvar_num(g_timing) == 1)
 {
     remove_task(1541)
-    if( find_ent(-1,"env_rope") || find_ent(-1,"env_electrified_wire") ) //Rope can disappear over 70fps.
+    if( find_ent(-1,"env_rope") || find_ent(-1,"env_electrified_wire") ) //Rope can disappear over 70fps. My hook mod can shoot various lengths of it.
     {
         set_pcvar_num(g_iTic,70)
         log_amx SzRope_msg
@@ -96,7 +112,7 @@ stock iPlayers()
 @Cpu_saver()
 {
     new iPing,iLoss
-    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"i")
 
     for(new lot;lot < sizeof players;lot++)
         get_user_ping(players[lot],iPing,iLoss)
