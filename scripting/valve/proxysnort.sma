@@ -83,7 +83,11 @@
 #define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
 new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
 new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
-new proxy_socket_buffer[ MAX_MENU_LENGTH ], g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
+new g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
+// Just proxy or vpn yes or no length MAX_MENU_LENGTH
+//to be able to get the risk and risk type
+new proxy_socket_buffer[ MAX_MENU_LENGTH + MAX_USER_INFO_LENGTH ]
+
 new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ];
 new provider[MAX_RESOURCE_PATH_LENGTH], type[ MAX_NAME_LENGTH ];
 new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin, g_maxPlayers;
@@ -266,26 +270,32 @@ stock get_user_profile(id)
 }
 @handle_proxy_user(id)
 {
+    new iAction = get_pcvar_num(g_cvar_iproxy_action)
     bright_message()
-    if(is_user_connected(id) || is_user_connecting(id))
+    if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
     {
-        if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
-        {
-            for (new admin=1; admin<=g_maxPlayers; admin++)
-                if (is_user_connected(admin) && is_user_admin(admin))
-                    client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
-            client_cmd( 0,"spk ^"bad entry detected^"" )
-        }
-        //ban steamid
-        if (get_pcvar_num(g_cvar_iproxy_action) == 3)
-            server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", authid);
-        //ban ip
-        if (get_pcvar_num(g_cvar_iproxy_action) == 2)
-            server_cmd("amx_addban ^"%s^" ^"0^" ^"Anonymizing is NOT allowed!^"", Ip);
-        //kick
-        if (get_pcvar_num(g_cvar_iproxy_action) == 1)
-            server_cmd( "kick #%d ^"Anonymizing is NOT allowed!^"", get_user_userid(id) );
+        for (new admin=1; admin<=g_maxPlayers; admin++)
+            if (is_user_connected(admin) && is_user_admin(admin))
+                client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+        client_cmd( 0,"spk ^"bad entry detected^"" )
     }
+
+    if(is_user_connected(id))
+    {
+        static SzMsg[]="Anonymizing is NOT allowed!"
+        #define exe server_cmd
+        switch(iAction)
+        {
+            case 0:   set_user_info(id, "name", "Anon")
+            case 1:   exe"kick #%d ^"%s^"", get_user_userid(id), SzMsg
+            case 2:   exe"amx_addban ^"%s^" ^"0^" ^"%s^"", Ip, SzMsg
+            case 3:   exe"amx_addban ^"%s^" ^"60^" ^"%s^"", authid, SzMsg
+            default:  exe"amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
+        }
+
+    }
+    else if(is_user_connecting(id))
+        server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", Ip);
 }
 @read_web(proxy_snort)
 {
@@ -364,8 +374,6 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
-                //Run time error 4: index out of bounds, @read_web (line 393)
-                //plus buffer much be size of including quotes .. have had history of run-time errors out of bounds on risk strictly. Exploding string would work finer except not allowing tolerences yet.
                 copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8], '"')
                 /*
                 ///https://proxycheck.io/api/#test_console
