@@ -271,8 +271,11 @@ stock get_user_profile(id)
 @handle_proxy_user(id)
 {
     new iAction = get_pcvar_num(g_cvar_iproxy_action)
+    static const SzMsg[]="Anonymizing is NOT allowed!"
+
     bright_message()
-    if (get_pcvar_num(g_cvar_iproxy_action) <= 4)
+    log_amx "Proxy found! Action is %d", iAction
+    if (iAction <= 4)
     {
         for (new admin=1; admin<=g_maxPlayers; admin++)
             if (is_user_connected(admin) && is_user_admin(admin))
@@ -282,20 +285,19 @@ stock get_user_profile(id)
 
     if(is_user_connected(id))
     {
-        static SzMsg[]="Anonymizing is NOT allowed!"
         #define exe server_cmd
         switch(iAction)
         {
             case 0:   set_user_info(id, "name", "Anon")
-            case 1:   exe"kick #%d ^"%s^"", get_user_userid(id), SzMsg
-            case 2:   exe"amx_addban ^"%s^" ^"0^" ^"%s^"", Ip, SzMsg
-            case 3:   exe"amx_addban ^"%s^" ^"60^" ^"%s^"", authid, SzMsg
-            default:  exe"amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
+            case 1:   server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
+            case 2:   server_cmd( "amx_addban ^"%s^" ^"0^" ^"%s^"", Ip, SzMsg)
+            case 3:   server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", authid, SzMsg)
+            default:  server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg)
         }
 
     }
     else if(is_user_connecting(id))
-        server_cmd("amx_addban ^"%s^" ^"60^" ^"Anonymizing is NOT allowed!^"", Ip);
+        server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
 }
 @read_web(proxy_snort)
 {
