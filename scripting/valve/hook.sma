@@ -101,13 +101,13 @@ new const debris2[]  = "sound/debris/pushbox2.wav"
 new const debris3[]  = "sound/debris/pushbox3.wav"
 new const glass1[]   = "debris/bustglass1.wav"
 new const glass2[]   = "debris/bustglass2.wav"
-new const glass1a[]   = "sound/debris/bustglass1.wav"
-new const glass2a[]   = "sound/debris/bustglass2.wav"
+new const glass1a[]  = "sound/debris/bustglass1.wav"
+new const glass2a[]  = "sound/debris/bustglass2.wav"
 
 new const battery[]  = "models/w_battery.mdl"
 
 
-new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power", "train"}
+new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power", "tank", "train"}
 
 public plugin_init()
 {
@@ -493,10 +493,10 @@ public ResetHUD(id)
             gUpdate[id] = false
             return
         }
-    
+
         if (gHooked[id] && !find_ent(charsmin,"env_rope") || !find_ent(charsmin,"monster_barnacle") )
             remove_hook(id)
-    
+
         if (get_pcvar_num(pMaxHooks) > 0)
         {
             gHooksUsed[id] = 0
@@ -523,26 +523,26 @@ public fwTouch(ptr, ptd)
 
         if (equali(szPtrClass, "Hook") || get_pcvar_num(pPlayers) > 2 && containi(szPtrClass, "grapple") > charsmin )
         {
-    
+
             static Float:fOrigin[3]
             pev(ptr, pev_origin, fOrigin)
             new szPtdClass[MAX_NAME_LENGTH]
-    
+
             if(pev_valid(ptd))
             {
                 pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
-    
+
                 if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
                 {
                     // Hit a player
                     if (get_pcvar_num(pSound))
                         emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
                     remove_hook(id)
-    
+
                     return FMRES_HANDLED
                 }
                 else if (get_pcvar_num(pPlayers) && equali(szPtdClass, "player"))  goto damage
-    
+
                 else if (get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin)
                 {
                     if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin ||  equali(szPtdClass, "monster_barney")
@@ -553,7 +553,7 @@ public fwTouch(ptr, ptd)
                         {
                             dllfunc(DLLFunc_Use, ptd, id)
                         }
-    
+
                     }
                     else
                     goto damage
@@ -562,14 +562,14 @@ public fwTouch(ptr, ptd)
                 {
     damage:
                     is_user_alive(ptd) ?
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,50.0,DMG_CLUB) //Attacker killed Victim w/ Hook
+                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CLUB) //Attacker killed Victim w/ Hook
                     :
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
-    
+                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
+
                     remove_hook(id)
                     return FMRES_HANDLED
                 }
-    
+
                 else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin ||
                 containi(szPtdClass,"illusionary") > charsmin || containi(szPtdClass,"wall") > charsmin || containi(szPtdClass,"moment") > charsmin )
                 {
@@ -577,39 +577,52 @@ public fwTouch(ptr, ptd)
                     {
                         //dllfunc(DLLFunc_Use, ptd, id) //ok for grap
                         //dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
-    
+
                         dllfunc(DLLFunc_Use, ptd, ptr) //ok for grap
                         dllfunc(DLLFunc_Touch, ptd, ptr) //ok for grap
+                        set_pev(ptd, pev_rendermode, kRenderTransColor);
+                        set_pev(ptd, pev_renderamt, random_float(15.0,200.0))
+                        switch(random(5))
+                        {
+                            case 1:set_pev(ptd, pev_rendercolor, Float:{255.0, 207.0, 0.0});
+                            case 2:set_pev(ptd, pev_rendercolor, Float:{0.0, 255.0, 0.0});
+                            case 3:set_pev(ptd, pev_rendercolor, Float:{0.0, 0.0, 255.0});
+                            case 4:set_pev(ptd, pev_rendercolor, Float:{255.0, 0.0, 0.0});
+                        }
+
                     }
                     else
                     {
-                        entity_set_string(ptd, EV_SZ_classname,"func_breakable")
-                        entity_set_float(ptd, EV_FL_takedamage, 2.0);
-                        set_pev(ptd,pev_solid, SOLID_BBOX)
-                        set_pev(ptd, pev_flags, SF_BREAK_TOUCH)
-                        entity_set_float(ptd, EV_FL_health, 10.0)
-    
-                        dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
-                        dllfunc(DLLFunc_Use, ptd, id) //ok for grap
-    
-                        ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
-    
+                        if(get_pcvar_num(pHook_break)>1)
+                            ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
+
                     }
-    
+                    /*
+                    switch(random(3))
+                    {
+                        case 1: entity_set_string(ptd,EV_SZ_classname,"func_healthcharger")
+                        case 2: entity_set_string(ptd,EV_SZ_classname,"func_recharge")
+                    }
+                    dllfunc( DLLFunc_Spawn, ptd )
+                    */
                 }
-    
-                else if (containi(szPtdClass, "train") > charsmin) //catch the trains
+
+                else if (containi(szPtdClass, "train") > charsmin )
                     dllfunc(DLLFunc_Use, ptd, id)
-    
+                else if (containi(szPtdClass, "tank") > charsmin )
+                {
+                    dllfunc(DLLFunc_Use, ptd, id)
+                }
+
                 else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
                 //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
                 {
-    
+
                     dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
                     dllfunc(DLLFunc_Touch, ptd, id) // Use Buttons
                 }
             }
-    
+
             // If cvar sv_hooksky is 0 and hook is in the sky remove it!
             new iContents = engfunc(EngFunc_PointContents, fOrigin)
             if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
@@ -619,7 +632,7 @@ public fwTouch(ptr, ptd)
                 remove_hook(id)
                 return FMRES_HANDLED
             }
-    
+
             // Pick up weapons..
             if (get_pcvar_num(pWeapons))
             {
@@ -628,20 +641,20 @@ public fwTouch(ptr, ptd)
                 {
                     static szentClass[MAX_NAME_LENGTH]
                     pev(ent, pev_classname, szentClass, charsmax(szentClass))
-    
+
                     for (new toget; toget < sizeof grabable_goodies;toget++)
-    
+
                     if (containi(szentClass, grabable_goodies[toget]) != charsmin && containi(szentClass, "satchel") == charsmin)
                     dllfunc(DLLFunc_Touch, ent, id)
                 }
             }
-    
+
             // Player is now hooked
             gHooked[id] = true
             // Play sound
             if (get_pcvar_num(pSound))
                 emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-    
+
             // Make some sparks :D
             message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, fOrigin, 0)
             write_byte(9) // TE_SPARKS
@@ -649,11 +662,11 @@ public fwTouch(ptr, ptd)
             write_coord_f(fOrigin[1])
             write_coord_f(fOrigin[2])
             message_end()
-    
+
             // Stop the hook from moving
             set_pev(ptr, pev_velocity, Float:{0.0, 0.0, 0.0})
             set_pev(ptr, pev_movetype, MOVETYPE_NONE)
-    
+
             //Task
             if (!task_exists(id + 856))
             {
@@ -661,7 +674,7 @@ public fwTouch(ptr, ptd)
                 TaskData[0] = id
                 TaskData[1] = ptr
                 gotohook(TaskData)
-    
+
                 set_task(0.1, "gotohook", id + 856, TaskData, 2, "b")
             }
         }
@@ -1027,42 +1040,55 @@ public throw_hook(id)
 public remove_hook(id)
 {
     if(is_user_connected(id))
-
-    server_print "remove %n's Hook", id
-    //Player can now throw hooks
-    canThrowHook[id] = true
-    new szClass[MAX_NAME_LENGTH]
-    if (pev_valid(Hook[id]))
-        pev(Hook[id], pev_classname, szClass, charsmax(szClass))
-    if (containi(szClass, "rope") > charsmin || containi(szClass, "barnacle") != charsmin)    //equali(szClass, "monster_barnacle"))
     {
-        //prevents rope crashing
-        set_pev(Hook[id], pev_owner, 0) //little effect
-        return PLUGIN_HANDLED_MAIN //will crash otherwise
+        server_print "remove %n's Hook", id
+        //Player can now throw hooks
+        canThrowHook[id] = true
+        new szClass[MAX_NAME_LENGTH]
+        if (pev_valid(Hook[id]))
+        {
+            REM:
+            pev(Hook[id], pev_classname, szClass, charsmax(szClass))
+            if (containi(szClass, "rope") > charsmin || containi(szClass, "barnacle") != charsmin)    //equali(szClass, "monster_barnacle"))
+            {
+                //prevents rope crashing
+                set_pev(Hook[id], pev_owner, 0) //little effect
+                return PLUGIN_HANDLED_MAIN //will crash otherwise
+            }
+
+            // Remove the hook if it is valid
+            //if (pev_valid(Hook[id]))
+            {
+                server_print "Removing hook for %n", id
+                engfunc(EngFunc_RemoveEntity, Hook[id])
+                Hook[id] = 0
+            }
+
+            // Remove the line between user and hook
+            {
+                server_print "Removing beam for %n", id
+                message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
+                write_byte(99) // TE_KILLBEAM
+                write_short(id) // entity
+                message_end()
+            }
+
+            // Player is not hooked anymore
+            gHooked[id] = false
+            //return 1
+        }
+        else
+        {
+            server_print "Invalid hook removal for %n", id
+            goto REM
+        }
+
+        server_print "Hook removal for %n successful", id
+
     }
 
-    // Remove the hook if it is valid
-    if (pev_valid(Hook[id]))
-    {
-        engfunc(EngFunc_RemoveEntity, Hook[id])
-        Hook[id] = 0
-    }
+    return PLUGIN_HANDLED_MAIN //investigating apache crashy, doesnt need hook but hook can make it worse in Multplayer
 
-    // Remove the line between user and hook
-
-    if(is_user_connected(id))
-    {
-        message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
-        write_byte(99) // TE_KILLBEAM
-        write_short(id) // entity
-        message_end()
-    }
-
-    // Player is not hooked anymore
-    gHooked[id] = false
-    //return 1
-
-    return PLUGIN_CONTINUE
 }
 
 public give_hook(id, level, cid)
