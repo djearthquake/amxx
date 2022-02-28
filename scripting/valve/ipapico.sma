@@ -57,7 +57,7 @@ new ClientCurrency_rates[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 //new ClientCompleted_requests[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 
 
-new geo_data[MAX_PLAYERS][MAX_NAME_LENGTH]
+new geo_data[MAX_RESOURCE_PATH_LENGTH][MAX_PLAYERS]
 
 new buffer[MAX_MOTD_LENGTH];
 new bool:got_coords[ MAX_PLAYERS + 1 ]
@@ -139,10 +139,7 @@ public client_putinserver(id)
             else
                 server_print "%s already closed the socket on %s!",api,ClientName[id]
             copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
-            //new len = strlen(msg);
-            //new infinity = explode_string(msg, ",", geo_data, MAX_RESOURCE_PATH_LENGTH, MAX_PLAYERS, false)
-            //","
-            new infinity = explode_string(msg, ",", geo_data, MAX_RESOURCE_PATH_LENGTH, MAX_PLAYERS, false)
+            new infinity = explode_string(msg, "^",^"", geo_data, MAX_PLAYERS, MAX_RESOURCE_PATH_LENGTH, false)
             log_to_file "geo_data.txt","%s",infinity
             new list = 1
             for(new parameters;parameters < sizeof geo_data[];parameters++)
