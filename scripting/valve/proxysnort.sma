@@ -86,7 +86,7 @@ new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
 // Just proxy or vpn yes or no length MAX_MENU_LENGTH
 //to be able to get the risk and risk type
-new proxy_socket_buffer[ MAX_MENU_LENGTH + MAX_USER_INFO_LENGTH ]
+new proxy_socket_buffer[ MAX_MENU_LENGTH + MAX_CMD_LENGTH ]
 
 new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ];
 new provider[MAX_RESOURCE_PATH_LENGTH], type[ MAX_NAME_LENGTH ];
@@ -280,12 +280,14 @@ stock get_user_profile(id)
         for (new admin=1; admin<=g_maxPlayers; admin++)
             if (is_user_connected(admin) && is_user_admin(admin))
                 client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+
         client_cmd( 0,"spk ^"bad entry detected^"" )
     }
 
     if(is_user_connected(id))
     {
         #define exe server_cmd
+
         switch(iAction)
         {
             case 0:   set_user_info(id, "name", "Anon")
@@ -311,7 +313,7 @@ stock get_user_profile(id)
         #if AMXX_VERSION_NUM != 182
         if(socket_is_readable(g_proxy_socket, 100000))
         #endif
-        socket_recv(g_proxy_socket,proxy_socket_buffer,charsmax (proxy_socket_buffer));
+        socket_recv(g_proxy_socket,proxy_socket_buffer, charsmax(proxy_socket_buffer));
         if(!equal(proxy_socket_buffer, ""))
         {
             if(get_pcvar_num(g_cvar_debugger) > 2)
@@ -428,6 +430,7 @@ stock get_user_profile(id)
                         for (new admin=1; admin<=g_maxPlayers; admin++)
                             if (is_user_connected(admin) && is_user_admin(admin))
                         client_print admin, print_chat, "%s is on %s.", name, type
+                        log_amx "%s %s %s",Ip, authid, Data[SzType]
                     }
                 }
                 g_has_been_checked[id] = true
