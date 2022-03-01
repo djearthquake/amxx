@@ -118,12 +118,14 @@ public ReadFakeFromFile( )
             szDataFromFile,
             Data[ SzFakeName ], charsmax( Data[ SzFakeName ] )
         )
+        if(!equal(Data[ SzFakeName ], ""))
+        {
+            TrieSetArray( g_fakeclients, Data[ SzFakeName ], Data, sizeof Data )
+            g_fake_name_pick++
+        }
 
         if(debugger)
             server_print "Read %s from file",Data[ SzFakeName ]
-
-        TrieSetArray( g_fakeclients, Data[ SzFakeName ], Data, sizeof Data )
-        g_fake_name_pick++
 
         if(g_fake_name_pick < sizeof(SzMasterNameList)-1)
         {
@@ -155,8 +157,8 @@ public plugin_end()
 {
     new SzBotName[MAX_NAME_LENGTH]
     new debugger = get_pcvar_num(g_cvar_debugger)
-
-    copy(SzBotName,charsmax(SzBotName),SzMasterNameList[random(sizeof(SzMasterNameList))])
+    //TrieetArray( g_fakeclients, Data[ SzFakeName ], Data, sizeof Data )
+    copy(SzBotName,charsmax(SzBotName),SzMasterNameList[random(g_fake_name_pick+1)])
     new_bot_spec = engfunc( EngFunc_CreateFakeClient, SzBotName )
     if(new_bot_spec > 0 && new_bot_spec < 32 )
     {
@@ -222,17 +224,4 @@ public plugin_cfg()
     new debugger = get_pcvar_num(g_cvar_debugger)
     if(debugger < -1)
         server_cmd "meta load addons/bot_played_time_faker/bot_played_time_faker_mm_i386.so"
-}
-
-public client_infochanged(id)
-{
-    ///kick bots with dup names
-    new name[MAX_NAME_LENGTH]
-    get_user_name(id,name,charsmax(name))
-    if ( (is_user_connected(id)) && (is_user_bot(id)) && (containi(name,"(1)") > -1) )
-    {
-        server_cmd("amx_kick (1)%s ^"bot_infochanged_badname^"",name);
-        g_fake_count--
-        @make_fake(id)
-    }
 }
