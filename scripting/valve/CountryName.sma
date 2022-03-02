@@ -50,7 +50,6 @@
 #define MAX_AUTHID_LENGTH          64
 #define MAX_USER_INFO_LENGTH       256
 
-new Array:g_aBotNames, g_iTotalNames
 new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
 
@@ -244,8 +243,10 @@ public client_putinserver(id)
             copyc(ClientLongitude[id],charsmax(ClientLongitude[]),msg[containi(msg,"longitude")+11],'"')
 
             copyc(ClientIsp[id],charsmax(ClientIsp[]), msg[containi(msg,"isp")+6],'"')
-            
-            copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"asn")+6],'"')
+
+            //copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"asn")+6],'"') //"Krasnoyarsk Krai","city" ==> Asn: rsk Krai
+            copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"^"asn^":")+6],',') //ok now
+
             copyc(ClientCountry_neighbours[id],charsmax(ClientCountry_neighbours[]), msg[containi(msg,"country_neighbours")+21],'"')
             copyc(ClientType[id],charsmax(ClientType[]), msg[containi(msg,"type")+7],'"')
 
@@ -305,4 +306,3 @@ public client_putinserver(id)
     }
     return PLUGIN_CONTINUE
 }
-
