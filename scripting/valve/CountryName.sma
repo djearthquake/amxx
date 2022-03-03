@@ -231,12 +231,13 @@ public client_putinserver(id)
                 server_print "%s already closed the socket on %s!",api,ClientName[id]
             //copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
             copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
-
+#if AMXX_VERSION_NUM != 182
             new infinity = explode_string(msg, ",", geo_data, MAX_PLAYERS+MAX_IP_LENGTH, MAX_RESOURCE_PATH_LENGTH, false)
             log_to_file "geo_data.txt","%s",infinity
             new list = 1
             for(new parameters;parameters < sizeof geo_data[];parameters++)
                 server_print("%d:%s",list++,geo_data[parameters])
+#endif
 
             copyc(ClientLatitude[id],charsmax(ClientLatitude[]),msg[containi(msg,"latitude")+10],'"')
 
@@ -252,25 +253,51 @@ public client_putinserver(id)
             copyc(ClientCountry_neighbours[id],charsmax(ClientCountry_neighbours[]), msg[containi(msg,"country_neighbours")+21],'"')
             copyc(ClientType[id],charsmax(ClientType[]), msg[containi(msg,"type")+7],'"')
 
-            copyc(ClientCurrency[id],charsmax(ClientCurrency[]),msg[containi(msg,"currency")+10],'"')
+            copyc(ClientCurrency[id],charsmax(ClientCurrency[]), msg[containi(msg,"currency")+11],'"')
 
-            copyc(ClientCurrency_code[id],charsmax(ClientCurrency_code[]),msg[containi(msg,"currency_code")+16],'"')
+            copyc(ClientCurrency_code[id],charsmax(ClientCurrency_code[]), msg[containi(msg,"currency_code")+16],'"')
 
-            copyc(ClientCurrency_rates[id],charsmax(ClientCurrency_rates[]),msg[containi(msg,"currency_rates")+16],'"')
+            copyc(ClientCurrency_rates[id],charsmax(ClientCurrency_rates[]), msg[containi(msg,"currency_rates")+16],',')
+            replace(ClientCurrency_rates[id],charsmax(ClientCurrency_rates[]), ",", "")
+            
 
-            copyc(ClientCurrency_symbol[id],charsmax(ClientCurrency_symbol[]),msg[containi(msg,"currency_symbol")+18],'"')
+            copyc(ClientCurrency_symbol[id],charsmax(ClientCurrency_symbol[]), msg[containi(msg,"currency_symbol")+18],'"')
+            //////
+            //copy(ClientContinent[id],charsmax(ClientContinent[]),geo_data[3][containi(geo_data[3],"continent")+11])
+            copyc(ClientContinent[id],charsmax(ClientContinent[]),msg[containi(msg,"continent")+12],'"')
+            ///////
 
-            copy(ClientContinent[id],charsmax(ClientContinent[]),geo_data[3][containi(geo_data[3],"continent")+11])
-            copy(ClientContinent_code[id],charsmax(ClientContinent_code[]),geo_data[4][containi(geo_data[4],"continent_code")+17])
-            copy(ClientCountry[id],charsmax(ClientCountry[]),geo_data[5][containi(geo_data[5],"country")+9])
+            ///////
+            //copy(ClientContinent_code[id],charsmax(ClientContinent_code[]),geo_data[4][containi(geo_data[4],"continent_code")+17])
+            copyc(ClientContinent_code[id],charsmax(ClientContinent_code[]), msg[containi(msg,"continent_code")+17],'"')
 
-            copyc(ClientCity[id],charsmax(ClientCity[]),msg[containi(msg,"country_city")+14],'"')
+            ///////
+            
+            ///////
+            //copy(ClientCountry[id],charsmax(ClientCountry[]),geo_data[5][containi(geo_data[5],"country")+9])
+            copyc(ClientCountry[id], charsmax(ClientCountry[]), msg[containi(msg,"country")+10], '"')
+            ///////
+            
+            
 
-            copyc(ClientRegion[id],charsmax(ClientRegion[]),msg[containi(msg,"region")+8],'"')
+            copyc(ClientCity[id],charsmax(ClientCity[]), msg[containi(msg,"country_city")+15],'"')
 
-            copy(ClientCountry_code[id],charsmax(ClientCountry_code[]),geo_data[6][containi(geo_data[6],"country_code")+14])
-            copy(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),geo_data[8][containi(geo_data[8],"country_capital")+17])
-            server_print"%s's coords: %s %s^nISP: %s. Paid in %s %s %s rate is %s. Capital of %s is %s. County code: %s. %s, %s",ClientName[id], ClientLatitude[id], ClientLongitude[id], ClientIsp[id], ClientCurrency_code[id], ClientCurrency_symbol[id], ClientCurrency[id], ClientCurrency_rates[id], ClientCountry[id], ClientCountry_capital[id], ClientCountry_code[id], ClientContinent[id], ClientContinent_code[id]
+            copyc(ClientRegion[id],charsmax(ClientRegion[]), msg[containi(msg,"region")+8],'"')
+
+            
+            
+
+            ///////
+            //copy(ClientCountry_code[id],charsmax(ClientCountry_code[]),geo_data[6][containi(geo_data[6],"country_code")+14])
+            copyc(ClientCountry_code[id],charsmax(ClientCountry_code[]),msg[containi(msg,"country_code")+15],'"')
+            ///////
+            
+            ///////
+            //copy(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),geo_data[8][containi(geo_data[8],"country_capital")+17])
+            copyc(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),msg[containi(msg,"country_capital")+18],'"')
+            /////////
+            
+            server_print"%s's coords: %s %s^nISP: %s. Paid in %s %s %s rate is %s. Capital of %s is %s. Country code: %s. %s, %s",ClientName[id], ClientLatitude[id], ClientLongitude[id], ClientIsp[id], ClientCurrency_code[id], ClientCurrency_symbol[id], ClientCurrency[id], ClientCurrency_rates[id], ClientCountry[id], ClientCountry_capital[id], ClientCountry_code[id], ClientContinent[id], ClientContinent_code[id]
             server_print"Asn: %s, Type: %s, Neighbors: %s",ClientAsn[id], ClientType[id], ClientCountry_neighbours[id]
         }
         else if(!got_coords[id] && g_socket_pass[id] < 10)
