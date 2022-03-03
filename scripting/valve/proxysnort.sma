@@ -81,7 +81,7 @@
 #define MAX_CMD_LENGTH             128
 #define charsmin                  -1
 #define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
-new const SzGet[]="GET /v2/%s?key=%s&inf=1&asn=1&vpn=1&risk=2&days=30&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
+new const SzGet[]="GET /v2/%s?key=%s&inf=1&vpn=1&risk=1&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
 new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
 // Just proxy or vpn yes or no length MAX_MENU_LENGTH
@@ -378,8 +378,14 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
-                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8], '"')
-                /*
+                //copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8], '"')
+
+                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],'"') //v1
+                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],',') //v2
+                remove_quotes(risk)
+                replace(risk, charsmax(risk), ",", "")
+
+                /*v1
                 ///https://proxycheck.io/api/#test_console
                 {
                 {
@@ -391,6 +397,8 @@ stock get_user_profile(id)
                         "risk": "0"
                     }
                 }
+                * 
+                * //v2
                 {
                     "status": "ok",
                     "1.10.176.179": {
@@ -407,7 +415,7 @@ stock get_user_profile(id)
                     }
                 }
                 */
-                //copy(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8])
+
                 Data[iRisk] = risk
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
