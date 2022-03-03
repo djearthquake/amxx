@@ -246,6 +246,8 @@ public client_putinserver(id)
 
             //copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"asn")+6],'"') //"Krasnoyarsk Krai","city" ==> Asn: rsk Krai
             copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"^"asn^":")+6],',') //ok now
+            remove_quotes(ClientAsn[id])
+            replace(ClientAsn[id],charsmax(ClientAsn[]), ",", "")
 
             copyc(ClientCountry_neighbours[id],charsmax(ClientCountry_neighbours[]), msg[containi(msg,"country_neighbours")+21],'"')
             copyc(ClientType[id],charsmax(ClientType[]), msg[containi(msg,"type")+7],'"')
