@@ -86,7 +86,7 @@ new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
 // Just proxy or vpn yes or no length MAX_MENU_LENGTH
 //to be able to get the risk and risk type
-new proxy_socket_buffer[ MAX_MENU_LENGTH + MAX_CMD_LENGTH ]
+new proxy_socket_buffer[ MAX_MENU_LENGTH + MAX_MENU_LENGTH ]
 
 new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ];
 new provider[MAX_RESOURCE_PATH_LENGTH], type[ MAX_NAME_LENGTH ];
@@ -118,7 +118,8 @@ public plugin_init()
     g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
     g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
     g_cvar_debugger         = register_cvar("proxy_debug", "5");
-    //proxy_action: 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
+    //proxy_action: 0 is rename. 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
+    //Want more ask! Love to put them in SVC_FINALE. They are frozen people can shoot them and text slowly comes across.
     g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
     g_maxPlayers = get_maxplayers()
     //Tag positive findings by mod.
@@ -211,6 +212,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
                 server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
                 return PLUGIN_HANDLED_MAIN; ///comment out or do not use plugin on local servers!
             }
+
         }
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         new Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
@@ -270,6 +272,7 @@ stock get_user_profile(id)
 }
 @handle_proxy_user(id)
 {
+    get_user_profile(id)
     new iAction = get_pcvar_num(g_cvar_iproxy_action)
     static const SzMsg[]="Anonymizing is NOT allowed!"
 
@@ -378,14 +381,17 @@ stock get_user_profile(id)
             }
             if (containi(proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
-                //copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer, "risk") + 8], '"')
+                server_print "Copying the risk score."
 
+                containi(SzGet, "v2") > charsmin ? copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],',') : //v2
                 copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],'"') //v1
-                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],',') //v2
+
+
                 remove_quotes(risk)
                 replace(risk, charsmax(risk), ",", "")
+                server_print "Risk:%d", str_to_num(risk)
 
-                /*v1
+                /* //v1
                 ///https://proxycheck.io/api/#test_console
                 {
                 {
@@ -424,20 +430,28 @@ stock get_user_profile(id)
                     server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
                     if(get_pcvar_num(g_cvar_debugger) > 2 )
                         server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
+
                     for (new admin=1; admin<=g_maxPlayers; admin++)
                         if (is_user_connected(admin) && is_user_admin(admin))
-                    client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
+                            client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
                 }
                 if (containi(proxy_socket_buffer, "type") != charsmin)
                 {
-                    copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer, "type") + 8], '"')
+                    //copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer,"type")+8],'"')
+                    copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer,"^"type^":")+7],',')
+                    remove_quotes(type)
+
                     if( !equal(type, "") )
                     {
+                        
+                        replace(type, charsmax(type), ",", "")
                         Data[SzType] = type
+                        
                         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
                         for (new admin=1; admin<=g_maxPlayers; admin++)
-                            if (is_user_connected(admin) && is_user_admin(admin))
-                        client_print admin, print_chat, "%s is on %s.", name, type
+                        if (is_user_connected(admin) && is_user_admin(admin))
+                            client_print admin, print_chat, "%s is on %s.", name, Data[SzType]
                         log_amx "%s %s %s",Ip, authid, Data[SzType]
                     }
                 }
