@@ -50,7 +50,7 @@
 #define MAX_AUTHID_LENGTH          64
 #define MAX_USER_INFO_LENGTH       256
 
-new SzSave[MAX_MOTD_LENGTH];
+new SzSave[MAX_MOTD_LENGTH + MAX_MENU_LENGTH];
 
 new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
@@ -122,12 +122,16 @@ enum _:Client_whois
     SzCountry_capital[4],
     SzCountry_code[4],
     SzContinent[MAX_NAME_LENGTH],
-    SzContinent_code[4]
+    SzContinent_code[4],
+    SzNeighbors[MAX_RESOURCE_PATH_LENGTH]
 }
 */
+
 enum _:Client_whois
 {
     SzAddress[MAX_RESOURCE_PATH_LENGTH],
+    SzASN[MAX_RESOURCE_PATH_LENGTH],
+    SzType[MAX_RESOURCE_PATH_LENGTH],
     SzLatitude[MAX_RESOURCE_PATH_LENGTH],
     SzLongitude[MAX_RESOURCE_PATH_LENGTH],
     SzIsp[MAX_RESOURCE_PATH_LENGTH],
@@ -142,6 +146,7 @@ enum _:Client_whois
     SzContinent_code[MAX_RESOURCE_PATH_LENGTH],
     SzNeighbors[MAX_RESOURCE_PATH_LENGTH]
 }
+
 new Data[ Client_whois ]
 
 public client_death(victim, killer)
@@ -226,7 +231,7 @@ public client_putinserver(id)
 
     server_print "%s,%s,%s,%s",ClientName[id],ClientIP[id], PLUGIN, VERSION, AUTHOR
     Data[SzAddress] = ClientIP[id]
-    TrieGetArray( g_client_whois, Data[ SzAddress ], Data, sizeof Data ) ? @Geo_cache(id) : set_task(0.5,"@get_client_data", id+COORD)
+    TrieGetArray( g_client_whois, Data[ SzAddress ], Data, sizeof Data ) ? @Geo_cache(id,ClientIP[id]) : set_task(0.5,"@get_client_data", id+COORD)
 }
 
 @file_data(SzSave[])
@@ -238,15 +243,19 @@ public client_putinserver(id)
     write_file(szFilePath, SzSave)
 }
 
-@Geo_cache(id)
+@Geo_cache(id,ClientIP[])
 {
+    server_print "Trying to get the data from file added to player %s", PLUGIN
     if(TrieGetArray( g_client_whois, Data[ SzAddress ], Data, sizeof Data ))
     {
-
-        //ClientIP[id]              = Data[ SzAddress ]
+        server_print "Address found in Trie %s", PLUGIN
+        TrieGetArray( g_client_whois, Data[ SzAddress ], Data, sizeof Data )
 
         ///Data[ SzCountry_code ]    = ClientCountry_code[id]
-        copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), Data[ SzCountry_code ])
+        Data[ SzASN ]             = ClientAsn[id]
+        Data[ SzType ]            = ClientCity[id]
+        Data[ SzCountry_code ]    = ClientCountry_code[id]
+        //copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), Data[ SzCountry_code ])
         Data[ SzLatitude ]        = ClientLatitude[id]
         Data[ SzLongitude ]       = ClientLongitude[id]
 
@@ -254,8 +263,8 @@ public client_putinserver(id)
         Data[ SzCurrency_code ]   = ClientCurrency_code[id]
         Data[ SzCurrency_symbol ] = ClientCurrency_symbol[id]
 
-        ///Data[ SzCurrency ]        = ClientCurrency[id]
-        copy(ClientCurrency[id], charsmax(ClientCurrency[]), Data[ SzCurrency ])
+        Data[ SzCurrency ]        = ClientCurrency[id]
+        //copy(ClientCurrency[id], charsmax(ClientCurrency[]), Data[ SzCurrency ])
 
         Data[ SzCurrency_rates ]  = ClientCurrency_rates[id]
         //copy(SzCurrency_rates[id], charsmax(SzCurrency_rates[]), Data[ SzCurrency_rates ])
@@ -310,8 +319,10 @@ public client_putinserver(id)
 @read_api(Tsk)
 {
     new id = Tsk - READ
+
     if(is_user_connected(id))
     {
+    /*
         new msg[MAX_MOTD_LENGTH]
         server_print "%s:reading %s coords",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
@@ -328,7 +339,7 @@ public client_putinserver(id)
             copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
 
             new infinity = explode_string(msg, ",", geo_data, MAX_PLAYERS+MAX_IP_LENGTH, MAX_RESOURCE_PATH_LENGTH, false)
-            log_to_file "geo_data.txt","%s",infinity
+//            log_to_file "geo_data.txt","%s",infinity
             new list = 1
             for(new parameters;parameters < sizeof geo_data[];parameters++)
                 server_print("%d:%s",list++,geo_data[parameters])
@@ -347,7 +358,7 @@ public client_putinserver(id)
             copyc(ClientCountry_neighbours[id],charsmax(ClientCountry_neighbours[]), msg[containi(msg,"country_neighbours")+21],'"')
             copyc(ClientType[id],charsmax(ClientType[]), msg[containi(msg,"type")+7],'"')
 
-            copyc(ClientCurrency[id],charsmax(ClientCurrency[]),msg[containi(msg,"currency")+10],'"')
+            copyc(ClientCurrency[id],charsmax(ClientCurrency[]),msg[containi(msg,"currency")+11],'"')
 
             copyc(ClientCurrency_code[id],charsmax(ClientCurrency_code[]),msg[containi(msg,"currency_code")+16],'"')
 
@@ -363,19 +374,107 @@ public client_putinserver(id)
 
             copyc(ClientRegion[id],charsmax(ClientRegion[]),msg[containi(msg,"region")+8],'"')
 
-            copy(ClientCountry_code[id],charsmax(ClientCountry_code[]),geo_data[6][containi(geo_data[6],"country_code")+14])
+            copy(ClientCountry_code[id],charsmax(ClientCountry_code[]),geo_data[6][containi(geo_data[6],"country_code")+15])
             copy(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),geo_data[8][containi(geo_data[8],"country_capital")+17])
+            */
+        new msg[MAX_MOTD_LENGTH]
+        server_print "%s:reading %s coords",PLUGIN, ClientName[id]
+        #if AMXX_VERSION_NUM != 182
+        if (socket_is_readable(ip_api_socket, 100000))
+        #endif
+        socket_recv(ip_api_socket,buffer,charsmax(buffer) )
+        if (!equal(buffer, "") && containi(buffer,"completed_requests") > charsmin)
+        {
+            if(socket_close(ip_api_socket) == 1)
+                server_print "%s finished %s reading",PLUGIN, ClientName[id]
+            else
+                server_print "%s already closed the socket on %s!",api,ClientName[id]
+            //copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
+            copyc(msg, charsmax(msg), buffer[containi(buffer, "success") - MAX_IP_WITH_PORT_LENGTH], '}');
+#if AMXX_VERSION_NUM != 182
+            new infinity = explode_string(msg, ",", geo_data, MAX_PLAYERS+MAX_IP_LENGTH, MAX_RESOURCE_PATH_LENGTH, false)
+            ///log_to_file "geo_data.txt","%s",infinity
+            new list = 1
+            for(new parameters;parameters < sizeof geo_data[];parameters++)
+                server_print("%d:%s",list++,geo_data[parameters])
+#endif
+
+            copyc(ClientLatitude[id],charsmax(ClientLatitude[]),msg[containi(msg,"latitude")+10],'"')
+
+            copyc(ClientLongitude[id],charsmax(ClientLongitude[]),msg[containi(msg,"longitude")+11],'"')
+
+            copyc(ClientIsp[id],charsmax(ClientIsp[]), msg[containi(msg,"isp")+6],'"')
+
+            //copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"asn")+6],'"') //"Krasnoyarsk Krai","city" ==> Asn: rsk Krai
+            copyc(ClientAsn[id],charsmax(ClientAsn[]), msg[containi(msg,"^"asn^":")+6],',') //ok now
+            remove_quotes(ClientAsn[id])
+            replace(ClientAsn[id],charsmax(ClientAsn[]), ",", "")
+
+            copyc(ClientCountry_neighbours[id],charsmax(ClientCountry_neighbours[]), msg[containi(msg,"country_neighbours")+21],'"')
+            copyc(ClientType[id],charsmax(ClientType[]), msg[containi(msg,"type")+7],'"')
+
+            copyc(ClientCurrency[id],charsmax(ClientCurrency[]), msg[containi(msg,"currency")+11],'"')
+
+            copyc(ClientCurrency_code[id],charsmax(ClientCurrency_code[]), msg[containi(msg,"currency_code")+16],'"')
+
+            copyc(ClientCurrency_rates[id],charsmax(ClientCurrency_rates[]), msg[containi(msg,"currency_rates")+16],',')
+            replace(ClientCurrency_rates[id],charsmax(ClientCurrency_rates[]), ",", "")
+            
+
+            copyc(ClientCurrency_symbol[id],charsmax(ClientCurrency_symbol[]), msg[containi(msg,"currency_symbol")+18],'"')
+            //////
+            //copy(ClientContinent[id],charsmax(ClientContinent[]),geo_data[3][containi(geo_data[3],"continent")+11])
+            copyc(ClientContinent[id],charsmax(ClientContinent[]),msg[containi(msg,"continent")+12],'"')
+            ///////
+
+            ///////
+            //copy(ClientContinent_code[id],charsmax(ClientContinent_code[]),geo_data[4][containi(geo_data[4],"continent_code")+17])
+            copyc(ClientContinent_code[id],charsmax(ClientContinent_code[]), msg[containi(msg,"continent_code")+17],'"')
+            replace(ClientContinent_code[id],charsmax(ClientContinent_code[]), ",", "")
+            //"continent_code":"NA"
+
+            ///////
+            
+            ///////
+            //copy(ClientCountry[id],charsmax(ClientCountry[]),geo_data[5][containi(geo_data[5],"country")+9])
+            copyc(ClientCountry[id], charsmax(ClientCountry[]), msg[containi(msg,"country")+10], '"') //field length inc quotes +1 with a " on the end otherwise same length with a , to grab it in quotes
+            //replace(ClientCountry[id], charsmax(ClientCountry[]), ",", "")
+            //remove_quotes(ClientCity[id])
+            ///////
+            
+            
+
+            copyc(ClientCity[id],charsmax(ClientCity[]), msg[containi(msg,"country_city")+15],'"')
+            //replace(ClientCity[id],charsmax(ClientCity[]), ",", "")
+            //remove_quotes(ClientCity[id])
+
+            copyc(ClientRegion[id],charsmax(ClientRegion[]), msg[containi(msg,"region")+8],'"')
+
+            
+            
+
+            ///////
+            //copy(ClientCountry_code[id],charsmax(ClientCountry_code[]),geo_data[6][containi(geo_data[6],"country_code")+14])
+            copyc(ClientCountry_code[id],charsmax(ClientCountry_code[]),msg[containi(msg,"country_code")+15],'"')
+            ///////
+            
+            ///////
+            //copy(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),geo_data[8][containi(geo_data[8],"country_capital")+17])
+            copyc(ClientCountry_capital[id],charsmax(ClientCountry_capital[]),msg[containi(msg,"country_capital")+18],'"')
+            /////////
+            
+
             server_print"%s's coords: %s %s^nISP: %s. Paid in %s %s %s rate is %s. Capital of %s is %s. County code: %s. %s, %s",ClientName[id], ClientLatitude[id], ClientLongitude[id], ClientIsp[id], ClientCurrency_code[id], ClientCurrency_symbol[id], ClientCurrency[id], ClientCurrency_rates[id], ClientCountry[id], ClientCountry_capital[id], ClientCountry_code[id], ClientContinent[id], ClientContinent_code[id]
             server_print"Asn: %s, Type: %s, Neighbors: %s",ClientAsn[id], ClientType[id], ClientCountry_neighbours[id]
 
             ////////////////CACHE THE DATA SQL NEXT!
 
             Data[ SzAddress ]         = ClientIP[id]
-
+            Data[ SzASN ]             = ClientAsn[id]
+            Data[ SzType]             = ClientType[id]
             Data[ SzCountry_code ]    = ClientCountry_code[id]
             Data[ SzLatitude ]        = ClientLatitude[id]
             Data[ SzLongitude ]       = ClientLongitude[id]
-
             Data[ SzIsp ]             = ClientIsp[id]
             Data[ SzCurrency_code ]   = ClientCurrency_code[id]
             Data[ SzCurrency_symbol ] = ClientCurrency_symbol[id]
@@ -389,9 +488,9 @@ public client_putinserver(id)
 
 
             TrieSetArray( g_client_whois, Data[ SzAddress], Data, sizeof Data )
-
-            formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^"  ^"%s^"", Data[ SzAddress ], Data[ SzCountry_code ], Data[ SzLatitude ], Data[ SzLongitude ], Data[ SzIsp ],
+            formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^"", Data[ SzAddress ], Data[ SzASN], Data[ SzType], Data[ SzCountry_code ], Data[ SzLatitude ], Data[ SzLongitude ], Data[ SzIsp ],
             Data[ SzCurrency_code ], Data[ SzCurrency_symbol ], Data[ SzCurrency ], Data[ SzCurrency_rates ], Data[ SzCountry ], Data[ SzCountry_capital ], Data[ SzContinent ], Data[ SzContinent_code], Data[ SzNeighbors ] )
+            //save the string of geo data from IP/sockets to INI in configs
             @file_data(SzSave)
         }
         else if(!got_coords[id] && g_socket_pass[id] < 10)
@@ -431,7 +530,7 @@ public client_putinserver(id)
 }
 public ReadGeoFromFile( )
 {
-    new szDataFromFile[ MAX_CMD_LENGTH ]
+    new szDataFromFile[ MAX_CMD_LENGTH + MAX_RESOURCE_PATH_LENGTH ] //MAX_MOTD_LENGTH ]
     new szFilePath[ MAX_CMD_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), "/geo_cache.ini" )
@@ -456,10 +555,11 @@ public ReadGeoFromFile( )
         (
             szDataFromFile,
             Data[ SzAddress ], charsmax( Data[ SzAddress ] ),
+            Data[ SzASN ], charsmax( Data[ SzASN ] ),
+            Data[ SzType ], charsmax( Data[ SzType ] ),
             Data[ SzCountry_code ], charsmax( Data[SzCountry_code] ),
             Data[ SzLatitude ], charsmax( Data[SzLatitude] ),
             Data[ SzLongitude ], charsmax( Data[SzLongitude] ),
-
             Data[ SzIsp ], charsmax( Data[SzIsp] ),
             Data[ SzCurrency_code ], charsmax( Data[SzCurrency_code] ),
             Data[ SzCurrency_symbol ], charsmax( Data[SzCurrency_symbol] ),
@@ -471,9 +571,11 @@ public ReadGeoFromFile( )
             Data[ SzContinent_code ], charsmax( Data[SzContinent_code] ),
             Data[ SzNeighbors ], charsmax( Data[ SzNeighbors ] )
         )
+
+        TrieSetArray( g_client_whois, Data[ SzAddress], Data, sizeof Data )
+
         if(debugger)
             server_print "Read %s,%s^n^nfrom file",Data[ SzAddress ], Data[ SzCountry_code ]
-        TrieSetArray( g_client_whois, Data[ SzAddress], Data, sizeof Data )
     }
     fclose( f )
     if(debugger)
