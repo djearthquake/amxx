@@ -190,14 +190,14 @@ public client_death(victim, killer)
         if(!is_user_bot(killer))
         {
             client_print victim, print_center, "%s's coords: %s %s^n^n^nISP:%s.",ClientName[killer], ClientLatitude[killer], ClientLongitude[killer], ClientIsp[killer]
-            client_print victim, print_chat, "Paid in %s %s %s rate is %f.^n^nCapital of %s is %s. County code %s. %s %s", ClientCurrency_code[killer], ClientCurrency_symbol[killer], str_to_float(ClientCurrency[killer]), ClientCurrency_rates[killer], ClientCountry[killer], ClientCountry_capital[killer], ClientCountry_code[killer], ClientContinent[killer], ClientContinent_code[killer]
+            client_print victim, print_chat, "Paid in %s %s %s rate is %s.^n^nCapital of %s is %s. County code %s. %s %s", ClientCurrency_code[killer], ClientCurrency_symbol[killer], ClientCurrency[killer], ClientCurrency_rates[killer], ClientCountry[killer], ClientCountry_capital[killer], ClientCountry_code[killer], ClientContinent[killer], ClientContinent_code[killer]
             client_print victim, print_chat, "Asn:%s, Type:%s, Neighbors:%s",ClientAsn[killer], ClientType[killer], ClientCountry_neighbours[killer]
 
         }
         if(!is_user_bot(victim))
         {
             client_print killer, print_center, "%s's coords: %s %s^n^n^nISP:%s.",ClientName[victim], ClientLatitude[victim], ClientLongitude[victim], ClientIsp[victim]
-            client_print killer, print_chat, "Paid in %s %s %s rate is %f.^n^nCapital of %s is %s. County code %s. %s %s", ClientCurrency_code[killer], ClientCurrency_symbol[victim], ClientCurrency[victim], str_to_float(ClientCurrency_rates[victim]), ClientCountry[victim], ClientCountry_capital[victim], ClientCountry_code[victim], ClientContinent[victim], ClientContinent_code[victim]
+            client_print killer, print_chat, "Paid in %s %s %s rate is %s.^n^nCapital of %s is %s. County code %s. %s %s", ClientCurrency_code[killer], ClientCurrency_symbol[victim], ClientCurrency[victim], ClientCurrency_rates[victim], ClientCountry[victim], ClientCountry_capital[victim], ClientCountry_code[victim], ClientContinent[victim], ClientContinent_code[victim]
             client_print killer, print_chat, "Asn:%s, Type:%s, Neighbors:%s",ClientAsn[victim], ClientType[victim], ClientCountry_neighbours[victim]
         }
 
