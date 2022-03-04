@@ -252,28 +252,48 @@ public client_putinserver(id)
         TrieGetArray( g_client_whois, Data[ SzAddress ], Data, sizeof Data )
 
         ///Data[ SzCountry_code ]    = ClientCountry_code[id]
-        Data[ SzASN ]             = ClientAsn[id]
-        Data[ SzType ]            = ClientCity[id]
-        Data[ SzCountry_code ]    = ClientCountry_code[id]
-        //copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), Data[ SzCountry_code ])
-        Data[ SzLatitude ]        = ClientLatitude[id]
-        Data[ SzLongitude ]       = ClientLongitude[id]
+        //Data[ SzASN ]             = ClientAsn[id]
+        copy(ClientAsn[id], charsmax(ClientAsn[]), Data[ SzASN ])
 
-        Data[ SzIsp ]             = ClientIsp[id]
-        Data[ SzCurrency_code ]   = ClientCurrency_code[id]
-        Data[ SzCurrency_symbol ] = ClientCurrency_symbol[id]
+        //Data[ SzType ]            = ClientCity[id]
+        copy(ClientCity[id], charsmax(ClientCity[]), Data[ SzType ])
 
-        Data[ SzCurrency ]        = ClientCurrency[id]
-        //copy(ClientCurrency[id], charsmax(ClientCurrency[]), Data[ SzCurrency ])
+        //Data[ SzCountry_code ]    = ClientCountry_code[id]
+        copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), Data[ SzCountry_code ])
+        
+        //Data[ SzLatitude ]        = ClientLatitude[id]
+        copy(ClientLatitude[id], charsmax(ClientLatitude[]), Data[ SzLatitude ])
 
-        Data[ SzCurrency_rates ]  = ClientCurrency_rates[id]
-        //copy(SzCurrency_rates[id], charsmax(SzCurrency_rates[]), Data[ SzCurrency_rates ])
+        //Data[ SzLongitude ]       = ClientLongitude[id]
+        copy(ClientLongitude[id], charsmax(ClientLongitude[]), Data[ SzLongitude])
 
-        Data[ SzCountry ]         = ClientCountry[id]
-        Data[ SzCountry_capital ] = ClientCountry_capital[id]
-        Data[ SzContinent ]       = ClientContinent[id]
-        Data[ SzContinent_code ]  = ClientContinent_code[id]
-        //copy(SzContinent_code[id], charsmax(SzContinent_code[]), Data[ SzContinent_code ])
+        //Data[ SzIsp ]             = ClientIsp[id]
+        copy(ClientIsp[id], charsmax(ClientIsp[]), Data[ SzIsp ])
+
+       // Data[ SzCurrency_code ]   = ClientCurrency_code[id]
+        copy(ClientCurrency_code[id], charsmax(ClientCurrency_code[]), Data[ SzCurrency_code ])
+
+        //Data[ SzCurrency_symbol ] = ClientCurrency_symbol[id]
+        copy(ClientCurrency_symbol[id], charsmax(ClientCurrency_symbol[]), Data[ SzCurrency_symbol ])
+
+        //Data[ SzCurrency ]        = ClientCurrency[id]
+        copy(ClientCurrency[id], charsmax(ClientCurrency[]), Data[ SzCurrency ])
+
+        //Data[ SzCurrency_rates ]  = ClientCurrency_rates[id]
+        copy(ClientCurrency_rates[id], charsmax(ClientCurrency_rates[]), Data[ SzCurrency_rates ])
+
+        //Data[ SzCountry ]         = ClientCountry[id]
+        copy(ClientCountry[id], charsmax(ClientCountry[]), Data[ SzCountry ])
+        ///copy(ClientCountry[id], charsmax(ClientCountry[]), Data[ SzCountry ])
+
+        //Data[ SzCountry_capital ] = ClientCountry_capital[id]
+        copy(ClientCountry_capital[id], charsmax(ClientCountry_capital[]), Data[ SzCountry_capital ])
+
+        //Data[ SzContinent ]       = ClientContinent[id]
+        copy(ClientContinent[id], charsmax(ClientContinent[]), Data[ SzContinent ])
+
+        //Data[ SzContinent_code ]  = ClientContinent_code[id]
+        copy(ClientContinent_code[id], charsmax(ClientContinent_code[]), Data[ SzContinent_code ])
 
 
         ///Data[ SzNeighbors ]       = ClientCountry_neighbours[id]
