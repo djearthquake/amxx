@@ -126,26 +126,7 @@ enum _:Client_whois
     SzContinent_code[MAX_RESOURCE_PATH_LENGTH],
     SzNeighbors[MAX_RESOURCE_PATH_LENGTH]
 }
-/*
-{
-    SzAddress[MAX_NAME_LENGTH],
-    SzASN[MAX_IP_LENGTH],
-    SzType[MAX_IP_LENGTH],
-    SzLatitude[MAX_IP_LENGTH],
-    SzLongitude[MAX_IP_LENGTH],
-    SzIsp[MAX_RESOURCE_PATH_LENGTH],
-    SzCurrency_code[4],
-    SzCurrency_symbol[4],
-    SzCurrency[MAX_IP_LENGTH],
-    SzCurrency_rates[4],
-    SzCountry[MAX_NAME_LENGTH],
-    SzCountry_capital[4],
-    SzCountry_code[4],
-    SzContinent[MAX_NAME_LENGTH],
-    SzContinent_code[4],
-    SzNeighbors[MAX_RESOURCE_PATH_LENGTH]
-}
-*/
+
 new Data[ Client_whois ]
 
 public client_death(victim, killer)
@@ -215,18 +196,22 @@ public plugin_init()
 public client_putinserver(id)
 {
     server_print("ID:%d entered!",id)
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
+    if(is_user_connected(id) && id > 0)
     {
-        if(!task_exists(id))
+        //if(!task_exists(id))
         {
-            set_task(0.5,"@get_user_data", id)
+            ClientIP[ id ][ 0 ] = EOS
+            ClientName[ id ][ 0 ] = EOS
+            @get_user_data(id)
         }
     }
 }
 @get_user_data(id)
 {
     get_user_name(id, ClientName[id],charsmax(ClientName[]))
-    get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+
+    if(!is_user_bot(id))
+        get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
 
     new debugger = get_pcvar_num(g_cvar_debugger)
     if(debugger)
