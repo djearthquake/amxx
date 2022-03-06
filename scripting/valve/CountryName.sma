@@ -236,6 +236,17 @@ public client_putinserver(id)
     TrieGetArray( g_client_whois, Data[ SzAddress ], Data, sizeof Data ) ? @Geo_cache(id,ClientIP[id]) : set_task(0.5,"@get_client_data", id+COORD)
 }
 
+//For Amx182 and earlier compiler 'warning' which is nothing to panic over just an FYI.
+#if !defined client_disconnected
+#define client_disconnected client_disconnect
+#endif
+
+public client_disconnected(id)
+{
+    ClientIP[ id ][ 0 ] = EOS
+    ClientName[ id ][ 0 ] = EOS
+}
+
 @file_data(SzSave[])
 {
     new debugger = get_pcvar_num(g_cvar_debugger)
