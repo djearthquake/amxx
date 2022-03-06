@@ -89,9 +89,9 @@ new ClientCurrency_rates[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
 //new ClientCurrency_plural[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 //new ClientCompleted_requests[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 
-
-new geo_data[MAX_RESOURCE_PATH_LENGTH][MAX_PLAYERS+MAX_IP_LENGTH]
-
+#if AMXX_VERSION_NUM != 182
+    new geo_data[MAX_RESOURCE_PATH_LENGTH][MAX_PLAYERS+MAX_IP_LENGTH]
+#endif
 new buffer[MAX_MOTD_LENGTH];
 new bool:got_coords[ MAX_PLAYERS + 1 ]
 new const api[]= "ipwhois.app"
