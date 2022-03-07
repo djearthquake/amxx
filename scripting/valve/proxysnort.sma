@@ -138,9 +138,15 @@ public plugin_init()
     @file_data(SzSave)
     ReadProxyFromFile( )
 }
+
 public client_putinserver(id)
-{
     if(is_user_connected(id))
+        client_connect(id)
+        //checking when downloading too.
+
+public client_connect(id)
+{
+    if(is_user_connected(id) || is_user_connecting(id) )
     {
         if(is_user_bot(id) || g_has_been_checked[id] || id == 0)
             return PLUGIN_HANDLED_MAIN
@@ -292,7 +298,6 @@ stock get_user_profile(id)
 
     if(is_user_connected(id))
     {
-        #define exe server_cmd
 
         switch(iAction)
         {
