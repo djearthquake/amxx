@@ -2,8 +2,6 @@
 //This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
 ///If you do not use it, ignore or study it.
 //https://github.com/djearthquake/amxx/blob/main/scripting/valve/clientemp.sma
-//#define SOCK_NON_BLOCKING (1 << 0)    /* Set the socket a nonblocking */
-//#define SOCK_LIBC_ERRORS  (1 << 1)    /* Enable libc error reporting */
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
@@ -221,8 +219,11 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
         if(get_pcvar_num(g_cvar_debugger) > 1)
             server_print"%s %s by %s:Starting to open socket!", PLUGIN, VERSION, AUTHOR
         get_user_authid(id,authid,charsmax (authid));
-        g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        //g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2);
+        #if defined SOCK_NON_BLOCKING
+            g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
+        #else
+            g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2);
+        #endif
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         get_pcvar_string(g_cvar_tag, tag, charsmax (tag));
         formatex(constring,charsmax (constring), SzGet, Ip, token, tag, authid);
@@ -384,43 +385,13 @@ stock get_user_profile(id)
                 server_print "Copying the risk score."
 
                 containi(SzGet, "v2") > charsmin ? copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],',') : //v2
-                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+7],'"') //v1
+                copyc(risk, charsmax(risk), proxy_socket_buffer[containi(proxy_socket_buffer,"^"risk^":")+6],'"') //v1
 
 
                 remove_quotes(risk)
                 replace(risk, charsmax(risk), ",", "")
                 server_print "Risk:%d", str_to_num(risk)
 
-                /* //v1
-                ///https://proxycheck.io/api/#test_console
-                {
-                {
-                    "status": "ok",
-                    "node": "PROMETHEUS",
-                    "98.75.2.4": {
-                        "proxy": "no",
-                        "type": "Residential",
-                        "risk": "0"
-                    }
-                }
-                * 
-                * //v2
-                {
-                    "status": "ok",
-                    "1.10.176.179": {
-                        "proxy": "yes",
-                        "type": "SOCKS",
-                        "risk": "96",
-                        "attack history": {
-                            "Total": "32",
-                            "Vulnerability Probing": "7",
-                            "Forum Spam": "5",
-                            "Login Attempt": "10",
-                            "Registration Attempt": "10"
-                        }
-                    }
-                }
-                */
 
                 Data[iRisk] = risk
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
@@ -437,16 +408,15 @@ stock get_user_profile(id)
                 }
                 if (containi(proxy_socket_buffer, "type") != charsmin)
                 {
-                    //copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer,"type")+8],'"')
                     copyc(type, charsmax(type), proxy_socket_buffer[containi(proxy_socket_buffer,"^"type^":")+7],',')
                     remove_quotes(type)
 
                     if( !equal(type, "") )
                     {
-                        
+
                         replace(type, charsmax(type), ",", "")
                         Data[SzType] = type
-                        
+
                         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
 
                         for (new admin=1; admin<=g_maxPlayers; admin++)
