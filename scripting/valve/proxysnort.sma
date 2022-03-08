@@ -138,7 +138,11 @@ public plugin_init()
     @file_data(SzSave)
     ReadProxyFromFile( )
 }
-public client_putinserver(id) //Using connect or connectex does not hold up with bots regardless of filter at some point.
+
+public client_connect(id) //Should get downloaders. Use putinserver function if you sense this is unstable with bots.
+    @proxy_begin(id)
+
+@proxy_begin(id)
 {
     if(is_user_connected(id) || is_user_connecting(id))
     {
@@ -245,7 +249,7 @@ public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
     if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
-            set_task(10.0,"client_putinserver",id)
+            set_task(10.0,"@proxy_begin",id)
         else
             IS_SOCKET_IN_USE = true
         server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
