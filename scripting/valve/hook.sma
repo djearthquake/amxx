@@ -59,6 +59,7 @@
 #define MAX_NAME_LENGTH             32
 #define MAX_MENU_LENGTH            512
 #define charsmin                    -1
+#define PENGUIN                    2022
 
 
 //new const RPG[]         = "models/flag.mdl" //fun. makes the xbow sound effect seems more realistic. Need a decent harpoon model please.
@@ -109,10 +110,14 @@ new const battery[]  = "models/w_battery.mdl"
 
 new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power", "tank", "train"}
 
+new Xdebug
+
 public plugin_init()
 {
     register_plugin("Hook", "1.8", "SPINX") //1.5 and under was developed by P34nut for CS
     //This is more for OF the first mod. Env_rope is exclusivley in OF.
+    
+    Xdebug = register_cvar("hook_debug", "0")
 
     // Hook commands
     register_clcmd("+hook", "make_hook")
@@ -176,21 +181,23 @@ public plugin_precache()
 {
     // Hook Model
     precache_model(RPG)
-    precache_generic(RPG)
+    //precache_generic(RPG)
+
+    ///precache_model("models/prdroid.mdl")
 
     precache_model("models/barnacle.mdl")
-    precache_generic("models/barnacle.mdl")
+    //precache_generic("models/barnacle.mdl")
 
 
     precache_model("models/barnaclet.mdl")
-    precache_generic("models/barnaclet.mdl")
+    //precache_generic("models/barnaclet.mdl")
 
 
     precache_model("models/headcrab.mdl")
-    precache_generic("models/headcrab.mdl")
+    //precache_generic("models/headcrab.mdl")
 
     precache_model("models/headcrabt.mdl")
-    precache_generic("models/headcrabt.mdl")
+    //precache_generic("models/headcrabt.mdl")
 
     precache_sound("headcrab/hc_alert1.wav")
     precache_sound("headcrab/hc_alert2.wav")
@@ -208,7 +215,7 @@ public plugin_precache()
     precache_sound("headcrab/hc_pain1.wav")
     precache_sound("headcrab/hc_pain2.wav")
     precache_sound("headcrab/hc_pain3.wav")
-
+/*
     precache_generic("sound/headcrab/hc_alert1.wav")
     precache_generic("sound/headcrab/hc_alert2.wav")
     precache_generic("sound/headcrab/hc_attack1.wav")
@@ -225,24 +232,24 @@ public plugin_precache()
     precache_generic("sound/headcrab/hc_pain1.wav")
     precache_generic("sound/headcrab/hc_pain2.wav")
     precache_generic("sound/headcrab/hc_pain3.wav")
-
+*/
 
 
     // Hook Beam
     sprBeam = precache_model(HOOK_MODEL)
     precache_generic(HOOK_MODEL)
     // Hook Sounds
-    precache_sound("weapons/xbow_hit1.wav")
+    //precache_sound("weapons/xbow_hit1.wav")
     precache_generic("sound/weapons/xbow_hit1.wav")
 
 
     precache_generic("sound/weapons/xbow_hit2.wav")
-    precache_sound("weapons/xbow_hit2.wav")
+    //precache_sound("weapons/xbow_hit2.wav")
 
-    precache_sound("weapons/xbow_hitbod1.wav")
+    //precache_sound("weapons/xbow_hitbod1.wav")
     precache_generic("sound/weapons/xbow_hitbod1.wav")
 
-    precache_sound("weapons/xbow_fire1.wav")
+    //precache_sound("weapons/xbow_fire1.wav")
     precache_generic("sound/weapons/xbow_fire1.wav")
 
     precache_generic(battery); //func_pushable
@@ -258,69 +265,69 @@ public plugin_precache()
     precache_generic(glass2a);   //func_pushable
 
     precache_sound("debris/bustmetal1.wav");
-    precache_generic("sound/debris/bustmetal1.wav");
+    //precache_generic("sound/debris/bustmetal1.wav");
 
     precache_sound("debris/bustmetal2.wav");
-    precache_generic("sound/debris/bustmetal2.wav");
+    //precache_generic("sound/debris/bustmetal2.wav");
 
     precache_sound("debris/metal1.wav");
-    precache_generic("sound/debris/metal1.wav");
+    //precache_generic("sound/debris/metal1.wav");
 
     precache_sound("debris/metal2.wav");
-    precache_generic("sound/debris/metal2.wav");
+    //precache_generic("sound/debris/metal2.wav");
 
     precache_sound("debris/metal3.wav");
-    precache_generic("sound/debris/metal3.wav");
+    //precache_generic("sound/debris/metal3.wav");
 
     precache_model("sprites/fexplo.spr")
-    precache_generic("sprites/fexplo.spr")
+    //precache_generic("sprites/fexplo.spr")
 
     precache_model("models/w_battery.mdl")
-    precache_generic("models/w_battery.mdl")
+    //precache_generic("models/w_battery.mdl")
 
     precache_model("models/hair.mdl")
-    precache_generic("models/hair.mdl")
+    //precache_generic("models/hair.mdl")
 
     precache_model("models/rope32.mdl")
-    precache_generic("models/rope32.mdl")
+    //precache_generic("models/rope32.mdl")
     precache_model("models/rope16.mdl")
-    precache_generic("models/rope16.mdl")
+    //precache_generic("models/rope16.mdl")
 
     precache_model("models/wire_copper32.mdl")
-    precache_generic("models/wire_copper32.mdl")
+    //precache_generic("models/wire_copper32.mdl")
     precache_model("models/wire_red32.mdl")
-    precache_generic("models/wire_red32.mdl")
+    //precache_generic("models/wire_red32.mdl")
 
     precache_sound("items/grab_rope.wav")
-    precache_generic("sound/items/grab_rope.wav")
+    //precache_generic("sound/items/grab_rope.wav")
 
     precache_sound("items/rope1.wav")
-    precache_generic("sound/items/rope1.wav")
+    //precache_generic("sound/items/rope1.wav")
 
     precache_sound("items/rope2.wav")
-    precache_generic("sound/items/rope2.wav")
+    //precache_generic("sound/items/rope2.wav")
 
     precache_sound("items/rope3.wav")
-    precache_generic("sound/items/rope3.wav")
+    //precache_generic("sound/items/rope3.wav")
 
     precache_model("models/leech.mdl")
-    precache_generic("models/leech.mdl")
+    //precache_generic("models/leech.mdl")
 
     precache_sound("leech/leech_bite1.wav");
-    precache_generic("sound/leech/leech_bite1.wav");
+    //precache_generic("sound/leech/leech_bite1.wav");
 
     precache_sound("leech/leech_bite2.wav");
-    precache_generic("sound/leech/leech_bite2.wav");
+    //precache_generic("sound/leech/leech_bite2.wav");
 
     precache_sound("leech/leech_bite3.wav");
-    precache_generic("sound/leech/leech_bite3.wav");
+    //precache_generic("sound/leech/leech_bite3.wav");
 
 
     precache_sound("leech/leech_alert1.wav");
-    precache_generic("sound/leech/leech_alert1.wav");
+    //precache_generic("sound/leech/leech_alert1.wav");
 
     precache_sound("leech/leech_alert2.wav");
-    precache_generic("sound/leech/leech_alert2.wav");
+    //precache_generic("sound/leech/leech_alert2.wav");
 
     precache_sound("barnacle/bcl_alert2.wav")
     precache_sound("barnacle/bcl_bite3.wav")
@@ -330,7 +337,7 @@ public plugin_precache()
     precache_sound("barnacle/bcl_die1.wav")
     precache_sound("barnacle/bcl_die3.wav")
     precache_sound("barnacle/bcl_tongue1.wav")
-
+/*
     precache_generic("sound/barnacle/bcl_alert2.wav")
     precache_generic("sound/barnacle/bcl_bite3.wav")
     precache_generic("sound/barnacle/bcl_chew1.wav")
@@ -339,7 +346,7 @@ public plugin_precache()
     precache_generic("sound/barnacle/bcl_die1.wav")
     precache_generic("sound/barnacle/bcl_die3.wav")
     precache_generic("sound/barnacle/bcl_tongue1.wav")
-
+*/
 }
 
 
@@ -379,6 +386,9 @@ public make_hook(id)
             client_print(id, print_chat, "[Hook] You cannot use the hook in the first %0.0f seconds of the round", fDelay)
 
         throw_hook(id)
+        new check_head = get_pcvar_num(pHead)
+        if(check_head == 5 || check_head == 10 )
+            set_task(1.0, "@penguin_think", id+PENGUIN, _, _, "b")
     }
     return PLUGIN_HANDLED
 }
@@ -390,40 +400,43 @@ public plugin_cfg()
 }
 public del_hook(id)
 {
-    //need keep trigger_push, barnacle, env_rope intact for now
-    if (get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) <= 9) //tested works can detach hook from monsters 'unleashed'
+    if(is_user_connected(id))
     {
-        // Remove players hook
-        if (!canThrowHook[id])
-            remove_hook(id)
-        if(is_user_connected(id))
+        //need keep trigger_push, barnacle, env_rope intact for now
+        if (get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) <= 9) //tested works can detach hook from monsters 'unleashed'
         {
-            message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
-            write_byte(99) // TE_KILLBEAM
-            write_short(id) // entity
-            message_end()
+            // Remove players hook
+            if(pev_valid(Hook[id]) && !canThrowHook[id])
+            //if (!canThrowHook[id])
+                remove_hook(id)
+            if(is_user_connected(id))
+            {
+                message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
+                write_byte(99) // TE_KILLBEAM
+                write_short(id) // entity
+                message_end()
+            }
+            return PLUGIN_HANDLED
+            //return PLUGIN_CONTINUE
+        }
+        //else if (get_pcvar_num(pHead) <=2/* || get_pcvar_num(pHead) == 6*/)
+        else if (get_pcvar_num(pHead) <=4 || get_pcvar_num(pHead) == 9)
+    
+        {
+            if(!canThrowHook[id])
+                canThrowHook[id] = true
+    
+            if(is_user_connected(id))
+            {
+                message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
+                write_byte(99) // TE_KILLBEAM
+                write_short(id) // entity
+                message_end()
+            }
         }
         return PLUGIN_HANDLED
-        //return PLUGIN_CONTINUE
     }
-    //else if (get_pcvar_num(pHead) <=2/* || get_pcvar_num(pHead) == 6*/)
-    else if (get_pcvar_num(pHead) <=4 || get_pcvar_num(pHead) == 9)
-
-    {
-        if(!canThrowHook[id])
-            canThrowHook[id] = true
-
-        if(is_user_connected(id))
-        {
-            message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
-            write_byte(99) // TE_KILLBEAM
-            write_short(id) // entity
-            message_end()
-        }
-    }
-
-    return PLUGIN_HANDLED
-
+    return PLUGIN_CONTINUE
 }
 
 public round_bstart()
@@ -479,9 +492,29 @@ public Update(id)
     return PLUGIN_CONTINUE
 }
 
+@penguin_think(beak)
+{
+    new id = beak - PENGUIN
+    new check_head = get_pcvar_num(pHead)
+    if( check_head == 5 || check_head == 10 )
+
+/*  if(!canThrowHook[id])
+        canThrowHook[id] = true
+*/
+    if(is_user_connected(id))
+    {
+        if( check_head == 5 )
+            !Hook[id] ? ResetHUD(id)/*remove_hook(id)*/ : change_task(id+PENGUIN, 3.0)
+        else
+            Hook[id] ? ResetHUD(id)/*remove_hook(id)*/ : change_task(id+PENGUIN, 3.0)
+    }
+    else
+        remove_task(id+PENGUIN)
+}
+
 public ResetHUD(id)
 {
-    if(is_user_alive(id) && !is_user_bot(id) && gHooksUsed[id]>0)
+    if(is_user_connected(id) && !is_user_bot(id) || gHooksUsed[id]>0)
     {
         if (gRestart[id])
         {
@@ -494,7 +527,7 @@ public ResetHUD(id)
             return
         }
 
-        if (gHooked[id] && !find_ent(charsmin,"env_rope") || !find_ent(charsmin,"monster_barnacle") )
+        if (gHooked[id] && !find_ent(charsmin,"env_rope") || !find_ent(charsmin,"env_electrified_wire") || !find_ent(charsmin,"monster_barnacle") )
             remove_hook(id)
 
         if (get_pcvar_num(pMaxHooks) > 0)
@@ -558,13 +591,15 @@ public fwTouch(ptr, ptd)
                     else
                     goto damage
                 }
-                else if (equali(szPtdClass, "func_breakable") || equali(szPtdClass, "func_pushable"))
+                //else if (equali(szPtdClass, "func_breakable") || equali(szPtdClass, "func_pushable"))
+                else if (containi(szPtdClass, "able") > charsmin)
                 {
     damage:
                     is_user_alive(ptd) ?
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CLUB) //Attacker killed Victim w/ Hook
+                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,random_num(10,20)*1.0,DMG_PARALYZE) //bot or human
                     :
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
+                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CRUSH|DMG_ALWAYSGIB) //Box or pushable ... monster
+                    //ExecuteHam(Ham_TakeDamage,ptd,ptr,id,2.0,DMG_POISON|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
 
                     remove_hook(id)
                     return FMRES_HANDLED
@@ -808,11 +843,11 @@ public throw_hook(id)
         case  6: Hook[id] = create_entity("monster_leech")
         case  7: Hook[id] = create_entity("monster_headcrab")
         case  8: Hook[id] = create_entity("monster_snark")
-        case  9: Hook[id] = create_entity("light")
-        case 10: Hook[id] = create_entity("env warpball")
+        case  9: Hook[id] = create_entity("light") ///"light" "cycler_prdroid"
+        case 10: Hook[id] = create_entity("displacer_ball")
     }
     //if using certain hooks they need set up just so to work as expected
-    if(get_pcvar_num(pHead) <= 4)
+    if(get_pcvar_num(pHead) <= 5)
     {
         if(!get_pcvar_num(pInstant))
             set_pcvar_num(pInstant, 1)
@@ -898,6 +933,17 @@ public throw_hook(id)
         fm_set_kvd(Hook[id], "height", "9000");
 
         //trigger_hurt
+        
+
+        if(get_pcvar_num(pHead) == 10)
+        {
+            fm_set_kvd(Hook[id], "Radius", "128");
+            fm_set_kvd(Hook[id], "Targetname", "HookBall");
+            fm_set_kvd(Hook[id], "Target", "blk_apache_way_point");
+            fm_set_kvd(Hook[id], "Warp_Target", "apache_way_point");
+            fm_set_kvd(Hook[id], "spawnflags", "3"); 
+
+        }
         if(get_pcvar_num(pHead) == 11)
         {
             fm_set_kvd(Hook[id], "dmg ", "-20");
@@ -939,8 +985,8 @@ public throw_hook(id)
 
         set_pev(Hook[id], pev_solid, 2)
         set_pev(Hook[id], pev_movetype, 5)
+        //get_pcvar_num(pHead) == 5 ? set_pev(Hook[id], pev_owner, 0) : set_pev(Hook[id], pev_owner, id) //jk_botti crash when penguin explodes
         set_pev(Hook[id], pev_owner, id)
-
       //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
       //  set_pev(Hook[id], pev_health, 100.0) //for smoker
 
@@ -1041,15 +1087,16 @@ public remove_hook(id)
 {
     if(is_user_connected(id))
     {
-        server_print "remove %n's Hook", id
-        //Player can now throw hooks
-        canThrowHook[id] = true
+        if(get_pcvar_num(Xdebug))
+            server_print "remove %n's Hook", id
         new szClass[MAX_NAME_LENGTH]
-        if (pev_valid(Hook[id]))
+        if (pev_valid(Hook[id]) )
         {
+            //Player can now throw hooks
+            canThrowHook[id] = true
             REM:
             pev(Hook[id], pev_classname, szClass, charsmax(szClass))
-            if (containi(szClass, "rope") > charsmin || containi(szClass, "barnacle") != charsmin)    //equali(szClass, "monster_barnacle"))
+            if (containi(szClass, "rope") > charsmin || containi(szClass, "wire") > charsmin || containi(szClass, "barnacle") != charsmin || containi(szClass, "penguin") != charsmin )    //equali(szClass, "monster_barnacle"))
             {
                 //prevents rope crashing
                 set_pev(Hook[id], pev_owner, 0) //little effect
@@ -1059,14 +1106,16 @@ public remove_hook(id)
             // Remove the hook if it is valid
             //if (pev_valid(Hook[id]))
             {
-                server_print "Removing hook for %n", id
+                if(get_pcvar_num(Xdebug))
+                    server_print "Removing hook for %n", id
                 engfunc(EngFunc_RemoveEntity, Hook[id])
                 Hook[id] = 0
             }
 
             // Remove the line between user and hook
             {
-                server_print "Removing beam for %n", id
+                if(get_pcvar_num(Xdebug))
+                    server_print "Removing beam for %n", id
                 message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
                 write_byte(99) // TE_KILLBEAM
                 write_short(id) // entity
@@ -1079,11 +1128,15 @@ public remove_hook(id)
         }
         else
         {
-            server_print "Invalid hook removal for %n", id
+            if(get_pcvar_num(Xdebug))
+                server_print "There wasn't a hook to remove for %n.", id
+            canThrowHook[id] = true
+            Hook[id] = 0
+            gHooked[id] = false
             goto REM
         }
-
-        server_print "Hook removal for %n successful", id
+        if(get_pcvar_num(Xdebug))
+            server_print "Hook removal for %n successful", id
 
     }
 
