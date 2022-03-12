@@ -18,8 +18,60 @@ new g_puff_hp
 new g_puff_scale
 new bool:bSpec_Apache_Owner_lock[MAX_PLAYERS], bool:bApache_Owner_lock[MAX_PLAYERS]
 
+new const grunt_sounds[][]=
+{
+    "weapons/saw_fire1.wav",
+    "weapons/saw_fire2.wav",
+    "weapons/saw_fire3.wav",
+    "fgrunt/medic.wav",
+    "hgrunt/affirmative!.wav",
+    "hgrunt/affirmative.wav",
+    "hgrunt/alert!.wav",
+    "hgrunt/alert.wav",
+    "hgrunt/got.wav",
+    "hgrunt/go!.wav",
+    "hgrunt/go.wav",
+    "hgrunt/gr_alert1.wav",
+    "hgrunt/gr_die1.wav",
+    "hgrunt/gr_die2.wav",
+    "hgrunt/gr_die3.wav",
+    "hgrunt/grenade!.wav",
+    "hgrunt/gr_idle1.wav",
+    "hgrunt/gr_idle2.wav",
+    "hgrunt/gr_idle3.wav",
+    "hgrunt/gr_loadtalk.wav",
+    "hgrunt/gr_mgun1.wav",
+    "hgrunt/gr_mgun2.wav",
+    "hgrunt/gr_mgun3.wav",
+    "hgrunt/gr_pain1.wav",
+    "hgrunt/gr_pain2.wav",
+    "hgrunt/gr_pain3.wav",
+    "hgrunt/gr_pain4.wav",
+    "hgrunt/gr_pain5.wav",
+    "hgrunt/gr_reload1.wav",
+    "hgrunt/gr_step1.wav",
+    "hgrunt/gr_step2.wav",
+    "hgrunt/gr_step3.wav",
+    "hgrunt/gr_step4.wav",
+    "zombie/claw_miss2.wav",
+    "zombie/claw_miss1.wav"
+
+}
+
 new const apache_model[][] =
 {
+    //osprey
+    "models/hgrunt.mdl",
+    "sprites/rope.spr",
+    "models/osprey.mdl",
+    "models/osprey_tailgibs.mdl",
+    "models/osprey_bodygibs.mdl",
+    "models/osprey_enginegibs.mdl",
+    "models/crashed_osprey.mdl",
+    "models/blkop_osprey.mdl",
+    "models/blkop_ospreyt.mdl",
+    "models/blkop_dead_osprey.mdl",
+    "models/blkop_dead_osprey.mdl",
     "models/HVR.mdl",
     //grn
     "models/apachet.mdl",
@@ -37,6 +89,9 @@ new const apache_model[][] =
 
 new const apache_snds[][] =
 {
+    "hgrunt/gr_mgun1.wav",
+    "ambience/osprey_rotors.wav",
+    "misc/osprey_takeoff.wav",
     "apache/ap_rotor1.wav",
     "apache/ap_rotor2.wav",
     "apache/ap_rotor3.wav",
@@ -55,7 +110,11 @@ public plugin_init()
 
     //Sensors
     register_touch("monster_apache", "*", "@Apache_Sensor")
-    register_touch("monster_blkop_apache", "*", "@Apache_Sensor_blkOps")
+    register_touch("monster_blkop_apache", "*", "@Apache_Sensor")
+    register_touch("monster_apache", "worldspawn", "@Apache_World")
+    register_touch("monster_blkop_apache", "worldspawn", "@Apache_World")
+    register_touch("monster_osprey", "*", "@Apache_Sensor")
+    register_touch("monster_osprey", "worldspawn", "@Apache_World")
 
     //waypointing
     g_puff_hp = register_cvar("smoke_puff_hp", "200") //HP is how long puff lasts. Dev Comment: Too short of time/HP may contribute to instability with OP4. 
@@ -81,76 +140,46 @@ public plugin_init()
         new SzMonster_class[MAX_PLAYERS], SzSensor_class[MAX_PLAYERS]
         entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
 
-        if(pev_valid(Sensor) && containi(SzMonster_class, "monster_apache") != charsmin)
-        //////if(is_valid_ent(Sensor))
+        if(pev_valid(Sensor) && containi(SzMonster_class, "apache") != charsmin || containi(SzMonster_class, "osprey") != charsmin)
         {
             entity_get_string(Sensor,EV_SZ_classname,SzSensor_class,charsmax(SzSensor_class))
-            client_print 0, print_center, "%s is next to^n^n%s",SzMonster_class, SzSensor_class //use HUD overflowing on chats
+            //client_print 0, print_center, "%s is next to^n^n%s",SzMonster_class, SzSensor_class //use HUD overflowing on chats
     
-            if(containi(SzSensor_class,"worldspawn") > charsmin)
+            
+            if(equali(SzSensor_class,"func_breakable") || equali(SzSensor_class,"Hook_rope") || containi(SzSensor_class,"monster") > charsmin && containi(SzSensor_class,"apache") == charsmin/*copters touch explode otherwise*/)
             {
-                new World = Sensor
-                @Apache_World(Apache, World)
+                ///@Apache_World(Apache)
+                //ExecuteHam(Ham_TakeDamage,Apache,Sensor,Apache,50.0,DMG_CRUSH|DMG_ALWAYSGIB)
+                ExecuteHam(Ham_TakeDamage,Sensor,Apache,Sensor,5.0,DMG_SLASH|DMG_ALWAYSGIB)
             }
-            else if(containi(SzSensor_class,"player") > charsmin)
+            else if(equali(SzSensor_class,"func_pushable"))
+            {
+                set_pev(Sensor, pev_movetype, MOVETYPE_BOUNCE)
+            }
+            else if(equali(SzSensor_class,"player"))
             {
                 new Player = Sensor
                 @Apache_Player(Apache, Player)
             }
             else if(containi(SzSensor_class,"apache") > charsmin && pev_valid(Sensor) == 2)
             {
+                //still crashed when colliding in air. {Pick one with whatever hp then make that one drop etc?
                 entity_set_int(Apache, EV_INT_solid, SOLID_NOT)
                 entity_set_float(Apache, EV_FL_friction, FRICTION_ICE)
                 set_pev(Apache, pev_movetype, MOVETYPE_BOUNCE)
-                set_task(random_num(3,7)*1.0,"@return_body",Apache)
+                set_task(random_num(1,5)*1.5,"@return_body",Apache)
+
+                entity_set_int(Sensor, EV_INT_solid, SOLID_NOT)
+                entity_set_float(Sensor, EV_FL_friction, FRICTION_ICE)
+                set_pev(Sensor, pev_movetype, MOVETYPE_BOUNCE)
+                set_task(random_num(1,5)*1.5,"@return_body",Sensor)
             }
             else
             {
                 client_print 0, print_center, "%s is next to^n^n%s",SzMonster_class, SzSensor_class
                 if(entity_intersects(Apache, Sensor))
                 //if(entity_intersects(Apache, *))
-                    set_task(random_num(3,7)*1.0,"@return_body",Apache)
-
-            }
-        }
-    }
-}
-@Apache_Sensor_blkOps(Apache, Sensor)
-{
-    if(pev_valid(Apache) == 2)
-    {
-        new SzMonster_class[MAX_PLAYERS], SzSensor_class[MAX_PLAYERS]
-        entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
-
-        if(pev_valid(Sensor) && containi(SzMonster_class, "monster_blkop_apache") != charsmin)
-        //////if(is_valid_ent(Sensor))
-        {
-            entity_get_string(Sensor,EV_SZ_classname,SzSensor_class,charsmax(SzSensor_class))
-            client_print 0, print_center, "%s is next to^n^n%s",SzMonster_class, SzSensor_class //use HUD overflowing on chats
-    
-            if(containi(SzSensor_class,"worldspawn") > charsmin)
-            {
-                new World = Sensor
-                @Apache_World(Apache, World)
-            }
-            else if(containi(SzSensor_class,"player") > charsmin)
-            {
-                new Player = Sensor
-                @Apache_Player(Apache, Player)
-            }
-            else if(containi(SzSensor_class,"apache") > charsmin && pev_valid(Sensor) == 2)
-            {
-                entity_set_int(Apache, EV_INT_solid, SOLID_NOT)
-                entity_set_float(Apache, EV_FL_friction, FRICTION_ICE)
-                set_pev(Apache, pev_movetype, MOVETYPE_BOUNCE)
-                set_task(random_num(3,7)*1.0,"@return_body",Apache)
-            }
-            else
-            {
-                client_print 0, print_center, "%s is next to^n^n%s",SzMonster_class, SzSensor_class
-                if(entity_intersects(Apache, Sensor))
-                //if(entity_intersects(Apache, *))
-                    set_task(random_num(3,7)*1.0,"@return_body",Apache)
+                    set_task(random_num(1,3)*1.5,"@return_body",Apache)
 
             }
         }
@@ -162,19 +191,17 @@ public plugin_init()
     new SzMonster_class[MAX_PLAYERS]
     pev_valid(Apache) ? entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class)) : client_print( 0, print_console, "Craft hit some ripples...")
 
-    if( containi(SzMonster_class, "apache") != charsmin && pev_valid(Apache) == 2 )
-
-    //if(pev_valid(Apache) == 2)
+    if( containi(SzMonster_class, "apache") != charsmin || containi(SzMonster_class, "osprey") != charsmin && pev_valid(Apache) == 2 )
     {
         ///if(pev(Apache, pev_owner) > 0 && is_user_alive(pev(Apache, pev_owner)) || pev(Apache, pev_owner) > 32 && is_valid_ent(Apache))
         {
-            client_print 0, print_console, "Changing physics!"
+            //client_print 0, print_console, "Changing physics!"
             new SzMonster_class[MAX_PLAYERS]
             entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
             set_pev(Apache, pev_movetype, MOVETYPE_FLY)
             entity_set_int(Apache, EV_INT_solid, SOLID_BBOX)
     
-            //////////entity_set_float(Apache, EV_FL_friction, FRICTION_NOT) //?????
+            ///entity_set_float(Apache, EV_FL_friction, FRICTION_NOT)
     
             client_print 0, print_center, "%s back on course", SzMonster_class
         }
@@ -182,11 +209,12 @@ public plugin_init()
 }
 //When copter runs into a player
 @Apache_Player(Apache, Player)
+if( is_user_alive(Player) && pev_valid(Apache) == 2 )
 {
     new SzMonster_class[MAX_PLAYERS]
     entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
     //if( containi(SzMonster_class, "apache") != charsmin && pev_valid(Apache) == 2 )
-    if( containi(SzMonster_class, "apache") != charsmin && pev_valid(Apache) == 2 && is_user_connected(Player) )
+    if( containi(SzMonster_class, "apache") != charsmin && pev_valid(Apache) == 2 && is_user_alive(Player) )
     //if(is_user_connected(Player) && pev_valid(Apache) == 2)
     {
         new SzMonster_class[MAX_PLAYERS]
@@ -199,27 +227,36 @@ public plugin_init()
     //set_task(2.0,"@return_body",Apache)
 }
 //When copter hits worldspawn ents
-@Apache_World(Apache, World)
+@Apache_World(Apache)
 {
-    client_print 0, print_center, "Apache is on world"
+    ///client_print 0, print_console, "Apache is on world"
     new SzMonster_class[MAX_PLAYERS]
     entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
-    if( containi(SzMonster_class, "apache") != charsmin && pev_valid(Apache) == 2 )
+    if( containi(SzMonster_class, "apache") != charsmin || containi(SzMonster_class, "osprey") != charsmin && pev_valid(Apache) == 2 )
     {
         new SzMonster_class[MAX_PLAYERS]
         entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
-        client_print 0, print_center, "%s is colliding with world.", SzMonster_class
+        ///client_print 0, print_chat, "%s is colliding with world.", SzMonster_class
         entity_set_int(Apache, EV_INT_solid, SOLID_NOT)
+        entity_set_float(Apache, EV_FL_friction, FRICTION_ICE)
+        set_pev(Apache, pev_movetype, MOVETYPE_BOUNCE)
         //set_pev(Apache, pev_movetype, MOVETYPE_STEP )
         //entity_set_float(Apache, EV_FL_friction, FRICTION_ICE)
         //set_pev(Apache, pev_movetype, MOVETYPE_BOUNCEMISSILE) //crashing
         //set_pev(Apache, pev_movetype, MOVETYPE_BOUNCE ) //Still stuck world
-        set_task(random_num(1,3)*1.0,"@return_body",Apache)
+        set_task(random_num(1,3)*1.5,"@return_body",Apache)
     }
 }
 //NO CRASH WHEN APACHE PLUGIN OPENED
 public plugin_precache()
 {
+    precache_model("models/hgrunt.mdl") //reg
+    precache_model("models/hgrunt_opfor.mdl") //ally
+    precache_model("models/gib_hgrunt.mdl")
+
+    for (new list;list < sizeof grunt_sounds;list++)
+        precache_sound(grunt_sounds[list])
+
     for(new list; list < sizeof apache_model;list++)
     {
         precache_model(apache_model[list])
@@ -231,11 +268,11 @@ public plugin_precache()
         precache_sound(apache_snds[list])
 
         //Generic cache of sounds
-        /*
+
         new SzReformat_SND_generic[MAX_PLAYERS]
         formatex(SzReformat_SND_generic,charsmax(SzReformat_SND_generic),"sound/%s",apache_snds[list])
-        precache_generic(SzReformat_SND_generic)
-        */
+        //precache_generic(SzReformat_SND_generic)
+
     }
 
 }
@@ -278,7 +315,19 @@ public clcmd_apache_view(id)
     return PLUGIN_HANDLED;
 }
 
+public client_putinserver(id)
+{
+    new black_plane = find_ent(charsmin, "monster_blkop_apache")
+    new plane = find_ent(charsmin, "monster_apache")
 
+    bSpec_Apache_Owner_lock[id] = false
+    set_pev(black_plane, pev_owner, 0)
+    bSpec_Apache_Owner_lock[0] = false
+
+    bApache_Owner_lock[id] = false
+    set_pev(plane, pev_owner, 0)
+    bApache_Owner_lock[0] = false
+}
 
 ///Amxx 182 backwards compatibility
 #if !defined client_disconnected
@@ -322,21 +371,29 @@ public clcmd_apache_buy(id)
 
     if(is_user_alive(id))
     {
-        if( (pev(plane, pev_owner) == id && pev(black_plane, pev_owner) == id) && containi(arg,"release") > charsmin)
+        if( containi(arg,"release") > charsmin )
         {
             //restock them for other players.
-            bSpec_Apache_Owner_lock[id] = false
-            bApache_Owner_lock[id] = false
             //otherwise acts like regular map enemy helcopter and cannot acquire it. have to kill it
-
-            set_pev(plane, pev_owner, 0)
-            set_pev(black_plane, pev_owner, 0)
 
             bSpec_Apache_Owner_lock[0] = false
             bApache_Owner_lock[0] = false
+
+            if(pev(plane, pev_owner) == id)
+            {
+                set_pev(plane, pev_owner, 0)
+                bApache_Owner_lock[id] = false
+            }
+            
+            else if(pev(black_plane, pev_owner) == id)
+            {
+                set_pev(black_plane, pev_owner, 0)
+                bSpec_Apache_Owner_lock[id] = false
+            }
             set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,255)
             set_user_godmode(id, 0)
             client_print(0, print_chat, "%n released both copters!", id)
+            return PLUGIN_HANDLED
         }
         if(black_plane && containi(arg,"black") > charsmin)
         {
@@ -379,7 +436,7 @@ public clcmd_apache_buy(id)
         attach_view(id,id) //reset view
     }
 
-    return PLUGIN_HANDLED;
+    return PLUGIN_CONTINUE;
 }
 
 //MAKING THEM GO TO POINTS WE PICK IN GAME AS A PLAYER WITH PUFF OF SMOKE ::WAYPOINTING
@@ -388,7 +445,7 @@ public clcmd_apache_waypoint(id)
     if(is_user_connected(id))
     {
         new bool:bOps
-        if(!find_ent_by_tname(charsmin, "blk_apache_way_point"))
+        if(!find_ent_by_tname(charsmin, "blk_apache_way_point") || !find_ent_by_tname(charsmin, "apache_way_point"))
         {
             new arg[MAX_PLAYERS]
             read_argv(1,arg,charsmax(arg))
@@ -465,9 +522,12 @@ public clcmd_apache(id)
             plane_type = "monster_blkop_apache"
             bOps = true
         }
+        else if(containi(arg,"osprey") > charsmin)
+            plane_type = "monster_osprey"
+        else if(containi(arg,"blkosprey") > charsmin)
+            plane_type = "monster_blkop_osprey"
         else if(!plane)
             plane_type = "monster_apache"
-
         else if(black_plane && plane)
             goto PRINT
             
@@ -475,16 +535,59 @@ public clcmd_apache(id)
         if(!black_plane | !plane)
         {
             new Float:fplayerorigin[3];
-    
-            new apache = create_entity(plane_type);
-    
             entity_get_vector(id, EV_VEC_origin, fplayerorigin);
     
             fplayerorigin[1] += 150.0 //offside offset
             fplayerorigin[2] += 250.0 //overhead offset
     
-            entity_set_origin(apache, fplayerorigin);
+            new apache = create_entity(plane_type);
+            if(containi(plane_type, "osprey") != charsmin)
+            {
+                new man = create_entity("monster_human_grunt_ally")
+                if(pev_valid(man) == 2&& man > 0) //just a handyman
+                {
+                    fplayerorigin[1] -= 90.0 //offside offset
+                    fplayerorigin[2] += 200.0 //overhead offset
+                    fm_set_kvd(man, "angles", "0 0 0") //no yel dots?
+                    entity_set_origin(man, fplayerorigin);
+                    //dllfunc( DLLFunc_Spawn, man )
+                    //@delay_man(man)
+                    set_task(5.0,"@delay_man", man)
+                }
+                new osprey_man = create_entity("monster_human_grunt")
+                //new osprey_man = create_entity("monster_grunt_repel") //monster_grunt_ally_repel
+                new pathway = create_entity("path_corner")
+                if(pev_valid(pathway) && pathway > 0) //all the manuals say will crash without
+                {
+                    /*
+                    "origin" "-190 2033 -3068"
+                    "angles" "0 0 0"
+                    "wait" "0"
+                    "speed" "0"
+                    "yaw_speed" "0"
+                    "classname" "path_corner"
+                    */
+                    fm_set_kvd(pathway, "wait", "30")
+                    fm_set_kvd(pathway, "speed", "500")
+                    fm_set_kvd(pathway, "yaw_speed", "100")
+                    fm_set_kvd(pathway, "angles", "45 90 180")
+
+                    entity_set_origin(pathway, fplayerorigin);
+                    dllfunc( DLLFunc_Spawn, pathway )
+
+                    if(pev_valid(osprey_man) == 2&& osprey_man > 0) //need for osprey to appear for more than split sec
+                    {
+                        fplayerorigin[1] += 150.0 //offside offset
+                        fplayerorigin[2] += 100.0 //overhead offset
+                        fm_set_kvd(osprey_man, "angles", "0 0 0") //no yel dots?
+                        entity_set_origin(osprey_man, fplayerorigin);
+                        dllfunc( DLLFunc_Spawn, osprey_man )
+                    }
+                }
+            }
     
+            entity_set_origin(apache, fplayerorigin);
+
             fm_set_kvd(apache, "rendermode", "0"); // 0 is normal //solid is 4 , 1 is color, 2 texture 3 glow //other than 3 with sprites use negative scales 5 is additive
             fm_set_kvd(apache, "renderamt", "150"); // 255 make illusionary not a blank ///////100 amt mode 3 for transparet no blk backgorund
             fm_set_kvd(apache, "speed", "64")
@@ -518,3 +621,6 @@ public clcmd_apache(id)
     }
     return PLUGIN_CONTINUE;
 }
+
+@delay_man(man)
+    dllfunc( DLLFunc_Spawn, man )
