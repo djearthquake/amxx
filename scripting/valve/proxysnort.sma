@@ -93,7 +93,9 @@ new const MESSAGE[] = "Proxysnort by Spinx"
 new risk[ 3 ];
 new g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE;
-new bool:g_has_been_checked[MAX_PLAYERS];
+new bool:g_has_been_checked[MAX_PLAYERS + 1];
+new bool:g_processing[MAX_PLAYERS + 1];
+
 new Trie:g_already_checked;
 new g_clientemp_version;
 new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
@@ -115,7 +117,7 @@ public plugin_init()
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
     g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
     g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
-    g_cvar_debugger         = register_cvar("proxy_debug", "5");
+    g_cvar_debugger         = register_cvar("proxy_debug", "0");
     //proxy_action: 0 is rename. 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
     //Want more ask! Love to put them in SVC_FINALE. They are frozen people can shoot them and text slowly comes across.
     g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
@@ -139,17 +141,18 @@ public plugin_init()
     ReadProxyFromFile( )
 }
 
-public client_connect(id) //Should get downloaders. Use putinserver function if you sense this is unstable with bots.
+public client_authorized(id)//https://github.com/alliedmodders/amxmodx/pull/840
     @proxy_begin(id)
-
 @proxy_begin(id)
 {
     if(is_user_connected(id) || is_user_connecting(id))
+    if(!g_processing[id])
     {
         if(is_user_bot(id) || g_has_been_checked[id] || id == 0)
             return PLUGIN_HANDLED_MAIN
         if(!is_user_bot(id) && id > 0)
         {
+            g_processing[id] = true
             static SzLoopback[] = "127.0.0.1"
             get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
             new total = iPlayers()
@@ -163,7 +166,7 @@ public client_connect(id) //Should get downloaders. Use putinserver function if 
                 server_print "%s task input time = %f", PLUGIN,task_expand
                 Data[SzAddress] = ip
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-                if(!task_exists(id))
+                if(!task_exists(id) && g_processing[id])
                     set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
             }
             else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
@@ -184,10 +187,9 @@ public client_connect(id) //Should get downloaders. Use putinserver function if 
     }
     return PLUGIN_HANDLED
 }
-public client_proxycheck(Ip[ MAX_IP_LENGTH_V6 ], id)
+public client_proxycheck(Ip[], id)
 {
-    //if (is_user_connected(id) && !is_user_connecting(id) && id > 0 )
-    if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id])
+    if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id] && g_processing[id])
     if ( !is_user_bot(id) )
     {
         server_print "%s %s by %s:Checking if %s is a bot or something else.",PLUGIN, VERSION, AUTHOR, name
@@ -308,7 +310,10 @@ stock get_user_profile(id)
 
     }
     else if(is_user_connecting(id))
+    {
         server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
+        server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg) //test kick downloaders
+    }
 }
 @read_web(proxy_snort)
 {
@@ -349,6 +354,7 @@ stock get_user_profile(id)
                 server_print "No proxy found on %s, %s error-free",name,authid
                 if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
                     g_has_been_checked[id] = true //stop double prints
+                g_processing[id] = false
             }
             if (containi(proxy_socket_buffer, "no") != charsmin  && containi(proxy_socket_buffer, "error") != charsmin )
             {
@@ -431,6 +437,7 @@ stock get_user_profile(id)
                     }
                 }
                 g_has_been_checked[id] = true
+                g_processing[id] = false
                 socket_close(g_proxy_socket);
                 if(get_pcvar_num(g_cvar_debugger) > 4 )
                     bright_message();
@@ -443,6 +450,7 @@ stock get_user_profile(id)
             else
             {
                 g_has_been_checked[id] = true
+                g_processing[id] = false
                 socket_close(g_proxy_socket);
                 if(get_pcvar_num(g_cvar_debugger) > 4 )bright_message();
                 if (equal(proxy_socket_buffer, "") && get_pcvar_num(g_cvar_debugger) )
@@ -467,7 +475,7 @@ stock get_user_profile(id)
                 }
             }
         }
-        else if(is_user_connected(id) || is_user_connecting(id) && !g_has_been_checked[id])
+        else if(is_user_connected(id) || is_user_connecting(id) && !g_has_been_checked[id] && g_processing[id])
             set_task(3.5, "@read_web",id+USERREAD);
         else
         {
