@@ -45,7 +45,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Fri 31st Dec 2021
+    *(__ [__)*|\ | >< Tues 15th Mar 2022
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -70,7 +70,7 @@
     #include sockets
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.8.7"
+    #define VERSION "1.8.8"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -102,7 +102,7 @@
     new ClientCity[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
     new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
     new ClientRegion[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
-    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
+    new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH] //ocassional run-time errors outofbounds
     new g_ClientTemp[MAX_PLAYERS+1][MAX_IP_LENGTH]
 
     new iRED_TEMP,iBLU_TEMP,iGRN_HI,iGRN_LO;
@@ -117,8 +117,6 @@
     new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ];
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
 
-    //new buffer[ MAX_MENU_LENGTH ]; //ok for coords only
-    //new buffer[ MAX_MOTD_LENGTH ] //be able to explode string without touching json module
     new buffer[ MAX_MOTD_LENGTH ]
     new token[MAX_PLAYERS + 1];
 
@@ -129,8 +127,6 @@
 
     new g_clients_saved
     new SzSave[MAX_CMD_LENGTH]
-
-    new geo_data[MAX_PLAYERS][MAX_NAME_LENGTH]
 
     new Trie:g_client_temp
 
@@ -698,9 +694,9 @@ public client_disconnected(id)
     server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 }
 
-public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
+public Weather_Feed( ClientIP[], feeding )
 {
-
+    server_print "Feeding %s", PLUGIN
     new id = feeding - WEATHER;
 
     if(is_user_connected(id) && !gotatemp[id])
@@ -712,10 +708,23 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
         new Soc_O_ErroR2, constring[MAX_USER_INFO_LENGTH], uplink[27], units[9];
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink) );
         get_pcvar_string(g_cvar_token, token, charsmax (token) );
-        g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
-        //g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
+        if(!is_user_connected(id))
+        {
+            server_print "User disconnected while getting temp socket ready."
+            return
+        }
 
-        ClientIP[id] = Data[ SzAddress ]
+        #if defined SOCK_NON_BLOCKING
+            g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
+        #else
+            g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
+        #endif
+
+        if(equali(ClientIP[id], ""))
+            get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+        else
+            Data[ SzAddress ] = ClientIP[id]
+
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             //Make sure client gets the right unit
             str_to_num(Data[ifaren]) == 1 ? copy(units,charsmax(units),"imperial") : copy(units,charsmax(units),"metric")
@@ -725,8 +734,7 @@ public Weather_Feed( ClientIP[MAX_IP_LENGTH], feeding )
             equali(ClientCountry[id],"United States") ? copy(units,charsmax(units),"imperial") : copy(units,charsmax(units),"metric")
         }
         //USA SHOULD NEVER SLIP METRIC DUE TO ANY ERROR ON MY PART
-        for(new imperial = 1; imperial < sizeof faren_countries;imperial++)
-        //if(equali(ClientCountry[id],"United States")) //array later
+        for(new imperial; imperial < sizeof faren_countries;imperial++)
         if(containi(ClientCountry[id],faren_countries[imperial]) > charsmin)
             copy(units,charsmax(units),"imperial")
         else //Handful of countries are like USA
@@ -1240,20 +1248,6 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
         if(!equal(buffer, "") )
         {
             copyc(msg, charsmax(msg), buffer[containi(buffer, "{") + 1], '}')
-            //replace(msg, charsmax(msg), "^",^"",  "^"_^"" ); //need this so fields are not destroyed
-            new infinity =  ExplodeString(geo_data, charsmax(geo_data), charsmax(geo_data[]), msg, ',')
-            ///log_to_file "geo_data.txt","%s",infinity
-
-            new list = 1
-            for(new parameters;parameters < sizeof geo_data[];parameters++)
-                server_print("%d:%s",list++,geo_data[parameters])
-
-            new test[MAX_PLAYERS]
-            //copyc(test, charsmax(test),geo_data[?][containi(geo_data, "currency_symbol") + 18], '"');
-
-            //if(containi(infinity, "currency_symbol") > charsmin)
-             //   server_print "Currency %s", infinity
-
 
             if(containi(buffer, "latitude") > charsmin && containi(buffer, "longitude") > charsmin)
             {
