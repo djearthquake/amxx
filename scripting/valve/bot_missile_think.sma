@@ -51,7 +51,7 @@ public bot_missile_think()
                 get_pcvar_string(g_bot_ammo,bot_ammo, charsmax(bot_ammo))
                 CMD(id,bot_ammo)
                 //CMD(id,"bot_missile")
-                CMD(id,".sprite_blk_ops");
+                //CMD(id,".sprite_blk_ops")//other mod, waypoint to draw in helecopter
                 if(get_pcvar_num(g_think_debug) >1 )
                     server_print "Bot %n should have fired missile", id ;
                 if(get_pcvar_num(g_think_debug) > 2)
