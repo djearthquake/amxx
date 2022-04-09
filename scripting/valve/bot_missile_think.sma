@@ -16,7 +16,10 @@ public plugin_init()
 }
 
 public client_putinserver(id)
-    set_task(3.0, "bot_missile_think",1615,"",0,"b"); //repeat
+    !task_exists(1615) && is_user_bot(id) ? set_task(3.0, "bot_missile_think",1615,"",0,"b") : server_print("Bot missile think already active")
+
+public client_disconnected(id)
+    task_exists(1615) && get_playersnum(0) <= 1 ?  remove_task(1615) & server_print("Bot missile think removed.") : server_print("Bot missile think remaining active")
 
 public bot_missile_think()
 {
@@ -38,9 +41,9 @@ public bot_missile_think()
 
             if(is_user_alive(id) && is_user_bot(id))
             {
-                new custom;
+                //new custom;
                 //custom = random_num(1,5)
-                new formated[MAX_IP_LENGTH]
+                //new formated[MAX_IP_LENGTH]
                 //set_user_godmode(id,true)
                 //formatex(formated,charsmax(formated), "amx_missile6")
                 //CMD(id,formated);
@@ -48,7 +51,7 @@ public bot_missile_think()
                 get_pcvar_string(g_bot_ammo,bot_ammo, charsmax(bot_ammo))
                 CMD(id,bot_ammo)
                 //CMD(id,"bot_missile")
-                CMD(id,".sprite");
+                CMD(id,".sprite_blk_ops");
                 if(get_pcvar_num(g_think_debug) >1 )
                     server_print "Bot %n should have fired missile", id ;
                 if(get_pcvar_num(g_think_debug) > 2)
