@@ -986,6 +986,10 @@ public throw_hook(id)
         set_pev(Hook[id], pev_solid, 2)
         set_pev(Hook[id], pev_movetype, 5)
         //get_pcvar_num(pHead) == 5 ? set_pev(Hook[id], pev_owner, 0) : set_pev(Hook[id], pev_owner, id) //jk_botti crash when penguin explodes
+
+        //detach pengin other unstable when they explode
+        get_pcvar_num(pHead) == 5 && get_pcvar_num(pUseButtons) < 2 ? set_pcvar_num(pUseButtons, 2) : set_pcvar_num(pUseButtons, 1)
+
         set_pev(Hook[id], pev_owner, id)
       //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
       //  set_pev(Hook[id], pev_health, 100.0) //for smoker
