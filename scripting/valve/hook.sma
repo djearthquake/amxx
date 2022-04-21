@@ -138,8 +138,8 @@ public plugin_init()
     else
 
     //register_clcmd("fullupdate", "Update")
-    RegisterHam(Ham_Spawn, "player", "ResetHUD", 1);
-    //register_event("ResetHUD", "ResetHUD", "b")
+    cstrike_running() ? RegisterHam(Ham_Spawn, "player", "ResetHUD", 1):
+    register_event("ResetHUD", "ResetHUD", "b")
 
     // Register cvars
     register_cvar("sv_spinxhookmod",  "V1.7", FCVAR_SERVER) // yay public cvar
@@ -157,12 +157,12 @@ public plugin_init()
     pUseButtons     =  register_cvar("sv_hookusebuttons", "1")
     pHostage        =  register_cvar("sv_hookhostflollow", "1")
     pWeapons        =  register_cvar("sv_hookpickweapons", "1")
-    pInstant        =  register_cvar("sv_hookinstant", "0")
+    pInstant        =  register_cvar("sv_hookinstant", "1")
     pHookNoise      =  register_cvar("sv_hooknoise", "0")
     pMaxHooks       =  register_cvar("sv_hookmax", "100")
     pRndStartDelay  =  register_cvar("sv_hookrndstartdelay", "0.0")
     pHook_break     =  register_cvar("sv_hookbreak", "1") //break or use door
-    pHead           =  register_cvar("sv_hookhead", "4")
+    pHead           =  register_cvar("sv_hookhead", "0")
     pSegments       =  register_cvar("sv_hooksegments", "3")
 
     // Touch forward
@@ -595,8 +595,8 @@ public fwTouch(ptr, ptd)
                 else if (containi(szPtdClass, "able") > charsmin)
                 {
     damage:
-                    is_user_alive(ptd) ?
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,random_num(10,20)*1.0,DMG_PARALYZE) //bot or human
+                    is_user_alive(ptd) && !is_user_bot(ptd) ?
+                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,random_num(60,100)*1.0,DMG_PARALYZE) //bot or human
                     :
                     ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CRUSH|DMG_ALWAYSGIB) //Box or pushable ... monster
                     //ExecuteHam(Ham_TakeDamage,ptd,ptr,id,2.0,DMG_POISON|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
