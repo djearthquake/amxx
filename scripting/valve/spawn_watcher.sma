@@ -2,9 +2,12 @@
 #include <amxmisc>
 #include <engine>
 #include <engine_stocks>
-#include <fakemeta>
+#include <fakemeta_util>
 #include <fun>
 #include <hamsandwich>
+
+#define HUD_TIMER 4000
+#define OK_SHOOT 5000
 
 new g_Trail, g_protecton
 new g_shell, g_time, g_msg
@@ -12,22 +15,25 @@ new HamHook:XhookDamage_spawn
 new spawn_sync_msg
 new g_spawn_time[MAX_PLAYERS]
 
+new bool:Spawn_delay[MAX_PLAYERS + 1]
+
 public plugin_init()
 {
     register_plugin("Spawn Protection", "8.2", "SPiNX|Peli") // Peli maintained up until 7.0. Profile:https://forums.alliedmods.net/member.php?u=86
     //Peli's plugin https://forums.alliedmods.net/showthread.php?t=1886
-    
+
     register_concmd("amx_spawn_time", "cmd_sptime", ADMIN_CVAR, "1 through 10 to set Spawn Protection time") // Concmd (Console Command) for the CVAR time
     register_concmd("amx_spawn_msg", "cmd_spmessage", ADMIN_CVAR, "1 = Turn Spawn Protection Message on , 0 = Turn Spawn Protection message off") // Concmd for the CVAR message
     register_concmd("amx_spawn_shell", "cmd_spshellthickness", ADMIN_CVAR, "1 through 100 to set Glow Shellthickness") // Concmd for the shellthickness
-    
-    g_protecton  = register_cvar("sv_sp", "1"); // Cvar (Command Variable) for the plugin on/off
-    g_time       = register_cvar("sv_sptime", "7") // Cvar for controlling the message time (1-10 seconds)
-    g_msg        = register_cvar("sv_spmessage", "1") // Cvar for controlling the message on/off
-    g_shell      = register_cvar("sv_spshellthick", "75") // Cvar for controlling the glow shell thickness
-    
+
+    g_protecton   = register_cvar("sv_sp", "1"); // Cvar (Command Variable) for the plugin on/off
+    g_time            = register_cvar("sv_sptime", "7") // Cvar for controlling the message time (1-10 seconds)
+    g_msg            = register_cvar("sv_spmessage", "1") // Cvar for controlling the message on/off
+    g_shell           = register_cvar("sv_spshellthick", "75") // Cvar for controlling the glow shell thickness
+
     RegisterHam(Ham_Spawn, "player", "sp_on", 1);
     XhookDamage_spawn = RegisterHam(Ham_TakeDamage, "player", "Event_Damage", 1)
+    //RegisterHam(Ham_Killed, "player", "@killed");
     spawn_sync_msg   = CreateHudSyncObj( )
 }
 
@@ -38,7 +44,11 @@ public plugin_precache()
 }
 
 public client_disconnected(id)
-    remove_task(id)
+if(!is_user_connected(id))
+{
+    remove_task(id + OK_SHOOT)
+    remove_task(id + HUD_TIMER)
+}
 
 public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
 {
@@ -46,9 +56,9 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
     {
         if (!get_pcvar_num(g_protecton))
             DisableHamForward(XhookDamage_spawn)
-    
-    
-        if(get_user_team(victim) == get_user_team(attacker) && victim != attacker && task_exists(attacker) || task_exists(attacker))
+
+
+        if(get_user_team(victim) == get_user_team(attacker) && victim != attacker && task_exists(attacker + OK_SHOOT) || task_exists(attacker + OK_SHOOT))
         {
             set_user_godmode(attacker, 0)
             fakedamage(attacker,"Spawn Hacking",damage*1.0,DMG_PARALYZE)
@@ -62,7 +72,7 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
 
             if(!is_user_bot(attacker))
                 client_print(attacker,print_chat,"[AMXX] Attacking %s when under 'Spawn Protection' mirrors damage! %d|HP ",VictimN,floatround(damage))
-    
+
             new shell = get_pcvar_num(g_shell)
             if(is_user_connected(attacker))
             {
@@ -111,17 +121,17 @@ public cmd_sptime(id, level, cid) // This is the function for the cvar time cont
 {
     if(!cmd_access(id, level, cid, 2))
         return PLUGIN_HANDLED
-    
+
     new arg_str[3]
     read_argv(1, arg_str, 3)
     new arg = str_to_num(arg_str)
-    
+
     if(arg > 10 || arg < 1)
     {
         client_print(id, print_chat, "You have to set the Spawn Protection time between 1 and 10 seconds")
         return PLUGIN_HANDLED
     }
-    
+
     else if (arg > 0 || arg < 11)
     {
         set_pcvar_num(g_time, arg)
@@ -178,9 +188,39 @@ public cmd_spshellthickness(id, level, cid)
     return PLUGIN_CONTINUE
 }
 
-public sp_on(id) // This is the function for the event godmode
-if(is_user_alive(id) && get_pcvar_num(g_protecton))
-    set_task(0.1, "protect", id)
+public sp_on(id)
+{
+    if(is_user_alive(id) && get_pcvar_num(g_protecton))
+    {
+        ///if(!is_user_bot(id) && equali(Sz_TempBuffer,"no")  || is_user_bot(id)) 
+        set_task(0.1, "protect", id)
+        Spawn_delay[id] = true
+    }
+}
+@death(id)
+{
+    if(!is_user_alive(id))
+    {
+        remove_task(id)
+
+        if(task_exists(id + HUD_TIMER))
+            remove_task(id + HUD_TIMER)
+
+        if(task_exists(id + OK_SHOOT))
+            remove_task(id + OK_SHOOT)
+        Spawn_delay[id] = true
+    }
+}
+
+public client_command(id)
+{
+    if(Spawn_delay[id] == true)
+    {
+        client_print(id,print_center,"Spawn wait time...")
+        return PLUGIN_HANDLED_MAIN
+    }
+    return PLUGIN_CONTINUE
+}
 
 public protect(id) // This is the function for the task_on godmode
 {
@@ -197,7 +237,7 @@ public protect(id) // This is the function for the task_on godmode
 
         if(get_pcvar_num(g_msg) && !is_user_bot(id))
         {
-            set_task(1.0,"@hud_timer", id, _, _, "a", new_time+1)
+            set_task(1.0,"@hud_timer", id+HUD_TIMER, _, _, "a", new_time+1)
             g_spawn_time[id] = new_time
         }
 
@@ -207,27 +247,42 @@ public protect(id) // This is the function for the task_on godmode
             get_user_team(id) == 1 ? set_user_rendering(id, kRenderFxGlowShell, 255, 0, 0, kRenderNormal, shell) : set_user_rendering(id, kRenderFxGlowShell, 0, 0, 255, kRenderNormal, shell)
         else
             is_user_bot(id) ? set_user_rendering(id, kRenderFxGlowShell, 0, 255, 255, kRenderNormal, shell) : set_user_rendering(id, kRenderFxGlowShell, 255, 255, 25, kRenderNormal, shell)
-        set_task(SPTime+FTime, "sp_off", id)
+
+        if(task_exists(id + OK_SHOOT))
+            remove_task(id + OK_SHOOT)
+
+        set_task(SPTime+FTime, "sp_off", id + OK_SHOOT)
     }
     return PLUGIN_HANDLED
 }
 
-@hud_timer(id)
+@hud_timer(tsk)
 {
-    set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1)
-    switch(g_spawn_time[id])
-    {
-        case 6..300: ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1
-        case 3..5: set_hudmessage(255, 165, 0, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id,spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1)
-        case 1..2: set_hudmessage(221, 228, 27, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id,spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1)
-        default: set_hudmessage(0, 255, 50, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id, spawn_sync_msg,"Spawn protection and godmode over^n^nSHOOT!")
-    }
+    new id = tsk - HUD_TIMER
 
+    if(is_user_alive(id))
+    {
+        if(!is_user_bot(id))
+        {
+            set_hudmessage(255, 1, 1, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1)
+            ClearSyncHud(id, spawn_sync_msg)
+            switch(g_spawn_time[id])
+            {
+                case 6..300: ShowSyncHudMsg id, spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1
+                case 3..5: set_hudmessage(255, 165, 0, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id,spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1)
+                case 1..2: set_hudmessage(221, 228, 27, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id,spawn_sync_msg, "Spawn Protection is enabled.^n^n Attacks are mirrored back: %i seconds!",--g_spawn_time[id]+1)
+                default: set_hudmessage(0, 255, 50, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id, spawn_sync_msg,"Spawn protection and godmode over^n^nSHOOT!")
+            }
+        }
+        ExecuteHam(Ham_Item_CanDeploy, 1)
+    }
 }
 
-public sp_off(id) // This is the function for the task_off godmode
+public sp_off(tsk) // This is the function for the task_off godmode
 {
     new shell = get_pcvar_num(g_shell)
+    new id = tsk - OK_SHOOT
+
     if(!is_user_connected(id))
         return PLUGIN_HANDLED
     else
@@ -236,6 +291,7 @@ public sp_off(id) // This is the function for the task_off godmode
         {
             set_user_godmode(id, 0)
             set_user_rendering(id, kRenderFxGlowShell, 0, 0,0, kRenderNormal, shell);
+            Spawn_delay[id] = false;
             if(!is_user_bot(id) && is_user_alive(id))
             {
                 client_cmd(id,"spk fvox/safe_day.wav");
