@@ -15,18 +15,15 @@
 #define MAX_IP_LENGTH              16
 #define MAX_USER_INFO_LENGTH       256
 #define charsmin                  -1
-/*
-#if AMXX_VERSION_NUM == 182
-    #define %n %s
-#endif*/
+
 new g_timer[MAX_PLAYERS + 1]
-new g_afk_spec_player/*, afk*/
+new g_afk_spec_player
 new const CvarAFKTimeDesc[] = "Seconds before moving AFK player into spectator mode."
 new sleepy[MAX_PLAYERS + 1], g_spec
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_mname[MAX_NAME_LENGTH]
 new bool:b_Op4c
-new afk_sync_msg, download_sync_msg
+new afk_sync_msg, download_sync_msg, g_spawn_wait
 
 #define ALRT 84641
 #define FADE_HOLD (1<<2)
@@ -37,17 +34,21 @@ public plugin_init()
     set_task(1.0, "new_users",alert,"",0,"b");
 
     #if AMXX_VERSION_NUM == 182
-    g_afk_spec_player = register_cvar("mp_autospec", "75")
+        g_afk_spec_player = register_cvar("mp_autospec", "75")
+        g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 0.5
     #else
         bind_pcvar_num(get_cvar_pointer("mp_autospec") ? get_cvar_pointer("mp_autospec") : create_cvar("mp_autospec", "90", FCVAR_NONE, CvarAFKTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 300.0),g_afk_spec_player)
+        get_cvar_pointer("sv_sptime") ? bind_pcvar_num(get_cvar_pointer("sv_sptime"), g_spawn_wait ) : 1
     #endif
+
+    g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
 
     g_afk_spec_player = register_cvar("mp_autospec", "75")
 
     g_spec = get_cvar_pointer("sv_spectate_spawn")
     RegisterHam(Ham_Spawn, "player", "screensaver_stop", 1);
     get_mapname(g_mname, charsmax(g_mname))
-    if(containi(g_mname, "op4c") == charmin)
+    if(containi(g_mname, "op4c") == charsmin)
         b_Op4c=true
     //no over-lapping
     afk_sync_msg        = CreateHudSyncObj( )
@@ -101,7 +102,7 @@ public new_users()
                 #if AMXX_VERSION_NUM == 182
 
                 client_print 0,print_chat,"%s is connecting...", ClientName[players[downloader]]
-                server_print "%s is connecting...", ClientName[players[downloader]]
+                server_print "%s is connecting...", ClientName[players[downloader]
 
                 #else
                 client_print 0,print_chat,"%n is connecting...", players[downloader]
@@ -137,25 +138,23 @@ public new_users()
             new uptime = sleepy[players[downloader]]++
             new spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
 
-            if(!spec_screensaver_engage < 0)
-                //return PLUGIN_HANDLED_MAIN
+            if(spec_screensaver_engage < 0)
+                return PLUGIN_HANDLED_MAIN
 
             if (uptime > spec_screensaver_engage)
             {
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
-
                 if(g_spec && callfunc_begin("@go_spec",SPEC_PRG))
                 {
-                    if(!g_spec)
-                        return
+                    new Group_of_players =  players[downloader]
+                    log_amx "Sending %s to spec", ClientName[Group_of_players]
 
-                    log_amx "Sending %s to spec", ClientName[players[downloader]]
+                    dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
 
-                    dllfunc(DLLFunc_ClientPutInServer, players[downloader])
-
-                    callfunc_push_int(players[downloader])
+                    callfunc_push_int(Group_of_players)
                     callfunc_end()
-                    sleepy[players[downloader]] = 1
+                    sleepy[Group_of_players] = 1
+                    set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
                 }
                 else
                 {
@@ -170,8 +169,15 @@ public new_users()
             }
         }
     }
+    return PLUGIN_CONTINUE
 }
 
+@make_spec(id)
+if(is_user_connected(id))
+{
+    server_print "Sending %n spec...",id
+    client_cmd id, "say !spec"
+}
 public screensaver_stop(id,{Float,_}:...)
 {
     new duration = 1<<12
@@ -182,7 +188,9 @@ public screensaver_stop(id,{Float,_}:...)
     sleepy[id] = 1
     if (is_user_connected(id) && !is_user_bot(id))
     {
-        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id); // unreliable was failing too often
+        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id); // if _unreliable was failing too often
+        //message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // if _one was crashing too often
+
         write_short(duration); // fade lasts this long duration
         write_short(holdTime); // fade lasts this long hold time
         write_short(fadeType); // fade type
