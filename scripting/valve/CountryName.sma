@@ -94,7 +94,7 @@ new ClientCurrency_rates[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
 #endif
 new buffer[MAX_MOTD_LENGTH];
 new bool:got_coords[ MAX_PLAYERS + 1 ]
-new const api[]= "ipwhois.app"
+new const api[]= "ipwho.is"
 
 #if !defined SOCK_NON_BLOCKING
  #error Go make a new script or post and wait on forums/Discord if you are not autodidactic.
@@ -300,7 +300,7 @@ public client_disconnected(id)
     {
         new constring[MAX_CMD_LENGTH]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        formatex(constring, charsmax (constring), "GET http://%s/json/%s HTTP/1.0^nHost: %s^n^n", api, ClientIP[id], api)
+        formatex(constring, charsmax (constring), "GET http://%s/%s HTTP/1.0^nHost: %s^n^n", api, ClientIP[id], api)
         server_print "%s",constring
 
         if(!task_exists(id+WRITE))
