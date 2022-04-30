@@ -184,7 +184,7 @@ new ClientLAT[MAX_PLAYERS+1][8]
 #define WRITE 4444
 
 new bool:got_coords[ MAX_PLAYERS + 1 ]
-new const api[]= "ipwhois.app" //will see unassigned.psychz.net on NETSTAT DO NOT blacklist!
+new const api[]= "ipwho.is" //will see unassigned.psychz.net on NETSTAT DO NOT blacklist!
 new g_socket_pass[MAX_PLAYERS+1]
 new ip_api_socket
 /////////////////////////////////////////////////////////
@@ -1169,7 +1169,7 @@ public client_putinserver_now(id)
     server_print "%s,%s",ClientName[id],ClientIP[id]
     if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
     {
-        server_print "%s is already accounted for.", ClientName[id]
+        server_print "%s is already accounted for. -%s", ClientName[id], PLUGIN
 
         copy( ClientLAT[id], charsmax(ClientLAT[]), Data[ fLatitude ])
         copy( ClientLON[id], charsmax(ClientLAT[]), Data[ fLongitude ])
@@ -1198,7 +1198,7 @@ public client_putinserver_now(id)
     {
         new constring[MAX_CMD_LENGTH]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        formatex(constring, charsmax (constring), "GET http://%s/json/%s HTTP/1.1^nHost: %s^n^n", api, ClientIP[id], api)
+        formatex(constring, charsmax (constring), "GET http://%s/%s HTTP/1.1^nHost: %s^n^n", api, ClientIP[id], api)
         server_print "%s",constring
 
         if(!task_exists(id+WRITE))
