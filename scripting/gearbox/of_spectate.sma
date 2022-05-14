@@ -5,14 +5,14 @@
 #include fun
 #include hamsandwich
 
-#define MAX_PLAYERS                32
-#define MAX_RESOURCE_PATH_LENGTH   64
-#define MAX_MENU_LENGTH            512
-#define MAX_NAME_LENGTH            32
-#define MAX_AUTHID_LENGTH          64
-#define MAX_IP_LENGTH              16
-#define MAX_USER_INFO_LENGTH       256
-#define charsmin                  -1
+#define MAX_PLAYERS                                  32
+#define MAX_RESOURCE_PATH_LENGTH  64
+#define MAX_MENU_LENGTH                     512
+#define MAX_NAME_LENGTH                     32
+#define MAX_AUTHID_LENGTH                  64
+#define MAX_IP_LENGTH                             16
+#define MAX_USER_INFO_LENGTH            256
+#define charsmin                                            -1
 
 #define OK if(is_user_connected(id)
 new bool:g_spectating[MAX_PLAYERS]
@@ -26,7 +26,7 @@ public plugin_init()
 {
     register_plugin("OF spectator","1.1", "SPiNX")
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
-    register_concmd("!spec_test","random_view",0,"spectate random")
+    register_concmd("!spec_switch","random_view",0,"spectate random")
     g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
     RegisterHam(Ham_Spawn, "player", "@play", 1);
@@ -109,7 +109,7 @@ if(is_user_connected(id))
 public client_command(id)
 {
     new szArg[MAX_IP_LENGTH];
-    new szArgCmd[8], szArgCmd1[8];
+    new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
 
     read_args(szArg, charsmax(szArg));
     read_argv(0,szArgCmd, charsmax(szArgCmd));
@@ -133,7 +133,7 @@ public random_view(id)
 
     for (viewable=1; viewable < playercount; viewable++)
     if(playercount > 1)
-    ent = random_num(1,playercount)
+    ent = random_num(1,playercount+1)
     fm_attach_view(id,ent)
     engfunc(EngFunc_SetView, id, ent);
     return PLUGIN_HANDLED;
@@ -146,4 +146,6 @@ public client_disconnected(id)
     if(task_exists(id))
         remove_task(id)
     g_spectating[id] = false
+    id > 0 && id < 33 ?
+    console_cmd(id, "default_fov 100") : server_print("Invalid client") 
 }
