@@ -1,0 +1,74 @@
+[al]
+OF_SPEC_HELO  = "Modaliteti i spektatorëve..."
+OF_SPEC_SPEC    = "Modaliteti i spektatorëve. ^nThuaj !spec për të luajtur." 
+OF_SPEC_NORM = "Modalitet i rregullt. ^nThuaj !spec për të spektauruar."
+
+[de]
+OF_SPEC_HELO  = "Zuschauermodus..."
+OF_SPEC_SPEC    = "Zuschauermodus.^nSag !spec to play."
+OF_SPEC_NORM =  "Regulärer Modus.^nSagen Sie !spec to spectate."
+
+[cn]
+OF_SPEC_HELO  = "观众模式..."
+OF_SPEC_SPEC    = "观众模式。^n说！规格玩。"
+OF_SPEC_NORM = "常规模式。^n说！规格来观看。"
+
+[es]
+OF_SPEC_HELO  = "Modo espectador..."
+OF_SPEC_SPEC    = "Modo espectador.^nDi !spec para jugar."
+OF_SPEC_NORM = "Modo regular.^nDiga !spec para ver."
+ 
+[en]
+OF_SPEC_HELO  = "Spectator mode..."
+OF_SPEC_SPEC    = "Spectator mode.^nSay !spec to play."
+OF_SPEC_NORM = "Regular mode.^nSay !spec to spectate."
+
+[hu]
+OF_SPEC_HELO  = "Néző mód..."
+OF_SPEC_SPEC    = "Néző mód. ^nMondd, hogy !spec játszani." 
+OF_SPEC_NORM = "Normál mód. ^nMondd!spec a spektrációhoz."
+
+[ie]
+OF_SPEC_HELO  = "Modh an lucht féachana..."
+OF_SPEC_SPEC    = "Modh an lucht féachana. ^nAbair !spec a imirt."
+OF_SPEC_NORM = "Modh rialta. ^nAbair !spec le breathnú."
+
+[it]
+OF_SPEC_HELO  = "Modalità spettatore..." 
+OF_SPEC_SPEC    = "Modalità spettatore. ^nDì !spec per giocare." 
+OF_SPEC_NORM = "Modalità normale. ^nSay !spec to spectate."
+
+[fr]
+OF_SPEC_HELO  = "Mode spectateur... "
+OF_SPEC_SPEC    = Mode spectateur. ^nDites !spec pour jouer." 
+OF_SPEC_NORM = "Mode régulier. ^nDites !spec pour regarder."
+
+[pl]
+OF_SPEC_HELO  = "Tryb widza..."
+OF_SPEC_SPEC    = "Tryb widza. ^n Say !spec to play." 
+OF_SPEC_NORM = "Tryb zwykły. ^n Say !spec to spec to spec."
+
+[ro]
+OF_SPEC_HELO  = "Modul spectator..."
+OF_SPEC_SPEC    = "Modul spectator. ^nSay !spec to play." 
+OF_SPEC_NORM = "Mod regulat. ^nSay !spectate to spectate."
+
+[ru]
+OF_SPEC_HELO  = "Режим зрителя..."
+OF_SPEC_SPEC    = "Режим зрителя.^nСкажи !spec для игры." 
+OF_SPEC_NORM = "Обычный режим.^nСкажи !spec для просмотра."
+
+[se]
+OF_SPEC_HELO  = "Åskådarläge..." 
+OF_SPEC_SPEC    = "Åskådarläge. ^nSäg !spec att spela."
+OF_SPEC_NORM = "Vanligt läge. ^nSäg !spec till åskåda."
+
+[tr]
+OF_SPEC_HELO  = "İzleyici modu..."
+OF_SPEC_SPEC    = "İzleyici modu.^nOynamak için !spec deyin."
+OF_SPEC_NORM = "Normal mod ^nSeyirci olmak için !spec deyin."
+
+[ua]
+OF_SPEC_HELO  = "Режим глядача..."
+OF_SPEC_SPEC    = "Режим глядача.^nСкажіть !специфікація, щоб грати".
+OF_SPEC_SPEC    = "Звичайний режим.^nСкажіть !spectate."
