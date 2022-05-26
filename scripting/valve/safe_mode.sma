@@ -112,6 +112,7 @@ public client_command(id)
                 server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
                 set_pcvar_num(Xsafe, 1)
                 bCMDCALL = true
+                ///bCallingfromEnd = true
                 copy(g_SzNextMapCmd,charsmax( g_SzNextMapCmd), szArgCmd1)
                 copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd),szArgCmd1)
                 ReadSafeModeFromFile( )
@@ -195,7 +196,13 @@ public ReadSafeModeFromFile( )
 {
     new SzSafeMap_Extension[MAX_NAME_LENGTH]
 
-    bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
+   // bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
+
+    if(bCMDCALL)
+       Data[ SzMaps ] = g_SzNextMapCmd
+    else
+        get_mapname(mname, charsmax(mname))
+    
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
@@ -250,10 +257,19 @@ public ReadSafeModeFromFile( )
         server_print "................Safe Mode init file....................."
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if(bCallingfromEnd)
+
+    Data[ SzMaps ] = mname //can be used to glue it in safe instead and only whitelist certain maps to use all plugins
+
+    if(bCallingfromEnd  && !bCMDCALL)
+    {
         copy(mname, charsmax(mname), g_SzNextMap)
+    }
+    else if (bCMDCALL)
+    {
+        Data[ SzMaps ] = g_SzNextMapCmd
+    }
+
     server_print "[%s]map name is %s", PLUGIN, mname
-    Data[ SzMaps ] = mname
 
     if(TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
     {
@@ -286,10 +302,17 @@ public ReadSafeModeFromFile( )
         rename_file(g_szFilePath,g_szFilePathSafe,1)
         server_print "trying save^n^n%s", g_szFilePathSafe
 
+//Essential//////////////////////////////////////////////
         formatex(SzSave,charsmax(SzSave),"%s.amxx", PLUGIN)
-
         write_file(g_szFilePath, SzSave)
 
+        formatex(SzSave,charsmax(SzSave),"nextmap.amxx")
+        write_file(g_szFilePath, SzSave)
+
+        formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")
+        write_file(g_szFilePath, SzSave)
+        is_running("gearbox")?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("OP4 mod is NOT running.")
+////////////////////////////////////////////////////////
 
         write_file(g_szFilePath, Data[ SzPlugin1 ])
         write_file(g_szFilePath, Data[ SzPlugin2 ])
@@ -327,7 +350,7 @@ public ReadSafeModeFromFile( )
 
     }
     bCallingfromEnd?server_print("Exit %s %s", PLUGIN, VERSION):server_print("Init %s %s", PLUGIN, VERSION)
-    if(bCMDCALL == true)TrieDestroy(g_SafeMode)
+    if(bCallingfromEnd && !bCMDCALL)TrieDestroy(g_SafeMode)
 }
 
 @already_safe()
