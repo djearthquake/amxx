@@ -24,6 +24,7 @@
 
 #define OK if(is_user_connected(id)
 new bool:g_spectating[MAX_PLAYERS]
+new bool:g_bFlagMap
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
@@ -45,7 +46,8 @@ public plugin_init()
     }
     new mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
-    containi(mname,"op4c") > charsmin?log_amx("Pausing per point or flag mode map loaded.")&pause("a"):server_print("Loading %s.", PLUGIN)
+    g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
+    server_print("Loading %s.", PLUGIN)
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
     register_concmd("!spec_switch","random_view",0,"spectate random")
     g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
@@ -79,6 +81,7 @@ OK)
 }
 
 @go_spec(id)
+if(!g_bFlagMap)
 {
     OK)
     {
