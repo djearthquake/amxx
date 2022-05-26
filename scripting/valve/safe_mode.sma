@@ -50,7 +50,7 @@ public plugin_init()
     g_cvar_debugger   = register_cvar("safemode_debug", "0");
     set_task_ex(3.5,"@clear_plugins", 2022, .flags = SetTask_BeforeMapChange)
     g_SafeMode = TrieCreate()
-    
+
     //Backup file check time
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     new SzSafeMap_Revert[MAX_CMD_LENGTH]
@@ -73,7 +73,7 @@ public plugin_init()
         log_amx "Make a manual backup of plugins.ini before using %s %s by %s", PLUGIN, VERSION, AUTHOR
         pause("a")
     }
-    
+
     bBackupPluginsINI?server_print("Back up of PLUGINS.INI already captured."):server_print("Backing up of PLUGINS.INI")
 }
 
@@ -99,7 +99,7 @@ public client_command(id)
     if(is_user_connected(id) && is_user_admin(id))
     {
 
-    
+
         read_args(szArg, charsmax(szArg));
         read_argv(0,szArgCmd, charsmax(szArgCmd));
         read_argv(1,szArgCmd1, charsmax(szArgCmd1));
@@ -147,43 +147,41 @@ public client_command(id)
             server_print("%s MUST preload %s.", PLUGIN, g_SzNextMap)
 
             new g = fopen( g_szFilePathSafe, "rt" )
-        
+
             if( g )
             {
                 server_print("%s already showing as made. Aborting...",g_szFilePathSafe )
                 return PLUGIN_HANDLED
             }
             goto READ_FILE
-            server_print "Renaming FROM %s^n TO: %s", g_szFilePath, g_szFilePathSafe
 
-            get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
-            copy(Sz_RevertPath, charsmax(Sz_RevertPath), g_szFilePath)
-
-            add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
-            formatex(SzSafeMap_Revert, charsmax( SzSafeMap_Revert ), "/plugins.ini.safe")
-
-            add( Sz_RevertPath, charsmax(Sz_RevertPath), SzSafeMap_Revert )
-
-            new f = fopen( g_szFilePath, "rt" )
-        
-            if( f )
-            {
-                return PLUGIN_HANDLED
-            }
-            //if file does not exist make one with only this plugin to keep it loaded!
-            formatex(SzSave,charsmax(SzSave),"%s.amxx debug", PLUGIN)
-
-            write_file(g_szFilePath, SzSave)
-            server_print "trying save^n^n%s", g_szFilePathSafe
-            goto READ_FILE
         }
         else
         {
                 server_print("Renaming %s back to ^n%s.", SzSafeMap_Revert,g_szFilePath)
                 rename_file(SzSafeMap_Revert,g_szFilePath,1)
-         }
+        }
     }
+
     server_print("%s needs NOT preload %s.", PLUGIN, g_SzNextMap)
+
+    get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
+    copy(Sz_RevertPath, charsmax(Sz_RevertPath), g_szFilePath)
+
+    add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
+    formatex(SzSafeMap_Revert, charsmax( SzSafeMap_Revert ), "/plugins.ini.safe")
+
+    add( Sz_RevertPath, charsmax(Sz_RevertPath), SzSafeMap_Revert )
+
+    new f = fopen( Sz_RevertPath, "rt" )
+
+    if( f )
+    {
+        server_print("Renaming %s back to ^n%s.", Sz_RevertPath,g_szFilePath)
+        rename_file(Sz_RevertPath,g_szFilePath,1)
+        return PLUGIN_HANDLED
+    }
+
     READ_FILE:
     ReadSafeModeFromFile( )
     return PLUGIN_CONTINUE
@@ -193,13 +191,7 @@ public ReadSafeModeFromFile( )
 {
     new SzSafeMap_Extension[MAX_NAME_LENGTH]
 
-   // bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
-
-    if(bCMDCALL)
-       Data[ SzMaps ] = g_SzNextMapCmd
-    else
-        get_mapname(mname, charsmax(mname))
-    
+    bCMDCALL ? copy(Data[ SzMaps ], charsmax(Data), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
@@ -254,9 +246,6 @@ public ReadSafeModeFromFile( )
         server_print "................Safe Mode init file....................."
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-    Data[ SzMaps ] = mname
-
     if(bCallingfromEnd  && !bCMDCALL)
     {
         copy(mname, charsmax(mname), g_SzNextMap)
@@ -264,6 +253,10 @@ public ReadSafeModeFromFile( )
     else if (bCMDCALL)
     {
         Data[ SzMaps ] = g_SzNextMapCmd
+    }
+    else
+    {
+        Data[ SzMaps ] = mname
     }
 
     server_print "[%s]map name is %s", PLUGIN, mname
@@ -299,17 +292,39 @@ public ReadSafeModeFromFile( )
         rename_file(g_szFilePath,g_szFilePathSafe,1)
         server_print "trying save^n^n%s", g_szFilePathSafe
 
-//Essential//////////////////////////////////////////////
+        //Essential//////////////////////////////////////////////
+
+        //safemode
         formatex(SzSave,charsmax(SzSave),"%s.amxx", PLUGIN)
         write_file(g_szFilePath, SzSave)
-
+        //safemode
         formatex(SzSave,charsmax(SzSave),"nextmap.amxx")
         write_file(g_szFilePath, SzSave)
 
-        formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")
-        write_file(g_szFilePath, SzSave)
-        is_running("gearbox")?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("OP4 mod is NOT running.")
-////////////////////////////////////////////////////////
+        if(!debugger)
+        {
+            ///amx_map discourage using archaic commands
+            formatex(SzSave,charsmax(SzSave),"admin.amxx")
+            write_file(g_szFilePath, SzSave)
+
+            formatex(SzSave,charsmax(SzSave),"admincmd.amxx")
+            write_file(g_szFilePath, SzSave)
+
+
+            formatex(SzSave,charsmax(SzSave),"menufront.amxx")
+            write_file(g_szFilePath, SzSave)
+
+            formatex(SzSave,charsmax(SzSave),"mapsmenu.amxx")
+            write_file(g_szFilePath, SzSave)
+
+            //basic map pick fcn
+            formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")
+            write_file(g_szFilePath, SzSave)
+
+            //Stop HPB bot over-fills. JK support also.
+            is_running("gearbox")?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("OP4 mod is NOT running.")
+            ////////////////////////////////////////////////////////
+        }
 
         write_file(g_szFilePath, Data[ SzPlugin1 ])
         write_file(g_szFilePath, Data[ SzPlugin2 ])
