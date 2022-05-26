@@ -1,5 +1,3 @@
-/*Manually backup plugins.ini prior to using this script! USE AT YOUR OWN RISK!*/
-///CVAR safe_mode 0|1 Run server without Amxx or any plugins then return back to normal mode
 #include amxmodx
 #include amxmisc
 #define MAX_CMD_LENGTH                        128
@@ -112,7 +110,6 @@ public client_command(id)
                 server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
                 set_pcvar_num(Xsafe, 1)
                 bCMDCALL = true
-                ///bCallingfromEnd = true
                 copy(g_SzNextMapCmd,charsmax( g_SzNextMapCmd), szArgCmd1)
                 copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd),szArgCmd1)
                 ReadSafeModeFromFile( )
@@ -258,7 +255,7 @@ public ReadSafeModeFromFile( )
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    Data[ SzMaps ] = mname //can be used to glue it in safe instead and only whitelist certain maps to use all plugins
+    Data[ SzMaps ] = mname
 
     if(bCallingfromEnd  && !bCMDCALL)
     {
@@ -340,7 +337,7 @@ public ReadSafeModeFromFile( )
         server_print "Renamed %s to^n%s",g_szFilePathSafe,g_szFilePath
     }
 
-    else if (f2 /*&& !bCallingfromEnd*/ && !get_pcvar_num(Xsafe) )//ALTERING CAN CAUSE LOADING LOOPS
+    else if (f2 && !get_pcvar_num(Xsafe) )
     {
         server_print "%s found. Renaming...%s", g_szFilePathSafe, g_szFilePath
         rename_file(g_szFilePathSafe,g_szFilePath,1)
