@@ -95,25 +95,22 @@ public client_command(id)
 {
     new szArg[MAX_CMD_LENGTH];
     new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_NAME_LENGTH];
-
     if(is_user_connected(id) && is_user_admin(id))
     {
-
-
         read_args(szArg, charsmax(szArg));
         read_argv(0,szArgCmd, charsmax(szArgCmd));
         read_argv(1,szArgCmd1, charsmax(szArgCmd1));
         Data[ SzMaps ] =  szArgCmd1
 
-        if(TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
-        {
-                server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
-                set_pcvar_num(Xsafe, 1)
-                bCMDCALL = true
-                copy(g_SzNextMapCmd,charsmax( g_SzNextMapCmd), szArgCmd1)
-                copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd),szArgCmd1)
-                ReadSafeModeFromFile( )
-        }
+        if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
+            return
+
+        server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
+        copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd), szArgCmd1)
+        set_pcvar_num(Xsafe, 1)
+        bCMDCALL = true
+        ReadSafeModeFromFile( )
+
     }
 }
 
@@ -138,7 +135,7 @@ public client_command(id)
         add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
         formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
         add( g_szFilePathSafe, charsmax( g_szFilePathSafe ), SzSafeMap_Extension )
-
+        
         if(!get_pcvar_num(Xsafe))
         {
             //Make a blanked out plugins.ini to load enough just to load the select plugins admin loads
@@ -153,7 +150,6 @@ public client_command(id)
                 server_print("%s already showing as made. Aborting...",g_szFilePathSafe )
                 return PLUGIN_HANDLED
             }
-            goto READ_FILE
 
         }
         else
@@ -161,6 +157,7 @@ public client_command(id)
                 server_print("Renaming %s back to ^n%s.", SzSafeMap_Revert,g_szFilePath)
                 rename_file(SzSafeMap_Revert,g_szFilePath,1)
         }
+        
     }
 
     server_print("%s needs NOT preload %s.", PLUGIN, g_SzNextMap)
@@ -181,8 +178,6 @@ public client_command(id)
         rename_file(Sz_RevertPath,g_szFilePath,1)
         return PLUGIN_HANDLED
     }
-
-    READ_FILE:
     ReadSafeModeFromFile( )
     return PLUGIN_CONTINUE
 }
