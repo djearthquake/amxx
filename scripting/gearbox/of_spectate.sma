@@ -127,9 +127,9 @@ if(!g_bFlagMap)
 
 }
 
-@show_motd(id)
+@show_motd(interval)
 {
-    new id = id - MOTD
+    new id = interval - MOTD
     show_motd(id, g_motd, "SPECTATOR MODE")
 }
 
