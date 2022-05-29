@@ -18,6 +18,8 @@
 #define VERSION "1.0.1"
 #define AUTHOR ".sρiηX҉."
 
+#define MOTD    1337
+
 //heads up display char gen
 #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
@@ -100,7 +102,7 @@ if(!g_bFlagMap)
                 console_cmd(id, "default_fov 150")
                 get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
                 set_user_godmode(id,true) //specs can be killed otherwise
-                set_task(3.0,"@show_motd", id)
+                set_task(3.0,"@show_motd", id+MOTD)
                 //inform client they are in spec
                 set_task(10.0,"@update_player",id,_,_,"b")
             }
@@ -115,6 +117,7 @@ if(!g_bFlagMap)
                 set_view(id, CAMERA_NONE)
                 console_cmd(id, "default_fov 100")
                 change_task(id, 60.0) //less spam
+                remove_task(id+MOTD)
 
             }
 
@@ -124,7 +127,11 @@ if(!g_bFlagMap)
 
 }
 
-@show_motd(id)show_motd(id, g_motd, "SPECTATOR MODE")
+@show_motd(id)
+{
+    new id = id - MOTD
+    show_motd(id, g_motd, "SPECTATOR MODE")
+}
 
 @update_player(id)
 if(is_user_connected(id) && !is_user_bot(id))
