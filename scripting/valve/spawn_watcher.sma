@@ -16,12 +16,13 @@ new spawn_sync_msg
 new g_spawn_time[MAX_PLAYERS]
 
 new bool:Spawn_delay[MAX_PLAYERS + 1]
+new bool:bOF_run
 
 public plugin_init()
 {
     register_plugin("Spawn Protection", "8.2", "SPiNX|Peli") // Peli maintained up until 7.0. Profile:https://forums.alliedmods.net/member.php?u=86
     //Peli's plugin https://forums.alliedmods.net/showthread.php?t=1886
-
+    bOF_run = is_running("gearbox") || is_running("valve")
     register_concmd("amx_spawn_time", "cmd_sptime", ADMIN_CVAR, "1 through 10 to set Spawn Protection time") // Concmd (Console Command) for the CVAR time
     register_concmd("amx_spawn_msg", "cmd_spmessage", ADMIN_CVAR, "1 = Turn Spawn Protection Message on , 0 = Turn Spawn Protection message off") // Concmd for the CVAR message
     register_concmd("amx_spawn_shell", "cmd_spshellthickness", ADMIN_CVAR, "1 through 100 to set Glow Shellthickness") // Concmd for the shellthickness
@@ -30,9 +31,12 @@ public plugin_init()
     g_time            = register_cvar("sv_sptime", "7") // Cvar for controlling the message time (1-10 seconds)
     g_msg            = register_cvar("sv_spmessage", "1") // Cvar for controlling the message on/off
     g_shell           = register_cvar("sv_spshellthick", "75") // Cvar for controlling the glow shell thickness
-
-    RegisterHam(Ham_Spawn, "player", "sp_on", 1);
     XhookDamage_spawn = RegisterHam(Ham_TakeDamage, "player", "Event_Damage", 1)
+
+    if(bOF_run)
+        register_event( "ResetHUD" , "sp_on" , "b" )
+    else
+        RegisterHam(Ham_Spawn, "player", "sp_on", 1)
     //RegisterHam(Ham_Killed, "player", "@killed");
     spawn_sync_msg   = CreateHudSyncObj( )
 }
@@ -192,7 +196,7 @@ public sp_on(id)
 {
     if(is_user_alive(id) && get_pcvar_num(g_protecton))
     {
-        ///if(!is_user_bot(id) && equali(Sz_TempBuffer,"no")  || is_user_bot(id)) 
+        set_user_godmode(id,true)
         set_task(0.1, "protect", id)
         Spawn_delay[id] = true
     }
@@ -227,6 +231,8 @@ public protect(id) // This is the function for the task_on godmode
     new new_time
     if(is_user_alive(id) && get_pcvar_num(g_protecton))
     {
+        //!get_user_godmode(id)?set_user_godmode(id, 1):server_print("Was NOT in Godmode spawning")
+
         new SPSecs  = get_pcvar_num(g_time)
         new Float:SPTime = float(SPSecs)
 
@@ -240,8 +246,6 @@ public protect(id) // This is the function for the task_on godmode
             set_task(1.0,"@hud_timer", id+HUD_TIMER, _, _, "a", new_time+1)
             g_spawn_time[id] = new_time
         }
-
-        set_user_godmode(id, 1)
 
         if( cstrike_running() )
             get_user_team(id) == 1 ? set_user_rendering(id, kRenderFxGlowShell, 255, 0, 0, kRenderNormal, shell) : set_user_rendering(id, kRenderFxGlowShell, 0, 0, 255, kRenderNormal, shell)
@@ -283,18 +287,20 @@ public sp_off(tsk) // This is the function for the task_off godmode
     new shell = get_pcvar_num(g_shell)
     new id = tsk - OK_SHOOT
 
-    if(!is_user_connected(id))
+    if(!is_user_alive(id))
         return PLUGIN_HANDLED
     else
     {
-        if(is_user_connected(id))
+        if(!is_user_hltv(id))
         {
-            set_user_godmode(id, 0)
+            Spawn_delay[id] = false
+            set_user_godmode(id, false)
             set_user_rendering(id, kRenderFxGlowShell, 0, 0,0, kRenderNormal, shell);
-            Spawn_delay[id] = false;
-            if(!is_user_bot(id) && is_user_alive(id))
+            if(!is_user_bot(id))
             {
                 client_cmd(id,"spk fvox/safe_day.wav");
+                set_user_godmode(id, false)
+                set_task(1.0,"@check_godmode",id)
             }
 
         }
@@ -302,7 +308,16 @@ public sp_off(tsk) // This is the function for the task_off godmode
     }
 
 }
-
+@check_godmode(id)
+{
+    get_user_godmode(id)?server_print("%n is still in godmode postspawn",id):server_print("godmode for %n is off postspawn.",id)
+    if(get_user_godmode(id))
+    {
+        set_user_godmode(id,false)
+        server_print("Trying take of god from %n again!",id)
+    }
+    set_user_godmode(id,false)
+}
 public clcmd_fullupdate(id)
     return PLUGIN_HANDLED
 /*
