@@ -75,16 +75,16 @@ static GraphicT;
 #define OTHER 450  //health/ grn flag
 
 new iGearbox_pdata_powerup = 317
-new const g_szPowerup_sounds[][] = { "ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
+new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav", "ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
 new g_cvar_powerplay,g_cvar_powerbots;
 
-#if !defined MAX_PLAYERS
+//#if !defined MAX_PLAYERS
 #define MAX_PLAYERS 32
-#endif
+//#endif
 
-#if !defined client_disconnected
-#define client_disconnected client_disconnect
-#endif
+//#if !defined client_disconnected
+//#define client_disconnected client_disconnect
+//#endif
 
 new bool:g_bHasTeleport[MAX_PLAYERS + 1];
 
@@ -267,8 +267,8 @@ public client_telecheck(id)
 public client_putinserver(id)client_putinpowerplay(id)
 public client_putinpowerplay(id)
 {
-    if(get_pcvar_num(g_cvar_powerplay) > 0 && is_plugin_loaded("testing/gives.amxx", true) != charsmin)
-    pause("ac", "testing/gives.amxx");
+    if(get_pcvar_num(g_cvar_powerplay) > 0 && is_plugin_loaded("gives.amxx", true) != charsmin)
+    pause("ac", "gives.amxx");
     
     if(get_pcvar_num(g_cvar_powerbots) == 0 && is_user_bot(id))
         return PLUGIN_HANDLED_MAIN;
@@ -552,6 +552,11 @@ public plugin_precache()
     if ( is_running("gearbox") == 1 )
 
     {
+        precache_model("models/w_accelerator.mdl")
+        precache_model("models/w_backpack.mdl")
+        precache_model("models/w_porthev.mdl")
+        precache_model("models/w_jumppack.mdl")
+        precache_model("models/w_health.mdl")
         for(new szSounds;szSounds < sizeof g_szPowerup_sounds;++szSounds)
             precache_sound(g_szPowerup_sounds[szSounds]);
     }
