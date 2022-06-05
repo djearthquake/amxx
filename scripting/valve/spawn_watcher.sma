@@ -2,6 +2,7 @@
 #include <amxmisc>
 #include <engine>
 #include <engine_stocks>
+#include <fakemeta>
 #include <fakemeta_util>
 #include <fun>
 #include <hamsandwich>
@@ -263,6 +264,7 @@ public protect(id) // This is the function for the task_on godmode
 @hud_timer(tsk)
 {
     new id = tsk - HUD_TIMER
+    new iWeaponID
 
     if(is_user_alive(id))
     {
@@ -278,7 +280,10 @@ public protect(id) // This is the function for the task_on godmode
                 default: set_hudmessage(0, 255, 50, -1.0, -1.0, 0, 6.0, 1.0, 0.1, 1.0, 1), ShowSyncHudMsg( id, spawn_sync_msg,"Spawn protection and godmode over^n^nSHOOT!")
             }
         }
-        ExecuteHam(Ham_Item_CanDeploy, 1)
+        //ExecuteHam(Ham_Item_CanDeploy, 1)
+        iWeaponID  = get_user_weapon(id)
+        if(pev_valid(iWeaponID) == 2 && iWeaponID < 1 )
+            ExecuteHam(Ham_Item_CanDeploy, iWeaponID)
     }
 }
 
@@ -309,12 +314,13 @@ public sp_off(tsk) // This is the function for the task_off godmode
 
 }
 @check_godmode(id)
+if(is_user_connected(id))
 {
     get_user_godmode(id)?server_print("%n is still in godmode postspawn",id):server_print("godmode for %n is off postspawn.",id)
     if(get_user_godmode(id))
     {
         set_user_godmode(id,false)
-        server_print("Trying take of god from %n again!",id)
+        server_print("Trying take of godmode from %n again!",id)
     }
     set_user_godmode(id,false)
 }
