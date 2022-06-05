@@ -723,8 +723,7 @@ public Weather_Feed( ClientIP[], feeding )
         if(equali(ClientIP[id], ""))
             get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
         else
-            //Data[ SzAddress ] = ClientIP[id] ///Run time error 5: memory access
-            copy(Data[ SzAddress ],charsmax(Data[]),ClientIP[id])
+            Data[ SzAddress ] = ClientIP[id]
 
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             //Make sure client gets the right unit
