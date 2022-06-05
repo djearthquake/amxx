@@ -144,7 +144,7 @@ public new_users()
             if (uptime > spec_screensaver_engage)
             {
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
-                if(g_spec && callfunc_begin("@go_spec",SPEC_PRG))
+                if(g_spec && callfunc_begin("@go_spec",SPEC_PRG) && !b_Op4c)
                 {
                     new Group_of_players =  players[downloader]
                     log_amx "Sending %s to spec", ClientName[Group_of_players]
