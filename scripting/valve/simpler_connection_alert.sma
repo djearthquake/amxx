@@ -48,7 +48,7 @@ public plugin_init()
     g_spec = get_cvar_pointer("sv_spectate_spawn")
     RegisterHam(Ham_Spawn, "player", "screensaver_stop", 1);
     get_mapname(g_mname, charsmax(g_mname))
-    if(containi(g_mname, "op4c") == charsmin)
+    if(containi(g_mname, "op4c") > charsmin)
         b_Op4c=true
     //no over-lapping
     afk_sync_msg        = CreateHudSyncObj( )
@@ -141,10 +141,10 @@ public new_users()
             if(spec_screensaver_engage < 0)
                 return PLUGIN_HANDLED_MAIN
 
-            if (uptime > spec_screensaver_engage)
+            if (uptime > spec_screensaver_engage && !b_Op4c)
             {
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
-                if(g_spec && callfunc_begin("@go_spec",SPEC_PRG) && !b_Op4c)
+                if(g_spec && callfunc_begin("@go_spec",SPEC_PRG))
                 {
                     new Group_of_players =  players[downloader]
                     log_amx "Sending %s to spec", ClientName[Group_of_players]
@@ -203,7 +203,7 @@ public screensaver_stop(id,{Float,_}:...)
 }
 
 public screensaver(id, uptime,{Float,_}:...)
-if (is_user_connected(id) && !is_user_bot(id) && !b_Op4c)
+if (is_user_connected(id) && !is_user_bot(id))
 {
     client_print id,print_center, "Screen saver active for:%i seconds", uptime
     message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // use the magic #1 for "one client"
