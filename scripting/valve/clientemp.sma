@@ -124,6 +124,7 @@
     new bool:gotatemp[ MAX_PLAYERS + 1 ]
     new bool:somebody_is_being_help
     new g_players[ MAX_PLAYERS ],g_iHeadcount
+    new g_proxy_version
 
     new g_clients_saved
     new SzSave[MAX_CMD_LENGTH]
@@ -215,6 +216,7 @@ public plugin_init()
     g_long         = register_cvar("temp_long", "1"); //Uses longitude or city to get weather
     g_timeout      = register_cvar("temp_block", "10"); //how long minimum in between client temp requests
     g_queue_weight = register_cvar("temp_queue_weight", "5"); //# passes before putting queue to sleep
+    g_proxy_version     = get_cvar_pointer("proxy_action") ? get_cvar_pointer("proxy_action") : 0
 
 
     register_clcmd("say !mytemp","Speak",0,"Shows your local temp.");
@@ -784,8 +786,12 @@ public Weather_Feed( ClientIP[], feeding )
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
-    callfunc_begin("@lock_socket",PROXY_SCRIPT)
-    callfunc_end()
+    if( g_proxy_version && callfunc_begin("@lock_socket",PROXY_SCRIPT))
+    {
+        callfunc_end()
+    }
+    else
+        log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
     new id = Task - WEATHER
 
     server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
@@ -824,11 +830,10 @@ public read_web(feeding)
         }
 
         else
-        if(!IS_SOCKET_IN_USE && !gotatemp[id])
+        if(g_proxy_version && !IS_SOCKET_IN_USE && !gotatemp[id])
         {
             IS_SOCKET_IN_USE = true;
-            callfunc_begin("@lock_socket",PROXY_SCRIPT)
-            callfunc_end()
+            callfunc_begin("@lock_socket",PROXY_SCRIPT) ? callfunc_end() : log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
         }
 
         server_print "%s:reading %s temp",PLUGIN, ClientName[id]
@@ -977,7 +982,7 @@ public read_web(feeding)
                     server_print "%s finished %s reading",PLUGIN, ClientName[id]
                     set_task(5.0, "@mark_socket_client", id);
 
-                    if(callfunc_begin("@mark_socket",PROXY_SCRIPT))
+                    if(g_proxy_version && callfunc_begin("@mark_socket",PROXY_SCRIPT))
                     {
                         new work[MAX_PLAYERS]
                         format(work,charsmax(work),PLUGIN,"")
