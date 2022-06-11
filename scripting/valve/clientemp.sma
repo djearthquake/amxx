@@ -488,15 +488,18 @@ public client_temp_filter(id)
     if(is_user_connected(id) && id > 0)
     {
 
-        if (is_user_bot(id) || is_user_admin(id) && get_pcvar_num(g_admins) == 0)
+        if (is_user_bot(id) || is_user_admin(id) && !get_pcvar_num(g_admins) )
             return PLUGIN_HANDLED_MAIN;
         server_print "Temp task will be accessed soon"
-        if(IS_SOCKET_IN_USE == false && !gotatemp[id])
+        if(!IS_SOCKET_IN_USE  && !gotatemp[id])
         {
+            if(equali(ClientIP[id], ""))
+                get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
+
             client_temp(id)
         }
 
-        if(IS_SOCKET_IN_USE == true && !gotatemp[id])
+        if(IS_SOCKET_IN_USE && !gotatemp[id])
 
         {
             server_print "Socket shows in use."
@@ -525,7 +528,7 @@ public client_temp_filter(id)
 public client_temp(id)
 {
     server_print "client_temp function"
-    if(is_user_connected(id) && gotatemp[id] == false && !is_user_hltv(id))
+    if(is_user_connected(id) && !gotatemp[id]  && !is_user_hltv(id))
     {
 
         Data[ SzAddress ] = ClientIP[id]
@@ -696,7 +699,7 @@ public client_disconnected(id)
     server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 }
 
-public Weather_Feed( ClientIP[], feeding )
+public Weather_Feed(ClientIP[MAX_PLAYERS+1], feeding)
 {
     server_print "Feeding %s", PLUGIN
     new id = feeding - WEATHER;
@@ -721,11 +724,13 @@ public Weather_Feed( ClientIP[], feeding )
         #else
             g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2); //tested 182 way
         #endif
-
+/*
         if(equali(ClientIP[id], ""))
-            get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+            get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
         else
             Data[ SzAddress ] = ClientIP[id]
+*/
+        Data[ SzAddress ] = !equali(ClientIP[id], "") ? ClientIP[id] : get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
 
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             //Make sure client gets the right unit
