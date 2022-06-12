@@ -73,7 +73,7 @@ public plugin_init()
     g_frags_remaining    = get_cvar_pointer("mp_fragsleft")
 
     #else
-    bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : create_cvar("mp_chattime", "10.0" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 105.0),g_mp_chattime)
+    get_cvar_pointer("mp_chattime") ? bind_pcvar_num(get_cvar_pointer("mp_chattime")  : create_cvar("mp_chattime", "10.0" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 105.0),g_mp_chattime)
 
     if(get_cvar_pointer("mp_fraglimit"))
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
@@ -158,8 +158,9 @@ public changeMap()
     g_Bchanged = true
     new Xstring[MAX_NAME_LENGTH]
     get_pcvar_string(g_amx_nextmap,Xstring,charsmax(Xstring))
+    #if AMXX_VERSION_NUM == 182
     new Xchattime = get_pcvar_num(g_mp_chattime)
-
+    #endif
     new bool:b_one_run
     if(!b_one_run)
     {
@@ -170,7 +171,6 @@ public changeMap()
 
         set_task(float(Xchattime), "delayedChange", 0, Xstring, charsmax(Xstring))
         server_print"%i until %s",Xchattime,Xstring
-        new end_game_fx = get_pcvar_num(g_finale)
 
         set_task(1.0,"@Show_Chat_time",MAX_PLAYERS,"", 0, "b")
         return
