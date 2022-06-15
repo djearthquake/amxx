@@ -53,7 +53,8 @@ public plugin_init()
 
     get_mapname(g_currentMap, charsmax(g_currentMap))
 
-    register_event(ZERO_TIME, "changeMap", "ac")
+    //register_event(ZERO_TIME, "changeMap", "ac") //conflicts with old mapcycle changes
+
     register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
     register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
 
@@ -69,11 +70,14 @@ public plugin_init()
 
     #if AMXX_VERSION_NUM == 182
     g_mp_chattime        = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "10.0")
+    set_task(get_pcvar_float(g_mp_chattime)+10.0,"changeMap",2022, .flags="d")
+
     g_frags              = get_cvar_pointer("mp_fraglimit")
     g_frags_remaining    = get_cvar_pointer("mp_fragsleft")
 
     #else
     get_cvar_pointer("mp_chattime") ? bind_pcvar_num(get_cvar_pointer("mp_chattime")  : create_cvar("mp_chattime", "10.0" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 105.0),g_mp_chattime)
+    set_task_ex(get_pcvar_float(g_mp_chattime)+10.0,"changeMap", 2022, .flags = SetTask_BeforeMapChange)
 
     if(get_cvar_pointer("mp_fraglimit"))
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
