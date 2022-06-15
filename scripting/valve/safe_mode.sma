@@ -103,10 +103,15 @@ public client_command(id)
         read_args(szArg, charsmax(szArg));
         read_argv(0,szArgCmd, charsmax(szArgCmd));
         read_argv(1,szArgCmd1, charsmax(szArgCmd1));
+        if(!is_map_valid(szArgCmd1))
+            return
         Data[ SzMaps ] =  szArgCmd1
 
         if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
-            return
+        {
+            set_cvar_string "amx_nextmap", szArgCmd1
+            @clear_plugins()
+        }
 
         server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
         copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd), szArgCmd1)
