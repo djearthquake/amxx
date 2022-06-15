@@ -1,4 +1,4 @@
-    // vim: set ts=4 sw=4 tw=99 noet:
+// vim: set ts=4 sw=4 tw=99 noet:
 //
 // AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
 // Copyright (C) The AMX Mod X Development Team.
@@ -31,7 +31,6 @@ new g_mapCycle[MAX_NAME_LENGTH]
 new g_pos
 new g_currentMap[MAX_NAME_LENGTH]
 new finale[MAX_CMD_LENGTH]
-new bool:g_Bchanged
 
 // pcvars
 new g_mp_friendlyfire, g_teamplay, g_map_ent, g_frags, g_frags_remaining
@@ -53,7 +52,7 @@ public plugin_init()
 
     get_mapname(g_currentMap, charsmax(g_currentMap))
 
-    //register_event(ZERO_TIME, "changeMap", "ac") //conflicts with old mapcycle changes
+    //register_event(ZERO_TIME, "changeMap", "ac") //conflicts with old mapcycle changes and chattime variable
 
     register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
     register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
@@ -70,14 +69,14 @@ public plugin_init()
 
     #if AMXX_VERSION_NUM == 182
     g_mp_chattime        = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "10.0")
-    set_task(get_pcvar_float(g_mp_chattime)+10.0,"changeMap",2022, .flags="d")
+    set_task(get_pcvar_float(g_mp_chattime),"changeMap",2022, .flags="d")
 
     g_frags              = get_cvar_pointer("mp_fraglimit")
     g_frags_remaining    = get_cvar_pointer("mp_fragsleft")
 
     #else
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : create_cvar("mp_chattime", "10.0" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 105.0), g_mp_chattime)
-    set_task_ex(g_mp_chattime+10.0,"changeMap", 2022, .flags = SetTask_BeforeMapChange)
+    set_task_ex(float(g_mp_chattime),"changeMap", 2022, .flags = SetTask_BeforeMapChange)
 
     if(get_cvar_pointer("mp_fraglimit"))
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
@@ -108,9 +107,7 @@ public plugin_init()
 
     g_map_ent = find_ent(charsmin, "info_ctfdetect")
 
-    g_finale = register_cvar("amx_nextmap_finale", "1") /*0- no end game finale | 1-tunes | 2-finale,tunes | 3-finale,tunes,gametitle*/
-    g_Bchanged = false
-
+    g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-tunes | 2-finale,tunes | 3-finale,tunes,gametitle*/
 }
 
 public sayNextMap(id)
@@ -148,18 +145,8 @@ public delayedChange(Xdata[])
    return PLUGIN_HANDLED_MAIN
 }
 
-@pre_change182()
-{
-    if(g_Bchanged)
-        return PLUGIN_HANDLED_MAIN
-    if(!task_exists(30) && !g_Bchanged)
-        set_task(0.2,"changeMap",30)
-    g_Bchanged = true
-    return PLUGIN_CONTINUE
-}
 public changeMap()
 {
-    g_Bchanged = true
     new Xstring[MAX_NAME_LENGTH]
     get_pcvar_string(g_amx_nextmap,Xstring,charsmax(Xstring))
     #if AMXX_VERSION_NUM == 182
