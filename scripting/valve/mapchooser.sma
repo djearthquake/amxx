@@ -92,15 +92,14 @@ public plugin_init()
         B_op4c_map = false
         if(find_ent(-1,"info_ctfdetect") > 0)
             B_op4c_map = true
-        else if(Pcvar_captures)
-            set_pcvar_num(Pcvar_captures, 5)
 
         if(B_op4c_map)
         {
             g_counter = get_pcvar_num(Pcvar_captures)
-            (b_set_caps) ? g_counter : set_pcvar_num(Pcvar_captures, 5) &g_counter
+            (b_set_caps) ? g_counter : set_pcvar_num(Pcvar_captures, 6) &g_counter
             server_print "CAPTURE POINT MAP DETECTED!"
-            register_event("CTFScore", "@count", "a", "0=CapturedFlag")
+            register_logevent("@count", 3, "2=CapturedFlag")
+
         }
 
     }
@@ -508,8 +507,8 @@ public pfn_keyvalue( ent )
 
         if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
         {
-            set_pcvar_num(Pcvar_captures, str_to_num(value))
             b_set_caps = true
+            set_pcvar_num(Pcvar_captures, str_to_num(value))
         }
     }
 }
