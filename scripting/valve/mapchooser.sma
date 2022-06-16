@@ -89,32 +89,36 @@ public plugin_init()
 
     if (is_running("gearbox") == 1 )
     {
+        
         B_op4c_map = false
         if(find_ent(-1,"info_ctfdetect") > 0)
             B_op4c_map = true
-
+        
         if(B_op4c_map)
         {
             g_counter = get_pcvar_num(Pcvar_captures)
             (b_set_caps) ? g_counter : set_pcvar_num(Pcvar_captures, 6) &g_counter
             server_print "CAPTURE POINT MAP DETECTED!"
             register_logevent("@count", 3, "2=CapturedFlag")
-
         }
 
     }
 #if AMXX_VERSION_NUM == 182
-    g_mp_chattime     = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
-    g_wins            = get_cvar_pointer("mp_winlimit")
-    g_rnds            = get_cvar_pointer("mp_maxrounds")
-    g_frags           = get_cvar_pointer("mp_fraglimit")
-    g_frags_remaining = get_cvar_pointer("mp_fragleft")
-    g_timelim         = get_cvar_pointer("mp_timelimit")
-    g_votetime        = get_cvar_pointer("amx_vote_time")
+    g_mp_chattime       = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
+    g_wins                     = get_cvar_pointer("mp_winlimit")
+    g_rnds                     = get_cvar_pointer("mp_maxrounds")
+    g_counter                = get_cvar_pointer("mp_captures")
+    g_frags                     = get_cvar_pointer("mp_fraglimit")
+    g_frags_remaining   = get_cvar_pointer("mp_fragleft")
+    g_timelim                 = get_cvar_pointer("mp_timelimit")
+    g_votetime               = get_cvar_pointer("amx_vote_time")
 
 #else
     g_coloredMenus = colored_menus()
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
+
+    if(get_cvar_pointer("mp_captures"))
+    bind_pcvar_num(get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0"),g_counter)
 
     if(get_cvar_pointer("mp_winlimit"))
         bind_pcvar_num(get_cvar_pointer("mp_winlimit"),g_wins)
@@ -126,7 +130,7 @@ public plugin_init()
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
 
     if(get_cvar_pointer("mp_fragsleft"))
-            bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
+        bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
 
     if(get_cvar_pointer("mp_timelimit"))
         bind_pcvar_num(get_cvar_pointer("mp_timelimit"),g_timelim)
@@ -209,6 +213,11 @@ public checkVotes()
     if(g_frags && g_frags_remaining < 2)
     {
         log_amx"HL server frag limit map change"
+        @changemap(smap)
+    }
+    if(g_counter && g_counter < 2)
+    {
+        log_amx"CTF point map change"
         @changemap(smap)
     }
 
@@ -315,7 +324,7 @@ public voteNextmap()
     }
     else if (B_op4c_map)
     {
-        if(get_pcvar_num(Pcvar_captures) > 1)
+        if(get_pcvar_num(Pcvar_captures) > 2)
         {
             g_selected = false
             return
@@ -501,13 +510,13 @@ public pfn_keyvalue( ent )
     if (is_running("gearbox") == 1 )
     {
         new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
-        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
 
         copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
 
         if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
         {
             b_set_caps = true
+            Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
             set_pcvar_num(Pcvar_captures, str_to_num(value))
         }
     }
