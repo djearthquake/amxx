@@ -510,13 +510,13 @@ public pfn_keyvalue( ent )
     if (is_running("gearbox") == 1 )
     {
         new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
 
         copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
 
         if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
         {
             b_set_caps = true
-            Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
             set_pcvar_num(Pcvar_captures, str_to_num(value))
         }
     }
