@@ -50,6 +50,7 @@ new g_lastMap[MAX_PLAYERS]
 new g_coloredMenus
 new bool:g_selected = false
 new bool:g_rtv = false
+new bool:bOF_run
 new g_mp_chattime, g_auto_pick, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
 new Float:checktime
 
@@ -68,6 +69,7 @@ public plugin_init()
     #if !defined create_cvar
     #define create_cvar register_cvar
     #endif
+    bOF_run = is_running("gearbox") == 1
     g_max       = create_cvar("amx_extendmap_max", "90")
     g_step      = create_cvar("amx_extendmap_step", "15")
     g_auto_pick = create_cvar("mapchooser_auto", "0")
@@ -87,7 +89,7 @@ public plugin_init()
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
 
-    if (is_running("gearbox") == 1 )
+    if ( bOF_run )
     {
         
         B_op4c_map = false
@@ -210,17 +212,6 @@ public checkVotes()
         set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
     }
 
-    if(g_frags && g_frags_remaining < 2)
-    {
-        log_amx"HL server frag limit map change"
-        @changemap(smap)
-    }
-    if(g_counter && g_counter < 2)
-    {
-        log_amx"CTF point map change"
-        @changemap(smap)
-    }
-
 }
 
 @changemap(smap[MAX_NAME_LENGTH])
@@ -306,7 +297,24 @@ public voteNextmap()
     votetime = g_votetime
     chatime = g_mp_chattime
     #endif
+    new smap[MAX_NAME_LENGTH]
     new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
+
+    if(B_op4c_map && get_pcvar_num(Pcvar_captures) == 1)
+    {
+        remove_task(987456)
+        log_amx"CTF point map change"
+        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+        B_op4c_map = false
+        return
+    }
+    if(g_frags && g_frags_remaining == 1)
+    {
+        log_amx"HL server frag limit map change"
+        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+        remove_task(987456)
+        return
+    }
     if (g_selected)
         return
     #if AMXX_VERSION_NUM == 182
