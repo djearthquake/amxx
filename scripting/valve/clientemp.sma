@@ -699,7 +699,7 @@ public client_disconnected(id)
     server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 }
 
-public Weather_Feed(ClientIP[MAX_PLAYERS+1], feeding)
+public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 {
     server_print "Feeding %s", PLUGIN
     new id = feeding - WEATHER;
@@ -726,11 +726,11 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1], feeding)
         #endif
 /*
         if(equali(ClientIP[id], ""))
-            get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
+            @get_user_data(id) //get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
         else
             Data[ SzAddress ] = ClientIP[id]
 */
-        Data[ SzAddress ] = !equali(ClientIP[id], "") ? ClientIP[id] : get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
+//        Data[ SzAddress ] = !equali(ClientIP[id], "") ? ClientIP[id] : get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
 
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             //Make sure client gets the right unit
