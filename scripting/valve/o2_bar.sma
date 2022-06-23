@@ -23,7 +23,9 @@ Resoultion: B-TEAM SPiNX took over project and fixed error. Shortened plugin nam
 */
 
 #include <amxmodx>
+#include <engine_stocks>
 #include <fakemeta>
+#include <fakemeta_stocks>
 #include <hamsandwich>
 
 #define VERSION "1.0.1"
@@ -66,6 +68,8 @@ new bool:g_Wants_O2_View[MAX_PLAYERS + 1]
 
 new g_maxPlayers
 
+new const SzWater[]="func_water"
+
 public plugin_init() {
 
     register_plugin("O2-bar",VERSION,"SPiNX")
@@ -74,6 +78,8 @@ public plugin_init() {
     //original plugin https://forums.alliedmods.net/showthread.php?t=96782
 
     register_cvar("O2-bar",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
+
+    find_ent(-1, SzWater) ? server_print("%s found.", SzWater) : log_amx("%s found on map.", SzWater)&pause("a")
 
     //Events
     register_event("DeathMsg","PlayerDeath","a")
