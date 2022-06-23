@@ -79,7 +79,7 @@ public plugin_init() {
 
     register_cvar("O2-bar",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
 
-    find_ent(-1, SzWater) ? server_print("%s found.", SzWater) : log_amx("%s found on map.", SzWater)&pause("a")
+    find_ent(-1, SzWater) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
 
     //Events
     register_event("DeathMsg","PlayerDeath","a")
