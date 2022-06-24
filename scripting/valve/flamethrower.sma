@@ -178,6 +178,8 @@
 #include <cstrike>
 #endif
 
+#define get_user_model(%1,%2,%3) engfunc( EngFunc_InfoKeyValue, engfunc( EngFunc_GetInfoKeyBuffer, %1 ), "model", %2, %3 )
+
 new smoke
 new fire
 new burning
@@ -498,6 +500,22 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
     new maxplayers = get_maxplayers()+1
     new tid, tbody
     get_user_aiming(id,tid,tbody,550)
+
+    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+
+    if(cstrike_running())
+    {
+        get_user_team(id, killers_team, charsmax(killers_team));
+        get_user_team(tid, victims_team, charsmax(victims_team));
+    }
+    else
+    {
+        //pev(id,pev_model, killers_team, charsmax(killers_team));
+        //pev(tid,pev_model, victims_team, charsmax(victims_team));
+        get_user_model(id, killers_team, charsmax( killers_team));
+        get_user_model(tid, victims_team, charsmax(victims_team));
+    }
+
     if((tid > 0) && (tid < maxplayers))
     {
         server_print "PLAYER IN RANGE"
@@ -506,7 +524,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
         {
             if( (ffcvar == 0) || ((ffcvar == 1) && (get_cvar_num("amx_flamethrower_obeyffcvar") == 0)) )
             {
-                if(get_user_team(tid) != get_user_team(id))
+                if(!equal(killers_team,victims_team))
                 {
                     burn_victim(tid,id,0)
                     server_print "SHOULD START BURNING NOW"
@@ -514,7 +532,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
             }
             else
             {
-                if(get_user_team(tid) == get_user_team(id))
+                if(equal(killers_team,victims_team))
                     burn_victim(tid,id,1)
                 else
                 {
@@ -560,8 +578,10 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
         {
             if( (ffcvar == 0) || ((ffcvar == 1) && (get_cvar_num("amx_flamethrower_obeyffcvar") == 0)) )
             {
-                if(get_user_team(i) != get_user_team(id)){
-                    if((is_user_alive(i) == 1) && (i != id)){
+                if(!equal(killers_team,victims_team))
+                {
+                    if((is_user_alive(i) == 1) && (i != id))
+                    {
                         get_user_origin(i,origin)
                         if(get_distance(origin,burnvec1) < radius)
                             burn_victim(i,id,0)
@@ -576,12 +596,17 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
                 if((is_user_alive(i) == 1) && (i != id))
                 {
                     get_user_origin(i,origin)
-                    if(get_user_team(i) == get_user_team(id)){
+                    get_user_team(i, killers_team, charsmax(killers_team));
+
+                    if(equal(killers_team,victims_team))
+                    {
                         if(get_distance(origin,burnvec1) < radius)
                             burn_victim(i,id,1)
                         else if(get_distance(origin,burnvec2) < radius)
                             burn_victim(i,id,1)
-                    }else{
+                    }
+                    else
+                    {
                         if(get_distance(origin,burnvec1) < radius)
                             burn_victim(i,id,0)
                         else if(get_distance(origin,burnvec2) < radius)
@@ -622,17 +647,10 @@ burn_victim(id,killer,tk){
         hp = 250
     args[0] = id
     args[1] = killer
-    //args[2] = tk //untrue on hl:of
+    args[2] = tk
     set_task(0.3,"on_fire",451,args,4,"a",hp / 10)
     set_task(0.7,"fire_scream",0,args,4)
     set_task(5.5,"stop_firesound",0,args,4)
-
-    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
-
-    get_user_team(killer, killers_team, charsmax(killers_team));
-    get_user_team(id, victims_team, charsmax(victims_team));
-
-    tk = !equal(killers_team,victims_team) ? 0 : 1;
 
     if(tk == 1)
     {
