@@ -5,15 +5,44 @@
 #include <fakemeta>
 #include <fun>
 #include <hamsandwich>
+
 #define MAX_NAME_LENGTH 32
 #define MAX_CMD_LENGTH 128
 #define charsmin        -1
 
+//Comment out for regular HL. Define for OP4 to include powerups.
+#define OP4
+#if defined OP4
+
+new bool:bBackpack,
+    bool:bRegeneration,
+    bool:bPortablehev,
+    bool:bLongjump,
+    bool:bAccelerator
+
+new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav","ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
+
+public plugin_precache()
+{
+    precache_model("models/can.mdl")
+    precache_model("models/w_accelerator.mdl")
+    precache_model("models/w_backpack.mdl")
+    precache_model("models/w_porthev.mdl")
+    precache_model("models/w_jumppack.mdl")
+    precache_model("models/w_health.mdl")
+    for(new szSounds;szSounds < sizeof g_szPowerup_sounds;++szSounds)
+        precache_sound(g_szPowerup_sounds[szSounds]);
+}
+#endif
+
 new const GIVES[][]=
 {
-    "ammo_9mmbox",
-    "ammo_ARgrenades",
-    "ammo_buckshot",
+    #if defined OP4
+    "item_ctfbackpack",
+    "item_ctfregeneration",
+    "item_ctfportablehev",
+    "item_ctflongjump",
+    "item_ctfaccelerator",
     "weapon_pipewrench",
     "weapon_penguin",
     "weapon_knife",
@@ -24,6 +53,10 @@ new const GIVES[][]=
     "weapon_eagle",
     "weapon_sniperrifle",
     "weapon_displacer",
+    #endif
+    "ammo_9mmbox",
+    "ammo_ARgrenades",
+    "ammo_buckshot",
     "item_longjump",
     "weapon_357",
     "weapon_9mmAR",
@@ -56,51 +89,92 @@ public plugin_init()
         find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)
         pause("a")
     }
-
     RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
 }
 
 public client_getfreestuff(id)
 {
-
-    if( !is_user_connected(id) || is_user_bot(id) )
-    return PLUGIN_HANDLED_MAIN;
-
-    client_print id, print_chat, "Free random items on spawn!"
-
-    if( is_user_alive(id) && is_user_admin(id) )
+    if(is_user_connected(id))
     {
-        #if AMXX_VERSION_NUM == 182;
-        set_task(5.0, "reward", id, _, _, "a", 4);
-        #else
-        set_task_ex(5.0, "reward", id, .flags = SetTask_RepeatTimes, .repeat = 4);
-        #endif
-        give_item(id, "weapon_knife");
+        if(is_user_admin(id))
+        {
+            #if !defined set_task_ex
+            set_task(5.0, "reward", id, _, _, "a", 4);
+            #else
+            set_task_ex(5.0, "reward", id, .flags = SetTask_RepeatTimes, .repeat = 4);
+            #endif
+        }
+        else
+            #if !defined set_task_ex
+            set_task(10.0, "reward", id, _, _, "a", 2);
+            #else
+            set_task_ex(10.0, "reward", id, .flags = SetTask_RepeatTimes, .repeat = 2);
+            #endif
+    
+        if(!is_user_bot(id))
+            client_print id, print_chat, "Free random items on spawn!"
     }
-    else
-    if( is_user_alive(id) )
-        #if AMXX_VERSION_NUM == 182;
-        set_task(10.0, "reward", id, _, _, "a", 2);
-        #else
-        set_task_ex(10.0, "reward", id, .flags = SetTask_RepeatTimes, .repeat = 2);
-        #endif
-
-    return PLUGIN_CONTINUE;
+    return PLUGIN_HANDLED;
 }
 
 public reward(needy)
 {
-    new charity[MAX_NAME_LENGTH];
-    formatex(charity, charsmax(charity), GIVES[random(sizeof(GIVES))]);
-    if( is_user_alive(needy) )
+    if(is_user_connected(needy))
     {
-        give_item(needy, charity);
-        for ( new MENT; MENT < sizeof REPLACE; ++MENT )
-            replace(charity, charsmax(charity), REPLACE[MENT], " ");
+        new charity[MAX_NAME_LENGTH];
+        formatex(charity, charsmax(charity), GIVES[random(sizeof(GIVES))]);
+        {
+            #if defined OP4
+            //power-up control
+            if(containi(charity, "ctf") > -1)
+            {
+                if(equali(charity,"item_ctfbackpack"))
+                {
+                    if(bBackpack)
+                        goto END
+                    else
+                        bBackpack = true
+                }
+                if(equali(charity,"item_ctfregeneration"))
+                {
+                    if(bRegeneration)
+                        goto END
+                    else
+                        bRegeneration = true
+                }
 
-        if(!is_user_bot(needy))
-            client_print(needy, print_center,"^n Free%s!", charity);
+                if(equali(charity,"item_ctfportablehev"))
+                {
+                    if(bPortablehev)
+                        goto END
+                    else
+                        bPortablehev = true
+                }
+                if(equali(charity,"item_ctflongjump"))
+                {
+                    if(bLongjump)
+                        goto END
+                    else
+                        bLongjump = true
+                }
+
+                if(equali(charity,"item_ctfaccelerator"))
+                {
+                    if(bAccelerator)
+                        goto END
+                    else
+                        bAccelerator = true
+                }
+            }
+            #endif
+            give_item(needy, charity);
+            for ( new MENT; MENT < sizeof REPLACE; ++MENT )
+                replace(charity, charsmax(charity), REPLACE[MENT], " ");
+    
+            if(!is_user_bot(needy))
+                client_print(needy, print_chat,"^n Free%s!", charity);
+        }
+        END:
     }
-
-
+    return PLUGIN_HANDLED;
 }
