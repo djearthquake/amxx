@@ -30,6 +30,10 @@ public plugin_precache()
     precache_model("models/w_porthev.mdl")
     precache_model("models/w_jumppack.mdl")
     precache_model("models/w_health.mdl")
+
+    precache_sound("doors/aliendoor3.wav");
+    precache_model("models/w_oxygen.mdl");
+
     for(new szSounds;szSounds < sizeof g_szPowerup_sounds;++szSounds)
         precache_sound(g_szPowerup_sounds[szSounds]);
 }
@@ -43,6 +47,7 @@ new const GIVES[][]=
     "item_ctfportablehev",
     "item_ctflongjump",
     "item_ctfaccelerator",
+    "item_airtank",
     "weapon_pipewrench",
     "weapon_penguin",
     "weapon_knife",
