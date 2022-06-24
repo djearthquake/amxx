@@ -4,6 +4,7 @@
 
 #define charsmin                  -1
 #define MAX_RESOURCE_PATH_LENGTH   64
+new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav","ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
 
 new const SzMunition[][]={"ammo_", "item_", "weapon_"}
 
@@ -12,6 +13,15 @@ new IsDodRun
 public plugin_precache()
 {
     precache_model("models/can.mdl")
+    precache_model("models/w_accelerator.mdl")
+    precache_model("models/w_backpack.mdl")
+    precache_model("models/w_porthev.mdl")
+    precache_model("models/w_jumppack.mdl")
+    precache_model("models/w_health.mdl")
+    precache_sound("doors/aliendoor3.wav");
+    precache_model("models/w_oxygen.mdl");
+    for(new szSounds;szSounds < sizeof g_szPowerup_sounds;++szSounds)
+        precache_sound(g_szPowerup_sounds[szSounds]);
 }
 public plugin_init()
 {
