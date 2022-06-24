@@ -55,13 +55,13 @@ Resoultion: B-TEAM SPiNX took over project and fixed error. Shortened plugin nam
 #define UNDERWATER 3
 
 //Is player alive?
-new bool:g_PlayerAlive[MAX_PLAYERS ]
+new bool:g_PlayerAlive[MAX_PLAYERS + 1]
 
 //Hold the time when player dived into the water
-new Float:g_PlayerWaterGametime[MAX_PLAYERS ]
+new Float:g_PlayerWaterGametime[MAX_PLAYERS]
 
 //Holds the gametime of players last bar update.
-new Float:g_PlayerUpdateGametime[MAX_PLAYERS ]
+new Float:g_PlayerUpdateGametime[MAX_PLAYERS]
 
 //Toggle feat
 new bool:g_Wants_O2_View[MAX_PLAYERS + 1]
@@ -69,6 +69,8 @@ new bool:g_Wants_O2_View[MAX_PLAYERS + 1]
 new g_maxPlayers
 
 new const SzWater[]="func_water"
+new const SzWaterFake[]="func_illusionary" //can be reskinned to water, lava, or slime.
+
 
 public plugin_init() {
 
@@ -79,7 +81,8 @@ public plugin_init() {
 
     register_cvar("O2-bar",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
 
-    find_ent(-1, SzWater) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
+    //find_ent(-1, SzWater) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
+    find_ent(-1, SzWater) ||  find_ent(-1, SzWaterFake) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
 
     //Events
     register_event("DeathMsg","PlayerDeath","a")
@@ -95,7 +98,9 @@ public plugin_init() {
     g_maxPlayers = get_maxplayers()
 }
 
-public client_connect(id) {
+public client_putinserver(id)
+if(is_user_alive(id))
+{
         g_PlayerAlive[id] = true
         return PLUGIN_CONTINUE
 }
