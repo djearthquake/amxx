@@ -622,10 +622,17 @@ burn_victim(id,killer,tk){
         hp = 250
     args[0] = id
     args[1] = killer
-    args[2] = tk
+    //args[2] = tk //untrue on hl:of
     set_task(0.3,"on_fire",451,args,4,"a",hp / 10)
     set_task(0.7,"fire_scream",0,args,4)
     set_task(5.5,"stop_firesound",0,args,4)
+
+    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+
+    get_user_team(killer, killers_team, charsmax(killers_team));
+    get_user_team(id, victims_team, charsmax(victims_team));
+
+    tk = !equal(killers_team,victims_team) ? 0 : 1;
 
     if(tk == 1)
     {
@@ -743,7 +750,7 @@ public on_fire(args[]){
         //Kill the victim and block the messages
         set_msg_block(gmsgScoreInfo,BLOCK_ONCE)
         set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
-        fakedamage(id,"Flame Thrower",50.0,DMG_SLOWBURN|DMG_NEVERGIB)
+        fakedamage(id,"Flame Thrower",250.0,DMG_SLOWBURN|DMG_NEVERGIB)
         //Makes them stop burning
         isburning[id] = 0
 
