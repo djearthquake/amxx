@@ -85,9 +85,22 @@ public plugin_init()
         get_cvar_string("mapcyclefile", maps_ini_file, charsmax(maps_ini_file))
     if (loadSettings(maps_ini_file))
     {
-        checktime = cstrike_running() ? 15.0 : 5.0 ;
+        checktime = cstrike_running() ? 15.0 : 2.0 ;
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
     }
+
+#if AMXX_VERSION_NUM == 182
+    g_mp_chattime       = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
+    g_wins                     = get_cvar_pointer("mp_winlimit")
+    g_rnds                     = get_cvar_pointer("mp_maxrounds")
+    g_counter                = get_cvar_pointer("mp_captures")
+    g_frags                     = get_cvar_pointer("mp_fraglimit")
+    g_frags_remaining   = get_cvar_pointer("mp_fragleft")
+    g_timelim                 = get_cvar_pointer("mp_timelimit")
+    g_votetime               = get_cvar_pointer("amx_vote_time")
+#else
+    g_coloredMenus = colored_menus()
+    bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
 
     if ( bOF_run )
     {
@@ -105,22 +118,6 @@ public plugin_init()
         }
 
     }
-#if AMXX_VERSION_NUM == 182
-    g_mp_chattime       = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
-    g_wins                     = get_cvar_pointer("mp_winlimit")
-    g_rnds                     = get_cvar_pointer("mp_maxrounds")
-    g_counter                = get_cvar_pointer("mp_captures")
-    g_frags                     = get_cvar_pointer("mp_fraglimit")
-    g_frags_remaining   = get_cvar_pointer("mp_fragleft")
-    g_timelim                 = get_cvar_pointer("mp_timelimit")
-    g_votetime               = get_cvar_pointer("amx_vote_time")
-
-#else
-    g_coloredMenus = colored_menus()
-    bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
-
-    if(get_cvar_pointer("mp_captures"))
-    bind_pcvar_num(get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0"),g_counter)
 
     if(get_cvar_pointer("mp_winlimit"))
         bind_pcvar_num(get_cvar_pointer("mp_winlimit"),g_wins)
@@ -192,7 +189,6 @@ public checkVotes()
 
         return
     }
-
 
     new smap[MAX_NAME_LENGTH]
     if (g_voteCount[b] && g_voteCount[SELECTMAPS + 1] <= g_voteCount[b])
@@ -287,9 +283,13 @@ stock random_map_pick()
 
 public voteNextmap()
 {
+    if (g_selected)
+        return
+
     new timeleft = get_timeleft()
-    new votetime, chatime
+    new votetime, chatime, captures
     chatime = g_mp_chattime
+    captures = get_pcvar_num(Pcvar_captures)
     #if AMXX_VERSION_NUM == 182
     votetime = get_pcvar_num(g_votetime)
     chatime = get_pcvar_num(g_mp_chattime)
@@ -300,27 +300,31 @@ public voteNextmap()
     new smap[MAX_NAME_LENGTH]
     new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
 
-    if(B_op4c_map && get_pcvar_num(Pcvar_captures) == 1)
+    if(B_op4c_map && captures == 2)
     {
-        remove_task(987456)
+        //remove_task(987456)
         log_amx"CTF point map change"
+        //@changemap(smap)
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
         B_op4c_map = false
         return
     }
-    if(g_frags && g_frags_remaining == 1)
+    else if(B_op4c_map && captures == 1)
+        @changemap(smap)
+    else if(g_frags && g_frags_remaining == 2)
     {
         log_amx"HL server frag limit map change"
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        remove_task(987456)
+        //@changemap(smap)
+        //remove_task(987456)
         return
     }
-    if (g_selected)
-        return
+    else if(g_frags && g_frags_remaining == 1)
+        @changemap(smap)
     #if AMXX_VERSION_NUM == 182
-    if(g_wins & get_pcvar_num(g_wins))
+    else if(g_wins && get_pcvar_num(g_wins))
     #else
-    if (g_wins)
+    else if (g_wins)
     #endif
     {
         new c = g_wins - 2
@@ -330,9 +334,9 @@ public voteNextmap()
             return
         }
     }
-    else if (B_op4c_map)
+    else if (captures && B_op4c_map && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv)
     {
-        if(get_pcvar_num(Pcvar_captures) > 2)
+        if(captures > 2)
         {
             g_selected = false
             return
