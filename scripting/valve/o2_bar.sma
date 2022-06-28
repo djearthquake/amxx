@@ -100,10 +100,7 @@ public plugin_init() {
 
 public client_putinserver(id)
 if(is_user_alive(id))
-{
         g_PlayerAlive[id] = true
-        return PLUGIN_CONTINUE
-}
 
 #if !defined client_disconnected
 #define client_disconnected client_disconnect
