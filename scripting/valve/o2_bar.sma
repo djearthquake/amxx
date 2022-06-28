@@ -71,7 +71,6 @@ new g_maxPlayers
 new const SzWater[]="func_water"
 new const SzWaterFake[]="func_illusionary" //can be reskinned to water, lava, or slime.
 
-
 public plugin_init() {
 
     register_plugin("O2-bar",VERSION,"SPiNX")
@@ -81,14 +80,11 @@ public plugin_init() {
 
     register_cvar("O2-bar",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
 
-    //find_ent(-1, SzWater) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
     find_ent(-1, SzWater) ||  find_ent(-1, SzWaterFake) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
 
-    //Events
-    register_event("DeathMsg","PlayerDeath","a")
-
     //Ham Forwards
-    RegisterHam(Ham_Spawn,"player","PlayerSpawn",1)
+    RegisterHam(Ham_Spawn,"player","PlayerLife",1)
+    RegisterHam(Ham_Spawn,"player","PlayerLife",1)
 
     set_task(0.3,"HandlerThink", 2022, .flags="b")
 
@@ -99,8 +95,8 @@ public plugin_init() {
 }
 
 public client_putinserver(id)
-if(is_user_alive(id))
-    g_PlayerAlive[id] = true
+    if(is_user_alive(id))
+        g_PlayerAlive[id] = true
 
 #if !defined client_disconnected
 #define client_disconnected client_disconnect
@@ -134,9 +130,8 @@ public client_disconnected(id)
     return PLUGIN_HANDLED
 }
 
-public PlayerDeath() g_PlayerAlive[read_data(2)] = false
-
-public PlayerSpawn(id) if(is_user_alive(id)) g_PlayerAlive[id] = true
+public PlayerLife(id)
+    g_PlayerAlive[id] = is_user_alive(id) ? true : false
 
 public HandlerThink(Ent)
 {
