@@ -3,10 +3,10 @@
 #include hamsandwich
 
 #define MAX_RESOURCE_PATH_LENGTH   64
-#define MAX_PLAYERS                                   32
-#define MAX_IP_LENGTH                              16
+#define MAX_PLAYERS                32
+#define MAX_IP_LENGTH              16
 
-#define charsmin                                             -1
+#define charsmin                  -1
 
 new bool:g_bHasJump[MAX_PLAYERS + 1],
 szPowerup[ MAX_PLAYERS ], g_snd;
