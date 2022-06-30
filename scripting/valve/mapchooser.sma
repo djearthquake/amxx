@@ -104,11 +104,11 @@ public plugin_init()
 
     if ( bOF_run )
     {
-        
+
         B_op4c_map = false
         if(find_ent(-1,"info_ctfdetect") > 0)
             B_op4c_map = true
-        
+
         if(B_op4c_map)
         {
             g_counter = get_pcvar_num(Pcvar_captures)
@@ -283,13 +283,11 @@ stock random_map_pick()
 
 public voteNextmap()
 {
-    if (g_selected)
-        return
-
     new timeleft = get_timeleft()
-    new votetime, chatime, captures
+    new votetime, chatime
     chatime = g_mp_chattime
-    captures = get_pcvar_num(Pcvar_captures)
+    //new captures
+    //captures = get_pcvar_num(Pcvar_captures)
     #if AMXX_VERSION_NUM == 182
     votetime = get_pcvar_num(g_votetime)
     chatime = get_pcvar_num(g_mp_chattime)
@@ -300,31 +298,32 @@ public voteNextmap()
     new smap[MAX_NAME_LENGTH]
     new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
 
-    if(B_op4c_map && captures == 2)
+    if(Pcvar_captures && B_op4c_map)
     {
-        //remove_task(987456)
-        log_amx"CTF point map change"
-        //@changemap(smap)
-        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        B_op4c_map = false
-        return
+        if(get_pcvar_num(Pcvar_captures) < 2)
+        {
+            remove_task(987456)
+            log_amx"CTF point map change"
+            //@changemap(smap)
+            callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+            B_op4c_map = false
+            return
+        }
     }
-    else if(B_op4c_map && captures == 1)
-        @changemap(smap)
-    else if(g_frags && g_frags_remaining == 2)
+
+    if(g_frags && g_frags_remaining == 1)
     {
         log_amx"HL server frag limit map change"
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        //@changemap(smap)
-        //remove_task(987456)
+        remove_task(987456)
         return
     }
-    else if(g_frags && g_frags_remaining == 1)
-        @changemap(smap)
+    if (g_selected)
+        return
     #if AMXX_VERSION_NUM == 182
-    else if(g_wins && get_pcvar_num(g_wins))
+    if(g_wins & get_pcvar_num(g_wins))
     #else
-    else if (g_wins)
+    if (g_wins)
     #endif
     {
         new c = g_wins - 2
@@ -334,15 +333,7 @@ public voteNextmap()
             return
         }
     }
-    else if (captures && B_op4c_map && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv)
-    {
-        if(captures > 2)
-        {
-            g_selected = false
-            return
-        }
 
-    }
     #if AMXX_VERSION_NUM == 182
     else if(g_rnds & get_pcvar_num(g_rnds))
     #else
@@ -355,6 +346,17 @@ public voteNextmap()
             return
         }
     }
+
+    else if (get_pcvar_num(Pcvar_captures) && B_op4c_map)
+    {
+        if ( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
+
+        {
+            g_selected = false
+            return
+        }
+    }
+
     #if AMXX_VERSION_NUM == 182
     else if(g_frags)
     {
@@ -370,7 +372,6 @@ public voteNextmap()
             return
         }
     }
-    
     else
     {
         if (timeleft < 1 || timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv)
@@ -383,7 +384,6 @@ public voteNextmap()
         return
 
     g_selected = true
-
     new menu[MAX_MENU_LENGTH], a, mkeys = (1<<SELECTMAPS + 1)
 
     new pos = format(menu, charsmax(menu), g_coloredMenus ? "\y%L:\w^n^n" : "%L:^n^n", LANG_SERVER, "CHOOSE_NEXTM")
