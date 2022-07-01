@@ -116,6 +116,9 @@ public plugin_init()
             server_print "CAPTURE POINT MAP DETECTED!"
             register_logevent("@count", 3, "2=CapturedFlag")
         }
+        else
+            set_pcvar_num(Pcvar_captures, 0)
+                
 
     }
 
@@ -153,7 +156,6 @@ if(is_user_connected(id))
 
 public checkVotes()
 {
-
     new b = 0
 
     for (new a = 0; a < g_mapVoteNum; ++a)
@@ -164,8 +166,8 @@ public checkVotes()
         && g_voteCount[SELECTMAPS] > g_voteCount[SELECTMAPS+1])
     {
         new mapname[MAX_NAME_LENGTH]
-
         get_mapname(mapname, charsmax(mapname))
+
         new Float:steptime = get_pcvar_float(g_step)
 
         //Half-Life Frags
@@ -298,9 +300,17 @@ public voteNextmap()
     new smap[MAX_NAME_LENGTH]
     new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
 
-    if(Pcvar_captures && B_op4c_map)
+    if(g_frags && g_frags_remaining == 1)
     {
-        if(get_pcvar_num(Pcvar_captures) < 2)
+        log_amx"HL server frag limit map change"
+        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+        remove_task(987456)
+        return
+    }
+
+    if(Pcvar_captures && get_pcvar_num(Pcvar_captures))
+    {
+        if(get_pcvar_num(Pcvar_captures) <2)
         {
             remove_task(987456)
             log_amx"CTF point map change"
@@ -311,15 +321,10 @@ public voteNextmap()
         }
     }
 
-    if(g_frags && g_frags_remaining == 1)
-    {
-        log_amx"HL server frag limit map change"
-        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        remove_task(987456)
-        return
-    }
     if (g_selected)
         return
+
+
     #if AMXX_VERSION_NUM == 182
     if(g_wins & get_pcvar_num(g_wins))
     #else
@@ -328,6 +333,16 @@ public voteNextmap()
     {
         new c = g_wins - 2
         if ((c > g_teamScore[0]) && (c > g_teamScore[1]))
+        {
+            g_selected = false
+            return
+        }
+    }
+
+
+    else if(get_pcvar_num(Pcvar_captures))
+    {
+        if( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) )
         {
             g_selected = false
             return
@@ -347,16 +362,6 @@ public voteNextmap()
         }
     }
 
-    else if (get_pcvar_num(Pcvar_captures) && B_op4c_map)
-    {
-        if ( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
-
-        {
-            g_selected = false
-            return
-        }
-    }
-
     #if AMXX_VERSION_NUM == 182
     else if(g_frags)
     {
@@ -366,7 +371,7 @@ public voteNextmap()
     else if (g_frags)
     {
         if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
-        #endif
+    #endif
         {
             g_selected = false
             return
@@ -380,6 +385,8 @@ public voteNextmap()
             return
         }
     }
+
+
     if (g_selected)
         return
 
