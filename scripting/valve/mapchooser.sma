@@ -300,7 +300,7 @@ public voteNextmap()
     new smap[MAX_NAME_LENGTH]
     new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
 
-    if(g_frags && g_frags_remaining == 1)
+    if(g_frags > 0 && g_frags_remaining == 1)
     {
         log_amx"HL server frag limit map change"
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
