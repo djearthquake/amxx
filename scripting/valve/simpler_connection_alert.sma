@@ -23,6 +23,7 @@ new sleepy[MAX_PLAYERS + 1], g_spec
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_mname[MAX_NAME_LENGTH]
 new bool:b_Op4c
+new bool:g_bFlagMap
 new afk_sync_msg, download_sync_msg, g_spawn_wait
 
 #define ALRT 84641
@@ -31,6 +32,9 @@ new afk_sync_msg, download_sync_msg, g_spawn_wait
 public plugin_init()
 {
     register_plugin("Connect Alert System","1.0","SPiNX");
+    new mname[MAX_NAME_LENGTH]
+    get_mapname(mname, charsmax(mname));
+    g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
     set_task(1.0, "new_users",alert,"",0,"b");
 
     #if AMXX_VERSION_NUM == 182
@@ -110,7 +114,6 @@ public new_users()
 
                 #endif
             }
-
             else
             {
                 #if AMXX_VERSION_NUM == 182
@@ -133,7 +136,7 @@ public new_users()
 
         }
 
-        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]))
+        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
         {
             new uptime = sleepy[players[downloader]]++
             new spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
@@ -141,26 +144,45 @@ public new_users()
             if(spec_screensaver_engage < 0)
                 return PLUGIN_HANDLED_MAIN
 
+
             if (uptime > spec_screensaver_engage && !b_Op4c)
             {
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
-                if(g_spec && callfunc_begin("@go_spec",SPEC_PRG))
+                if(g_spec && is_plugin_loaded(SPEC_PRG,true)!=charsmin)
                 {
-                    new Group_of_players =  players[downloader]
-                    log_amx "Sending %s to spec", ClientName[Group_of_players]
+                    if(callfunc_begin("@go_spec",SPEC_PRG ))
+                    {
+                        if(!get_cvar_pointer("gg_enable"))
+                        {
+                            new Group_of_players =  players[downloader]
+                            log_amx "Sending %s to spec", ClientName[Group_of_players]
+        
+                            dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
+        
+                            callfunc_push_int(Group_of_players)
+                            callfunc_end()
+                            sleepy[Group_of_players] = 1
+                            set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
+                        }
+                        else
+                        goto SCREENSAVER
+                    }
+                    else
+                    {
+                        SCREENSAVER:
+                        ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
+                        server_print "Screensaver applied to %s",  ClientName[players[downloader]]
+                        screensaver(players[downloader], uptime)
+                    }
 
-                    dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
-
-                    callfunc_push_int(Group_of_players)
-                    callfunc_end()
-                    sleepy[Group_of_players] = 1
-                    set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
                 }
                 else
                 {
                     ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
+                    server_print "Screensaver applied to %s",  ClientName[players[downloader]]
                     screensaver(players[downloader], uptime)
                 }
+
             }
             else
             {
