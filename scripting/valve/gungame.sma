@@ -72,15 +72,19 @@
 
     #define PLUGIN "Half-Life GunGame"
 
-    #define VERSION "2.5"
+    #define VERSION "2.6"
 
-    #define AUTHOR "serfreeman1337|SPiNX"   // ICQ: 50429042
-
-
-
-    #define LASTUPDATE  "5, Aug (06), 2021"
+    #define AUTHOR "SPiNX|serfreeman1337"   // ICQ: 50429042
 
 
+
+    #define LASTUPDATE  "6, Jul (04), 2022"
+
+    #define MAX_PLAYERS                32
+    #if !defined get_cvar_bool
+    #define get_pcvar_bool get_pcvar_num
+    #define get_cvar_bool get_cvar_num
+    #endif
 
     // Enable detection and usage of color codes in notify messages
 
@@ -948,7 +952,7 @@
 
     //
 
-    cvar[CVAR_MAPCHANGES_STYLE] = register_cvar("gg_mapchange_style","3")
+    cvar[CVAR_MAPCHANGES_STYLE] = register_cvar("gg_mapchange_style","1")
 
 
 
@@ -968,7 +972,7 @@
 
     //
 
-    cvar[CVAR_MAPCHOOSER_TYPE] = register_cvar("gg_mapchooser_type","3")
+    cvar[CVAR_MAPCHOOSER_TYPE] = register_cvar("gg_mapchooser_type","0")
 
 
 
@@ -1435,8 +1439,7 @@
 
     new bool:modFound = false
 
-    new bool:ggActive
-
+    new ggActive
 
     public plugin_cfg(){
 
@@ -1444,7 +1447,7 @@
 
     server_print "   Version %s build on %s^n^n^n", VERSION, LASTUPDATE
 
-    ggActive = get_pcvar_bool(cvar[CVAR_ENABLED])
+    ggActive = get_pcvar_num(cvar[CVAR_ENABLED])
 
 
 
@@ -7198,7 +7201,13 @@
 
     }
 
+    public plugin_end()
+    {
+        if(is_plugin_loaded("mapchooser.amxx",true)!=-1)
 
+        if(cstrike_running())
+            set_cvar_num("mp_maxrounds", 0)
+    }
 
     // detect mapchoosers by cvars
 
@@ -7206,9 +7215,9 @@
 
     {
 
-    if(is_plugin_loaded("testing/_mapchooser4.amxx",true)!=-1)
+    if(is_plugin_loaded("mapchooser.amxx",true)!=-1)
 
-    set_pcvar_num(cvar[CVAR_MAPCHOOSER_TYPE],3)
+    set_pcvar_num(cvar[CVAR_MAPCHOOSER_TYPE],2)
 
     else if(get_cvar_num("gal_version"))
 
@@ -7260,17 +7269,17 @@
 
     case 2:{
 
-    new plugin = is_plugin_loaded("testing/_mapchooser4.amxx",true)
+    new plugin = is_plugin_loaded("mapchooser.amxx",true)
 
+    cstrike_running() ? set_cvar_num("mp_maxrounds",-1) : set_cvar_num("mp_fragsleft", 2)
+    if(callfunc_begin("@rtv","mapchooser.amxx"))
+    {
+        callfunc_push_int(0)
+        callfunc_end()
+        log_amx("New Nextmap Chooser voting system with RTV detected!")
+    }
 
-
-    register_cvar("mp_maxrounds","-1") // trick plugin to think gordonfreeman is almost stupid
-
-    set_cvar_num("mp_maxrounds",-1)
-
-
-
-    log_amx("Starting a map vote from Nextmap Chooser")
+    log_amx("Starting a map vote from Nextmap Chooser.")
 
 
 
@@ -7289,12 +7298,6 @@
     set_task(delay,"goto_nextmap")
 
     }
-
-
-
-    set_cvar_num("mp_maxrounds",1337) // i dont know how to deregister it :p
-
-
 
     if(delay)
 
