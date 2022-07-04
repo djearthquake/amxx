@@ -118,7 +118,7 @@ public plugin_init()
         }
         else
             set_pcvar_num(Pcvar_captures, 0)
-                
+
 
     }
 
@@ -146,7 +146,6 @@ public plugin_init()
 }
 
 @rtv(id)
-
 if(is_user_connected(id))
 {
     server_print "%s|%n called RTV", PLUGIN, id
@@ -179,6 +178,7 @@ public checkVotes()
             //client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime) //need frags instead of min translated
             client_print 0, print_chat, "Incrementing frag limit to %i.", g_frags
             log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to  %i frags", mapname, g_frags)
+            g_selected = false
         }
 
         else
@@ -187,6 +187,7 @@ public checkVotes()
             set_cvar_float("mp_timelimit", get_cvar_float("mp_timelimit") + steptime)
             client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime)
             log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to next %.0f minutes", mapname, steptime)
+            g_selected = false
         }
 
         return
