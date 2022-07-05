@@ -791,6 +791,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     IS_SOCKET_IN_USE = true;
+    if(is_plugin_loaded(PROXY_SCRIPT,true)!=charsmin)
     if( g_proxy_version && callfunc_begin("@lock_socket",PROXY_SCRIPT))
     {
         callfunc_end()
