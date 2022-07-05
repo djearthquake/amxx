@@ -255,10 +255,12 @@ public client_proxycheck(Ip[], id)
         else
             IS_SOCKET_IN_USE = true
         server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
-        if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
+        if(is_plugin_loaded(WEATHER_SCRIPT,true)!=charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
         {
             if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
-            callfunc_end()
+            {
+                    callfunc_end()
+            }
         }
         if(get_pcvar_num(g_cvar_debugger) > 1 )
             server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, name
