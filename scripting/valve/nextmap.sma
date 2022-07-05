@@ -14,6 +14,8 @@
 #include <amxmodx>
 #include <amxmisc>
 #include engine
+#include fakemeta
+#include fakemeta_util
 
 // WARNING: If you comment this line make sure
 // that in your mapcycle file maps don't repeat.
@@ -33,9 +35,11 @@ new g_currentMap[MAX_NAME_LENGTH]
 new finale[MAX_CMD_LENGTH]
 
 // pcvars
-new g_mp_friendlyfire, g_teamplay, g_map_ent, g_frags, g_frags_remaining
+new g_mp_friendlyfire, g_teamplay, g_map_ent, g_frags, g_frags_remaining, g_captures_remaining
 new g_mp_chattime
 new g_amx_nextmap, g_finale
+new bool:B_op4c_map
+
 #if AMXX_VERSION_NUM != 182
 new const CvarChatTimeDesc[]="Added by nextmap to include end game chat time."
 #endif
@@ -43,6 +47,8 @@ public client_putinserver(id)
 {
     if(is_user_bot(id))
         return PLUGIN_CONTINUE
+    if(is_user_connected(id))
+        set_pev(id,pev_flags,pev(id,pev_flags) & ~FL_FROZEN);
     return PLUGIN_HANDLED
 }
 public plugin_init()
@@ -52,8 +58,7 @@ public plugin_init()
 
     get_mapname(g_currentMap, charsmax(g_currentMap))
 
-    //register_event(ZERO_TIME, "changeMap", "ac") //conflicts with old mapcycle changes and chattime variable
-
+    register_event(ZERO_TIME, "changeMap", "ac") //seeing if helps on frag mapchange
     register_clcmd("say nextmap", "sayNextMap", 0, "- displays nextmap")
     register_clcmd("say currentmap", "sayCurrentMap", 0, "- display current map")
 
@@ -67,7 +72,12 @@ public plugin_init()
         register_clcmd("say ff", "sayFFStatus", 0, "- display friendly fire status")
     }
 
+    g_map_ent = find_ent(charsmin, "info_ctfdetect")
+
     #if AMXX_VERSION_NUM == 182
+    if(g_map_ent)
+        g_captures_remaining  = get_cvar_pointer("mp_captures")
+
     g_mp_chattime        = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "10.0")
     set_task(get_pcvar_float(g_mp_chattime),"changeMap",2022, .flags="d")
 
@@ -78,12 +88,16 @@ public plugin_init()
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : create_cvar("mp_chattime", "10.0" ,FCVAR_SERVER, CvarChatTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 105.0), g_mp_chattime)
     set_task_ex(float(g_mp_chattime),"changeMap", 2022, .flags = SetTask_BeforeMapChange)
 
+
+    if(g_map_ent && get_cvar_pointer("mp_captures"))
+        bind_pcvar_num(get_cvar_pointer("mp_captures"),g_captures_remaining)
+
     if(get_cvar_pointer("mp_fraglimit"))
         bind_pcvar_num(get_cvar_pointer("mp_fraglimit"),g_frags)
     if(get_cvar_pointer("mp_fragsleft"))
         bind_pcvar_num(get_cvar_pointer("mp_fragsleft"),g_frags_remaining)
     if(get_cvar_pointer("mp_teamplay"))
-        bind_pcvar_num(get_cvar_pointer("mp_teamplay"), g_teamplay)
+        bind_pcvar_num(get_cvar_pointer("mp_teamplay"),g_teamplay)
     #endif
 
     g_amx_nextmap = register_cvar("amx_nextmap", "", FCVAR_SERVER|FCVAR_EXTDLL|FCVAR_SPONLY)
@@ -104,8 +118,6 @@ public plugin_init()
     set_pcvar_string(g_amx_nextmap, g_nextMap)
     formatex(szString, charsmax(szString), "%s %d", g_mapCycle, g_pos)  // save lastmapcycle settings
     set_localinfo("lastmapcycle", szString)
-
-    g_map_ent = find_ent(charsmin, "info_ctfdetect")
 
     g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-tunes | 2-finale,tunes | 3-finale,tunes,gametitle*/
 }
@@ -317,7 +329,18 @@ readMapCycle(szFileName[], szNext[], iNext)
 @finale(finale[])
 if(get_pcvar_num(g_finale)>1)
 {
-    message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
+
+    message_begin(MSG_ALL,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
+
+    for (new client=1; client<=get_playersnum(1); client++)
+    {
+        if(is_user_connected(client))
+        {
+            set_pev(client,pev_flags,pev(client,pev_flags) | FL_FROZEN);
+            fm_strip_user_weapons(client)
+        }
+
+    }
 }
 
 @title()
