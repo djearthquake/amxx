@@ -42,8 +42,6 @@
 
 new Float:g_fNextStep[33];
 
-new bool:b_SnowMap
-
 new g_SnowFeet
 
 #define MAX_SOUNDS 6 //Max num of sound for list below
@@ -69,24 +67,16 @@ public plugin_init()
 }
 public plugin_precache()
 {
-    b_SnowMap = false
     for(new i = 0; i < MAX_SOUNDS ; i++)
         precache_sound(g_szStepSound[i]);
 
+    ////checking maps with snow backdrop but now snow to match
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
-    if(equali(mname, "as_tundra"))
-    {
+
+    if(equali(mname, "as_tundra") || containi(mname, "fy_") != charsmin )
         fm_create_entity("env_snow");
 
-        log_amx "Map has snow footsteps in it already but missing snowfall."
-        b_SnowMap = true
-    }
-    else if(containi(mname, "fy_") != charsmin)
-    {
-         fm_create_entity("env_snow");
-         log_amx "Map has snow drop but missing footsteps and snowfall."
-    }
 
 }
 
@@ -98,9 +88,6 @@ public fwd_PlayerPreThink(id)
             return FMRES_IGNORED;
     
         if(!is_user_outside(id))
-            return FMRES_IGNORED;
-
-        if(b_SnowMap)
             return FMRES_IGNORED;
 
         set_pev(id, pev_flTimeStepSound, 999);
