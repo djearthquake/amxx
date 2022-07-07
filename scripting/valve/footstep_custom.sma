@@ -36,7 +36,6 @@ new Float:g_fNextStep[33];
 
 new const g_szStepSound[MAX_SOUNDS][] =
 {
-
 	"player/pl_snow1.wav",
 	"player/pl_snow2.wav",
 	"player/pl_snow3.wav",
