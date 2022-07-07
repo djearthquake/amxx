@@ -21,87 +21,129 @@
  *
 */
 
+/*
+    Changelog: Jul 7 2022 11:00 (last)
+    1.0: Alka made https://forums.alliedmods.net/showpost.php?p=682429&postcount=4
+    1.0-1.5: add outside and update script
+    1.5-1.6: Bind with existing cvar. Mapcheck. Spaces not tabs! 
+    CVAR:: "mp_footsteps" "3" //is snowstepping
+ */
+ 
 #include <amxmodx>
 #include <fakemeta>
 
 #define PLUGIN "Footsteps, custom"
-#define VERSION "1.5"
-#define AUTHOR "Alka|SPiNX"
+#define VERSION "1.6"
+#define AUTHOR "SPiNX"
 
 #define STEP_DELAY 0.5
 
+#define charsmin    -1
+
 new Float:g_fNextStep[33];
 
-#define MAX_SOUNDS 6 //Max num of sound for list below
+new bool:b_SnowMap
 
+new g_SnowFeet
+
+#define MAX_SOUNDS 6 //Max num of sound for list below
+#define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
+
+///SNOW SOUNDS. ADD MORE. THIS IS AN EXAMPLE.
 new const g_szStepSound[MAX_SOUNDS][] =
 {
-	"player/pl_snow1.wav",
-	"player/pl_snow2.wav",
-	"player/pl_snow3.wav",
-	"player/pl_snow4.wav",
-	"player/pl_snow5.wav",
-	"player/pl_snow6.wav"
+    "player/pl_snow1.wav",
+    "player/pl_snow2.wav",
+    "player/pl_snow3.wav",
+    "player/pl_snow4.wav",
+    "player/pl_snow5.wav",
+    "player/pl_snow6.wav"
 };
 
 public plugin_init()
 {
-	register_plugin(PLUGIN, VERSION, AUTHOR);
-	register_forward(FM_PlayerPreThink, "fwd_PlayerPreThink", 0);
-}
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+    bind_pcvar_num(get_cvar_pointer("mp_footsteps"), g_SnowFeet)
 
+    register_forward(FM_PlayerPreThink, "fwd_PlayerPreThink", 0);
+}
 public plugin_precache()
 {
-	new i;
-	for(i = 0; i < MAX_SOUNDS ; i++)
-		precache_sound(g_szStepSound[i]);
+    b_SnowMap = false
+    for(new i = 0; i < MAX_SOUNDS ; i++)
+        precache_sound(g_szStepSound[i]);
+
+    new mname[MAX_NAME_LENGTH];
+    get_mapname(mname,charsmax(mname));
+    if(equali(mname, "as_tundra"))
+    {
+        fm_create_entity("env_snow");
+
+        log_amx "Map has snow footsteps in it already but missing snowfall."
+        b_SnowMap = true
+    }
+    else if(containi(mname, "fy_") != charsmin)
+    {
+         fm_create_entity("env_snow");
+         log_amx "Map has snow drop but missing footsteps and snowfall."
+    }
+
 }
 
 public fwd_PlayerPreThink(id)
 {
-	if(!is_user_alive(id))
-		return FMRES_IGNORED;
-	if(!is_user_outside(id))
-		return FMRES_IGNORED;
+    if(g_SnowFeet == 3)
+    {
+        if(!is_user_alive(id))
+            return FMRES_IGNORED;
+    
+        if(!is_user_outside(id))
+            return FMRES_IGNORED;
 
-	set_pev(id, pev_flTimeStepSound, 999);
+        if(b_SnowMap)
+            return FMRES_IGNORED;
 
-	#define STOP_SOUND emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, SND_STOP, PITCH_NORM)
-	if(fm_get_ent_speed(id) < 175.0 ) {
-		STOP_SOUND; }
+        set_pev(id, pev_flTimeStepSound, 999);
+    
+        #define STOP_SOUND emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, SND_STOP, PITCH_NORM)
+        if(fm_get_ent_speed(id) < 175.0 )
+            STOP_SOUND;
+    
+        if(g_fNextStep[id] < get_gametime())
+        {
+            if(fm_get_ent_speed(id) && (pev(id, pev_flags) & FL_ONGROUND) && is_user_outside(id))
+                emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
+    
+            g_fNextStep[id] = get_gametime() + STEP_DELAY;
+        }
 
-	if(g_fNextStep[id] < get_gametime())
-	{
-		if(fm_get_ent_speed(id) && (pev(id, pev_flags) & FL_ONGROUND) && is_user_outside(id))
-			emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
-
-		g_fNextStep[id] = get_gametime() + STEP_DELAY;
-	}
-	return FMRES_IGNORED;
+    }
+    return FMRES_IGNORED;
 }
-
 
 stock Float:fm_get_ent_speed(id)
 {
-	if(!pev_valid(id))
-		return 0.0;
+    if(!pev_valid(id))
+        return 0.0;
 
-	static Float:vVelocity[3];
-	pev(id, pev_velocity, vVelocity);
+    static Float:vVelocity[3];
+    pev(id, pev_velocity, vVelocity);
 
-	vVelocity[2] = 0.0;
+    vVelocity[2] = 0.0;
 
-	return vector_length(vVelocity);
+    return vector_length(vVelocity);
 }
 
 stock Float:is_user_outside(id)
 {
-	new Float:vOrigin[3], Float:fDist;
-	pev(id, pev_origin, vOrigin);
-	fDist = vOrigin[2];
-	while(engfunc(EngFunc_PointContents, vOrigin) == CONTENTS_EMPTY)
-		vOrigin[2] += 5.0;
-	if(engfunc(EngFunc_PointContents, vOrigin) == CONTENTS_SKY)
-		return (vOrigin[2] - fDist);
-	return 0.0;
+    new Float:vOrigin[3], Float:fDist;
+    pev(id, pev_origin, vOrigin);
+    fDist = vOrigin[2];
+
+    while(engfunc(EngFunc_PointContents, vOrigin) == CONTENTS_EMPTY)
+        vOrigin[2] += 5.0;
+
+    if(engfunc(EngFunc_PointContents, vOrigin) == CONTENTS_SKY)
+        return (vOrigin[2] - fDist);
+    return 0.0;
 }
