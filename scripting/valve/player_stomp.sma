@@ -26,7 +26,10 @@ new Float:fExpOrigin[3]
 
 new const SOUND_GOOMBA[] = "misc/goomba_stomp.wav",
 MARIO_DEATH_SND[] = "sound/misc/super-mario-death-sound-sound-effect.mp3",
-SPIN_COIN[] = "sprites/mario16/spinning_coin.spr"
+SPIN_COIN[] = "sprites/mario16/spinning_coin.spr",
+FART_SND[] = "misc/poot.wav"/*,
+SHIT[] = "models/terd.mdl"
+*/
 
 public plugin_init()
 {
@@ -43,6 +46,7 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "player", "@client_spawn", 1);
     g_MaxPlayers = get_maxplayers()
 }
+
 @client_spawn(id)
     if(is_valid_player(id))
         g_bStomped[id] = false
@@ -62,32 +66,36 @@ public FORWARD_SET_MODEL(entid)
     if(g_bStomped[player])
     {
         fm_entity_set_model(entid, SPIN_COIN)
+        //looks better as env_sprite
         @burst_coin(entid)
     }
 }
 
 @touch_inquiry(victim, attacker)
-if(is_valid_player(attacker) || is_valid_player(victim) )
 {
-    //if duck and use then show...
-    new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
-    if(Button & IN_USE && (OldButton & IN_DUCK) && pev(attacker, pev_flags) & FL_ONGROUND)
+    if(pev_valid(victim) &&  pev_valid(attacker))
+    if(is_valid_player(attacker)/*limits to player only*/ || is_valid_player(victim) )
     {
-        new SzVClassname[MAX_NAME_LENGTH], SzAClassname[MAX_NAME_LENGTH]
+        //if duck and use then show...
+        new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
+        if(Button & IN_USE && (OldButton & IN_DUCK) && pev(attacker, pev_flags) & FL_ONGROUND)
+        {
+            new SzVClassname[MAX_NAME_LENGTH], SzAClassname[MAX_NAME_LENGTH]
     
-        if(pev_valid(victim))
-            pev(victim, pev_classname, SzVClassname, charsmax(SzVClassname));
+            if(pev_valid(victim))
+                pev(victim, pev_classname, SzVClassname, charsmax(SzVClassname));
     
-        if(pev_valid(attacker))
-            pev(attacker, pev_classname, SzAClassname, charsmax(SzAClassname));
+            if(pev_valid(attacker))
+                pev(attacker, pev_classname, SzAClassname, charsmax(SzAClassname));
     
-        if(is_valid_player(attacker))
-            client_print attacker, print_center, SzVClassname
+            if(is_valid_player(attacker))
+                client_print attacker, print_center, SzVClassname
     
-        if(is_valid_player(victim))
-            client_print victim, print_center, SzAClassname
-
-        set_task(0.1, "@show_stake", attacker)
+            if(is_valid_player(victim))
+                client_print victim, print_center, SzAClassname
+    
+            set_task(0.1, "@show_stake", attacker)
+        }
     }
 }
 
@@ -101,7 +109,7 @@ if(pev_valid(entid))
     entity_get_vector(entid,EV_VEC_angles,Axis);
 
     ///explode models on explode or touch.
-    emessage_begin( MSG_PVS, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS);
+    emessage_begin( MSG_ALL, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS);
     ewrite_byte(TE_EXPLODEMODEL)
     ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)))      // XYZ (start)
     ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)))
@@ -112,76 +120,95 @@ if(pev_valid(entid))
     ewrite_byte(random_num(8,20))              //(life in 0.1's)
     emessage_end()
 }
+
 @touch(victim, attacker)
 {
     #define PITCH (random_num(85,140))
-    new Vhealth = pev(victim,pev_health)
-    new Ahealth = pev(attacker,pev_health)
-    new health_max = pev(victim,pev_max_health)
-    new aOrigin[3], vOrigin[3]
-    new SzAClassname[MAX_NAME_LENGTH], SzVClassname[MAX_NAME_LENGTH]
-
-    new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
-    if(Button & IN_JUMP && (OldButton & IN_JUMP) && pev(attacker, pev_flags) /*&& (is_valid_player(victim) && !get_user_godmode(victim) && is_valid_player(attacker) && !get_user_godmode(attacker))*/)
-
-    if(Vhealth > 1  && Ahealth > 1 && health_max > 1/* && is_user_alive(attacker)*/)
+    if(pev_valid(victim) && pev_valid(attacker))
     {
-        if(pev_valid(victim) || is_valid_player(victim) )
+        new Vhealth = pev(victim,pev_health)
+        new Ahealth = pev(attacker,pev_health)
+        new health_max = pev(victim,pev_max_health)
+        new Float:aOrigin[3], vOrigin[3]
+        new SzAClassname[MAX_NAME_LENGTH], SzVClassname[MAX_NAME_LENGTH]
+
+        new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
+        if(Button & IN_JUMP && (OldButton & IN_JUMP) && pev(attacker, pev_flags) /*&& (is_valid_player(victim) && !get_user_godmode(victim) && is_valid_player(attacker) && !get_user_godmode(attacker))*/)
+        //also check if off ground
+        if(Vhealth > 1  && Ahealth > 1 && health_max > 1/* && is_user_alive(attacker)*/)
         {
+
+            Vhealth = pev(victim,pev_health)
             pev(victim, pev_classname, SzVClassname, charsmax(SzVClassname));
             pev(victim, pev_origin, vOrigin);
-        }
-        if(pev_valid(attacker) || is_valid_player(attacker) )
-        {
+
             pev(attacker, pev_classname, SzAClassname, charsmax(SzAClassname));
             pev(attacker, pev_origin, aOrigin);
-        }
-                            
-        if( aOrigin[2] - vOrigin[2] > 50/* && !is_user_bot(victim)*/)
-        {
-            {
-                if(is_valid_player(attacker))
-                {
-                    new id = victim
-                    fExpOrigin = vOrigin
-                    if(get_user_godmode(victim))
-                    {
-                        entity_explosion_knockback(id, fExpOrigin)
-                    }
-                    else
-                    {
-                        ExecuteHam(Ham_TakeDamage, attacker, get_weaponid(""), victim, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
-    
-                        emit_sound(attacker, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
-    
-                        g_bStomped[attacker] = true
-                        if(is_user_admin(attacker))
-                           // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH);
-                            client_cmd(attacker,"mp3 play ^"%s^"",MARIO_DEATH_SND)
-                    }
 
+            if( aOrigin[2] - vOrigin[2] > 50/* && !is_user_bot(victim)*/)
+            {
+
+                new id;
+                fExpOrigin = aOrigin
+                if(is_valid_player(attacker)  && get_user_godmode(attacker) || is_valid_player(victim) && get_user_godmode(victim) )
+                {
+                    if(get_user_godmode(attacker))
+                        id = attacker
+                    if(get_user_godmode(victim))
+                        id = victim
+    
+                    //If either player is in Godmode like from Spawn Protection script I want it to be like magnets repelling with some force.
+                    fExpOrigin[2] += 500.0
+                    new origin[3]
+                    origin[0] = floatround(fExpOrigin[0])
+                    origin[1] = floatround(fExpOrigin[1])
+                    origin[2] = floatround(fExpOrigin[2])
+                    ///entity_explosion_knockback(id, origin
+                    emit_sound(id, CHAN_WEAPON, FART_SND, 5.0, ATTN_NORM, 0, PITCH);
+                }
+                else
+                {
+                    //Otherwise whatever player is a neck higher and in jump to squash other player and do effects both sound and coins
+                    ExecuteHam(Ham_TakeDamage, victim, get_weaponid(""), attacker, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
+    
+                    emit_sound(attacker, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
+    
+                    if(is_user_connected(victim))
+                        g_bStomped[victim] = true
+    
+                    if(is_user_connected(victim) && !is_user_bot(victim) && !is_user_alive(victim))
+                       // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH);
+                        client_cmd(victim,"mp3 play ^"%s^"",MARIO_DEATH_SND)
                 }
 
-            }
-            if(is_valid_player(victim))
-                client_print victim, print_center, "%n stamped %n | %s", victim, attacker,  SzAClassname
-        }
-
-        //else if(vOrigin[2] - aOrigin[2] > 50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
-        else if(aOrigin[2] - vOrigin[2] < -50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
-        {
-
-            {
-                ExecuteHam(Ham_TakeDamage, victim, get_weaponid("")/*attacker*/, attacker, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
-                //player killing bot
-                emit_sound(attacker, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
-                if(is_valid_player(victim))
-                    g_bStomped[victim] = true
-    
-                if(is_valid_player(attacker) && is_valid_player(victim) )
+                if(!is_user_bot(attacker) && !is_user_alive(victim) )
                     client_print attacker, print_center, "%n stamped %n | %s", attacker, victim, SzVClassname
-                else if(is_valid_player(attacker) && pev_valid(victim) )
-                    client_print attacker, print_center, "%n stamped %s", attacker, SzVClassname
+
+                else if(is_user_bot(attacker) && pev_valid(victim) )
+                    client_print attacker, print_center, "%n stamped %s", victim, SzVClassname
+            }
+
+            else if(vOrigin[2] - aOrigin[2] > 50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
+            //else if(aOrigin[2] - vOrigin[2] < -50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
+            {
+
+                {
+                    ExecuteHam(Ham_TakeDamage, attacker, get_weaponid("")/*attacker*/, victim, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
+                    //player killing bot
+                    emit_sound(victim, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
+                    if(is_user_connected(attacker))
+                        g_bStomped[attacker] = true
+
+                    if(!is_user_bot(attacker) && !is_user_alive(attacker))
+                       // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH);
+                        client_cmd(attacker,"mp3 play ^"%s^"",MARIO_DEATH_SND)
+
+                    if(!is_user_bot(victim) && !is_user_alive(attacker) )
+                        client_print victim, print_center, "%n stomped %n | %s", victim, attacker, SzAClassname
+
+                    else if(is_user_bot(victim) && pev_valid(attacker) )
+                        client_print victim, print_center, "%n stomped %s", attacker, SzAClassname
+                }
             }
         }
     }
@@ -191,7 +218,7 @@ if(pev_valid(entid))
 @show_stake(id,{Float,_}:...)
 if(is_valid_player(id))
 {
-    emessage_begin( MSG_PVS, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS );
+    emessage_begin( MSG_ALL, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS );
     ewrite_byte(TE_PLAYERATTACHMENT);
     ewrite_byte(id); //who
     ewrite_coord(0); //where
@@ -205,7 +232,6 @@ public plugin_precache()
     if(file_exists("sound/misc/goomba_stomp.wav")){
         precache_sound(SOUND_GOOMBA);
         precache_generic("sound/misc/goomba_stomp.wav")
-
     }
     else
     {
@@ -230,41 +256,13 @@ public plugin_precache()
         log_amx("Paused to prevent crash from missing %s.", SPIN_COIN);
         pause "a";
     }
-}
+    if(file_exists("sound/misc/poot.wav")){
+        precache_sound(FART_SND)
 
-#include <xs>
-public entity_explosion_knockback(id, Float:fExpOrigin[3])
-//Natsheh was here!
-{
-    server_print("%n knockback", id)
-    new Float:fExpShockwaveRadius=100.0, Float:fExpShockwavePower=20.0;
-    new Float:fOrigin[3], Float:fDistVec[3];
-    pev(id, pev_origin, fOrigin);
-
-    xs_vec_sub(fOrigin, fExpOrigin, fDistVec);
-
-    new Float:g_fTemp;
-    // victim is in the range of the shockwave explosion!
-    if((g_fTemp=xs_vec_len(fDistVec)) <= fExpShockwaveRadius)
+    }
+    else
     {
-        new Float:fPower = fExpShockwavePower * ( 1.0 - ( g_fTemp / floatmin(fExpShockwaveRadius, 1.0) ) ), Float:fVelo[3], Float:fKnockBackVelo[3];
-
-        pev(id, pev_velocity, fVelo);
-        xs_vec_normalize(fDistVec, fKnockBackVelo);
-        xs_vec_mul_scalar(fKnockBackVelo, fPower, fKnockBackVelo);
-        xs_vec_add(fVelo, fKnockBackVelo, fVelo);
-        set_pev(id, pev_velocity, fVelo);
+        log_amx("Paused to prevent crash from missing %s.", FART_SND);
+        pause "a";
     }
 }
-/*
- //https://forums.alliedmods.net/showpost.php?p=2780153&postcount=9
- //OciXCrom was here!
- bool:is_ent_breakable(iEnt)
-{
-    if((entity_get_float(iEnt, EV_FL_health) > 0.0) && (entity_get_float(iEnt, EV_FL_takedamage) > 0.0) && !(entity_get_int(iEnt, EV_INT_spawnflags) & SF_BREAK_TRIGGER_ONLY))
-    {
-        return true
-    }
-    return false
-}
-*/
