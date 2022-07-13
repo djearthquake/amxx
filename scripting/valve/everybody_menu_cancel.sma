@@ -10,7 +10,7 @@ if(is_user_connected(id))
 }
 
 public plugin_init()
-    register_plugin("AMXX MENU CLEANER","1.0","SPiNX")
+    register_plugin("AMXX MENU CLEANER","1.1","SPiNX")
 
 public client_putinserver(id)
     if(is_user_connected(id) && !is_user_bot(id) && !bAlready_cleared[id])
