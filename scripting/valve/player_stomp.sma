@@ -181,11 +181,11 @@ if(pev_valid(entid))
                         client_cmd(victim,"mp3 play ^"%s^"",MARIO_DEATH_SND)
                 }
 
-                if(!is_user_bot(attacker) && !is_user_alive(victim) )
+                if(!is_user_bot(attacker) &&  is_user_connected(attacker) &&  victim < 33 && !pev(victim, pev_deadflag) != DEAD_NO)
                     client_print attacker, print_center, "%n stamped %n | %s", attacker, victim, SzVClassname
 
-                else if(is_user_bot(attacker) && pev_valid(victim) )
-                    client_print attacker, print_center, "%n stamped %s", victim, SzVClassname
+                else if(!is_user_bot(attacker) &&  is_user_connected(attacker) && pev(victim, pev_deadflag) != DEAD_NO )
+                    client_print attacker, print_center, "%n stamped %s", attacker, SzVClassname
             }
 
             else if(vOrigin[2] - aOrigin[2] > 50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
