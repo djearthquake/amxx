@@ -219,11 +219,11 @@ if(pev_valid(entid) &&  get_pcvar_num(g_activate_playerstomp))
                     if(is_user_connected(attacker))
                         g_bStomped[attacker] = true
                     //SND EFFECT
-                    if(!is_user_bot(attacker) && !is_user_alive(attacker))
+                    if(is_valid_player(attacker) && !is_user_bot(attacker) && !is_user_alive(attacker))
                        // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH); //all can hear
                         client_cmd(attacker,"mp3 play ^"%s^"",MARIO_DEATH_SND)
                     //ANNOUNCEMENT
-                    if(!is_user_bot(victim) && !is_user_alive(attacker) )
+                    if(is_valid_player(victim) && !is_user_bot(victim) && !is_user_alive(attacker) )
                         client_print victim, print_center, "%n stomped %n | %s", victim, attacker, SzAClassname
 
                     else if(is_user_bot(victim) && pev_valid(attacker) )
