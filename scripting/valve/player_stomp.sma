@@ -8,6 +8,8 @@
 #tryinclude hamsandwich
 #define is_valid_player(%1) (1 <= %1 <= g_MaxPlayers )
 #define SEND_MSG_ALLPLAYERS 0
+#define charsmin                      -1
+
 enum _:authors_details
 {
     plugin[MAX_NAME_LENGTH],
@@ -19,7 +21,7 @@ new
 plugin_registry[ authors_details ],
 vbuffer[MAX_IP_LENGTH],
 g_MaxPlayers,
-g_coin, g_peak
+g_coin, g_peak,g_activate_playerstomp
 
 new bool:g_bStomped[ MAX_PLAYERS + 1 ]
 new Float:fExpOrigin[3]
@@ -45,6 +47,7 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "weaponbox", "FORWARD_SET_MODEL", 1)
     RegisterHam(Ham_Spawn, "player", "@client_spawn", 1);
     g_MaxPlayers = get_maxplayers()
+    g_activate_playerstomp = register_cvar("mp_stomp", "1")
 }
 
 @client_spawn(id)
@@ -62,6 +65,9 @@ public plugin_init()
 }
 public FORWARD_SET_MODEL(entid)
 {
+    if(!get_pcvar_num(g_activate_playerstomp))
+        return
+
     new player = pev(entid, pev_owner)
     if(g_bStomped[player])
     {
@@ -73,6 +79,7 @@ public FORWARD_SET_MODEL(entid)
 
 @touch_inquiry(victim, attacker)
 {
+    if(get_pcvar_num(g_activate_playerstomp))
     if(pev_valid(victim) &&  pev_valid(attacker))
     if(is_valid_player(attacker)/*limits to player only*/ || is_valid_player(victim) )
     {
@@ -100,7 +107,7 @@ public FORWARD_SET_MODEL(entid)
 }
 
 @burst_coin(entid,{Float,_}:...)
-if(pev_valid(entid))
+if(pev_valid(entid) &&  get_pcvar_num(g_activate_playerstomp))
 {
     new Float:End_Position[3]
     new Float:Axis[3];
@@ -124,21 +131,24 @@ if(pev_valid(entid))
 @touch(victim, attacker)
 {
     #define PITCH (random_num(85,140))
+    if(get_pcvar_num(g_activate_playerstomp))
     if(pev_valid(victim) && pev_valid(attacker))
     {
         new Vhealth = pev(victim,pev_health)
         new Ahealth = pev(attacker,pev_health)
-        new health_max = pev(victim,pev_max_health)
+        new Vhealth_max = pev(victim,pev_max_health)
         new Float:aOrigin[3], vOrigin[3]
         new SzAClassname[MAX_NAME_LENGTH], SzVClassname[MAX_NAME_LENGTH]
 
         new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
         if(Button & IN_JUMP && (OldButton & IN_JUMP) && pev(attacker, pev_flags) /*&& (is_valid_player(victim) && !get_user_godmode(victim) && is_valid_player(attacker) && !get_user_godmode(attacker))*/)
         //also check if off ground
-        if(Vhealth > 1  && Ahealth > 1 && health_max > 1/* && is_user_alive(attacker)*/)
+        //if(Vhealth > 1  && Ahealth > 1 && health_max > 1/* && is_user_alive(attacker)*/)
+        if(Vhealth > 1  && Ahealth > 1 )
+        if(get_pcvar_num(g_activate_playerstomp) > 1|| Vhealth_max > 1)
         {
 
-            Vhealth = pev(victim,pev_health)
+            //Vhealth = pev(victim,pev_health)
             pev(victim, pev_classname, SzVClassname, charsmax(SzVClassname));
             pev(victim, pev_origin, vOrigin);
 
@@ -192,21 +202,27 @@ if(pev_valid(entid))
                 }
             }
 
-            else if(vOrigin[2] - aOrigin[2] > 50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
-            //else if(aOrigin[2] - vOrigin[2] < -50 && (victim, EV_FL_takedamage) > 0.0/*non-breakable*/)
+            else if(vOrigin[2] - aOrigin[2] > 50) 
             {
-
+                if(get_pcvar_num(g_activate_playerstomp) || (victim, EV_FL_takedamage) > 0.0)
                 {
-                    ExecuteHam(Ham_TakeDamage, attacker, get_weaponid("")/*attacker*/, victim, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
+                    //DAMAGE
+                    if(containi(SzVClassname,"able") != charsmin)
+                    {
+                        //func_breakable was stomping player!!
+                        attacker = victim
+                        victim = attacker
+                    }
+                    ExecuteHam(Ham_TakeDamage, attacker, get_weaponid(""), victim, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
                     //player killing bot
                     emit_sound(victim, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
                     if(is_user_connected(attacker))
                         g_bStomped[attacker] = true
-
+                    //SND EFFECT
                     if(!is_user_bot(attacker) && !is_user_alive(attacker))
-                       // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH);
+                       // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH); //all can hear
                         client_cmd(attacker,"mp3 play ^"%s^"",MARIO_DEATH_SND)
-
+                    //ANNOUNCEMENT
                     if(!is_user_bot(victim) && !is_user_alive(attacker) )
                         client_print victim, print_center, "%n stomped %n | %s", victim, attacker, SzAClassname
 
@@ -218,10 +234,10 @@ if(pev_valid(entid))
     }
 }
 
-
 @show_stake(id,{Float,_}:...)
 if(is_valid_player(id))
 {
+    if(get_pcvar_num(g_activate_playerstomp))
     emessage_begin( MSG_ALL, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS );
     ewrite_byte(TE_PLAYERATTACHMENT);
     ewrite_byte(id); //who
