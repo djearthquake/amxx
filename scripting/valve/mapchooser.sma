@@ -74,6 +74,8 @@ public plugin_init()
     g_step      = create_cvar("amx_extendmap_step", "15")
     g_auto_pick = create_cvar("mapchooser_auto", "0")
 
+    Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
+
     get_localinfo("lastMap", g_lastMap, charsmax(g_lastMap))
     set_localinfo("lastMap", "")
 
@@ -340,7 +342,7 @@ public voteNextmap()
         }
     }
 
-
+    //if(is_running("gearbox") == 1 )
     else if(get_pcvar_num(Pcvar_captures))
     {
         if( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) )
