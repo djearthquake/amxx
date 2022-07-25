@@ -9,6 +9,7 @@
 
 #define HUD_TIMER 4000
 #define OK_SHOOT 5000
+#define charsmin                                            -1
 
 new g_Trail, g_protecton
 new g_shell, g_time, g_msg
@@ -18,12 +19,19 @@ new g_spawn_time[MAX_PLAYERS]
 
 new bool:Spawn_delay[MAX_PLAYERS + 1]
 new bool:bOF_run
+new bool:g_bFlagMap
 
 public plugin_init()
 {
     register_plugin("Spawn Protection", "8.2", "SPiNX|Peli") // Peli maintained up until 7.0. Profile:https://forums.alliedmods.net/member.php?u=86
     //Peli's plugin https://forums.alliedmods.net/showthread.php?t=1886
     bOF_run = is_running("gearbox") || is_running("valve")
+
+    new mname[MAX_NAME_LENGTH]
+    get_mapname(mname, charsmax(mname));
+
+    g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
+
     register_concmd("amx_spawn_time", "cmd_sptime", ADMIN_CVAR, "1 through 10 to set Spawn Protection time") // Concmd (Console Command) for the CVAR time
     register_concmd("amx_spawn_msg", "cmd_spmessage", ADMIN_CVAR, "1 = Turn Spawn Protection Message on , 0 = Turn Spawn Protection message off") // Concmd for the CVAR message
     register_concmd("amx_spawn_shell", "cmd_spshellthickness", ADMIN_CVAR, "1 through 100 to set Glow Shellthickness") // Concmd for the shellthickness
@@ -34,8 +42,8 @@ public plugin_init()
     g_shell           = register_cvar("sv_spshellthick", "75") // Cvar for controlling the glow shell thickness
     XhookDamage_spawn = RegisterHam(Ham_TakeDamage, "player", "Event_Damage", 1)
 
-    if(bOF_run)
-        register_event( "ResetHUD" , "sp_on" , "b" )
+    if(bOF_run /*&& !g_bFlagMap*/) ///extra layer protection unlike CS players spawn when they join not a spec first
+        register_event( "ResetHUD" , "sp_on" , "b" ) //spawn not in godmode, sliced down glowing and will die if shooting back
     else
         RegisterHam(Ham_Spawn, "player", "sp_on", 1)
     //RegisterHam(Ham_Killed, "player", "@killed");
@@ -53,6 +61,7 @@ if(!is_user_connected(id))
 {
     remove_task(id + OK_SHOOT)
     remove_task(id + HUD_TIMER)
+    Spawn_delay[id] = false
 }
 
 public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
@@ -66,6 +75,10 @@ public Event_Damage(victim, ent, attacker, Float:damage, damagebits)
         if(get_user_team(victim) == get_user_team(attacker) && victim != attacker && task_exists(attacker + OK_SHOOT) || task_exists(attacker + OK_SHOOT))
         {
             set_user_godmode(attacker, 0)
+
+            if( damagebits ==  DMG_BLAST) //leave out tripmines and snarks etc. Might need to do something about mp5 spawn with grenades
+                return
+
             fakedamage(attacker,"Spawn Hacking",damage*1.0,DMG_PARALYZE)
             if(damage > 99.0 || pev(victim,pev_health) - damage <= 1.0 )
             {
@@ -197,11 +210,20 @@ public sp_on(id)
 {
     if(is_user_alive(id) && get_pcvar_num(g_protecton))
     {
-        set_user_godmode(id,true)
-        set_task(0.1, "protect", id)
-        Spawn_delay[id] = true
+        if(g_bFlagMap && is_user_bot(id))
+        {
+            goto PROTECTION_ON
+        }
+        else if (!g_bFlagMap)
+        {
+            PROTECTION_ON:
+            set_user_godmode(id,true)
+            set_task(0.1, "protect", id)
+            Spawn_delay[id] = true
+        }
     }
 }
+
 @death(id)
 {
     if(!is_user_alive(id))
