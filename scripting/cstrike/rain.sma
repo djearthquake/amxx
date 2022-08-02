@@ -53,7 +53,7 @@ public plugin_cfg()
 if(b_Is_raining)
 {
     server_print"       _"
-    server_print"     _( )_          _      Keith R. Fulton | keith.fulton@chinalake.navy.mil"
+    server_print"     _( )_          _      " //Keith R. Fulton | keith.fulton@chinalake.navy.mil
     server_print"   _(     )_      _( )_"
     server_print"  (_________)   _(     )_"
     server_print"    \  \  \    (_________)"
@@ -74,24 +74,28 @@ public fwd_PlayerPreThink(id)
         if(!is_user_outside(id))
             return FMRES_IGNORED;
 
-        set_pev(id, pev_flTimeStepSound, 975);
+        set_pev(id, pev_flTimeStepSound, 999);
 
         new Float:fSpeed = fm_get_ent_speed(id)
         /*3 steps fast slow or none*/
 
-        if(fSpeed < 50.0 && fSpeed > 15.0) //lurk
+        if(fSpeed < 150.0 && fSpeed > 50.0) //lurk
             STEP_DELAY = 1.0
 
-        else if(fSpeed > 50.0 &&fSpeed <= 150.0  ) //march
+        else if(fSpeed > 75.0 &&fSpeed <= 150.0  ) //march
             STEP_DELAY = 0.5
 
         else if (fSpeed >= 150.0 ) //run
             STEP_DELAY = 0.33
 
-        else
+        else if (fSpeed < 20.0) //stealth
             set_task(0.5,"@stop_snd", id)
 
         new Button = pev(id,pev_button),OldButton = pev(id,pev_oldbuttons);
+
+        //stop buzzing sound at crawl
+        if(Button & IN_FORWARD && (OldButton & IN_FORWARD && fSpeed < 50.0 ))
+            return FMRES_IGNORED;
 
         if(g_fNextStep[id] < get_gametime() || Button & IN_JUMP && (OldButton & IN_FORWARD) && pev(id, pev_flags) & FL_ONGROUND)
         {
