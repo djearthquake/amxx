@@ -130,6 +130,12 @@ new g_skynames[][] =
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+enum {
+    DODW_AMERKNIFE = 1,
+    DODW_GERKNIFE,
+    DODW_SPADE,
+    DODW_BRITKNIFE
+};
 
 public plugin_init()
 {
@@ -155,8 +161,12 @@ public plugin_init()
     g_cvar_uplink = register_cvar("uplink", "GET /data/2.5/weather?id=");
     g_cvar_maxlight = register_cvar("lums", "0");  //vivid at noon
     g_cvar_time = register_cvar("time", "0");      //auto light Time of Day
-    g_cvar_day = register_cvar("day", "0");      //sunrise Hour
-    g_cvar_night = register_cvar("night", "0");     //night fall Hour
+
+    //override the feeds dusk and dawn settings in military time
+    //zero both to disable
+    g_cvar_day = register_cvar("day", "6");      //sunrise Hour
+    g_cvar_night = register_cvar("night", "9");     //night fall Hour
+
     g_cvar_region = register_cvar("sv_region", "4887398");
     g_cvar_units = register_cvar("sv_units", "imperial");
     g_cvar_token = register_cvar("sv_openweather-key", "null");
@@ -187,7 +197,7 @@ public plugin_init()
 
     get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
 
-    if (task_exists(16) ) return;
+    if(task_exists(16))return;
     set_task_ex(30.0, "daylight", 16, .flags = SetTask_Repeat);
 
     ///compass
@@ -195,17 +205,46 @@ public plugin_init()
     g_pcvar_method = register_cvar("amx_compass_method", "2");
     g_Method = get_pcvar_num(g_pcvar_method)
 
-    cstrike_running()
-    ?
+    if(cstrike_running() || is_running("gearbox") == 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "compass_tic", 1)
-     : 
-        RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_crowbar", "compass_tic", 1)
+
+    if(is_running("valve") == 1 )
+        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_crowbar", "compass_tic", 1)
+
+    if(is_running("dod") == 1 )        
+        register_event("CurWeapon", "@dod", "bce", "1=1");
 
     gHudSyncInfo = CreateHudSyncObj();
     gHudSyncInfo2 = CreateHudSyncObj();
 
 }
 
+@dod(id)
+{
+    if(is_user_alive(id))
+    {
+        new wpnid = get_user_weapon(id)
+       //if ( wpnid == DODW_AMERKNIFE || wpnid == DODW_BRITKNIFE || wpnid == DODW_GERKNIFE || wpnid == DODW_SPADE )
+
+        {
+            if (get_user_button(id) & IN_ATTACK)
+            {
+                bCompassOn[id] = true
+                Compass(id)
+            }
+            if (get_user_button(id) & IN_ATTACK2)
+            {
+                bCompassOn[id] = true
+                Compass(id)
+            }
+            return PLUGIN_CONTINUE
+
+        }
+
+    }
+    return PLUGIN_CONTINUE
+
+}
 
 public ClCmd_NewS(id, level, cid)
 {
@@ -256,10 +295,6 @@ public client_putinserver(id)
 
     if(is_user_connected(id))
     {
-        new iWind = get_pcvar_num(g_cvar_wind)
-
-        if(iWind)
-            client_print(id, print_chat, "Due to wind or injury you may have to compensate at range by squatting!");
 
         if(g_env >= 2)
             set_task_ex(random_float(30.0,60.0), "display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
@@ -435,7 +470,7 @@ public ClCmd_get_element(id, level, cid)
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
         format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
         write_web(constring);
-    
+
         if(get_pcvar_num(g_cvar_debug))
         {
             log_amx("This is where we are trying to get weather from");
@@ -449,6 +484,14 @@ public ClCmd_get_element(id, level, cid)
 
 public Et_Val(id)
 {
+    new iWind = get_pcvar_num(g_cvar_wind)
+
+    if(iWind)
+        client_print(id, print_chat, "Due to wind or injury you may have to compensate at range by squatting!");
+
+    if (g_code >= 0)
+        finish_weather()
+
     if (is_user_admin(id))
     {
         set_task_ex(random_float(0.3,2.0), "ring_saturn", 223, .flags = SetTask_RepeatTimes, .repeat = 2);
@@ -457,8 +500,6 @@ public Et_Val(id)
 
         set_task_ex(random_float(3.0, 5.0), "ring_saturn", 556, .flags = SetTask_RepeatTimes, .repeat = 3);
     }
-    if (g_code >= 0)
-        finish_weather()
 }
 
 public finish_weather()
@@ -830,14 +871,12 @@ public compass_tic(iPlayerIndex)
             server_print "%n compass", id
         bCompassOn[id] = true
         if(get_pcvar_num(g_pcvar_compass))
-            set_task_ex(0.2, "Compass", id+2022, .flags = SetTask_RepeatTimes, .repeat = 50)
-            //Testing this over a think that was laggy by comparison.
+            set_task_ex(0.2, "Compass", id, .flags = SetTask_RepeatTimes, .repeat = 3)
     }
 }
 
-public Compass(index)
+public Compass(id)
 {
-    new id = index-2022
     if(!is_user_bot(id) && is_user_alive(id) && bCompassOn[id])
     {
         if(get_pcvar_num(g_cvar_debug) > 1)
@@ -1358,9 +1397,9 @@ public streak3(Float:Vector[3])
 public set_sky(humi)
 {
     new phase;
-    new temp[3];
-    get_time("%H", temp, 2);
-    g_Ti = str_to_num(temp);
+    new hour[3];
+    get_time("%H", hour, charsmax(hour));
+    g_Ti = str_to_num(hour);
 
     g_Up = get_cvar_num("day");
     g_Dwn = get_cvar_num("night");
@@ -1529,7 +1568,7 @@ stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
     return dllfunc(DLLFunc_KeyValue, entity, 0);
 }
 
-
+/*This 'constraint_offset' stock has been updated outside of Amxx 182*/
 stock constraint_offset_fixed(low, high, seed, offset)
 {
     new numElements = high - low + 1;
