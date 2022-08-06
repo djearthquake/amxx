@@ -19,7 +19,7 @@
 /*Elements☀ ☁ ☂ ☃ ☉ ☼ ☽ ☾ ♁ ♨ ❄ ❅ ❆ ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗  ♘ ♞ ϟ THIS IS COPYLEFT!!◐  ◖   ◒   ◕   ◑   ◔   ◗   ◓
 *
 *
-*https://forums.alliedmods.net/showthread.php?t=242560
+*https://github.com/djearthquake/amxx/tree/main/scripting/valve/elements
 *
 *
 * PLUGIN WAS A FORK FROM AUTOWEATHER. DAY 1 PORTED TO YAHOO. PLANNED ON WIND FACTOR FOR SNIPE AND AFTER YAHOO HACK I MADE IT HAPPEN WITH OPENWEATHER TOKEN API.
@@ -88,9 +88,9 @@ say /news for news*/
 #include <nvault>                /*feed storage Global*/
 #include <xs>
 
-#define PFOG 90 //Percent over creates fog
+//#define g_cvar_fog 90 //Percent over creates fog
 
-#define VERSION "Fif" //5th Element(s)
+#define VERSION "Fif"
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 #define fm_set_lights(%1)    engfunc(EngFunc_LightStyle, 0, %1)
 
@@ -106,13 +106,12 @@ new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_curr_temp, g_temp_min, g_element, g_hum, g_heat, g_code, g_visi;
-new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug; //g_TimeH, g_Now
+new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog; //g_TimeH, g_Now
 new g_vault, g_figure, g_Nfig, g_Nn, g_Up, g_Dwn, g_Ti;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
 new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
 new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
-new g_Pfog = PFOG;
 new g_cvar_token, g_cvar_units, g_SkyNam[16];
 
 new bool:bCompassOn[MAX_PLAYERS +1];
@@ -136,7 +135,7 @@ enum {
     DODW_SPADE,
     DODW_BRITKNIFE
 };
-
+new const CvarFogDesc[]="Weather fog perentage."
 public plugin_init()
 {
     register_plugin("Elements", VERSION, ".sρiηX҉.");
@@ -172,6 +171,11 @@ public plugin_init()
     g_cvar_token = register_cvar("sv_openweather-key", "null");
     g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
     g_cvar_debug = register_cvar("weather_debug", "1");
+
+    bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 5.0, .has_max = true, .max_val = 95.0), g_cvar_fog)
+    
+    
+
 
     AutoExecConfig(.autoCreate = true, .name = "Element")
 
@@ -354,12 +358,12 @@ public showinfo(id)
     if ( cstrike_running() || (is_running("dod") == 1)  )
     {
         show_hudmessage(id, "╚»★Welcome to %s★«╝^nThe temp is now %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_heat, g_curr_temp, g_env_name[g_env],
-        g_element_name[g_element], g_hum, g_Pfog);
+        g_element_name[g_element], g_hum, g_cvar_fog);
     }
     else
     {
         show_hudmessage(id, "Welcome to %s.^nThe temp is %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_heat, g_curr_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
-        g_Pfog);
+        g_cvar_fog);
     }
     epoch_clock();
 }
@@ -509,8 +513,8 @@ public finish_weather()
     g_DeG = nvault_get(g_vault, "deg");
     g_heat = nvault_get(g_vault, "heat"); //actual temp g_temp is high
     nvault_get(g_vault, "location", g_location,31);
-    server_print("Welcome to %s where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, g_heat, g_SpeeD, g_DeG, g_Pfog, g_Up, g_Dwn, g_Ti);
-    client_print(0, print_console,"Welcome to %s where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, g_heat, g_SpeeD, g_DeG, g_Pfog, g_Up, g_Dwn, g_Ti);
+    server_print("Welcome to %s where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti);
+    client_print(0, print_console,"Welcome to %s where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti);
     new g_SkyNam[16];
     get_cvar_string("sv_skyname",g_SkyNam, charsmax (g_SkyNam));
 
@@ -654,7 +658,7 @@ public read_web()
         {
             new out[MAX_PLAYERS];
             //copy(out, 10, buf[strfind(buf, "sunrise") + 9]);
-            copy(out, 10, buf[containi(buf, "sunrise") + 9]);
+            copy(out, 10, buf[containi(buf, "sunrise") + 11]);
             replace(out, 10, "&", "");
 
             if(get_pcvar_num(g_cvar_debug))
@@ -693,10 +697,10 @@ public read_web()
         }
 
         ///////////////////////////////
-        if (containi(buf, "sunset") >= 0 && g_sunset == 0)
+        if (containi(buf, "sunset") != -1 && g_sunset == 0)
         {
             new out[MAX_PLAYERS];
-            copy(out, 10, buf[containi(buf, "sunset") + 8]);
+            copy(out, 10, buf[containi(buf, "sunset") + 10]);
             replace(out, 10, "&", "");
 
             if(get_pcvar_num(g_cvar_debug))
@@ -777,7 +781,7 @@ public makeelement()
 
     HL_WeatheR();
 
-    if ( humi >  PFOG )
+    if ( humi >  g_cvar_fog )
         makeFog(humi);
 
     if ( cstrike_running() || (is_running("dod") == 1)  )
@@ -813,7 +817,7 @@ public HL_WeatheR()
 
     new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
-    if ( humi > PFOG )
+    if ( humi > g_cvar_fog )
     makeFog(humi);
 
     switch (e)
@@ -1419,7 +1423,7 @@ public set_sky(humi)
     else if (g_Ti > g_Nn + 1 && g_Ti < g_Dwn - 1)
         phase = 0; //DAY
 
-    humi <= PFOG ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
+    humi <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
 }
 
 public precache_sky(const skyname[])
@@ -1534,7 +1538,7 @@ public makeFog(amount)
     if ( cstrike_running() || (is_running("dod") == 1)  )
     {
         g_fog = fm_create_entity("env_fog");
-        new Float: density = ( 0.0002 * ( amount - PFOG )) + 0.001;
+        new Float: density = ( 0.0002 * ( amount - g_cvar_fog )) + 0.001;
         new dens[7];
         float_to_str(density, dens, 6);
         fm_set_kvd(g_fog, "density", dens);
@@ -1544,7 +1548,7 @@ public makeFog(amount)
     {
         hl_fog();
         new Zoo = nvault_get(g_vault, "humidity");
-        if ( Zoo < PFOG )
+        if ( Zoo < g_cvar_fog )
             no_snow();
     }
     return;
