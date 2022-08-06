@@ -1,4 +1,3 @@
-
 /**
 *    Elements.  Time of day lighting and weather conditions are brought into the Half-Life server of any mod.
 *    Copyleft (C) 2019 .sρiηX҉.
@@ -72,41 +71,42 @@ say /news for news*/
 #define PRECIPX random_num(-100000,180000)
 #define PRECIPY random_num(-100000,180000)
 #define PRECIPZ random_num(-100000,180000)
+
 //compass
 #define NORTH   0
 #define WEST    90
 #define SOUTH   180
 #define EAST    270
 
-#include <amxmodx>      /*All plugins need*/
-#include <amxmisc>      /*cstrike checks && task_ex*/
+#include <amxmodx>           /*All plugins need*/
+#include <amxmisc>             /*mod checks && task_ex*/
 #include <engine_stocks>
-#include <hamsandwich>
-#include <sockets>      /*feed needs*/
-#include <fakemeta>     /*PEV*/
-#include <fakemeta_stocks> ///crosshair
-#include <nvault>       /*feed storage Global*/
+#include <hamsandwich>    /*compass activation*/
+#include <sockets>               /*feed needs*/
+#include <fakemeta>           /*PEV*/
+#include <fakemeta_stocks> ///crosshair///
+#include <nvault>                /*feed storage Global*/
 #include <xs>
-/// #define DEBUG
+
 #define PFOG 90 //Percent over creates fog
 
-#define VERSION "Fif" //5th Element(s) get it after all these years and updates which are too many to outline!!
+#define VERSION "Fif" //5th Element(s)
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 #define fm_set_lights(%1)    engfunc(EngFunc_LightStyle, 0, %1)
 
 #define Radian2Degree(%1) (%1 * 180.0 / M_PI)
 
+#define MAX_PLAYERS     32
+
 new sprLightning, sprFlare6, g_F0g, g_Saturn, g_TesteD; /*Half-Life Fog v.1 2019*/
 
-
-new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method, g_Active;
+new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
 new const g_DirNames[4][] = { "N", "E", "S", "W" }
-new DirSymbol[32] = "----<>----"
-
+new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_curr_temp, g_temp_min, g_element, g_hum, g_heat, g_code, g_visi;
-new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[32]; //g_TimeH, g_Now
+new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug; //g_TimeH, g_Now
 new g_vault, g_figure, g_Nfig, g_Nn, g_Up, g_Dwn, g_Ti;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
@@ -115,6 +115,7 @@ new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
 new g_Pfog = PFOG;
 new g_cvar_token, g_cvar_units, g_SkyNam[16];
 
+new bool:bCompassOn[MAX_PLAYERS +1];
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,10 +123,10 @@ new g_cvar_token, g_cvar_units, g_SkyNam[16];
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 new g_skynames[][] =
 {
-"sunny","3dm_bikini","ava","sunset1","52h03",     /*X҉**☀**SUNNY**☀***X҉*/
-"52h05","nordawn","tornsky","blue","52h03",       /*X҉*PARTLY☂CLOUDED*X҉*/
-"sunbeams_","morningdew","cx","st","paris_night", /*X҉**ϟ*CLOUDED*ϟ***X҉*/
-"CCCP","CCCP","CCCP","dashnight256","CCCP"        /*X҉****☾FOGGY☽*****X҉*/
+    "sunny","3dm_bikini","ava","sunset1","52h03",     /*X҉**☀**SUNNY**☀***X҉*/
+    "52h05","nordawn","tornsky","blue","52h03",       /*X҉*PARTLY☂CLOUDED*X҉*/
+    "sunbeams_","morningdew","cx","st","paris_night", /*X҉**ϟ*CLOUDED*ϟ***X҉*/
+    "CCCP","CCCP","CCCP","dashnight256","CCCP"        /*X҉****☾FOGGY☽*****X҉*/
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -134,10 +135,10 @@ public plugin_init()
 {
     register_plugin("Elements", VERSION, ".sρiηX҉.");
     register_cvar("element_version", VERSION, FCVAR_SERVER);
-    #if defined WIND
+
+
     RegisterHam(Ham_Player_Duck, "player", "fix");
     RegisterHam(Ham_TakeDamage, "player", "windage");
-    #endif
 
     register_clcmd("say /news", "ClCmd_NewS", 0, "Element | Takes you into a chat room");
     register_clcmd("say /mytemp", "ClCmd_TemP", 0, "Element | Googles your weather.");
@@ -159,6 +160,9 @@ public plugin_init()
     g_cvar_region = register_cvar("sv_region", "4887398");
     g_cvar_units = register_cvar("sv_units", "imperial");
     g_cvar_token = register_cvar("sv_openweather-key", "null");
+    g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
+    g_cvar_debug = register_cvar("weather_debug", "1");
+
     AutoExecConfig(.autoCreate = true, .name = "Element")
 
     register_cvar("element_hud", "200");
@@ -188,12 +192,14 @@ public plugin_init()
 
     ///compass
     g_pcvar_compass = register_cvar("amx_compass", "1");
-    g_Active = get_pcvar_num(g_pcvar_compass)
     g_pcvar_method = register_cvar("amx_compass_method", "2");
     g_Method = get_pcvar_num(g_pcvar_method)
-    //RegisterHam(Ham_TakeDamage, "player", "fw_Player_PreThink");
 
-    RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "@compass_tic", 1);
+    cstrike_running()
+    ?
+        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "compass_tic", 1)
+     : 
+        RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_crowbar", "compass_tic", 1)
 
     gHudSyncInfo = CreateHudSyncObj();
     gHudSyncInfo2 = CreateHudSyncObj();
@@ -207,8 +213,6 @@ public ClCmd_NewS(id, level, cid)
     {
         new motd[128];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=http://www.SRNLive.com/listen.html'><body BGCOLOR='#FFFFFF'><br><center>Loading</center></html>");
-        ///http://www.SRNLive.com/listen.html
-        ///openweathermap.org/weather-conditions
         show_motd(id, motd, "International and local news");
     }
 }
@@ -248,17 +252,25 @@ public client_putinserver(id)
 {
     if (is_user_bot(id))
         return;
-
     g_env = nvault_get(g_vault, "env")
 
-    if ( (is_user_alive(id)) && (is_user_connected(id)) && (g_env >= 2))
-        set_task_ex(random_float(30.0,60.0), "display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
+    if(is_user_connected(id))
+    {
+        new iWind = get_pcvar_num(g_cvar_wind)
 
+        if(iWind)
+            client_print(id, print_chat, "Due to wind or injury you may have to compensate at range by squatting!");
 
-    set_task(random_float(1.1,5.0), "Et_Val", id)
+        if(g_env >= 2)
+            set_task_ex(random_float(30.0,60.0), "display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
 
-    if ( is_user_admin(id) )
-        set_task_ex(40.0, "needan", id, .flags = SetTask_Once)
+        if(is_user_admin(id))
+            set_task_ex(40.0, "needan", id, .flags = SetTask_Once) //key check will update to init bool 1x per load
+
+        set_task(random_float(1.1,5.0), "Et_Val", id) //give the weather and make special weather when admin connects
+
+    }
+
 }
 
 public needan(id)
@@ -286,10 +298,6 @@ if(is_user_connected(id))
 {
     client_print(id, print_chat, "Say climate, temp, or weather for conditions.");
     client_print(id, print_chat, "Humidity, Clouds, Sunrise/Sunset all effect visibility.");
-
-    #if defined WIND
-    client_print(id, print_chat, "Due to wind or injury you may have to compensate at range by squatting!");
-    #endif
 }
 
 
@@ -415,42 +423,42 @@ public ClCmd_get_element(id, level, cid)
 {
     if (is_user_admin(id))
     {
-    #if defined DEBUG
-    log_amx("Starting the sockets routine...");
-    #endif
-    //stock has_flag(id, const flags[])
-    new Soc_O_ErroR, constring[256], uplink[26], region[63], units[9], token[33];
-    get_pcvar_string(g_cvar_region, region, charsmax (region));
-    get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
-    get_pcvar_string(g_cvar_units, units, charsmax (units));
-    get_pcvar_string(g_cvar_token, token, charsmax (token));
-    g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-    format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
-    write_web(constring);
+        if(get_pcvar_num(g_cvar_debug))
+            log_amx("Starting the sockets routine...");
 
-    #if defined DEBUG
-    log_amx("This is where we are trying to get weather from");
-    log_amx(constring);
-    log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
-    #endif
-
-    read_web();
+        //stock has_flag(id, const flags[])
+        new Soc_O_ErroR, constring[256], uplink[26], region[63], units[9], token[33];
+        get_pcvar_string(g_cvar_region, region, charsmax (region));
+        get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
+        get_pcvar_string(g_cvar_units, units, charsmax (units));
+        get_pcvar_string(g_cvar_token, token, charsmax (token));
+        g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
+        format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
+        write_web(constring);
+    
+        if(get_pcvar_num(g_cvar_debug))
+        {
+            log_amx("This is where we are trying to get weather from");
+            log_amx(constring);
+            log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
+        }
+        read_web();
     }
     return PLUGIN_HANDLED
 }
 
 public Et_Val(id)
 {
-    if (is_user_admin(id) )
+    if (is_user_admin(id))
+    {
         set_task_ex(random_float(0.3,2.0), "ring_saturn", 223, .flags = SetTask_RepeatTimes, .repeat = 2);
 
-    if (is_user_admin(id) == 1)
         set_task_ex(random_float(0.3,5.0), "HellRain_Blizzard", 226, .flags = SetTask_RepeatTimes, .repeat = 7);
 
+        set_task_ex(random_float(3.0, 5.0), "ring_saturn", 556, .flags = SetTask_RepeatTimes, .repeat = 3);
+    }
     if (g_code >= 0)
         finish_weather()
-
-    set_task_ex(random_float(3.0, 5.0), "ring_saturn", 556, .flags = SetTask_RepeatTimes, .repeat = 3);
 }
 
 public finish_weather()
@@ -470,9 +478,8 @@ public finish_weather()
 
 public get_element()
 {
-    #if defined DEBUG
-    log_amx "Starting the sockets routine..."
-    #endif
+    if(get_pcvar_num(g_cvar_debug))
+        log_amx "Starting the sockets routine..."
 
     new numplayers = get_playersnum_ex(GetPlayersFlags:GetPlayers_ExcludeBots);
     if (numplayers < 3 )
@@ -489,11 +496,12 @@ public get_element()
         format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
 
         write_web(constring);
-        #if defined DEBUG
-        log_amx("This is where we are trying to get weather from");
-        log_amx(constring);
-        log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
-        #endif
+        if(get_pcvar_num(g_cvar_debug))
+        {
+            log_amx("This is where we are trying to get weather from");
+            log_amx(constring);
+            log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
+        }
         read_web();
     }
 }
@@ -510,7 +518,8 @@ public write_web(text[256])
 
 public read_web()
 {
-    server_print("reading the web")
+    if(get_pcvar_num(g_cvar_debug))
+        server_print("reading the web")
     new buf[668];
     if (socket_is_readable(g_sckelement, 100000))
         socket_recv(g_sckelement,buf,charsmax (buf));
@@ -521,13 +530,13 @@ public read_web()
     {
         if (containi(buf, "name") >= 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             copyc(out, 24, buf[containi(buf, "name") + 7], '"');
-            server_print("writing the name")
+            if(get_pcvar_num(g_cvar_debug))
+                server_print("writing the name")
 
-            #if defined DEBUG
-            log_amx("Location: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Location: %s", out);
 
             nvault_set(g_vault, "location", out);
             g_location = out;
@@ -536,14 +545,13 @@ public read_web()
         {
             server_print("Ck real temp time..")
 
-            new out[32]
+            new out[MAX_PLAYERS]
             copyc(out, 6, buf[containi(buf, "temp") + 6], '"');
             replace(out, 6, ":", "");
             replace(out, 6, ",", "");
 
-            #if defined DEBUG
-            log_amx("Temperature: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Temperature: %s", out);
 
             nvault_set(g_vault, "heat", out);
 
@@ -551,29 +559,27 @@ public read_web()
         }
         if (containi(buf, "temp_max") >= 0 && g_temp == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             copyc(out, 4, buf[containi(buf, "temp_max") + 10], '"');
             replace(out, 4, ",", "");
             replace(out, 4, "}", "");
 
-            #if defined DEBUG
-            log_amx("High of: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("High of: %s", out);
 
             nvault_set(g_vault, "maxtemp", out);
             g_temp = str_to_num(out);
         }
         if (containi(buf, "temp_min") >= 0 && g_temp_min == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
 
             //copyc(out, 4, buf[strfind(buf, "temp_min") + 10], '"');
             copyc(out, 4, buf[containi(buf, "temp_min") + 10], '"');
             replace(out, 4, ",", "");
 
-            #if defined DEBUG
-            log_amx("Low of: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Low of: %s", out);
 
             nvault_set(g_vault, "mintemp", out);
             g_temp_min = str_to_num(out);
@@ -585,51 +591,47 @@ public read_web()
             replace(out, charsmax(out), ",", "");
             replace(out, charsmax(out), ":", "");
 
-            #if defined DEBUG
-            log_amx("Visibility: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Visibility: %s", out);
 
             nvault_set(g_vault, "visi", out);
             g_visi = str_to_num(out);
         }
         if (containi(buf, "humidity") >= 0 && g_hum == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             copyc(out, 6, buf[containi(buf, "humidity") + 10], '"');
             replace(out, 6, ",", "");
 
-            #if defined DEBUG
-            log_amx("Humidity: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Humidity: %s", out);
 
             nvault_set(g_vault, "humidity", out);
             g_hum = str_to_num(out);
         }
         if (containi(buf, "sunrise") >= 0 && g_sunrise == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             //copy(out, 10, buf[strfind(buf, "sunrise") + 9]);
             copy(out, 10, buf[containi(buf, "sunrise") + 9]);
             replace(out, 10, "&", "");
 
-            #if defined DEBUG
-            log_amx("Sunrise: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Sunrise: %s", out);
 
             nvault_set(g_vault, "sunrise", out);
             g_sunrise = str_to_num(out);
         }
         if (containi(buf, "deg") >= 0 && g_DeG == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             //copy(out, 3, buf[strfind(buf, "deg") + 5]);
             copy(out, 3, buf[containi(buf, "deg") + 5]);
             replace(out, 3, "&", "");
             replace(out, 3, "}", "");
 
-            #if defined DEBUG
-            log_amx("Deg: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Deg: %s", out);
 
             nvault_set(g_vault, "deg", out);
             g_DeG = str_to_num(out);
@@ -637,14 +639,13 @@ public read_web()
 
         if (containi(buf, "speed") >= 0 && g_SpeeD == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             copy(out, 5, buf[containi(buf, "speed") + 7]);
             replace(out, 5, ":", "");
             replace(out, 5, ",", "");
 
-            #if defined DEBUG
-            log_amx("Speed: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Speed: %s", out);
 
             nvault_set(g_vault, "speed", out);
             g_SpeeD = str_to_num(out);
@@ -653,27 +654,25 @@ public read_web()
         ///////////////////////////////
         if (containi(buf, "sunset") >= 0 && g_sunset == 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             copy(out, 10, buf[containi(buf, "sunset") + 8]);
             replace(out, 10, "&", "");
 
-            #if defined DEBUG
-            log_amx("Sunset: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Sunset: %s", out);
 
             nvault_set(g_vault, "sunset", out);
             g_sunset = str_to_num(out);
         }
         if (containi(buf, "[") >= 0)
         {
-            new out[32];
+            new out[MAX_PLAYERS];
             copy(out, 3, buf[containi(buf, "[") + 7]);
             replace(out, 3, "&", "");
             replace(out, 3, "#", "");
 
-            #if defined DEBUG
-            log_amx("Code: %s", out);
-            #endif
+            if(get_pcvar_num(g_cvar_debug))
+                log_amx("Code: %s", out);
 
             nvault_set(g_vault, "code", out);
             g_code = str_to_num(out);
@@ -821,17 +820,29 @@ public hl_precip()
     set_task_ex(0.1, "streak3", 888, .flags = SetTask_Repeat);
 }
 
-@compass_tic(id)
+
+public compass_tic(iPlayerIndex)
 {
-    if(g_pcvar_compass)
-        set_task(0.3,"@Compass", id+2022)
+    new id = pev(iPlayerIndex,pev_owner)
+    if(is_user_connected(id))
+    {
+        if(get_pcvar_num(g_cvar_debug) > 1)
+            server_print "%n compass", id
+        bCompassOn[id] = true
+        if(get_pcvar_num(g_pcvar_compass))
+            set_task_ex(0.2, "Compass", id+2022, .flags = SetTask_RepeatTimes, .repeat = 50)
+            //Testing this over a think that was laggy by comparison.
+    }
 }
 
-@Compass(index)
+public Compass(index)
 {
     new id = index-2022
-    if (!is_user_bot(id) && is_user_alive(id) && g_Active)
+    if(!is_user_bot(id) && is_user_alive(id) && bCompassOn[id])
     {
+        if(get_pcvar_num(g_cvar_debug) > 1)
+            server_print "%n compass on", id
+
         ///Compass code by Tirant
         new Float:fAngles[3], iAngles[3]
         pev(id, pev_angles, fAngles)
@@ -860,10 +871,10 @@ public hl_precip()
 
             switch(iAngles[1])
             {
-                case NORTH: format(DirName, 31, "%s",  g_DirNames[0])
-                case WEST: format(DirName, 31, "%s", g_DirNames[3])
-                case SOUTH: format(DirName, 31, "%s", g_DirNames[2])
-                case EAST: format(DirName, 31, "%s", g_DirNames[1])
+                case NORTH: format(DirName, charsmax(DirName), "%s",  g_DirNames[0])
+                case WEST: format(DirName, charsmax(DirName), "%s", g_DirNames[3])
+                case SOUTH: format(DirName, charsmax(DirName), "%s", g_DirNames[2])
+                case EAST: format(DirName, charsmax(DirName), "%s", g_DirNames[1])
             }
         }
         else
@@ -872,7 +883,7 @@ public hl_precip()
 
             switch(g_Method)
             {
-                case 1: format(DirName, 31, "%d", iAngles[1])
+                case 1: format(DirName, charsmax(DirName), "%d", iAngles[1])
                 case 2:
                 {
                     if (NORTH < iAngles[1] < WEST || iAngles[1] > EAST)
@@ -880,12 +891,12 @@ public hl_precip()
                         if (NORTH < iAngles[1] < WEST)
                         {
                             iAngles[1] %= 90
-                            format(DirName, 31, "%s %d%s", g_DirNames[0], iAngles[1], g_DirNames[3])
+                            format(DirName, charsmax(DirName), "%s %d%s", g_DirNames[0], iAngles[1], g_DirNames[3])
                         }
                         else if (iAngles[1] > EAST)
                         {
                             iAngles[1] = (90 - (iAngles[1] % 90))
-                            format(DirName, 31, "%s %d%s", g_DirNames[0], iAngles[1], g_DirNames[1])
+                            format(DirName, charsmax(DirName), "%s %d%s", g_DirNames[0], iAngles[1], g_DirNames[1])
                         }
                     }
                     else
@@ -893,12 +904,12 @@ public hl_precip()
                         if (SOUTH > iAngles[1] > WEST)
                         {
                             iAngles[1] = (90 - (iAngles[1] % 90))
-                            format(DirName, 31, "%s %d%s", g_DirNames[2], iAngles[1], g_DirNames[3])
+                            format(DirName, charsmax(DirName), "%s %d%s", g_DirNames[2], iAngles[1], g_DirNames[3])
                         }
                         else if (SOUTH < iAngles[1] < EAST)
                         {
                             iAngles[1] %= 90
-                            format(DirName, 31, "%s %d%s", g_DirNames[2], iAngles[1], g_DirNames[1])
+                            format(DirName, charsmax(DirName), "%s %d%s", g_DirNames[2], iAngles[1], g_DirNames[1])
                         }
                     }
                 }
@@ -916,8 +927,8 @@ public hl_precip()
     return PLUGIN_HANDLED
 }
 
-#if defined WIND
 public windage(id)
+if(get_pcvar_num(g_cvar_wind))
 {
     g_DeG = nvault_get(g_vault, "deg");
     new Float:g_Wind
@@ -926,15 +937,16 @@ public windage(id)
 }
 
 public fix(id)
+if(get_pcvar_num(g_cvar_wind))
 {
     EF_CrosshairAngle(id, 0.0, 0.0 ); {}
 }
 
-#endif
+
 public hl1_effect(Float:Origin[3])  ///was the new fog and snow ground cover with long life but decided to use for zass.
 {
     message_begin(MSG_BROADCAST, SVC_TEMPENTITY);
-    write_byte(TE_BEAMDISK);                         
+    write_byte(TE_BEAMDISK);
     write_coord(floatround(Origin[0]));                     // coord coord coord (center position)
     write_coord(floatround(Origin[1]));
     write_coord(floatround(Origin[2]+10.0));
@@ -1460,11 +1472,12 @@ public daylight()
             }
         }
     }
-    #if defined LUM_DEBUG
-    log_amx("darkness %d", light);
-    log_amx("dark %d phase %d lums %d", get_cvar_num("dark"), light, get_cvar_num("lums"));
-    log_amx("darkness added to max light is %d out of 25 total darkness", light);
-    #endif
+    if(get_pcvar_num(g_cvar_debug) > 1)
+    {
+        log_amx("darkness %d", light);
+        log_amx("dark %d phase %d lums %d", get_cvar_num("dark"), light, get_cvar_num("lums"));
+        log_amx("darkness added to max light is %d out of 25 total darkness", light);
+    }
     fm_set_lights(g_LightLevel[light]);
     new fogcolor = (get_pcvar_num(g_cvar_minlight) - light) * 10 + 20;
     new form[12];
@@ -1481,17 +1494,19 @@ public makeFog(amount)
 {
     if ( cstrike_running() || (is_running("dod") == 1)  )
     {
-    g_fog = fm_create_entity("env_fog");
-    new Float: density = ( 0.0002 * ( amount - PFOG )) + 0.001;
-    new dens[7];
-    float_to_str(density, dens, 6);
-    fm_set_kvd(g_fog, "density", dens);
-    fm_set_kvd(g_fog, "rendercolor", "200 200 200");
-    }else{
-    hl_fog();
-    new Zoo = nvault_get(g_vault, "humidity");
-    if ( Zoo < PFOG )
-    no_snow();
+        g_fog = fm_create_entity("env_fog");
+        new Float: density = ( 0.0002 * ( amount - PFOG )) + 0.001;
+        new dens[7];
+        float_to_str(density, dens, 6);
+        fm_set_kvd(g_fog, "density", dens);
+        fm_set_kvd(g_fog, "rendercolor", "200 200 200");
+    }
+    else
+    {
+        hl_fog();
+        new Zoo = nvault_get(g_vault, "humidity");
+        if ( Zoo < PFOG )
+            no_snow();
     }
     return;
 }
@@ -1504,7 +1519,7 @@ stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
         set_kvd(0, KV_ClassName, classname);
     else
     {
-        new class[32];
+        new class[MAX_PLAYERS];
         pev(entity, pev_classname, class, sizeof class - 1);
         set_kvd(0, KV_ClassName, class);
     }
@@ -1522,25 +1537,10 @@ stock constraint_offset_fixed(low, high, seed, offset)
 
     if (offset >= 0)
     {
-    return low + (offset % numElements);
+        return low + (offset % numElements);
     }
     else
     {
-    return high - (abs(offset) % numElements) + 1;
+        return high - (abs(offset) % numElements) + 1;
     }
-}
-
-stock is_big_map()
-{
-    new mname[32];
-    get_mapname(mname,charsmax (mname));
-
-    new adjmsize;
-    new Float:mega;
-    mega = (0.001);
-    new Float:msize = (filesize("maps/%s.bsp",mname, charsmax (mname))*(mega)/1024)
-
-    adjmsize = floatround(msize, floatround_ceil);
-
-    return adjmsize;
 }
