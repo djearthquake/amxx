@@ -15,7 +15,7 @@
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
+//https://sunrise-sunset.org/api might be easier!!
 /*Elements☀ ☁ ☂ ☃ ☉ ☼ ☽ ☾ ♁ ♨ ❄ ❅ ❆ ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗  ♘ ♞ ϟ THIS IS COPYLEFT!!◐  ◖   ◒   ◕   ◑   ◔   ◗   ◓
 *
 *
@@ -88,8 +88,6 @@ say /news for news*/
 #include <nvault>                /*feed storage Global*/
 #include <xs>
 
-//#define g_cvar_fog 90 //Percent over creates fog
-
 #define VERSION "Fif"
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 #define fm_set_lights(%1)    engfunc(EngFunc_LightStyle, 0, %1)
@@ -97,6 +95,8 @@ say /news for news*/
 #define Radian2Degree(%1) (%1 * 180.0 / M_PI)
 
 #define MAX_PLAYERS     32
+#define MAX_CMD_LENGTH             128
+#define MAX_USER_INFO_LENGTH       256
 
 new sprLightning, sprFlare6, g_F0g, g_Saturn, g_TesteD; /*Half-Life Fog v.1 2019*/
 
@@ -106,7 +106,7 @@ new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_curr_temp, g_temp_min, g_element, g_hum, g_heat, g_code, g_visi;
-new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog; //g_TimeH, g_Now
+new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog, g_Dawn, g_Dusk; //g_TimeH, g_Now
 new g_vault, g_figure, g_Nfig, g_Nn, g_Up, g_Dwn, g_Ti;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
@@ -115,6 +115,7 @@ new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
 new g_cvar_token, g_cvar_units, g_SkyNam[16];
 
 new bool:bCompassOn[MAX_PLAYERS +1];
+new bool:bTokenOkay
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -222,13 +223,26 @@ public plugin_init()
     gHudSyncInfo2 = CreateHudSyncObj();
 
 }
+public plugin_cfg()
+{
+    new token[MAX_PLAYERS+1];
+    get_pcvar_string(g_cvar_token, token, charsmax (token));
 
+    if (!equal(token, "null"))
+        bTokenOkay = true
+
+    g_Up = get_pcvar_num(g_cvar_day)
+    g_Dwn = get_pcvar_num(g_cvar_night)
+
+    !g_Up && !g_Dwn ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
+
+}
 @dod(id)
 {
     if(is_user_alive(id))
     {
-        new wpnid = get_user_weapon(id)
-       //if ( wpnid == DODW_AMERKNIFE || wpnid == DODW_BRITKNIFE || wpnid == DODW_GERKNIFE || wpnid == DODW_SPADE )
+        /*new wpnid = get_user_weapon(id)
+       if ( wpnid == DODW_AMERKNIFE || wpnid == DODW_BRITKNIFE || wpnid == DODW_GERKNIFE || wpnid == DODW_SPADE )*/
 
         {
             if (get_user_button(id) & IN_ATTACK)
@@ -254,7 +268,7 @@ public ClCmd_NewS(id, level, cid)
 {
     if ( cstrike_running() || (is_running("dod") == 1)  )
     {
-        new motd[128];
+        new motd[MAX_CMD_LENGTH];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=http://www.SRNLive.com/listen.html'><body BGCOLOR='#FFFFFF'><br><center>Loading</center></html>");
         show_motd(id, motd, "International and local news");
     }
@@ -264,7 +278,7 @@ public ClCmd_TemP(id, level, cid)
 {
     if ( cstrike_running() || (is_running("dod") == 1)  )
     {
-        new motd[256];
+        new motd[MAX_USER_INFO_LENGTH];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://google.com/search?q=weather'><body BGCOLOR='#FFFFFF'><br><center>If we can not determine your country off your IP then this will display generic weather page...</center></html>");
         show_motd(id, motd, "Weather Browser");
     }
@@ -275,18 +289,19 @@ public plugin_end()
 
 public plugin_precache()
 {
-
     g_F0g = precache_model("sprites/ballsmoke.spr");
     sprFlare6 = precache_model("sprites/Flare6.spr");
     g_Saturn = precache_model("sprites/zerogxplode.spr");
     g_TesteD = precache_model("sprites/rain.spr");
 
     sprLightning = precache_model("sprites/lightning.spr");
+
     g_vault = nvault_open("element");
     g_env = nvault_get(g_vault, "env");
     g_sunrise = nvault_get(g_vault, "sunrise");
     g_sunset = nvault_get(g_vault, "sunset");
     g_DeG = nvault_get(g_vault, "deg");
+
     makeelement();
 }
 
@@ -302,9 +317,9 @@ public client_putinserver(id)
 
         if(g_env >= 2)
             set_task_ex(random_float(30.0,60.0), "display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
-
-        if(is_user_admin(id))
-            set_task_ex(40.0, "needan", id, .flags = SetTask_Once) //key check will update to init bool 1x per load
+        
+        if(!bTokenOkay && is_user_admin(id))
+            set_task_ex(10.0, "needan", id, .flags = SetTask_Once) //key check will update to init bool 1x per load
 
         set_task(random_float(1.1,5.0), "Et_Val", id) //give the weather and make special weather when admin connects
 
@@ -321,7 +336,7 @@ public needan(id)
     {
         if ( cstrike_running() || (is_running("dod") == 1)  )
         {
-            new motd[128];
+            new motd[MAX_CMD_LENGTH];
             format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-key detected.</center></html>");
             show_motd(id, motd, "Invalid 32-bit API key!");
         }
@@ -365,12 +380,12 @@ public showinfo(id)
         show_hudmessage(id, "Welcome to %s.^nThe temp is %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_heat, g_curr_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
         g_cvar_fog);
     }
-    epoch_clock();
+    epoch_clock(id);
 }
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-public epoch_clock()
+public epoch_clock(id)
 {
     /////////////////////////////////////////
     g_Epoch = get_systime(0);
@@ -383,13 +398,20 @@ public epoch_clock()
     //      Time feed is in Epoch from sockets.
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //g_sunrise = nvault_get(g_vault, "sunrise");
-    //g_sunset = nvault_get(g_vault, "sunset");
+    if(!g_Up && !g_Dwn)
+    {
+        g_sunrise = nvault_get(g_vault, "sunrise");
+        g_sunset = nvault_get(g_vault, "sunset");
+    }
 
     new g_UpMin  =  ( g_sunrise - g_Epoch ) / 60 ;
     new g_DownMin =  ( g_sunset - g_Epoch ) / 60 ;
     ///new minns;
-    new g_Dusk = floatround((Float:g_DownMin / 60.0), floatround_ceil);
+    g_Dusk = floatround((Float:g_DownMin / 60.0), floatround_ceil);
+    g_Dawn = floatround((Float:g_UpMin / 60.0), floatround_ceil);
+    
+    g_Up = g_Dusk
+    g_Dwn = g_Dawn
 
     new g_Hour[3], g_Minut[3], g_Now;
 
@@ -426,7 +448,6 @@ public epoch_clock()
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    new id;
     client_print(id, print_console, "Skyname is %s",g_SkyNam);
     client_print(id, print_console, "Sunrise hour %i",g_figure);
     client_print(id, print_console, "Sunset hour %i",g_Nfig);
@@ -466,7 +487,7 @@ public ClCmd_get_element(id, level, cid)
             log_amx("Starting the sockets routine...");
 
         //stock has_flag(id, const flags[])
-        new Soc_O_ErroR, constring[256], uplink[26], region[63], units[9], token[33];
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], uplink[26], region[63], units[9], token[33];
         get_pcvar_string(g_cvar_region, region, charsmax (region));
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
         get_pcvar_string(g_cvar_units, units, charsmax (units));
@@ -494,7 +515,7 @@ public Et_Val(id)
         client_print(id, print_chat, "Due to wind or injury you may have to compensate at range by squatting!");
 
     if (g_code >= 0)
-        finish_weather()
+        finish_weather(id)
 
     if (is_user_admin(id))
     {
@@ -506,15 +527,26 @@ public Et_Val(id)
     }
 }
 
-public finish_weather()
+public finish_weather(id)
 {
     if (task_exists(556)) remove_task(556);
     g_SpeeD = nvault_get(g_vault, "speed");
     g_DeG = nvault_get(g_vault, "deg");
     g_heat = nvault_get(g_vault, "heat"); //actual temp g_temp is high
-    nvault_get(g_vault, "location", g_location,31);
-    server_print("Welcome to %s where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti);
-    client_print(0, print_console,"Welcome to %s where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti);
+    ///
+    ///
+    ///
+    nvault_get(g_vault, "location", g_location, charsmax(g_location));
+    
+    //If Dusk-to-Dawn is manually set or fed.
+    if(g_Up != 0 && g_Dwn != 0)
+        client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
+    else
+    {
+        client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog)
+        epoch_clock(id);
+    }
+
     new g_SkyNam[16];
     get_cvar_string("sv_skyname",g_SkyNam, charsmax (g_SkyNam));
 
@@ -532,7 +564,7 @@ public get_element()
         client_print(0, print_console,"Making connection to weather feed...")
         client_print(0, print_chat,"Possible interruption. Weather feed sync...")
 
-        new Soc_O_ErroR, constring[256], uplink[26], region[63], units[9], token[33];
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], uplink[26], region[63], units[9], token[33];
         get_pcvar_string(g_cvar_region, region, charsmax (region));
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
         get_pcvar_string(g_cvar_units, units, charsmax (units));
@@ -551,7 +583,7 @@ public get_element()
     }
 }
 
-public write_web(text[256])
+public write_web(text[MAX_USER_INFO_LENGTH])
 {
 
     server_print("HTTP 1.0-1.1  trying socket write.");
@@ -1191,7 +1223,6 @@ public no_snow()
     if (task_exists(444)) remove_task(444);
     if (task_exists(777)) remove_task(777);
     if (task_exists(888)) remove_task(888);
-
 }
 
 public snow_flake(Float:Vector[3])
@@ -1403,11 +1434,11 @@ public set_sky(humi)
     get_time("%H", hour, charsmax(hour));
     g_Ti = str_to_num(hour);
 
-    g_Up = get_cvar_num("day");
-    g_Dwn = get_cvar_num("night");
-
     g_Nn = 12; ///noon
-
+//////
+//////
+////////
+////////
     if (g_Ti == g_Nn - 1 || g_Ti == g_Nn)
         phase = 2; //NOON
     else if (g_Ti == g_Up - 1 || g_Ti == g_Up)
@@ -1448,7 +1479,11 @@ public daylight()
 {
     g_temp_min = nvault_get(g_vault, "mintemp");
     g_temp = nvault_get(g_vault, "heat");
-
+///////////
+/////////////
+////////////
+///////////
+//////////
     //g_sunrise = nvault_get(g_vault, "sunrise");
     //g_sunset = nvault_get(g_vault, "sunset");
 
@@ -1551,7 +1586,6 @@ public makeFog(amount)
     }
     return;
 }
-
 
 /*DispatchKeyValue*/
 stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
