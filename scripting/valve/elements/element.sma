@@ -654,12 +654,12 @@ public read_web()
             nvault_set(g_vault, "humidity", out);
             g_hum = str_to_num(out);
         }
-        if (containi(buf, "sunrise") >= 0 && g_sunrise == 0)
+        if (containi(buf, "sunrise") !=  -1 /*&& g_sunrise == 0*/)
         {
             new out[MAX_PLAYERS];
             //copy(out, 10, buf[strfind(buf, "sunrise") + 9]);
-            copy(out, 10, buf[containi(buf, "sunrise") + 11]);
-            replace(out, 10, "&", "");
+            copy(out, 10, buf[containi(buf, "sunrise") + 10]);
+            replace(out, charsmax(out), ",", "");
 
             if(get_pcvar_num(g_cvar_debug))
                 log_amx("Sunrise: %s", out);
@@ -697,11 +697,11 @@ public read_web()
         }
 
         ///////////////////////////////
-        if (containi(buf, "sunset") != -1 && g_sunset == 0)
+        if (containi(buf, "sunset") != -1/* && g_sunset == 0*/)
         {
             new out[MAX_PLAYERS];
-            copy(out, 10, buf[containi(buf, "sunset") + 10]);
-            replace(out, 10, "&", "");
+            copy(out, 10, buf[containi(buf, "sunset") + 9]);
+            replace(out, charsmax(out), "}", "");
 
             if(get_pcvar_num(g_cvar_debug))
                 log_amx("Sunset: %s", out);
