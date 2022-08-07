@@ -164,8 +164,8 @@ public plugin_init()
 
     //override the feeds dusk and dawn settings in military time
     //zero both to disable
-    g_cvar_day = register_cvar("day", "6");      //sunrise Hour
-    g_cvar_night = register_cvar("night", "9");     //night fall Hour
+    g_cvar_day = register_cvar("day", "0");      //sunrise Hour
+    g_cvar_night = register_cvar("night", "0");     //night fall Hour
 
     g_cvar_region = register_cvar("sv_region", "4887398");
     g_cvar_units = register_cvar("sv_units", "imperial");
@@ -174,27 +174,23 @@ public plugin_init()
     g_cvar_debug = register_cvar("weather_debug", "1");
 
     bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 5.0, .has_max = true, .max_val = 95.0), g_cvar_fog)
-    
-    
 
-
-    AutoExecConfig(.autoCreate = true, .name = "Element")
+    ///AutoExecConfig(.autoCreate = true, .name = "Element")
 
     register_cvar("element_hud", "200");
     register_clcmd("say temp", "showinfo");
     register_clcmd("say weather", "showinfo");
     register_clcmd("say climate", "showinfo");
 
-    set_task_ex(15.0, "get_element", 167, .flags = SetTask_AfterMapStart);
-    set_task_ex(150.0, "get_element", 167, .flags = SetTask_BeforeMapChange);
-
+    set_task_ex(10.0, "get_element", 167, .flags = SetTask_AfterMapStart);
+    set_task_ex(60.0, "get_element", 167, .flags = SetTask_BeforeMapChange);
 
     g_visi = nvault_get(g_vault, "visi");
     g_heat = nvault_get(g_vault, "heat");
     g_temp = nvault_get(g_vault, "maxtemp");
     g_hum = nvault_get(g_vault, "humidity");
     g_code = nvault_get(g_vault, "code");
-    nvault_get(g_vault, "location", g_location,31);
+    nvault_get(g_vault, "location", g_location, charsmax(g_location));
     nvault_get(g_vault, "env", g_env, 2); ///was g_env_name
 
     nvault_get(g_vault, "element", g_element_name, 8);
@@ -203,7 +199,7 @@ public plugin_init()
     get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
 
     if(task_exists(16))return;
-    set_task_ex(30.0, "daylight", 16, .flags = SetTask_Repeat);
+    set_task_ex(3.0, "daylight", 16, .flags = SetTask_Repeat); //One can set it longer but it really does not optimize much.
 
     ///compass
     g_pcvar_compass = register_cvar("amx_compass", "1");
@@ -216,7 +212,7 @@ public plugin_init()
     if(is_running("valve") == 1 )
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_crowbar", "compass_tic", 1)
 
-    if(is_running("dod") == 1 )        
+    if(is_running("dod") == 1 )
         register_event("CurWeapon", "@dod", "bce", "1=1");
 
     gHudSyncInfo = CreateHudSyncObj();
@@ -225,18 +221,23 @@ public plugin_init()
 }
 public plugin_cfg()
 {
+    //Do not overcheck for token
     new token[MAX_PLAYERS+1];
     get_pcvar_string(g_cvar_token, token, charsmax (token));
 
     if (!equal(token, "null"))
         bTokenOkay = true
 
-    g_Up = get_pcvar_num(g_cvar_day)
-    g_Dwn = get_pcvar_num(g_cvar_night)
+    //Are Sunrise and Sunset on CVAR override?
+    if(get_pcvar_num(g_cvar_day))
+        g_Up = get_pcvar_num(g_cvar_day)
+
+    if(get_pcvar_num(g_cvar_night))
+        g_Dwn = get_pcvar_num(g_cvar_night)
 
     !g_Up && !g_Dwn ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
-
 }
+
 @dod(id)
 {
     if(is_user_alive(id))
@@ -305,7 +306,6 @@ public plugin_precache()
     makeelement();
 }
 
-
 public client_putinserver(id)
 {
     if (is_user_bot(id))
@@ -317,7 +317,7 @@ public client_putinserver(id)
 
         if(g_env >= 2)
             set_task_ex(random_float(30.0,60.0), "display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
-        
+
         if(!bTokenOkay && is_user_admin(id))
             set_task_ex(10.0, "needan", id, .flags = SetTask_Once) //key check will update to init bool 1x per load
 
@@ -354,7 +354,6 @@ if(is_user_connected(id))
     client_print(id, print_chat, "Humidity, Clouds, Sunrise/Sunset all effect visibility.");
 }
 
-
 public showinfo(id)
 {
     get_element();
@@ -386,97 +385,97 @@ public showinfo(id)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 public epoch_clock(id)
+if(is_user_connected(id))
 {
-    /////////////////////////////////////////
-    g_Epoch = get_systime(0);
-    /*
-    new g_SkyNam[16];
-    get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
-    */
+    new bool:bDayOver
+    new bool:bNightOver
 
-    //////////////////////////////////////////native format_time(output[], len, const format[], time = -1);///////////
-    //      Time feed is in Epoch from sockets.
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //g_Up 
+    new day_override = get_pcvar_num(g_cvar_day)
+    //g_Dwn 
+    new night_override = get_pcvar_num(g_cvar_night)
 
-    if(!g_Up && !g_Dwn)
+    if(!day_override && !night_override)
     {
         g_sunrise = nvault_get(g_vault, "sunrise");
+        bDayOver = false
         g_sunset = nvault_get(g_vault, "sunset");
+        bNightOver = false
+    }
+    else
+    {
+        client_print(id, print_chat,"Sunrise and sunset are manually set not fed.")
+
+        new SzDay[3]
+        num_to_str(day_override, SzDay, charsmax(SzDay))
+        nvault_set(g_vault, "day", SzDay);
+        bDayOver = true
+
+        new SzNight[3]
+        num_to_str(night_override, SzNight, charsmax(SzNight))
+        nvault_set(g_vault, "night", SzNight);
+        bNightOver = true
+    }
+    /////////////////////////////////////////////////////////////
+
+    new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
+
+    format_time(SzSunRise, charsmax(SzSunRise), "%m/%d/%Y - %H:%M:%S", g_sunrise);
+
+    if(get_pcvar_num(g_cvar_debug))
+        server_print "Sunrise is %s",  SzSunRise
+    
+    client_print id, print_chat,"Sunrise is on %s.", SzSunRise
+    
+    format_time(SzSunSet, charsmax(SzSunSet), "%m/%d/%Y - %H:%M:%S", g_sunset);
+
+    if(get_pcvar_num(g_cvar_debug))
+        server_print "Sunset is %s", SzSunSet
+
+    client_print id, print_chat,"Sunset is on %s.", SzSunSet
+
+    /////////////////////////////////////////////////////////////
+
+    new iNightoverride = get_pcvar_num(g_cvar_night)
+    new iMorningoverride = get_pcvar_num(g_cvar_day)
+
+    if(iNightoverride)
+    {
+        new SzHour[3];
+        num_to_str(iNightoverride, SzHour, charsmax(SzHour))
+        nvault_set(g_vault, "night", SzHour);
+    }
+    else
+    {
+        format_time(SzSunRise, charsmax(SzSunRise), "%H", g_sunrise);
+        nvault_set(g_vault, "night", SzSunRise);
+        server_print "%s vaulted sunrise ", SzSunRise
     }
 
-    new g_UpMin  =  ( g_sunrise - g_Epoch ) / 60 ;
-    new g_DownMin =  ( g_sunset - g_Epoch ) / 60 ;
-    ///new minns;
-    g_Dusk = floatround((Float:g_DownMin / 60.0), floatround_ceil);
-    g_Dawn = floatround((Float:g_UpMin / 60.0), floatround_ceil);
-    
-    g_Up = g_Dusk
-    g_Dwn = g_Dawn
-
-    new g_Hour[3], g_Minut[3], g_Now;
-
-    get_time("%H", g_Hour, 2);
-    new g_TimeH = str_to_num(g_Hour);
-
-    get_time("%M", g_Minut, 2);
-    new g_TimeM = str_to_num(g_Minut);
-
-    g_Now = ( "%i %i", g_TimeH, g_TimeM ) ;
-
-    new g_UoopHours  =  ( g_sunrise - g_Epoch ) / 3600 ; /*hrs until sunup*/
-    new g_DownHours  =  ( g_sunset - g_Epoch ) / 3600 ; /*hrs until sundown*/
-
-    new high, S_EeD1, S_EeD2, offset;
-    new g_RisE = (g_TimeH + g_UoopHours)
-    new g_SeeT = (g_TimeH + g_DownHours)
-    new g_See2 = (g_TimeH + g_Dusk)
-
-    high = 23;
-    new low = 0;
-
-    S_EeD1 = g_RisE;
-    S_EeD2 = g_SeeT;
-    offset = -23;
-
-    g_figure = constraint_offset_fixed(high, low,S_EeD1, offset);
-    //nvault_set(g_vault, "day", g_figure);
-    g_Nfig = constraint_offset_fixed(high, low,S_EeD2, offset);
-    new dark = constraint_offset_fixed(high, low,g_See2, offset);
-    new tst[2];
-    copy("tst", 2, "dark");
-    nvault_set(g_vault, "night", tst);
-
+    if(iMorningoverride)
+    {
+        new SzHour[3];
+        num_to_str(iMorningoverride, SzHour, charsmax(SzHour))
+        nvault_set(g_vault, "day",SzHour);
+    }
+    else
+    {
+        format_time(SzSunSet, charsmax(SzSunSet), "%H", g_sunset);
+        nvault_set(g_vault, "night", SzSunSet);
+        server_print "%s vaulted sunset", SzSunSet
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //FYI
     client_print(id, print_console, "Skyname is %s",g_SkyNam);
-    client_print(id, print_console, "Sunrise hour %i",g_figure);
-    client_print(id, print_console, "Sunset hour %i",g_Nfig);
-    client_print(id, print_console, "Adjusted sunset hour %i",dark);
 
-    if( (g_UpMin) < -1)
-    {
-        server_print("Post Dawn");
-        log_amx("Dusk is in %i min. About %i hours. Time is %i:%i",g_DownMin, g_DownHours, g_TimeH, g_Now);
-        client_print(id, print_console, "PreDusk::Dusk is in %i min. About %i hours.  Time is %i:%i",g_DownMin, g_DownHours, g_TimeH, g_Now);
-        client_print(id, print_console, "PostDawn::Dawn was %i min ago. About %i hours ago.  Time is %i:%i",g_UpMin, g_UoopHours, g_TimeH, g_Now);
-    }
-    if( (g_UpMin) > 1)
-    {
-        log_amx("Dawn is in %i min. About %i hours. Time is %i:%i",g_UpMin, g_UoopHours, g_TimeH, g_Now);
-        client_print(id, print_console, "PreDawn::Dawn is in %i min. About %i hours.  Time is %i:%i",g_UpMin, g_UoopHours, g_TimeH, g_Now);
-    }
-    if( (g_DownMin) < -1 )
-    {
-        server_print("Post Dusk");
-        log_amx("Dawn is in %i min. About %i hours. Time is %i:%i",g_UpMin, g_UoopHours, g_TimeH, g_Now);
-    }
-    new g_calc;
-    g_calc = clamp(g_DownMin, -400, -1);
-    if( (g_DownMin == g_calc))
-    {
-        log_amx("Dusk was %i min ago. About %i hours. Time is %i:%i",g_DownMin, g_DownHours, g_TimeH, g_Now);
-        client_print(id, print_console, "PostDusk::Dusk was %i min ago. About %i hours ago.  Time is %i:%i",g_DownMin, g_DownHours, g_TimeH, g_Now);
-    }
+    //Setting for skies
+    if(!bDayOver)
+        g_Up = str_to_num(SzSunRise)
+    
+    if(!bNightOver)
+        g_Dwn = str_to_num(SzSunSet)
+
 }
 
 public ClCmd_get_element(id, level, cid)
@@ -533,13 +532,11 @@ public finish_weather(id)
     g_SpeeD = nvault_get(g_vault, "speed");
     g_DeG = nvault_get(g_vault, "deg");
     g_heat = nvault_get(g_vault, "heat"); //actual temp g_temp is high
-    ///
-    ///
-    ///
+
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
-    
+
     //If Dusk-to-Dawn is manually set or fed.
-    if(g_Up != 0 && g_Dwn != 0)
+    if(g_Up && g_Dwn)
         client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
     else
     {
@@ -837,7 +834,6 @@ public makeelement()
     set_sky(humi);
 }
 
-
 public HoS()
     get_element();
 
@@ -862,18 +858,15 @@ public HL_WeatheR()
         }
         case 4:
         {
-        hl_precip()
-        hl_snow();
-
+            hl_precip()
+            hl_snow();
         }
     }
     set_sky(humi);
 }
 
-
 public ClCmd_hl_precip(id, level, cid)
 {
-
     if (!cmd_access(id,level,cid,1))
     return PLUGIN_HANDLED
 
@@ -993,7 +986,6 @@ public Compass(id)
             set_hudmessage(255, 0, 0, -1.0, 0.9, 0, 0.0, 3.0, 0.0, 0.0);
             ShowSyncHudMsg(id, gHudSyncInfo2, "%s", DirName);
         }
-
         set_hudmessage(255, 255, 255, fHudCoordinates, 0.9, 0, 0.0, 3.0, 0.0, 0.0);
         ShowSyncHudMsg(id, gHudSyncInfo, "^n%s", DirSymbol);
     }
@@ -1015,7 +1007,6 @@ if(get_pcvar_num(g_cvar_wind))
     EF_CrosshairAngle(id, 0.0, 0.0 ); {}
 }
 
-
 public hl1_effect(Float:Origin[3])  ///was the new fog and snow ground cover with long life but decided to use for zass.
 {
     message_begin(MSG_BROADCAST, SVC_TEMPENTITY);
@@ -1028,8 +1019,8 @@ public hl1_effect(Float:Origin[3])  ///was the new fog and snow ground cover wit
     write_coord(floatround(Origin[2]+random_float(500.0,1000.0)));
     switch(random_num(0,1))
     {
-    case 0: write_short(sprFlare6);                         // short (sprite index)
-    case 1: write_short(sprLightning);                      // short (sprite index)
+        case 0: write_short(sprFlare6);                         // short (sprite index)
+        case 1: write_short(sprLightning);                      // short (sprite index)
     }
     write_byte(random_num(0,255));                          // byte (starting frame)  //was 1
     write_byte(random_num(0,255));                          // byte (frame rate in 0.1's) //fog is slower like 20fps
@@ -1043,8 +1034,6 @@ public hl1_effect(Float:Origin[3])  ///was the new fog and snow ground cover wit
     write_byte(random_num(7,128));                          // byte (scroll speed in 0.1's) // was 7
     message_end();
 }
-
-
 
 public ClCmd_hl_fog(id, level, cid)
 {
@@ -1078,7 +1067,6 @@ public old_fog(Float:Vector[3])     ///also good stock for camper honing
     message_end();
 }
 
-
 public hl_fog()
     set_task_ex(0.3, "old_fog", 770, .flags = SetTask_Repeat);
 
@@ -1106,7 +1094,6 @@ public PolaRVorteX(Float:Vector[3])
     write_byte(0);
     message_end();
 }
-
 
 public HellRain_Blizzard(Float:Vector[3])           /// will code in some of the worst weather codes. Unbeliable.
 {
@@ -1165,7 +1152,6 @@ public ClCmd_hl_snow(id, level, cid)            // the best
     return PLUGIN_HANDLED
 }
 
-
 public hl_snow()
 {
     set_task_ex(0.1, "snow_puff", 332, .flags = SetTask_Repeat);
@@ -1214,7 +1200,6 @@ public ClCmd_hl_dry(id, level, cid)         // end all conditions. The Jesus Han
     return PLUGIN_HANDLED
 }
 
-
 public no_snow()
 {
     if (task_exists(111)) remove_task(111);
@@ -1253,7 +1238,6 @@ public snow_flake(Float:Vector[3])
     write_byte(0);
     message_end();
 }
-
 
 public snow_puff(Float:Vector[3])
 {
@@ -1326,9 +1310,7 @@ public streak(Float:Vectors[3])
 public ClCmd_FlasheS(id, level, cid)
 {
     if(is_user_admin(id))
-
-    set_task_ex(0.5, "FlasheS", 435, .flags = SetTask_Repeat);
-
+        set_task_ex(0.5, "FlasheS", 435, .flags = SetTask_Repeat);
     return PLUGIN_HANDLED
 }
 
@@ -1435,10 +1417,7 @@ public set_sky(humi)
     g_Ti = str_to_num(hour);
 
     g_Nn = 12; ///noon
-//////
-//////
-////////
-////////
+
     if (g_Ti == g_Nn - 1 || g_Ti == g_Nn)
         phase = 2; //NOON
     else if (g_Ti == g_Up - 1 || g_Ti == g_Up)
@@ -1458,11 +1437,11 @@ public set_sky(humi)
 public precache_sky(const skyname[])
 {
     new bool: pres = true;
-    static file[35];
+    static file[MAX_PLAYERS+2];
 
     for (new i = 0; i < 6; ++i)
     {
-        formatex(file, 34, "gfx/env/%s%s.tga", skyname, g_skysuf[i]);
+        formatex(file, charsmax(file), "gfx/env/%s%s.tga", skyname, g_skysuf[i]);
         if (file_exists(file))
             precache_generic(file);
         else
@@ -1477,26 +1456,32 @@ public precache_sky(const skyname[])
 
 public daylight()
 {
+    nvault_get(g_vault, "element", g_element_name, 8);
+
     g_temp_min = nvault_get(g_vault, "mintemp");
     g_temp = nvault_get(g_vault, "heat");
-///////////
-/////////////
-////////////
-///////////
-//////////
-    //g_sunrise = nvault_get(g_vault, "sunrise");
-    //g_sunset = nvault_get(g_vault, "sunset");
 
-    new sunrise = 6 - 1; ///vault_get
-
-    if (get_pcvar_num(g_cvar_day) > 0)
-        sunrise = get_cvar_num("day");
-
-    new sunset = 21 + 1; ///vault_get
-
-    if (get_pcvar_num(g_cvar_night) > 0)
-        sunset = get_cvar_num("night");
-
+    new sunrise
+    new sunset
+    //Using sockets feed or CVAR?
+    if(get_pcvar_num(g_cvar_day) > 0)
+    {
+        sunrise = get_pcvar_num(g_cvar_day)
+    }
+    else
+    {
+        sunrise = nvault_get(g_vault, "day")
+        server_print "Fed sunrise %i", sunrise
+    }
+    if(get_pcvar_num(g_cvar_night) > 0 )
+    {
+        sunset  = get_pcvar_num(g_cvar_night)
+    }
+    else
+    {
+        sunset  = nvault_get(g_vault, "night")
+        server_print "Fed sunset %i", sunset
+    }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////
     new totalDayLight = (sunset) - sunrise;
@@ -1602,20 +1587,4 @@ stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
     set_kvd(0, KV_Value, value);
     set_kvd(0, KV_fHandled, 0);
     return dllfunc(DLLFunc_KeyValue, entity, 0);
-}
-
-/*This 'constraint_offset' stock has been updated outside of Amxx 182*/
-stock constraint_offset_fixed(low, high, seed, offset)
-{
-    new numElements = high - low + 1;
-    offset += seed - low;
-
-    if (offset >= 0)
-    {
-        return low + (offset % numElements);
-    }
-    else
-    {
-        return high - (abs(offset) % numElements) + 1;
-    }
 }
