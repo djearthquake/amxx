@@ -116,7 +116,7 @@ new g_SzUnits[16]
 
 new bool:bCompassOn[MAX_PLAYERS +1];
 new bool:bTokenOkay
-new bool:g_bCSOF
+new bool:bCSDoD
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,10 +210,10 @@ public plugin_init()
     g_pcvar_method = register_cvar("amx_compass_method", "2");
     g_Method = get_pcvar_num(g_pcvar_method)
 
-    if(cstrike_running() || is_running("gearbox") == 1)
-        g_bCSOF = true
+    if(cstrike_running() || is_running("dod") == 1)
+        bCSDoD = true
 
-    if(g_bCSOF)
+    if(cstrike_running() || is_running("gearbox") == 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "compass_tic", 1)
 
     if(is_running("valve") == 1 )
@@ -297,7 +297,7 @@ public plugin_precache()
 
 public ClCmd_NewS(id, level, cid)
 {
-    if(g_bCSOF)
+    if(bCSDoD)
     {
         new motd[MAX_CMD_LENGTH];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=http://www.SRNLive.com/listen.html'><body BGCOLOR='#FFFFFF'><br><center>Loading</center></html>");
@@ -307,7 +307,7 @@ public ClCmd_NewS(id, level, cid)
 
 public ClCmd_TemP(id, level, cid)
 {
-    if(g_bCSOF)
+    if(bCSDoD)
     {
         new motd[MAX_USER_INFO_LENGTH];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://google.com/search?q=weather'><body BGCOLOR='#FFFFFF'><br><center>If we can not determine your country off your IP then this will display generic weather page...</center></html>");
@@ -343,13 +343,13 @@ public needan(id)
 
     if (equal(token, "null"))
     {
-        if(g_bCSOF)
+        if(bCSDoD)
         {
             new motd[MAX_CMD_LENGTH];
             format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-key detected.</center></html>");
             show_motd(id, motd, "Invalid 32-bit API key!");
         }
-        if(g_bCSOF) return;
+        if(bCSDoD) return;
         client_print(id,print_chat,"Check your API key validity!")
         client_print(id,print_center,"Null sv_openweather-key detected.")
         client_print(id,print_console,"Get key from openweathermap.org/appid.")
@@ -376,7 +376,7 @@ public showinfo(id)
         nvault_get(g_vault, "element", g_element_name, 8);
         client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
 
-        if(g_bCSOF)
+        if(bCSDoD)
         {
             show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
             g_element_name[g_element], g_hum, g_cvar_fog);
@@ -838,7 +838,7 @@ public makeelement()
     if ( humi >  g_cvar_fog )
         makeFog(humi);
 
-    if(g_bCSOF)
+    if(bCSDoD)
     switch (e)
     {
         case 2:
@@ -863,7 +863,7 @@ public makeelement()
 
 public HL_WeatheR()
 {
-    if(g_bCSOF) return;
+    if(bCSDoD) return;
 
     new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
@@ -1036,7 +1036,7 @@ public daylight()
 
 public makeFog(amount)
 {
-    if(g_bCSOF)
+    if(bCSDoD)
     {
         g_fog = fm_create_entity("env_fog");
         new Float: density = ( 0.0002 * ( amount - g_cvar_fog )) + 0.001;
