@@ -105,14 +105,15 @@ new const g_DirNames[4][] = { "N", "E", "S", "W" }
 new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
-new g_sckelement, g_DeG, g_SpeeD, g_temp, g_curr_temp, g_temp_min, g_element, g_hum, g_heat, g_code, g_visi;
+new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_heat, g_code, g_visi;
 new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog;
-new g_vault, g_Nn, g_Up, g_Dwn, g_Ti,  g_debugger_on;
+new g_vault, g_Nn, g_Up, g_Dwn, g_Ti,  g_debugger_on, g_feel;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
 new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
 new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
 new g_cvar_token, g_cvar_units, g_SkyNam[16];
+new g_SzUnits[16]
 
 new bool:bCompassOn[MAX_PLAYERS +1];
 new bool:bTokenOkay
@@ -168,7 +169,10 @@ public plugin_init()
     g_cvar_night = register_cvar("night", "0");     //night fall Hour
 
     g_cvar_region = register_cvar("sv_region", "4887398");
-    g_cvar_units = register_cvar("sv_units", "imperial");
+    g_cvar_units = register_cvar("sv_units", "metric");
+
+    bind_pcvar_string(g_cvar_units, g_SzUnits, charsmax(g_SzUnits))
+
     g_cvar_token = register_cvar("sv_openweather-key", "null");
     g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
     g_cvar_debug = register_cvar("weather_debug", "0");
@@ -178,23 +182,23 @@ public plugin_init()
     ///AutoExecConfig(.autoCreate = true, .name = "Element")
 
     register_cvar("element_hud", "200");
-    register_clcmd("say temp", "showinfo");
-    register_clcmd("say weather", "showinfo");
-    register_clcmd("say climate", "showinfo");
+    register_clcmd("say /temp", "showinfo");
+    register_clcmd("say /time", "showinfo");
+    register_clcmd("say /weather", "showinfo");
+    register_clcmd("say /climate", "showinfo");
 
     set_task_ex(10.0, "get_element", 167, .flags = SetTask_AfterMapStart);
     set_task_ex(60.0, "get_element", 167, .flags = SetTask_BeforeMapChange);
 
     g_visi = nvault_get(g_vault, "visi");
-    g_heat = nvault_get(g_vault, "heat");
-    g_temp = nvault_get(g_vault, "maxtemp");
+    g_temp = nvault_get(g_vault, "temp");
     g_hum = nvault_get(g_vault, "humidity");
     g_code = nvault_get(g_vault, "code");
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
     nvault_get(g_vault, "env", g_env, 2); ///was g_env_name
 
     nvault_get(g_vault, "element", g_element_name, 8);
-    nvault_prune(g_vault, 0, get_systime() - (60 * 60 * 24)); ///2 hr pruning
+    nvault_prune(g_vault, 0, get_systime() - (60 * 60 * 2)); ///2 hr pruning
 
     get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
 
@@ -236,7 +240,7 @@ public plugin_cfg()
         g_Dwn = get_pcvar_num(g_cvar_night)
 
     !g_Up && !g_Dwn ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
-    
+
     g_debugger_on = get_pcvar_num(g_cvar_debug)
 }
 
@@ -343,9 +347,9 @@ public needan(id)
             show_motd(id, motd, "Invalid 32-bit API key!");
         }
         if ( cstrike_running() || (is_running("dod") == 1)  ) return;
-        client_print(0,print_chat,"Check your API key validity!")
-        client_print(0,print_center,"Null sv_openweather-key detected.")
-        client_print(0,print_console,"Get key from openweathermap.org/appid.")
+        client_print(id,print_chat,"Check your API key validity!")
+        client_print(id,print_center,"Null sv_openweather-key detected.")
+        client_print(id,print_console,"Get key from openweathermap.org/appid.")
     }
 }
 
@@ -358,32 +362,37 @@ if(is_user_connected(id))
 
 public showinfo(id)
 {
-    get_element();
-    set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //-1 auto makes flicker
-
-    client_print(id, print_console, "Welcome to %s! Visibility is %d'. Temperature is %d° while forecasted to be %d°", g_location, g_visi, g_heat, g_curr_temp);
-
-    /**https://www.amxmodx.org/api/amxmodx/set_hudmessage
-    * native set_hudmessage(red = 200, green = 100, blue = 0, Float:x = -1.0, Float:y = 0.35, effects = 0, Float:fxtime = 6.0, Float:holdtime = 12.0, Float:fadeintime = 0.1, Float:fadeouttime = 0.2, channel = -1);
-    * native random_num(a,   b);
-    * https://www.amxmodx.org/api/amxmodx/random_num
-    */
-    nvault_get(g_vault, "element", g_element_name, 8);
-    client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
-
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if(is_user_connected(id) && bTokenOkay)
     {
-        show_hudmessage(id, "╚»★Welcome to %s★«╝^nThe temp is now %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_heat, g_curr_temp, g_env_name[g_env],
-        g_element_name[g_element], g_hum, g_cvar_fog);
+        if(!g_code)
+            get_element();
+    
+        set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //-1 auto makes flicker
+    
+        client_print(id, print_console, "Welcome to %s! Visibility is %d'. Temperature feels like %d°.", g_location, g_visi, g_feel);
+    
+        /**https://www.amxmodx.org/api/amxmodx/set_hudmessage
+        * native set_hudmessage(red = 200, green = 100, blue = 0, Float:x = -1.0, Float:y = 0.35, effects = 0, Float:fxtime = 6.0, Float:holdtime = 12.0, Float:fadeintime = 0.1, Float:fadeouttime = 0.2, channel = -1);
+        * native random_num(a,   b);
+        * https://www.amxmodx.org/api/amxmodx/random_num
+        */
+        nvault_get(g_vault, "element", g_element_name, 8);
+        client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
+    
+        if ( cstrike_running() || (is_running("dod") == 1)  )
+        {
+            show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
+            g_element_name[g_element], g_hum, g_cvar_fog);
+        }
+        else
+        {
+            show_hudmessage(id, "Welcome to %s.^nTemperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
+            g_cvar_fog);
+        }
+        epoch_clock(id);
     }
-    else
-    {
-        show_hudmessage(id, "Welcome to %s.^nThe temp is %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_heat, g_curr_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
-        g_cvar_fog);
-    }
-    epoch_clock(id);
+    return PLUGIN_HANDLED
 }
-
 stock human_readable_time(epoch_stamp)
 {
     new SzSun[MAX_PLAYERS]
@@ -424,7 +433,7 @@ if(is_user_connected(id))
         nvault_set(g_vault, "night", SzNight);
 
         bNightOver = true
-        g_Dwn  = night_override 
+        g_Dwn  = night_override
     }
 
     if(bDayOver && bNightOver)
@@ -435,7 +444,7 @@ if(is_user_connected(id))
         client_print(id, print_chat,"Sunrise is manually set not fed.")
     else
         client_print(id, print_chat,"Lighting is socket fed!")
-    
+
     /////////////////////////////////////////////////////////////
 
     new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
@@ -445,17 +454,18 @@ if(is_user_connected(id))
     nvault_set(g_vault, "day", SzSunRise);
 
     if(g_debugger_on)
-        server_print "Sunrise is %s",  SzSunRise
-    
-    client_print id, print_chat,"Sunrise is on %s.", SzSunRise
+        server_print "Sunrise at %s",  SzSunRise
 
     format_time(SzSunSet, charsmax(SzSunSet), "%H", g_sunset);
     nvault_set(g_vault, "night", SzSunSet);
 
     if(g_debugger_on)
-        server_print "Sunset is %s", SzSunSet
+        server_print "Sunset at %s", SzSunSet
 
-    client_print id, print_chat,"Sunset is on %s.", SzSunSet
+    new SzTime[MAX_PLAYERS]
+    static iCurrent_time = -1
+    format_time(SzTime, charsmax(SzTime), "%H:%M:%S",  iCurrent_time );
+    client_print id, print_chat,"Sunrise hour %s.^nSunset hour %s.^nTime is %s", SzSunRise, SzSunSet, SzTime
 
     /////////////////////////////////////////////////////////////
 
@@ -497,7 +507,7 @@ if(is_user_connected(id))
     //Setting for skies
     if(!bDayOver)
         g_Up = str_to_num(SzSunRise)
-    
+
     if(!bNightOver)
         g_Dwn = str_to_num(SzSunSet)
 
@@ -532,6 +542,7 @@ public ClCmd_get_element(id, level, cid)
 }
 
 public Et_Val(id)
+if(is_user_connected(id))
 {
     new iWind = get_pcvar_num(g_cvar_wind)
 
@@ -556,16 +567,17 @@ public finish_weather(id)
     if (task_exists(556)) remove_task(556);
     g_SpeeD = nvault_get(g_vault, "speed");
     g_DeG = nvault_get(g_vault, "deg");
-    g_heat = nvault_get(g_vault, "heat"); //actual temp g_temp is high
+    g_heat = nvault_get(g_vault, "temp");
+    g_feel =  nvault_get(g_vault, "feelslike");
 
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
 
     //If Dusk-to-Dawn is manually set or fed.
     if(g_Up && g_Dwn)
-        client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i ^nSunRise hour %i SunSet hour %i...server is on the %i hour.", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.^nSunRise hour %i SunSet hour %i...server is on the %i hour.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
     else
     {
-        client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
         epoch_clock(id);
     }
 
@@ -607,8 +619,8 @@ public get_element()
 
 public write_web(text[MAX_USER_INFO_LENGTH])
 {
-
-    server_print("HTTP 1.0-1.1  trying socket write.");
+    if(g_debugger_on)
+        server_print("HTTP 1.0-1.1  trying socket write.");
 
     socket_is_writable(g_sckelement, 100000) ?
     socket_send(g_sckelement,text,charsmax (text))
@@ -652,36 +664,20 @@ public read_web()
             if(g_debugger_on)
                 log_amx("Temperature: %s", out);
 
-            nvault_set(g_vault, "heat", out);
+            nvault_set(g_vault, "temp", out);
 
-            g_heat = str_to_num(out);
-        }
-        if (containi(buf, "temp_max") >= 0 && g_temp == 0)
-        {
-            new out[MAX_PLAYERS];
-            copyc(out, 4, buf[containi(buf, "temp_max") + 10], '"');
-            replace(out, 4, ",", "");
-            replace(out, 4, "}", "");
-
-            if(g_debugger_on)
-                log_amx("High of: %s", out);
-
-            nvault_set(g_vault, "maxtemp", out);
             g_temp = str_to_num(out);
         }
-        if (containi(buf, "temp_min") >= 0 && g_temp_min == 0)
+        if (containi(buf, "feels_like") != -1)
         {
             new out[MAX_PLAYERS];
-
-            //copyc(out, 4, buf[strfind(buf, "temp_min") + 10], '"');
-            copyc(out, 4, buf[containi(buf, "temp_min") + 10], '"');
-            replace(out, 4, ",", "");
+            copyc(out, 4, buf[containi(buf, "feels_like") + 12], '.');
 
             if(g_debugger_on)
-                log_amx("Low of: %s", out);
+                log_amx("Feels like: %s", out);
 
-            nvault_set(g_vault, "mintemp", out);
-            g_temp_min = str_to_num(out);
+            nvault_set(g_vault, "feelslike", out);
+            g_feel = str_to_num(out);
         }
         if (containi(buf, "visibility") >= 0)
         {
@@ -708,7 +704,7 @@ public read_web()
             nvault_set(g_vault, "humidity", out);
             g_hum = str_to_num(out);
         }
-        if (containi(buf, "sunrise") !=  -1 /*&& g_sunrise == 0*/)
+        if (containi(buf, "sunrise") !=  -1)
         {
             new out[MAX_PLAYERS];
             copy(out, 10, buf[containi(buf, "sunrise") + 9]);
@@ -720,7 +716,7 @@ public read_web()
             nvault_set(g_vault, "sunrise", out);
             g_sunrise = str_to_num(out);
         }
-        if (containi(buf, "deg") >= 0 && g_DeG == 0)
+        if (containi(buf, "deg") != -1 )
         {
             new out[MAX_PLAYERS];
             copy(out, 3, buf[containi(buf, "deg") + 5]);
@@ -734,7 +730,7 @@ public read_web()
             g_DeG = str_to_num(out);
         }
 
-        if (containi(buf, "speed") >= 0 && g_SpeeD == 0)
+        if (containi(buf, "speed") != -1)
         {
             new out[MAX_PLAYERS];
             copy(out, 5, buf[containi(buf, "speed") + 7]);
@@ -747,9 +743,7 @@ public read_web()
             nvault_set(g_vault, "speed", out);
             g_SpeeD = str_to_num(out);
         }
-
-        ///////////////////////////////
-        if (containi(buf, "sunset") != -1/* && g_sunset == 0*/)
+        if (containi(buf, "sunset") != -1)
         {
             new out[MAX_PLAYERS];
             copy(out, 10, buf[containi(buf, "sunset") + 8]);
@@ -774,45 +768,15 @@ public read_web()
             nvault_set(g_vault, "code", out);
             g_code = str_to_num(out);
 
-            if (g_code == 800)
-            {
-                g_env = 1;
-                g_element = 1;
-            }
-            if (g_code >= 801 && g_code <= 803)
-            {
-                g_env = 1;
-                g_element = 2;
-            }
-            if (g_code >= 701 && g_code <= 762)
-            {
-                g_env = 1;
-                g_element = 2;
-            }
-            if (g_code == 804)
-            {
-                g_element = 3;
-                g_env = 1;
-            }
-            if (g_code >= 200 && g_code <= 531)
-            {
-                g_env = 2;
-                g_element = 3;
-            }
-            if (g_code >= 600 && g_code <= 602)
-            {
-                g_element = 2;
-                g_env = 3;
-            }
-            if (g_code >= 611 && g_code <= 622)
-            {
-                g_element = 3;
-                g_env = 3;
-            }
+            code_to_weather(g_code)
+
             new num[1];
             num_to_str(g_env, num, 1);
             nvault_set(g_vault, "env", num);
-            server_print("Finished reading code and checking sunrise time...")
+
+            if(g_debugger_on)
+                server_print("Finished reading code and checking sunrise time...")
+
             num_to_str(g_element, num, 1);
             nvault_set(g_vault, "element", num);
         }
@@ -821,9 +785,58 @@ public read_web()
     else
     {
         socket_close(g_sckelement);
-        server_print("finished reading")
+        if(g_debugger_on)
+            server_print("finished reading")
     }
 
+}
+
+stock code_to_weather(iWeather_code)
+{
+    //Set how server makes weather based off code from feed.
+    ///https://openweathermap.org/weather-conditions
+    //Group 800: Clear
+    if (iWeather_code == 800)
+    {
+        g_env = 1;
+        g_element = 1;
+    }
+    //Group 80x: Clouds
+    if (iWeather_code>= 801 && iWeather_code <= 803)
+    {
+        g_env = 1;
+        g_element = 2;
+    }
+   // Group 7xx: Atmosphere 
+    if (iWeather_code >= 701 && iWeather_code<= 762)
+    {
+        g_env = 1;
+        g_element = 2;
+    }
+   //Group 80x: Clouds
+    if (g_code == 804)
+    {
+        g_element = 3;
+        g_env = 1;
+    }
+    //Group 2xx: Thunderstorm
+    //Group 5xx: Rain
+    if (iWeather_code >= 200 && iWeather_code <= 531)
+    {
+        g_env = 2;
+        g_element = 3;
+    }
+    //Group 6xx: Snow
+    if (iWeather_code >= 600 && iWeather_code <= 602)
+    {
+        g_element = 2;
+        g_env = 3;
+    }
+    if (iWeather_code >= 611 && iWeather_code <= 622)
+    {
+        g_element = 3;
+        g_env = 3;
+    }
 }
 
 public makeelement()
@@ -1442,7 +1455,7 @@ public set_sky(humi)
     g_Ti = str_to_num(hour);
 
     g_Nn = 12; ///noon
-
+    //Time of day or night sky setting
     if (g_Ti == g_Nn - 1 || g_Ti == g_Nn)
         phase = 2; //NOON
     else if (g_Ti == g_Up - 1 || g_Ti == g_Up)
@@ -1456,6 +1469,7 @@ public set_sky(humi)
     else if (g_Ti > g_Nn + 1 && g_Ti < g_Dwn - 1)
         phase = 0; //DAY
 
+    //Set skies to match the weather.
     humi <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
 }
 
@@ -1481,21 +1495,21 @@ public precache_sky(const skyname[])
 
 public daylight()
 {
+    new sunrise, sunset
     nvault_get(g_vault, "element", g_element_name, 8);
 
-    g_temp_min = nvault_get(g_vault, "mintemp");
-    g_temp = nvault_get(g_vault, "heat");
+    //g_temp_min = nvault_get(g_vault, "mintemp");
+    g_temp = nvault_get(g_vault, "temp");
+    g_feel = nvault_get(g_vault, "feelslike");
 
-    new sunrise
-    new sunset
     //Using sockets feed or CVAR?
     if(get_pcvar_num(g_cvar_day) > 0)
     {
-        sunrise = get_pcvar_num(g_cvar_day) 
+        sunrise = get_pcvar_num(g_cvar_day)
     }
     else
     {
-        sunrise = nvault_get(g_vault, "day") 
+        sunrise = nvault_get(g_vault, "day")
         g_Up = sunrise
         if(g_debugger_on)
             server_print "Illumination fed sunrise %i", sunrise
@@ -1523,39 +1537,39 @@ public daylight()
         now = get_cvar_num("time");
 
     new light, lightspan = get_pcvar_num(g_cvar_minlight) + 1 - get_pcvar_num(g_cvar_maxlight);
-    new tempspan = g_temp - g_temp_min;
+    //new tempspan = g_temp - g_temp_min;
     new noon = (totalDayLight / 2) + sunrise;
     if (now < noon)
     {
         if (now < sunrise)
         {
             light = get_pcvar_num(g_cvar_minlight);
-            g_curr_temp = g_temp_min;
+            //g_curr_temp = g_temp_min;
         }
         else
         {
             new prenoon = noon - sunrise;
             light = get_pcvar_num(g_cvar_minlight) - (now - sunrise) * (lightspan / prenoon);
-            g_curr_temp = g_temp - (now - sunrise) * (tempspan / prenoon);
+            //g_curr_temp = g_temp - (now - sunrise) * (tempspan / prenoon);
         }
     }
     if (now == noon)
     {
         light = get_pcvar_num(g_cvar_maxlight);
-        g_curr_temp = g_temp;
+        //g_curr_temp = g_temp;
     }
     if (now > noon)
     {
         if (now > sunset)
         {
             light = get_pcvar_num(g_cvar_minlight);
-            g_curr_temp = g_temp_min;
+            //g_curr_temp = g_temp_min;
         }
         else
         {
             new postnoon = noon - sunrise;
             light = (now - noon) * (lightspan / postnoon) + get_pcvar_num(g_cvar_maxlight);
-            g_curr_temp = (now - sunrise) * (tempspan / postnoon) + g_temp_min;
+            //g_curr_temp = (now - sunrise) * (tempspan / postnoon) + g_temp_min;
             if (light > get_pcvar_num(g_cvar_minlight))
             {
                 light = get_pcvar_num(g_cvar_minlight);
