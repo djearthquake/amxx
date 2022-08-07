@@ -104,7 +104,7 @@ new const g_DirNames[4][] = { "N", "E", "S", "W" }
 new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
-new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_heat, g_code, g_visi;
+new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_code, g_visi;
 new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog;
 new g_vault, g_Nn, g_Up, g_Dwn, g_Ti,  g_debugger_on, g_feel;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
@@ -557,7 +557,6 @@ public finish_weather(id)
 
     g_SpeeD = nvault_get(g_vault, "speed");
     g_DeG = nvault_get(g_vault, "deg");
-    g_heat = nvault_get(g_vault, "temp");
     g_feel =  nvault_get(g_vault, "feelslike");
 
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
