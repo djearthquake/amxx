@@ -369,7 +369,7 @@ public showinfo(id)
     * https://www.amxmodx.org/api/amxmodx/random_num
     */
     nvault_get(g_vault, "element", g_element_name, 8);
-    client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | epoch♞dawn %d epoch♘dusk %d", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, g_sunrise, g_sunset);
+    client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
 
     if ( cstrike_running() || (is_running("dod") == 1)  )
     {
@@ -384,6 +384,13 @@ public showinfo(id)
     epoch_clock(id);
 }
 
+stock human_readable_time(epoch_stamp)
+{
+    new SzSun[MAX_PLAYERS]
+
+    format_time(SzSun, charsmax(SzSun), "%H:%M:%S", epoch_stamp);
+    return SzSun
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 public epoch_clock(id)
@@ -422,14 +429,17 @@ if(is_user_connected(id))
 
     new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
 
-    format_time(SzSunRise, charsmax(SzSunRise), "%m/%d/%Y - %H:%M:%S", g_sunrise);
+    ///"%m/%d/%Y - %H:%M:%S"
+    format_time(SzSunRise, charsmax(SzSunRise), "%H", g_sunrise);
+    nvault_set(g_vault, "day", SzSunRise);
 
     if(g_debugger_on)
         server_print "Sunrise is %s",  SzSunRise
     
     client_print id, print_chat,"Sunrise is on %s.", SzSunRise
-    
-    format_time(SzSunSet, charsmax(SzSunSet), "%m/%d/%Y - %H:%M:%S", g_sunset);
+
+    format_time(SzSunSet, charsmax(SzSunSet), "%H", g_sunset);
+    nvault_set(g_vault, "night", SzSunSet);
 
     if(g_debugger_on)
         server_print "Sunset is %s", SzSunSet
