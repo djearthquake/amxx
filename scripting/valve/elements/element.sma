@@ -51,9 +51,10 @@ sv_units <metric|imperial>  | Simply pick what unit you prefer for weather readi
 
 CL_COMMANDS
 
-say temp, weather, or climate   - displays weather feed
+say /temp, /weather, or /climate   - displays weather feed
 say /mytemp for local temp
-say /news for news*/
+say /news for news
+*/
 
 ///for rain drops
 #define COLOR random_num(0,7) ///streak color range
@@ -86,7 +87,7 @@ say /news for news*/
 #include <fakemeta_stocks> ///crosshair///
 #include <nvault>                /*feed storage Global*/
 #include <xs>
-
+#define PLUGIN "Element"
 #define VERSION "5.0.0"
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 #define fm_set_lights(%1)    engfunc(EngFunc_LightStyle, 0, %1)
@@ -141,7 +142,7 @@ enum {
 new const CvarFogDesc[]="Weather fog perentage."
 public plugin_init()
 {
-    register_plugin("Elements", VERSION, ".sρiηX҉.");
+    register_plugin(PLUGIN, VERSION, ".sρiηX҉.");
     register_cvar("element_version", VERSION, FCVAR_SERVER);
 
     RegisterHam(Ham_Player_Duck, "player", "fix");
@@ -563,7 +564,10 @@ public finish_weather(id)
 
     //If Dusk-to-Dawn is manually set or fed.
     if(g_Up && g_Dwn)
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.^nSunRise hour %i SunSet hour %i...server is on the %i hour.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
+    {
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_Up, g_Dwn-12, g_Ti )
+    }
     else
     {
         client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
@@ -573,7 +577,7 @@ public finish_weather(id)
     new g_SkyNam[16];
     get_cvar_string("sv_skyname",g_SkyNam, charsmax (g_SkyNam));
 
-    server_print("Map using sky of %s, enjoy.", g_SkyNam);
+    server_print("[%s version %s]Map using sky of %s, enjoy.", PLUGIN, VERSION, g_SkyNam);
 }
 
 public get_element()
@@ -643,7 +647,7 @@ public read_web()
         }
         if (containi(buf, "temp") != -1 )
         {
-            server_print("Ck real temp time..")
+            server_print("[%s]Ck real temp time..", PLUGIN)
 
             new out[MAX_IP_LENGTH]
             copyc(out, 6, buf[containi(buf, "temp") + 6], '.');
