@@ -195,10 +195,12 @@ public plugin_init()
     g_hum = nvault_get(g_vault, "humidity");
     g_code = nvault_get(g_vault, "code");
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
-    nvault_get(g_vault, "env", g_env, 2); ///was g_env_name
+    nvault_get(g_vault, "env", g_env, 2);
 
     nvault_get(g_vault, "element", g_element_name, 8);
-    nvault_prune(g_vault, 0, get_systime() - (60 * 60 * 2)); ///2 hr pruning
+
+    #define TWO_HR_VAULT_PRUNE nvault_prune(g_vault, 0, get_systime() - (60 * 60 * 2));
+    TWO_HR_VAULT_PRUNE
 
     get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
 
@@ -228,7 +230,7 @@ public plugin_init()
 }
 public plugin_cfg()
 {
-    //Do not overcheck for token
+    //Do not overcheck for token.
     new token[MAX_PLAYERS+1];
     get_pcvar_string(g_cvar_token, token, charsmax (token));
 
@@ -329,7 +331,7 @@ public client_putinserver(id)
             set_task_ex(random_float(30.0,60.0), "display_info", id, .flags = SetTask_RepeatTimes, .repeat = 2);
 
         if(!bTokenOkay && is_user_admin(id))
-            set_task_ex(10.0, "needan", id, .flags = SetTask_Once) //key check will update to init bool 1x per load
+            set_task_ex(10.0, "needan", id, .flags = SetTask_Once)
 
         set_task(random_float(1.1,5.0), "Et_Val", id) //give the weather and make special weather when admin connects
 
@@ -370,19 +372,13 @@ public showinfo(id)
     {
         if(!g_code)
             get_element();
-    
+
         set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //-1 auto makes flicker
-    
+
         client_print(id, print_console, "Welcome to %s! Visibility is %d'. Temperature feels like %d°.", g_location, g_visi, g_feel);
-    
-        /**https://www.amxmodx.org/api/amxmodx/set_hudmessage
-        * native set_hudmessage(red = 200, green = 100, blue = 0, Float:x = -1.0, Float:y = 0.35, effects = 0, Float:fxtime = 6.0, Float:holdtime = 12.0, Float:fadeintime = 0.1, Float:fadeouttime = 0.2, channel = -1);
-        * native random_num(a,   b);
-        * https://www.amxmodx.org/api/amxmodx/random_num
-        */
         nvault_get(g_vault, "element", g_element_name, 8);
         client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
-    
+
         if(g_bCSOF)
         {
             show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
@@ -405,7 +401,6 @@ stock human_readable_time(epoch_stamp)
     return SzSun
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 public epoch_clock(id)
 if(is_user_connected(id))
 {
@@ -449,11 +444,8 @@ if(is_user_connected(id))
     else
         client_print(id, print_chat,"Lighting is socket fed!")
 
-    /////////////////////////////////////////////////////////////
-
     new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
 
-    ///"%m/%d/%Y - %H:%M:%S"
     format_time(SzSunRise, charsmax(SzSunRise), "%H", g_sunrise);
     nvault_set(g_vault, "day", SzSunRise);
 
@@ -470,8 +462,6 @@ if(is_user_connected(id))
     static iCurrent_time = -1
     format_time(SzTime, charsmax(SzTime), "%H:%M:%S",  iCurrent_time );
     client_print id, print_chat,"Sunrise hour %s.^nSunset hour %s.^nTime is %s", SzSunRise, SzSunSet, SzTime
-
-    /////////////////////////////////////////////////////////////
 
     new iNightoverride = get_pcvar_num(g_cvar_night)
     new iMorningoverride = get_pcvar_num(g_cvar_day)
@@ -504,8 +494,6 @@ if(is_user_connected(id))
             server_print "%s vaulted sunset", SzSunSet
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //FYI
     client_print(id, print_console, "Skyname is %s",g_SkyNam);
 
     //Setting for skies
@@ -811,7 +799,7 @@ stock code_to_weather(iWeather_code)
         g_env = 1;
         g_element = 2;
     }
-   // Group 7xx: Atmosphere 
+   // Group 7xx: Atmosphere
     if (iWeather_code >= 701 && iWeather_code<= 762)
     {
         g_env = 1;
@@ -930,7 +918,6 @@ public hl_precip()
     set_task_ex(0.1, "streak3", 888, .flags = SetTask_Repeat);
 }
 
-
 public compass_tic(iPlayerIndex)
 {
     new id = pev(iPlayerIndex,pev_owner)
@@ -939,8 +926,8 @@ public compass_tic(iPlayerIndex)
         if(g_debugger_on > 1)
             server_print "%n compass", id
         bCompassOn[id] = true
-        if(get_pcvar_num(g_pcvar_compass))
-            set_task_ex(0.2, "Compass", id, .flags = SetTask_RepeatTimes, .repeat = 3)
+        if(get_pcvar_num(g_pcvar_compass) && !task_exists(id))
+            set_task_ex(0.3, "Compass", id, .flags = SetTask_Once)
     }
 }
 
@@ -948,6 +935,8 @@ public Compass(id)
 {
     if(!is_user_bot(id) && is_user_alive(id) && bCompassOn[id])
     {
+        g_debugger_on = get_pcvar_num(g_cvar_debug)
+
         if(g_debugger_on > 1)
             server_print "%n compass on", id
 
@@ -1176,7 +1165,7 @@ public HellRain_Blizzard(Float:Vector[3])           /// will code in some of the
     message_end();
 }
 
-public ClCmd_hl_snow(id, level, cid)            // the best
+public ClCmd_hl_snow(id, level, cid)            // HL snow improved
 {
     if (!cmd_access(id,level,cid,1))
     return PLUGIN_HANDLED
@@ -1204,7 +1193,7 @@ public hl_snow()
     set_task_ex(random_float(3.0, 5.5), "ring_saturn", 111, .flags = SetTask_Repeat) ;
 }
 
-public ClCmd_hl_dry(id, level, cid)         // end all conditions. The Jesus Handle.
+public ClCmd_hl_dry(id, level, cid)         //Halt weather generation.
 {
     if (!cmd_access(id,level,cid,1))
     return PLUGIN_HANDLED
