@@ -554,6 +554,7 @@ if(is_user_connected(id))
 public finish_weather(id)
 {
     if (task_exists(556)) remove_task(556);
+
     g_SpeeD = nvault_get(g_vault, "speed");
     g_DeG = nvault_get(g_vault, "deg");
     g_heat = nvault_get(g_vault, "temp");
@@ -641,12 +642,12 @@ public read_web()
             nvault_set(g_vault, "location", out);
             g_location = out;
         }
-        if (containi(buf, "temp") >= 0 && g_heat == 0)
+        if (containi(buf, "temp") != -1 )
         {
             server_print("Ck real temp time..")
 
-            new out[MAX_PLAYERS]
-            copyc(out, 6, buf[containi(buf, "temp") + 6], '"');
+            new out[MAX_IP_LENGTH]
+            copyc(out, 6, buf[containi(buf, "temp") + 6], '.');
             replace(out, 6, ":", "");
             replace(out, 6, ",", "");
 
@@ -708,9 +709,8 @@ public read_web()
         }
         if (containi(buf, "deg") != -1 )
         {
-            new out[MAX_PLAYERS];
-            copy(out, 3, buf[containi(buf, "deg") + 5]);
-            replace(out, 3, "&", "");
+            new out[MAX_IP_LENGTH];
+            copyc(out, 3, buf[containi(buf, "deg") + 5], ',');
             replace(out, 3, "}", "");
 
             if(g_debugger_on)
@@ -722,10 +722,9 @@ public read_web()
 
         if (containi(buf, "speed") != -1)
         {
-            new out[MAX_PLAYERS];
-            copy(out, 5, buf[containi(buf, "speed") + 7]);
+            new out[MAX_IP_LENGTH];
+            copyc(out, 5, buf[containi(buf, "speed") + 7], ',');
             replace(out, 5, ":", "");
-            replace(out, 5, ",", "");
 
             if(g_debugger_on)
                 log_amx("Speed: %s", out);
