@@ -179,8 +179,6 @@ public plugin_init()
 
     bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 5.0, .has_max = true, .max_val = 95.0), g_cvar_fog)
 
-    ///AutoExecConfig(.autoCreate = true, .name = "Element")
-
     register_cvar("element_hud", "200");
     register_clcmd("say /temp", "showinfo");
     register_clcmd("say /time", "showinfo");
@@ -226,8 +224,8 @@ public plugin_init()
 
     gHudSyncInfo = CreateHudSyncObj();
     gHudSyncInfo2 = CreateHudSyncObj();
-
 }
+
 public plugin_cfg()
 {
     //Do not overcheck for token.
@@ -249,6 +247,26 @@ public plugin_cfg()
     g_debugger_on = get_pcvar_num(g_cvar_debug)
 }
 
+public plugin_end()
+    nvault_close(g_vault);
+
+public plugin_precache()
+{
+    g_F0g = precache_model("sprites/ballsmoke.spr");
+    sprFlare6 = precache_model("sprites/Flare6.spr");
+    g_Saturn = precache_model("sprites/zerogxplode.spr");
+    g_TesteD = precache_model("sprites/rain.spr");
+
+    sprLightning = precache_model("sprites/lightning.spr");
+
+    g_vault = nvault_open("element");
+    g_env = nvault_get(g_vault, "env");
+    g_sunrise = nvault_get(g_vault, "sunrise");
+    g_sunset = nvault_get(g_vault, "sunset");
+    g_DeG = nvault_get(g_vault, "deg");
+
+    makeelement();
+}
 @dod(id)
 {
     if(is_user_alive(id))
@@ -295,27 +313,6 @@ public ClCmd_TemP(id, level, cid)
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://google.com/search?q=weather'><body BGCOLOR='#FFFFFF'><br><center>If we can not determine your country off your IP then this will display generic weather page...</center></html>");
         show_motd(id, motd, "Weather Browser");
     }
-}
-
-public plugin_end()
-    nvault_close(g_vault);
-
-public plugin_precache()
-{
-    g_F0g = precache_model("sprites/ballsmoke.spr");
-    sprFlare6 = precache_model("sprites/Flare6.spr");
-    g_Saturn = precache_model("sprites/zerogxplode.spr");
-    g_TesteD = precache_model("sprites/rain.spr");
-
-    sprLightning = precache_model("sprites/lightning.spr");
-
-    g_vault = nvault_open("element");
-    g_env = nvault_get(g_vault, "env");
-    g_sunrise = nvault_get(g_vault, "sunrise");
-    g_sunset = nvault_get(g_vault, "sunset");
-    g_DeG = nvault_get(g_vault, "deg");
-
-    makeelement();
 }
 
 public client_putinserver(id)
@@ -689,6 +686,7 @@ public read_web()
             new out[MAX_PLAYERS];
             copyc(out, 6, buf[containi(buf, "humidity") + 10], '"');
             replace(out, 6, ",", "");
+            replace(out, 6, "}", "");
 
             if(g_debugger_on)
                 log_amx("Humidity: %s", out);
@@ -864,9 +862,6 @@ public makeelement()
     set_sky(humi);
 }
 
-public HoS()
-    get_element();
-
 public HL_WeatheR()
 {
     if(g_bCSOF) return;
@@ -895,29 +890,190 @@ public HL_WeatheR()
     set_sky(humi);
 }
 
-public ClCmd_hl_precip(id, level, cid)
+public set_sky(humi)
 {
-    if (!cmd_access(id,level,cid,1))
-    return PLUGIN_HANDLED
+    new phase;
+    new hour[3];
+    get_time("%H", hour, charsmax(hour));
+    g_Ti = str_to_num(hour);
 
-    set_task_ex(3.0, "hl1_effect", 999, .flags = SetTask_Repeat);
-    set_task_ex(1.0, "FlasheS", 435, .flags = SetTask_Repeat);
-    set_task_ex(0.2, "streak", 221, .flags = SetTask_Repeat);
-    set_task_ex(0.3, "streak2", 776, .flags = SetTask_Repeat);
-    set_task_ex(0.1, "streak3", 887, .flags = SetTask_Repeat);
+    g_Nn = 12; ///noon
+    //Time of day or night sky setting
+    if (g_Ti == g_Nn - 1 || g_Ti == g_Nn)
+        phase = 2; //NOON
+    else if (g_Ti == g_Up - 1 || g_Ti == g_Up)
+        phase = 1; //SUNRISE
+    else if (g_Ti == g_Dwn - 1 || g_Ti == g_Dwn)
+        phase = 3; //SUNSET
+    else if (g_Ti < g_Up - 1 || g_Ti >= g_Dwn + 1)
+        phase = 4; //NIGHT
+    else if (g_Ti > g_Up + 1 && g_Ti < g_Nn - 1)
+        phase = 0; //DAY
+    else if (g_Ti > g_Nn + 1 && g_Ti < g_Dwn - 1)
+        phase = 0; //DAY
 
-    return PLUGIN_HANDLED
+    //Set skies to match the weather.
+    humi <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
 }
 
-public hl_precip()
+public precache_sky(const skyname[])
 {
-    set_task_ex(5.0, "hl1_effect", 998, .flags = SetTask_Repeat);
-    set_task_ex(random_float(7.0, 15.0), "ring_saturn", 111, .flags = SetTask_Repeat) ;
-    set_task_ex(0.1, "streak", 222, .flags = SetTask_Repeat);
-    set_task_ex(0.1, "streak2", 777, .flags = SetTask_Repeat);
-    set_task_ex(0.1, "streak3", 888, .flags = SetTask_Repeat);
+    new bool: pres = true;
+    static file[MAX_PLAYERS+2];
+
+    for (new i = 0; i < 6; ++i)
+    {
+        formatex(file, charsmax(file), "gfx/env/%s%s.tga", skyname, g_skysuf[i]);
+        if (file_exists(file))
+            precache_generic(file);
+        else
+        {
+            pres = false;
+            break;
+        }
+    }
+    if (pres)
+        set_cvar_string("sv_skyname", skyname);
 }
 
+public daylight()
+{
+    new sunrise, sunset
+    nvault_get(g_vault, "element", g_element_name, 8);
+
+    //g_temp_min = nvault_get(g_vault, "mintemp");
+    g_temp = nvault_get(g_vault, "temp");
+    g_feel = nvault_get(g_vault, "feelslike");
+
+    //Using sockets feed or CVAR?
+    if(get_pcvar_num(g_cvar_day) > 0)
+    {
+        sunrise = get_pcvar_num(g_cvar_day)
+    }
+    else
+    {
+        sunrise = nvault_get(g_vault, "day")
+        g_Up = sunrise
+        if(g_debugger_on)
+            server_print "Illumination fed sunrise %i", sunrise
+    }
+    if(get_pcvar_num(g_cvar_night) > 0 )
+    {
+        sunset  = get_pcvar_num(g_cvar_night)
+    }
+    else
+    {
+        sunset  = nvault_get(g_vault, "night")
+        g_Dwn  = sunset
+        if(g_debugger_on)
+            server_print "Illumination fed sunset %i", sunset
+    }
+
+    new totalDayLight = (sunset) - sunrise;
+    new serv_time[3];
+    get_time("%H", serv_time, 2);
+
+    new now = str_to_num(serv_time);
+
+    if (get_pcvar_num(g_cvar_time) > 0)
+        now = get_cvar_num("time");
+
+    new light, lightspan = get_pcvar_num(g_cvar_minlight) + 1 - get_pcvar_num(g_cvar_maxlight);
+    //new tempspan = g_temp - g_temp_min;
+    new noon = (totalDayLight / 2) + sunrise;
+    if (now < noon)
+    {
+        if (now < sunrise)
+        {
+            light = get_pcvar_num(g_cvar_minlight);
+            //g_curr_temp = g_temp_min;
+        }
+        else
+        {
+            new prenoon = noon - sunrise;
+            light = get_pcvar_num(g_cvar_minlight) - (now - sunrise) * (lightspan / prenoon);
+            //g_curr_temp = g_temp - (now - sunrise) * (tempspan / prenoon);
+        }
+    }
+    if (now == noon)
+    {
+        light = get_pcvar_num(g_cvar_maxlight);
+        //g_curr_temp = g_temp;
+    }
+    if (now > noon)
+    {
+        if (now > sunset)
+        {
+            light = get_pcvar_num(g_cvar_minlight);
+            //g_curr_temp = g_temp_min;
+        }
+        else
+        {
+            new postnoon = noon - sunrise;
+            light = (now - noon) * (lightspan / postnoon) + get_pcvar_num(g_cvar_maxlight);
+            //g_curr_temp = (now - sunrise) * (tempspan / postnoon) + g_temp_min;
+            if (light > get_pcvar_num(g_cvar_minlight))
+            {
+                light = get_pcvar_num(g_cvar_minlight);
+            }
+        }
+    }
+    if(g_debugger_on > 1)
+    {
+        log_amx("darkness %d", light);
+        log_amx("dark %d phase %d lums %d", get_cvar_num("dark"), light, get_cvar_num("lums"));
+        log_amx("darkness added to max light is %d out of 25 total darkness", light);
+    }
+    fm_set_lights(g_LightLevel[light]);
+    new fogcolor = (get_pcvar_num(g_cvar_minlight) - light) * 10 + 20;
+    new form[12];
+    /*model illumination*/
+    set_cvar_num("sv_skycolor_r", fogcolor);
+    set_cvar_num("sv_skycolor_g", fogcolor);
+    set_cvar_num("sv_skycolor_b", fogcolor);
+    format(form, 12, "%d %d %d", fogcolor, fogcolor, fogcolor);
+    fm_set_kvd(g_fog, "rendercolor", form);
+}
+
+public makeFog(amount)
+{
+    if(g_bCSOF)
+    {
+        g_fog = fm_create_entity("env_fog");
+        new Float: density = ( 0.0002 * ( amount - g_cvar_fog )) + 0.001;
+        new dens[7];
+        float_to_str(density, dens, 6);
+        fm_set_kvd(g_fog, "density", dens);
+        fm_set_kvd(g_fog, "rendercolor", "200 200 200");
+    }
+    else
+    {
+        hl_fog();
+        new Zoo = nvault_get(g_vault, "humidity");
+        if ( Zoo < g_cvar_fog )
+            no_snow();
+    }
+    return;
+}
+
+/*DispatchKeyValue*/
+stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
+{
+    if (classname[0])
+        set_kvd(0, KV_ClassName, classname);
+    else
+    {
+        new class[MAX_PLAYERS];
+        pev(entity, pev_classname, class, sizeof class - 1);
+        set_kvd(0, KV_ClassName, class);
+    }
+    set_kvd(0, KV_KeyName, key);
+    set_kvd(0, KV_Value, value);
+    set_kvd(0, KV_fHandled, 0);
+    return dllfunc(DLLFunc_KeyValue, entity, 0);
+}
+
+/////////////////////////////////////////////////////COMPASS///////////////////////////////////////////////////////////////////
 public compass_tic(iPlayerIndex)
 {
     new id = pev(iPlayerIndex,pev_owner)
@@ -1022,7 +1178,9 @@ public Compass(id)
     }
     return PLUGIN_HANDLED
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////CROSSHAIR ADJUSTMENTS FROM WINDAGE////////////////////////////////////////////
 public windage(id)
 if(get_pcvar_num(g_cvar_wind))
 {
@@ -1036,6 +1194,31 @@ public fix(id)
 if(get_pcvar_num(g_cvar_wind))
 {
     EF_CrosshairAngle(id, 0.0, 0.0 ); {}
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////HALF-LIFE 1 IMPROVISED WEATHER AND EFFECTS//////////////////////////////////////////////
+public ClCmd_hl_precip(id, level, cid)
+{
+    if (!cmd_access(id,level,cid,1))
+    return PLUGIN_HANDLED
+
+    set_task_ex(3.0, "hl1_effect", 999, .flags = SetTask_Repeat);
+    set_task_ex(1.0, "FlasheS", 435, .flags = SetTask_Repeat);
+    set_task_ex(0.2, "streak", 221, .flags = SetTask_Repeat);
+    set_task_ex(0.3, "streak2", 776, .flags = SetTask_Repeat);
+    set_task_ex(0.1, "streak3", 887, .flags = SetTask_Repeat);
+
+    return PLUGIN_HANDLED
+}
+
+public hl_precip()
+{
+    set_task_ex(5.0, "hl1_effect", 998, .flags = SetTask_Repeat);
+    set_task_ex(random_float(7.0, 15.0), "ring_saturn", 111, .flags = SetTask_Repeat) ;
+    set_task_ex(0.1, "streak", 222, .flags = SetTask_Repeat);
+    set_task_ex(0.1, "streak2", 777, .flags = SetTask_Repeat);
+    set_task_ex(0.1, "streak3", 888, .flags = SetTask_Repeat);
 }
 
 public hl1_effect(Float:Origin[3])  ///was the new fog and snow ground cover with long life but decided to use for zass.
@@ -1438,189 +1621,4 @@ public streak3(Float:Vector[3])
     write_short(random_num(1,3));
     write_short(random_num(3,5));
     message_end();
-}
-
-public set_sky(humi)
-{
-    new phase;
-    new hour[3];
-    get_time("%H", hour, charsmax(hour));
-    g_Ti = str_to_num(hour);
-
-    g_Nn = 12; ///noon
-    //Time of day or night sky setting
-    if (g_Ti == g_Nn - 1 || g_Ti == g_Nn)
-        phase = 2; //NOON
-    else if (g_Ti == g_Up - 1 || g_Ti == g_Up)
-        phase = 1; //SUNRISE
-    else if (g_Ti == g_Dwn - 1 || g_Ti == g_Dwn)
-        phase = 3; //SUNSET
-    else if (g_Ti < g_Up - 1 || g_Ti >= g_Dwn + 1)
-        phase = 4; //NIGHT
-    else if (g_Ti > g_Up + 1 && g_Ti < g_Nn - 1)
-        phase = 0; //DAY
-    else if (g_Ti > g_Nn + 1 && g_Ti < g_Dwn - 1)
-        phase = 0; //DAY
-
-    //Set skies to match the weather.
-    humi <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
-}
-
-public precache_sky(const skyname[])
-{
-    new bool: pres = true;
-    static file[MAX_PLAYERS+2];
-
-    for (new i = 0; i < 6; ++i)
-    {
-        formatex(file, charsmax(file), "gfx/env/%s%s.tga", skyname, g_skysuf[i]);
-        if (file_exists(file))
-            precache_generic(file);
-        else
-        {
-            pres = false;
-            break;
-        }
-    }
-    if (pres)
-        set_cvar_string("sv_skyname", skyname);
-}
-
-public daylight()
-{
-    new sunrise, sunset
-    nvault_get(g_vault, "element", g_element_name, 8);
-
-    //g_temp_min = nvault_get(g_vault, "mintemp");
-    g_temp = nvault_get(g_vault, "temp");
-    g_feel = nvault_get(g_vault, "feelslike");
-
-    //Using sockets feed or CVAR?
-    if(get_pcvar_num(g_cvar_day) > 0)
-    {
-        sunrise = get_pcvar_num(g_cvar_day)
-    }
-    else
-    {
-        sunrise = nvault_get(g_vault, "day")
-        g_Up = sunrise
-        if(g_debugger_on)
-            server_print "Illumination fed sunrise %i", sunrise
-    }
-    if(get_pcvar_num(g_cvar_night) > 0 )
-    {
-        sunset  = get_pcvar_num(g_cvar_night)
-    }
-    else
-    {
-        sunset  = nvault_get(g_vault, "night")
-        g_Dwn  = sunset
-        if(g_debugger_on)
-            server_print "Illumination fed sunset %i", sunset
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    new totalDayLight = (sunset) - sunrise;
-    new serv_time[3];
-    get_time("%H", serv_time, 2);
-
-    new now = str_to_num(serv_time);
-
-    if (get_pcvar_num(g_cvar_time) > 0)
-        now = get_cvar_num("time");
-
-    new light, lightspan = get_pcvar_num(g_cvar_minlight) + 1 - get_pcvar_num(g_cvar_maxlight);
-    //new tempspan = g_temp - g_temp_min;
-    new noon = (totalDayLight / 2) + sunrise;
-    if (now < noon)
-    {
-        if (now < sunrise)
-        {
-            light = get_pcvar_num(g_cvar_minlight);
-            //g_curr_temp = g_temp_min;
-        }
-        else
-        {
-            new prenoon = noon - sunrise;
-            light = get_pcvar_num(g_cvar_minlight) - (now - sunrise) * (lightspan / prenoon);
-            //g_curr_temp = g_temp - (now - sunrise) * (tempspan / prenoon);
-        }
-    }
-    if (now == noon)
-    {
-        light = get_pcvar_num(g_cvar_maxlight);
-        //g_curr_temp = g_temp;
-    }
-    if (now > noon)
-    {
-        if (now > sunset)
-        {
-            light = get_pcvar_num(g_cvar_minlight);
-            //g_curr_temp = g_temp_min;
-        }
-        else
-        {
-            new postnoon = noon - sunrise;
-            light = (now - noon) * (lightspan / postnoon) + get_pcvar_num(g_cvar_maxlight);
-            //g_curr_temp = (now - sunrise) * (tempspan / postnoon) + g_temp_min;
-            if (light > get_pcvar_num(g_cvar_minlight))
-            {
-                light = get_pcvar_num(g_cvar_minlight);
-            }
-        }
-    }
-    if(g_debugger_on > 1)
-    {
-        log_amx("darkness %d", light);
-        log_amx("dark %d phase %d lums %d", get_cvar_num("dark"), light, get_cvar_num("lums"));
-        log_amx("darkness added to max light is %d out of 25 total darkness", light);
-    }
-    fm_set_lights(g_LightLevel[light]);
-    new fogcolor = (get_pcvar_num(g_cvar_minlight) - light) * 10 + 20;
-    new form[12];
-    /*model illumination*/
-    set_cvar_num("sv_skycolor_r", fogcolor);
-    set_cvar_num("sv_skycolor_g", fogcolor);
-    set_cvar_num("sv_skycolor_b", fogcolor);
-    format(form, 12, "%d %d %d", fogcolor, fogcolor, fogcolor);
-    fm_set_kvd(g_fog, "rendercolor", form);
-}
-
-
-public makeFog(amount)
-{
-    if(g_bCSOF)
-    {
-        g_fog = fm_create_entity("env_fog");
-        new Float: density = ( 0.0002 * ( amount - g_cvar_fog )) + 0.001;
-        new dens[7];
-        float_to_str(density, dens, 6);
-        fm_set_kvd(g_fog, "density", dens);
-        fm_set_kvd(g_fog, "rendercolor", "200 200 200");
-    }
-    else
-    {
-        hl_fog();
-        new Zoo = nvault_get(g_vault, "humidity");
-        if ( Zoo < g_cvar_fog )
-            no_snow();
-    }
-    return;
-}
-
-/*DispatchKeyValue*/
-stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
-{
-    if (classname[0])
-        set_kvd(0, KV_ClassName, classname);
-    else
-    {
-        new class[MAX_PLAYERS];
-        pev(entity, pev_classname, class, sizeof class - 1);
-        set_kvd(0, KV_ClassName, class);
-    }
-    set_kvd(0, KV_KeyName, key);
-    set_kvd(0, KV_Value, value);
-    set_kvd(0, KV_fHandled, 0);
-    return dllfunc(DLLFunc_KeyValue, entity, 0);
 }
