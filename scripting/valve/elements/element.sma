@@ -88,7 +88,7 @@ say /news for news*/
 #include <nvault>                /*feed storage Global*/
 #include <xs>
 
-#define VERSION "Fif"
+#define VERSION "5.0.0"
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 #define fm_set_lights(%1)    engfunc(EngFunc_LightStyle, 0, %1)
 
@@ -171,7 +171,7 @@ public plugin_init()
     g_cvar_units = register_cvar("sv_units", "imperial");
     g_cvar_token = register_cvar("sv_openweather-key", "null");
     g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
-    g_cvar_debug = register_cvar("weather_debug", "1");
+    g_cvar_debug = register_cvar("weather_debug", "0");
 
     bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 5.0, .has_max = true, .max_val = 95.0), g_cvar_fog)
 
@@ -399,32 +399,43 @@ if(is_user_connected(id))
     new bool:bDayOver
     new bool:bNightOver
 
-    //g_Up 
     new day_override = get_pcvar_num(g_cvar_day)
-    //g_Dwn 
     new night_override = get_pcvar_num(g_cvar_night)
 
     if(!day_override && !night_override)
     {
         g_sunrise = nvault_get(g_vault, "sunrise");
         bDayOver = false
+
         g_sunset = nvault_get(g_vault, "sunset");
         bNightOver = false
     }
     else
     {
-        client_print(id, print_chat,"Sunrise and sunset are manually set not fed.")
-
         new SzDay[3]
         num_to_str(day_override, SzDay, charsmax(SzDay))
         nvault_set(g_vault, "day", SzDay);
+
+        g_Up  = day_override
         bDayOver = true
 
         new SzNight[3]
         num_to_str(night_override, SzNight, charsmax(SzNight))
         nvault_set(g_vault, "night", SzNight);
+
         bNightOver = true
+        g_Dwn  = night_override 
     }
+
+    if(bDayOver && bNightOver)
+        client_print(id, print_chat,"Sunrise and sunset are manually set not fed.")
+    else if(!bDayOver && bNightOver)
+        client_print(id, print_chat,"Sunset is manually set not fed.")
+    else if(bDayOver && !bNightOver)
+        client_print(id, print_chat,"Sunrise is manually set not fed.")
+    else
+        client_print(id, print_chat,"Lighting is socket fed!")
+    
     /////////////////////////////////////////////////////////////
 
     new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
@@ -551,7 +562,7 @@ public finish_weather(id)
 
     //If Dusk-to-Dawn is manually set or fed.
     if(g_Up && g_Dwn)
-        client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i Rise is %i Set is %i...now is %i", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
+        client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i ^nSunRise hour %i SunSet hour %i...server is on the %i hour.", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog, g_Up, g_Dwn, g_Ti)
     else
     {
         client_print(0, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog is set to %i", g_location, id, g_heat, g_SpeeD, g_DeG, g_cvar_fog)
@@ -1480,11 +1491,12 @@ public daylight()
     //Using sockets feed or CVAR?
     if(get_pcvar_num(g_cvar_day) > 0)
     {
-        sunrise = get_pcvar_num(g_cvar_day)
+        sunrise = get_pcvar_num(g_cvar_day) 
     }
     else
     {
-        sunrise = nvault_get(g_vault, "day")
+        sunrise = nvault_get(g_vault, "day") 
+        g_Up = sunrise
         if(g_debugger_on)
             server_print "Illumination fed sunrise %i", sunrise
     }
@@ -1495,6 +1507,7 @@ public daylight()
     else
     {
         sunset  = nvault_get(g_vault, "night")
+        g_Dwn  = sunset
         if(g_debugger_on)
             server_print "Illumination fed sunset %i", sunset
     }
