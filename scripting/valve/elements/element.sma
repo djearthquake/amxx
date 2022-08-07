@@ -15,12 +15,11 @@
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-//https://sunrise-sunset.org/api might be easier!!
 /*Elements☀ ☁ ☂ ☃ ☉ ☼ ☽ ☾ ♁ ♨ ❄ ❅ ❆ ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗  ♘ ♞ ϟ THIS IS COPYLEFT!!◐  ◖   ◒   ◕   ◑   ◔   ◗   ◓
 *
 *
 *https://github.com/djearthquake/amxx/tree/main/scripting/valve/elements
-*
+* API if you need more data on lighting: https://sunrise-sunset.org/api
 *
 * PLUGIN WAS A FORK FROM AUTOWEATHER. DAY 1 PORTED TO YAHOO. PLANNED ON WIND FACTOR FOR SNIPE AND AFTER YAHOO HACK I MADE IT HAPPEN WITH OPENWEATHER TOKEN API.
 * Just make an alias in server.cfg so you can swap cities by typing and name or loading as cs_italy to Italy or dod_charlie to France and so on etc.
@@ -117,6 +116,7 @@ new g_SzUnits[16]
 
 new bool:bCompassOn[MAX_PLAYERS +1];
 new bool:bTokenOkay
+new bool:g_bCSOF
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,12 +137,12 @@ enum {
     DODW_SPADE,
     DODW_BRITKNIFE
 };
+
 new const CvarFogDesc[]="Weather fog perentage."
 public plugin_init()
 {
     register_plugin("Elements", VERSION, ".sρiηX҉.");
     register_cvar("element_version", VERSION, FCVAR_SERVER);
-
 
     RegisterHam(Ham_Player_Duck, "player", "fix");
     RegisterHam(Ham_TakeDamage, "player", "windage");
@@ -211,6 +211,9 @@ public plugin_init()
     g_Method = get_pcvar_num(g_pcvar_method)
 
     if(cstrike_running() || is_running("gearbox") == 1)
+        g_bCSOF = true
+
+    if(g_bCSOF)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "compass_tic", 1)
 
     if(is_running("valve") == 1 )
@@ -248,9 +251,10 @@ public plugin_cfg()
 {
     if(is_user_alive(id))
     {
-        /*new wpnid = get_user_weapon(id)
-       if ( wpnid == DODW_AMERKNIFE || wpnid == DODW_BRITKNIFE || wpnid == DODW_GERKNIFE || wpnid == DODW_SPADE )*/
-
+        /*
+        new wpnid = get_user_weapon(id)
+        if ( wpnid == DODW_AMERKNIFE || wpnid == DODW_BRITKNIFE || wpnid == DODW_GERKNIFE || wpnid == DODW_SPADE )
+        */
         {
             if (get_user_button(id) & IN_ATTACK)
             {
@@ -273,7 +277,7 @@ public plugin_cfg()
 
 public ClCmd_NewS(id, level, cid)
 {
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if(g_bCSOF)
     {
         new motd[MAX_CMD_LENGTH];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=http://www.SRNLive.com/listen.html'><body BGCOLOR='#FFFFFF'><br><center>Loading</center></html>");
@@ -283,7 +287,7 @@ public ClCmd_NewS(id, level, cid)
 
 public ClCmd_TemP(id, level, cid)
 {
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if(g_bCSOF)
     {
         new motd[MAX_USER_INFO_LENGTH];
         format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://google.com/search?q=weather'><body BGCOLOR='#FFFFFF'><br><center>If we can not determine your country off your IP then this will display generic weather page...</center></html>");
@@ -340,13 +344,13 @@ public needan(id)
 
     if (equal(token, "null"))
     {
-        if ( cstrike_running() || (is_running("dod") == 1)  )
+        if(g_bCSOF)
         {
             new motd[MAX_CMD_LENGTH];
             format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-key detected.</center></html>");
             show_motd(id, motd, "Invalid 32-bit API key!");
         }
-        if ( cstrike_running() || (is_running("dod") == 1)  ) return;
+        if(g_bCSOF) return;
         client_print(id,print_chat,"Check your API key validity!")
         client_print(id,print_center,"Null sv_openweather-key detected.")
         client_print(id,print_console,"Get key from openweathermap.org/appid.")
@@ -379,7 +383,7 @@ public showinfo(id)
         nvault_get(g_vault, "element", g_element_name, 8);
         client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
     
-        if ( cstrike_running() || (is_running("dod") == 1)  )
+        if(g_bCSOF)
         {
             show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
             g_element_name[g_element], g_hum, g_cvar_fog);
@@ -520,7 +524,7 @@ public ClCmd_get_element(id, level, cid)
         if(g_debugger_on)
             log_amx("Starting the sockets routine...");
 
-        //stock has_flag(id, const flags[])
+
         new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], uplink[26], region[63], units[9], token[33];
         get_pcvar_string(g_cvar_region, region, charsmax (region));
         get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
@@ -849,7 +853,7 @@ public makeelement()
     if ( humi >  g_cvar_fog )
         makeFog(humi);
 
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if(g_bCSOF)
     switch (e)
     {
         case 2:
@@ -877,7 +881,7 @@ public HoS()
 
 public HL_WeatheR()
 {
-    if ( cstrike_running() || (is_running("dod") == 1)  ) return;
+    if(g_bCSOF) return;
 
     new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
@@ -1596,7 +1600,7 @@ public daylight()
 
 public makeFog(amount)
 {
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if(g_bCSOF)
     {
         g_fog = fm_create_entity("env_fog");
         new Float: density = ( 0.0002 * ( amount - g_cvar_fog )) + 0.001;
