@@ -106,8 +106,8 @@ new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_curr_temp, g_temp_min, g_element, g_hum, g_heat, g_code, g_visi;
-new g_Epoch, g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog, g_Dawn, g_Dusk; //g_TimeH, g_Now
-new g_vault, g_figure, g_Nfig, g_Nn, g_Up, g_Dwn, g_Ti;
+new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog;
+new g_vault, g_Nn, g_Up, g_Dwn, g_Ti,  g_debugger_on;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
 new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
@@ -236,6 +236,8 @@ public plugin_cfg()
         g_Dwn = get_pcvar_num(g_cvar_night)
 
     !g_Up && !g_Dwn ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
+    
+    g_debugger_on = get_pcvar_num(g_cvar_debug)
 }
 
 @dod(id)
@@ -422,14 +424,14 @@ if(is_user_connected(id))
 
     format_time(SzSunRise, charsmax(SzSunRise), "%m/%d/%Y - %H:%M:%S", g_sunrise);
 
-    if(get_pcvar_num(g_cvar_debug))
+    if(g_debugger_on)
         server_print "Sunrise is %s",  SzSunRise
     
     client_print id, print_chat,"Sunrise is on %s.", SzSunRise
     
     format_time(SzSunSet, charsmax(SzSunSet), "%m/%d/%Y - %H:%M:%S", g_sunset);
 
-    if(get_pcvar_num(g_cvar_debug))
+    if(g_debugger_on)
         server_print "Sunset is %s", SzSunSet
 
     client_print id, print_chat,"Sunset is on %s.", SzSunSet
@@ -449,7 +451,8 @@ if(is_user_connected(id))
     {
         format_time(SzSunRise, charsmax(SzSunRise), "%H", g_sunrise);
         nvault_set(g_vault, "night", SzSunRise);
-        server_print "%s vaulted sunrise ", SzSunRise
+        if(g_debugger_on)
+            server_print "%s vaulted sunrise ", SzSunRise
     }
 
     if(iMorningoverride)
@@ -462,7 +465,8 @@ if(is_user_connected(id))
     {
         format_time(SzSunSet, charsmax(SzSunSet), "%H", g_sunset);
         nvault_set(g_vault, "night", SzSunSet);
-        server_print "%s vaulted sunset", SzSunSet
+        if(g_debugger_on)
+            server_print "%s vaulted sunset", SzSunSet
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -482,7 +486,7 @@ public ClCmd_get_element(id, level, cid)
 {
     if (is_user_admin(id))
     {
-        if(get_pcvar_num(g_cvar_debug))
+        if(g_debugger_on)
             log_amx("Starting the sockets routine...");
 
         //stock has_flag(id, const flags[])
@@ -495,7 +499,7 @@ public ClCmd_get_element(id, level, cid)
         format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
         write_web(constring);
 
-        if(get_pcvar_num(g_cvar_debug))
+        if(g_debugger_on)
         {
             log_amx("This is where we are trying to get weather from");
             log_amx(constring);
@@ -552,7 +556,7 @@ public finish_weather(id)
 
 public get_element()
 {
-    if(get_pcvar_num(g_cvar_debug))
+    if(g_debugger_on)
         log_amx "Starting the sockets routine..."
 
     new numplayers = get_playersnum_ex(GetPlayersFlags:GetPlayers_ExcludeBots);
@@ -570,7 +574,7 @@ public get_element()
         format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
 
         write_web(constring);
-        if(get_pcvar_num(g_cvar_debug))
+        if(g_debugger_on)
         {
             log_amx("This is where we are trying to get weather from");
             log_amx(constring);
@@ -592,7 +596,7 @@ public write_web(text[MAX_USER_INFO_LENGTH])
 
 public read_web()
 {
-    if(get_pcvar_num(g_cvar_debug))
+    if(g_debugger_on)
         server_print("reading the web")
     new buf[668];
     if (socket_is_readable(g_sckelement, 100000))
@@ -606,10 +610,10 @@ public read_web()
         {
             new out[MAX_PLAYERS];
             copyc(out, 24, buf[containi(buf, "name") + 7], '"');
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 server_print("writing the name")
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Location: %s", out);
 
             nvault_set(g_vault, "location", out);
@@ -624,7 +628,7 @@ public read_web()
             replace(out, 6, ":", "");
             replace(out, 6, ",", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Temperature: %s", out);
 
             nvault_set(g_vault, "heat", out);
@@ -638,7 +642,7 @@ public read_web()
             replace(out, 4, ",", "");
             replace(out, 4, "}", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("High of: %s", out);
 
             nvault_set(g_vault, "maxtemp", out);
@@ -652,7 +656,7 @@ public read_web()
             copyc(out, 4, buf[containi(buf, "temp_min") + 10], '"');
             replace(out, 4, ",", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Low of: %s", out);
 
             nvault_set(g_vault, "mintemp", out);
@@ -665,7 +669,7 @@ public read_web()
             replace(out, charsmax(out), ",", "");
             replace(out, charsmax(out), ":", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Visibility: %s", out);
 
             nvault_set(g_vault, "visi", out);
@@ -677,7 +681,7 @@ public read_web()
             copyc(out, 6, buf[containi(buf, "humidity") + 10], '"');
             replace(out, 6, ",", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Humidity: %s", out);
 
             nvault_set(g_vault, "humidity", out);
@@ -689,7 +693,7 @@ public read_web()
             copy(out, 10, buf[containi(buf, "sunrise") + 9]);
             replace(out, charsmax(out), ",", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Sunrise: %s", out);
 
             nvault_set(g_vault, "sunrise", out);
@@ -702,7 +706,7 @@ public read_web()
             replace(out, 3, "&", "");
             replace(out, 3, "}", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Deg: %s", out);
 
             nvault_set(g_vault, "deg", out);
@@ -716,7 +720,7 @@ public read_web()
             replace(out, 5, ":", "");
             replace(out, 5, ",", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Speed: %s", out);
 
             nvault_set(g_vault, "speed", out);
@@ -730,7 +734,7 @@ public read_web()
             copy(out, 10, buf[containi(buf, "sunset") + 8]);
             replace(out, charsmax(out), "}", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Sunset: %s", out);
 
             nvault_set(g_vault, "sunset", out);
@@ -743,7 +747,7 @@ public read_web()
             replace(out, 3, "&", "");
             replace(out, 3, "#", "");
 
-            if(get_pcvar_num(g_cvar_debug))
+            if(g_debugger_on)
                 log_amx("Code: %s", out);
 
             nvault_set(g_vault, "code", out);
@@ -894,7 +898,7 @@ public compass_tic(iPlayerIndex)
     new id = pev(iPlayerIndex,pev_owner)
     if(is_user_connected(id))
     {
-        if(get_pcvar_num(g_cvar_debug) > 1)
+        if(g_debugger_on > 1)
             server_print "%n compass", id
         bCompassOn[id] = true
         if(get_pcvar_num(g_pcvar_compass))
@@ -906,7 +910,7 @@ public Compass(id)
 {
     if(!is_user_bot(id) && is_user_alive(id) && bCompassOn[id])
     {
-        if(get_pcvar_num(g_cvar_debug) > 1)
+        if(g_debugger_on > 1)
             server_print "%n compass on", id
 
         ///Compass code by Tirant
@@ -1471,7 +1475,8 @@ public daylight()
     else
     {
         sunrise = nvault_get(g_vault, "day")
-        server_print "Fed sunrise %i", sunrise
+        if(g_debugger_on)
+            server_print "Illumination fed sunrise %i", sunrise
     }
     if(get_pcvar_num(g_cvar_night) > 0 )
     {
@@ -1480,7 +1485,8 @@ public daylight()
     else
     {
         sunset  = nvault_get(g_vault, "night")
-        server_print "Fed sunset %i", sunset
+        if(g_debugger_on)
+            server_print "Illumination fed sunset %i", sunset
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1533,7 +1539,7 @@ public daylight()
             }
         }
     }
-    if(get_pcvar_num(g_cvar_debug) > 1)
+    if(g_debugger_on > 1)
     {
         log_amx("darkness %d", light);
         log_amx("dark %d phase %d lums %d", get_cvar_num("dark"), light, get_cvar_num("lums"));
