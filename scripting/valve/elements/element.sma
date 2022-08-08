@@ -178,7 +178,7 @@ public plugin_init()
     g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
     g_cvar_debug = register_cvar("weather_debug", "0");
 
-    bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 5.0, .has_max = true, .max_val = 95.0), g_cvar_fog)
+    bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 100.0), g_cvar_fog)
 
     register_cvar("element_hud", "200");
     register_clcmd("say /temp", "showinfo");
@@ -799,13 +799,13 @@ stock code_to_weather(iWeather_code)
         g_env = 1;
         g_element = 2;
     }
-   // Group 7xx: Atmosphere
+    // Group 7xx: Atmosphere
     if (iWeather_code >= 701 && iWeather_code<= 762)
     {
         g_env = 1;
         g_element = 2;
     }
-   //Group 80x: Clouds
+    //Group 80x: Clouds
     if (g_code == 804)
     {
         g_element = 3;
