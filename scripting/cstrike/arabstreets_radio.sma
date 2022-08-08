@@ -193,7 +193,7 @@ public pfn_keyvalue( ent )
         if(!equali(mapname,"cs_arabstreets"))
             pause "a"
 
-        ///DispatchKeyValue("message", "") //void
+        ///DispatchKeyValue("message", "") //voids what is now sheep sound
         DispatchKeyValue("message", SzAmbientFilePath) //adding sheep as Hollywood makes us think there are always sheep noises in background.
 
         @speaker() //replace
@@ -211,56 +211,12 @@ public pfn_keyvalue( ent )
     if(equali(Classname,"func_breakable") && equali(key,"health") && equali(value,"1" ))
     {
         //churchy glass window
-        // DispatchKeyValue("health", "2022")
+        //DispatchKeyValue("health", "2022")
         //DispatchKeyValue("spawnobject", "1") //make armor
         DispatchKeyValue("spawnflags", "1") //unbreakable
         //DispatchKeyValue("targetname", "hostage_window")
         //DispatchKeyValue("explodemagnitude", "500")
         //DispatchKeyValue("gibmodel", battery)
     }
-/*
-    if(equali(Classname,"func_breakable") && equali(key,"spawnflags") && equali(value,"1" ))
-    {
-        //want hostie room
-        //DispatchKeyValue("spawnflags", "1")
-        //DispatchKeyValue("health", "2022")
-        DispatchKeyValue("targetname", "hostage_window")
-        //DispatchKeyValue("spawnflags", "1")
-        //DispatchKeyValue("explodemagnitude", "1500")
-        //DispatchKeyValue("gibmodel", battery)
-        //DispatchKeyValue("spawnobject", "1") //make armor
-    }
-*/
+
 }
-        /*
-        //https://twhl.info/wiki/page/ambient_generic
-        ///////////////////////////////////////////////////////////////////////////////////
-        None (0) - Does not use a preset, and will not override any other entity attributes.
-        Huge Machine (1) - Very long spin up, starting slow and getting fast. Very long spin down.
-        Big Machine (2) - Medium spin up, starting normal and getting fast. Long spin down.
-        Machine (3) - Quick spin up, starting normal and getting fast. Quick spin down.
-        Slow Fade in (4) - Slow fade in/out.
-        Fade in (5) - Medium fade in/out.
-        Quick Fade in (6) - Quick fade in/out.
-        Slow Pulse (7) - Slow pulsing speed. Quick fade out.
-        Pulse (8) - Pulsing speed. Quick fade out.
-        Quick Pulse (9) - Quick pulsing speed. Quick fade out.
-        Slow Oscillator (10) - Slow oscillation between normal and slow speed. Quick fade out.
-        Oscillator (11) - Medium oscillation between normal and slow speed. Quick fade out.
-        Quick Oscillator (12) - Fast oscillation between normal and slow speed. Quick fade out.
-        Grunge pitch (13) - Extremely slow. Quick fade out.
-        Very low pitch (14) - Very slow. Quick fade out.
-        Low pitch (15) - Slow. Quick fade out.
-        High pitch (16) - Fast. Quick fade out.
-        Very high pitch (17) - Very fast. Quick fade out.
-        Screaming pitch (18) - Extremely fast. Quick fade out.
-        Oscillate spinup/down (19) - Medium oscillation, with long spin up from slow to fast. Long spin down.
-        Pulse spinup/down (20) - Slow pulse, with long spin up from slow to fast. Long spin down.
-        Random pitch (21) - Occasionally switches speed, tending towards slower speeds. Quick fade out.
-        Random pitch fast (22) - Rapidly switches speed, tending towards faster speeds. Quick fade out.
-        Incremental Spinup (23) - Quick spin up. Subsequent triggers will not toggle, but will spin up from existing speed, up to five times. Cannot be turned off.
-        Alien (24) - Unusual pulsing and switching speed. Quick fade out.
-        Bizzare (25) - Fast oscillation between fast and slow/silent. Quick fade out.
-        Planet X (26) - Medium switching between slower speeds, similar to "Random pitch". Quick fade out.
-        Haunted (27) - Slow switch between normal and slow speed. Quick fade out.
-        */
