@@ -4,14 +4,16 @@
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 
 #define PLUGIN "Rain, random"
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define AUTHOR "SPiNX"
 
-new const SzCloudySky[]="de_storm"
+#define MAX_NAME_LENGTH            32
+#define MAX_PLAYERS                         32
 
-new Float:g_fNextStep[33];
 
-new bool:b_Is_raining
+new Float:g_fNextStep[MAX_PLAYERS + 1];
+
+new bool:b_Is_raining, g_cvar_sky
 
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 
@@ -35,17 +37,28 @@ public plugin_init()
 public plugin_precache()
 {
     register_cvar("rain_version", VERSION, FCVAR_SERVER);
+    g_cvar_sky = register_cvar("sv_rain_sky", "de_storm")
     new iChance = get_systime()
     new iRandom_chance = random(iChance)
 
     if(iRandom_chance > iChance/2)
     {
         fm_create_entity("env_rain")
-        server_cmd "sv_skyname %s", SzCloudySky
+        new SzCloudySky[MAX_NAME_LENGTH]
+        get_pcvar_string(g_cvar_sky, SzCloudySky, charsmax(SzCloudySky))
+        set_cvar_string("sv_skyname", SzCloudySky);
         b_Is_raining = true
-        /////////////////////////////////////
+
         for(new i = 0; i < MAX_SOUNDS ; i++)
             precache_sound(g_szStepSound[i]);
+
+        const OFFSET_AMBIENCE = (1<<0);
+        precache_sound("ambience/rain.wav");
+        new entity = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "ambient_generic"));
+        set_pev(entity, pev_health, 10.0);
+        set_pev(entity, pev_message,"ambience/rain.wav");
+        set_pev(entity, pev_spawnflags, OFFSET_AMBIENCE);
+        dllfunc(DLLFunc_Spawn, entity);
     }
 
 }
@@ -96,11 +109,11 @@ public fwd_PlayerPreThink(id)
         //stop buzzing sound at crawl
         if(Button & IN_FORWARD && (OldButton & IN_FORWARD && fSpeed < 50.0 ))
             return FMRES_IGNORED;
-
         if(g_fNextStep[id] < get_gametime() || Button & IN_JUMP && (OldButton & IN_FORWARD) && pev(id, pev_flags) & FL_ONGROUND)
         {
+            static Float:EMIT_VOLUME = 0.45
             if(fm_get_ent_speed(id) && (pev(id, pev_flags) & FL_ONGROUND) && is_user_outside(id))
-                emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
+                emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], EMIT_VOLUME, ATTN_STATIC, 0, PITCH_NORM);
 
             g_fNextStep[id] =get_gametime() + STEP_DELAY
         }
