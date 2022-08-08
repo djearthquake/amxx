@@ -104,7 +104,7 @@ say /news for news
 #define SKYSUNSET     3
 #define SKYNIGHT       4
 
-new sprLightning, sprFlare6, g_F0g, g_Saturn, g_TesteD; /*Half-Life Fog v.1 2019*/
+new sprLightning, sprFlare6, g_F0g, g_Saturn, g_SzRainSprite; /*Half-Life Fog v.1 2019*/
 
 new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
 new const g_DirNames[4][] = { "N", "E", "S", "W" }
@@ -276,7 +276,7 @@ public plugin_precache()
     g_F0g = precache_model("sprites/ballsmoke.spr");
     sprFlare6 = precache_model("sprites/Flare6.spr");
     g_Saturn = precache_model("sprites/zerogxplode.spr");
-    g_TesteD = precache_model("sprites/rain.spr");
+    g_SzRainSprite = precache_model("sprites/rain.spr");
 
     sprLightning = precache_model("sprites/lightning.spr");
 
@@ -865,6 +865,7 @@ public makeelement()
     {
         case 2:
         {
+            b_Is_raining = true
             fm_create_entity("env_rain");
             const OFFSET_AMBIENCE = (1<<0);
             precache_sound("ambience/rain.wav");
@@ -1628,13 +1629,13 @@ public streak(Float:Vectors[3])
 
     ///SPLASH UP or STEAM from RAIN
     new Float:Vectorsa[3];
-    message_begin(MSG_BROADCAST, SVC_TEMPENTITY);  //want reliable to all as it looks stupid otherwise
+    message_begin(MSG_ALL, SVC_TEMPENTITY);  //want reliable to all as it looks stupid otherwise
     write_byte(TE_LARGEFUNNEL)
     engfunc(EngFunc_WriteCoord,Vectorsa[0] + PRECIPX);
     engfunc(EngFunc_WriteCoord,Vectorsa[1] + PRECIPY);
     engfunc(EngFunc_WriteCoord,Vectorsa[2] + PRECIPZ);
 
-    write_short(g_TesteD) ///(g_F0g)
+    write_short(g_SzRainSprite) ///(g_F0g)
     write_short(0) //was 2 for reverse funnel
     message_end()
 }
