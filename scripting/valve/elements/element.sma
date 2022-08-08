@@ -51,7 +51,7 @@ sv_units <metric|imperial>  | Simply pick what unit you prefer for weather readi
 
 CL_COMMANDS
 
-say /temp, /weather, or /climate   - displays weather feed
+say /temp, /time, /weather, or /climate   - displays weather feed
 say /mytemp for local temp
 say /news for news
 */
@@ -98,6 +98,12 @@ say /news for news
 #define MAX_CMD_LENGTH             128
 #define MAX_USER_INFO_LENGTH       256
 
+#define SKYDAY           0
+#define SKYRISE           1
+#define SKYNOON       2
+#define SKYSUNSET     3
+#define SKYNIGHT       4
+
 new sprLightning, sprFlare6, g_F0g, g_Saturn, g_TesteD; /*Half-Life Fog v.1 2019*/
 
 new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
@@ -107,7 +113,7 @@ new DirSymbol[MAX_PLAYERS] = "----<>----"
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_code, g_visi;
 new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog;
-new g_vault, g_Nn, g_Up, g_Dwn, g_Ti,  g_debugger_on, g_feel;
+new g_vault, g_SunUpHour, g_SunDownHour, g_iHour,  g_debugger_on, g_feel;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
 new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
@@ -138,7 +144,17 @@ enum {
     DODW_SPADE,
     DODW_BRITKNIFE
 };
+new Float:g_fNextStep[MAX_PLAYERS + 1];
 
+new bool:b_Is_raining
+#define MAX_SOUNDS 4
+new const g_szStepSound[MAX_SOUNDS][] =
+{
+    "player/pl_slosh1.wav",
+    "player/pl_slosh2.wav",
+    "player/pl_slosh3.wav",
+    "player/pl_slosh4.wav"
+};
 new const CvarFogDesc[]="Weather fog perentage."
 public plugin_init()
 {
@@ -206,6 +222,10 @@ public plugin_init()
     if(task_exists(16))return;
     set_task_ex(3.0, "daylight", 16, .flags = SetTask_Repeat); //One can set it longer but it really does not optimize much.
 
+    //custom footsteps
+    if(b_Is_raining)
+        register_forward(FM_PlayerPreThink, "fwd_PlayerPreThink", 0);
+
     ///compass
     g_pcvar_compass = register_cvar("amx_compass", "1");
     g_pcvar_method = register_cvar("amx_compass_method", "2");
@@ -238,12 +258,12 @@ public plugin_cfg()
 
     //Are Sunrise and Sunset on CVAR override?
     if(get_pcvar_num(g_cvar_day))
-        g_Up = get_pcvar_num(g_cvar_day)
+        g_SunUpHour = get_pcvar_num(g_cvar_day)
 
     if(get_pcvar_num(g_cvar_night))
-        g_Dwn = get_pcvar_num(g_cvar_night)
+        g_SunDownHour = get_pcvar_num(g_cvar_night)
 
-    !g_Up && !g_Dwn ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
+    !g_SunUpHour && !g_SunDownHour ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
 
     g_debugger_on = get_pcvar_num(g_cvar_debug)
 }
@@ -360,7 +380,7 @@ public needan(id)
 public display_info(id)
 if(is_user_connected(id))
 {
-    client_print(id, print_chat, "Say climate, temp, or weather for conditions.");
+    client_print(id, print_chat, "Say /climate, /time, /temp, or /weather for conditions.");
     client_print(id, print_chat, "Humidity, Clouds, Sunrise/Sunset all effect visibility.");
 }
 
@@ -422,7 +442,7 @@ if(is_user_connected(id))
         num_to_str(day_override, SzDay, charsmax(SzDay))
         nvault_set(g_vault, "day", SzDay);
 
-        g_Up  = day_override
+        g_SunUpHour  = day_override
         bDayOver = true
 
         new SzNight[3]
@@ -430,7 +450,7 @@ if(is_user_connected(id))
         nvault_set(g_vault, "night", SzNight);
 
         bNightOver = true
-        g_Dwn  = night_override
+        g_SunDownHour  = night_override
     }
 
     if(bDayOver && bNightOver)
@@ -496,10 +516,10 @@ if(is_user_connected(id))
 
     //Setting for skies
     if(!bDayOver)
-        g_Up = str_to_num(SzSunRise)
+        g_SunUpHour = str_to_num(SzSunRise)
 
     if(!bNightOver)
-        g_Dwn = str_to_num(SzSunSet)
+        g_SunDownHour = str_to_num(SzSunSet)
 
 }
 
@@ -563,14 +583,14 @@ public finish_weather(id)
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
 
     //If Dusk-to-Dawn is manually set or fed.
-    if(g_Up && g_Dwn)
+    if(g_SunUpHour && g_SunDownHour)
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
-        client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_Up, g_Dwn-12, g_Ti )
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i mph at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_SunUpHour, g_SunDownHour-12, g_iHour )
     }
     else
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i mph at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
         epoch_clock(id);
     }
 
@@ -722,7 +742,6 @@ public read_web()
             nvault_set(g_vault, "deg", out);
             g_DeG = str_to_num(out);
         }
-
         if (containi(buf, "speed") != -1)
         {
             new out[MAX_IP_LENGTH];
@@ -847,6 +866,13 @@ public makeelement()
         case 2:
         {
             fm_create_entity("env_rain");
+            const OFFSET_AMBIENCE = (1<<0);
+            precache_sound("ambience/rain.wav");
+            new entity = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "ambient_generic"));
+            set_pev(entity, pev_health, 10.0);
+            set_pev(entity, pev_message,"ambience/rain.wav");
+            set_pev(entity, pev_spawnflags, OFFSET_AMBIENCE);
+            dllfunc(DLLFunc_Spawn, entity);
         }
         case 3:
         {
@@ -878,6 +904,14 @@ public HL_WeatheR()
         case 2:
         {
             hl_precip();
+            b_Is_raining = true
+            const OFFSET_AMBIENCE = (1<<0);
+            precache_sound("ambience/rain.wav");
+            new entity = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "ambient_generic"));
+            set_pev(entity, pev_health, 10.0);
+            set_pev(entity, pev_message,"ambience/rain.wav");
+            set_pev(entity, pev_spawnflags, OFFSET_AMBIENCE);
+            dllfunc(DLLFunc_Spawn, entity);
         }
         case 3:
         {
@@ -886,6 +920,7 @@ public HL_WeatheR()
         case 4:
         {
             hl_precip()
+            b_Is_raining = true
             hl_snow();
         }
     }
@@ -897,22 +932,28 @@ public set_sky(humi)
     new phase;
     new hour[3];
     get_time("%H", hour, charsmax(hour));
-    g_Ti = str_to_num(hour);
+    g_iHour = str_to_num(hour);
 
-    g_Nn = 12; ///noon
+    new iNoon = 12;
+
     //Time of day or night sky setting
-    if (g_Ti == g_Nn - 1 || g_Ti == g_Nn)
-        phase = 2; //NOON
-    else if (g_Ti == g_Up - 1 || g_Ti == g_Up)
-        phase = 1; //SUNRISE
-    else if (g_Ti == g_Dwn - 1 || g_Ti == g_Dwn)
-        phase = 3; //SUNSET
-    else if (g_Ti < g_Up - 1 || g_Ti >= g_Dwn + 1)
-        phase = 4; //NIGHT
-    else if (g_Ti > g_Up + 1 && g_Ti < g_Nn - 1)
-        phase = 0; //DAY
-    else if (g_Ti > g_Nn + 1 && g_Ti < g_Dwn - 1)
-        phase = 0; //DAY
+    if (g_iHour >= g_SunUpHour - 1|| g_iHour ==g_SunUpHour|| g_iHour <= g_SunUpHour + 2)
+        phase = SKYRISE ;
+
+    else if (g_iHour > g_SunUpHour + 2 && g_iHour < iNoon - 1)
+        phase = SKYDAY; //MORNING DAY
+
+    else if (g_iHour >= iNoon - 1 || g_iHour == iNoon || g_iHour <= iNoon + 1)
+        phase = SKYNOON ;
+
+    else if (g_iHour > iNoon + 2 && g_iHour < g_SunDownHour - 1)
+        phase = SKYDAY; //AFTERNOON DAY
+
+    else if (g_iHour == g_SunDownHour - 1 || g_iHour == g_SunDownHour || g_iHour == g_SunDownHour + 2)
+        phase = SKYSUNSET;
+
+    else if (g_iHour < g_SunUpHour - 1 || g_iHour >= g_SunDownHour + 2)
+        phase =  SKYNIGHT;
 
     //Set skies to match the weather.
     humi <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
@@ -955,7 +996,7 @@ public daylight()
     else
     {
         sunrise = nvault_get(g_vault, "day")
-        g_Up = sunrise
+        g_SunUpHour = sunrise
         if(g_debugger_on)
             server_print "Illumination fed sunrise %i", sunrise
     }
@@ -966,7 +1007,7 @@ public daylight()
     else
     {
         sunset  = nvault_get(g_vault, "night")
-        g_Dwn  = sunset
+        g_SunDownHour  = sunset
         if(g_debugger_on)
             server_print "Illumination fed sunset %i", sunset
     }
@@ -1074,7 +1115,82 @@ stock fm_set_kvd(entity, const key[], const value[], const classname[] = "")
     set_kvd(0, KV_fHandled, 0);
     return dllfunc(DLLFunc_KeyValue, entity, 0);
 }
+public fwd_PlayerPreThink(id)
+{
+    new Float:STEP_DELAY
+    if(b_Is_raining)
+    {
+        if(!is_user_alive(id))
+            return FMRES_IGNORED;
 
+        if(!is_user_outside(id))
+            return FMRES_IGNORED;
+
+        set_pev(id, pev_flTimeStepSound, 999);
+
+        new Float:fSpeed = fm_get_ent_speed(id)
+        /*3 steps fast slow or none*/
+
+        if(fSpeed < 150.0 && fSpeed > 50.0) //lurk
+            STEP_DELAY = 1.0
+
+        else if(fSpeed > 75.0 &&fSpeed <= 150.0  ) //march
+            STEP_DELAY = 0.5
+
+        else if (fSpeed >= 150.0 ) //run
+            STEP_DELAY = 0.33
+
+        else if (fSpeed < 20.0) //stealth
+            set_task(0.5,"@stop_snd", id)
+
+        new Button = pev(id,pev_button),OldButton = pev(id,pev_oldbuttons);
+
+        //stop buzzing sound at crawl
+        if(Button & IN_FORWARD && (OldButton & IN_FORWARD && fSpeed < 50.0 ))
+            return FMRES_IGNORED;
+        if(g_fNextStep[id] < get_gametime() || Button & IN_JUMP && (OldButton & IN_FORWARD) && pev(id, pev_flags) & FL_ONGROUND)
+        {
+            static Float:EMIT_VOLUME = 0.45
+            if(fm_get_ent_speed(id) && (pev(id, pev_flags) & FL_ONGROUND) && is_user_outside(id))
+                emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], EMIT_VOLUME, ATTN_STATIC, 0, PITCH_NORM);
+
+            g_fNextStep[id] =get_gametime() + STEP_DELAY
+        }
+
+    }
+    return FMRES_IGNORED;
+}
+
+@stop_snd(id)
+if(!fm_get_ent_speed(id))
+    emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, SND_STOP, PITCH_NORM)
+
+stock Float:fm_get_ent_speed(id)
+{
+    if(!pev_valid(id))
+        return 0.0;
+
+    static Float:vVelocity[3];
+    pev(id, pev_velocity, vVelocity);
+
+    vVelocity[2] = 0.0;
+
+    return vector_length(vVelocity);
+}
+
+stock Float:is_user_outside(id)
+{
+    new Float:vOrigin[3], Float:fDist;
+    pev(id, pev_origin, vOrigin);
+    fDist = vOrigin[2];
+
+    while(engfunc(EngFunc_PointContents, vOrigin) == CONTENTS_EMPTY)
+        vOrigin[2] += 5.0;
+
+    if(engfunc(EngFunc_PointContents, vOrigin) == CONTENTS_SKY)
+        return (vOrigin[2] - fDist);
+    return 0.0;
+}
 /////////////////////////////////////////////////////COMPASS///////////////////////////////////////////////////////////////////
 public compass_tic(iPlayerIndex)
 {
