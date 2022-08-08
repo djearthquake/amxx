@@ -15,45 +15,47 @@
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#define PLUGIN "Element"
+#define VERSION "5.0.1"
 /*Elements☀ ☁ ☂ ☃ ☉ ☼ ☽ ☾ ♁ ♨ ❄ ❅ ❆ ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗  ♘ ♞ ϟ THIS IS COPYLEFT!!◐  ◖   ◒   ◕   ◑   ◔   ◗   ◓
 *
 *
 *https://github.com/djearthquake/amxx/tree/main/scripting/valve/elements
 * API if you need more data on lighting: https://sunrise-sunset.org/api
 *
-* PLUGIN WAS A FORK FROM AUTOWEATHER. DAY 1 PORTED TO YAHOO. PLANNED ON WIND FACTOR FOR SNIPE AND AFTER YAHOO HACK I MADE IT HAPPEN WITH OPENWEATHER TOKEN API.
-* Just make an alias in server.cfg so you can swap cities by typing and name or loading as cs_italy to Italy or dod_charlie to France and so on etc.
-*
-* alias az "region 5745656"
-*
-* alias neutral "exec element.cfg"
-* neutral
-* element.cfg
-* time 0
-* lums 0
-* dark 18
+* 
+Changelog
+ * --------------
+ * August 2014 - August 2022 v1 - 5.00 | Went from BCC weather to Yahoo to Openweathermap. Added HL weather, a compass, and windage, as well as slowly advance the script and fix many bugs from fork like the feed and optimizing sockets and human readable debugging.
+ * Aug 8 2022 v5.0.0 - 5.0.1 |Remove uplink CVAR, bound debugger, see why HL fog is starting out of turn from expanded debugger. Adjusted socket feed copy of windage speed.
+ * 
 *
 *
 ☼
 ◖ ◗
 ϟ
 CVARS:
-dark    <0-25> D: 24| The higher the number, the darker after sunset.
-lums    <0-25> D: 0 | The lower the number, the brighter it gets at noon.
-time    <0-24> D: 0 | Manually sets timeOday 0 = off
-region  <region>    | "region" is "4887398" Get from openweathermap.org by looking at weather in your city click a pager deeper on something and copy the ID from end of URL.
-uplink  <GETdataURL>| "uplink" is "GET /data/2.5/weather?id="
-day <0-24> D: 0 | Override sunrise hour Y38K futureproof. Dark is unpopular smaller darktimeframe keeps 'most' players!
-night   <0-24> D: 0 | Override sunset hour Y38K futureproof. Hot Vision is a great plugin to take advantage of the ultra dark night time.
-<https://forums.alliedmods.net/showthread.php?t=135617>
-sv_region <regioncode>      | 616411 ....[URL="https://openweathermap.org/api"]
-sv_units <metric|imperial>  | Simply pick what unit you prefer for weather readings.
+    dark    <0-25> D: 24| The higher the number, the darker after sunset.
+    *
+    lums    <0-25> D: 0 | The lower the number, the brighter it gets at noon.
+    * 
+    time    <0-24> D: 0 | Manually sets timeOday 0 = off
+    * 
+    region  <region>    | "region" is "4887398" Get from openweathermap.org by looking at weather in your city click a pager deeper on something and copy the ID from end of URL.
+    * 
+    day <0-24> D: 0 | Override sunrise hour Y38K futureproof. Dark is unpopular smaller darktimeframe keeps 'most' players!
+    * 
+    night   <0-24> D: 0 | Override sunset hour Y38K futureproof. 
+    *
+    sv_region <regioncode>      | 616411 ....[URL="https://openweathermap.org/find?q="]
+    * 
+    sv_units <metric|imperial>  | Simply pick what unit you prefer for weather readings.
 
 CL_COMMANDS
-
-say /temp, /time, /weather, or /climate   - displays weather feed
-say /mytemp for local temp
-say /news for news
+------------------------
+    say /temp, /time, /weather, or /climate   - displays weather feed
+    say /mytemp for local temp
+    say /news for news
 */
 
 ///for rain drops
@@ -87,8 +89,7 @@ say /news for news
 #include <fakemeta_stocks> ///crosshair///
 #include <nvault>                /*feed storage Global*/
 #include <xs>
-#define PLUGIN "Element"
-#define VERSION "5.0.0"
+
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
 #define fm_set_lights(%1)    engfunc(EngFunc_LightStyle, 0, %1)
 
@@ -110,7 +111,7 @@ new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
 new const g_DirNames[4][] = { "N", "E", "S", "W" }
 new DirSymbol[MAX_PLAYERS] = "----<>----"
 
-new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_uplink, g_cvar_time, g_cvar_day, g_cvar_night;
+new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_code, g_visi;
 new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog;
 new g_vault, g_SunUpHour, g_SunDownHour, g_iHour,  g_debugger_on, g_feel;
@@ -137,7 +138,6 @@ new g_skynames[][] =
     "CCCP","CCCP","CCCP","dashnight256","CCCP"        /*X҉****☾FOGGY☽*****X҉*/
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 enum {
     DODW_AMERKNIFE = 1,
     DODW_GERKNIFE,
@@ -155,16 +155,20 @@ new const g_szStepSound[MAX_SOUNDS][] =
     "player/pl_slosh3.wav",
     "player/pl_slosh4.wav"
 };
-new const CvarFogDesc[]="Weather fog perentage."
+
+new const CvarFogDesc[]="Weather fog percentage."
+
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, ".sρiηX҉.");
     register_cvar("element_version", VERSION, FCVAR_SERVER);
 
-    RegisterHam(Ham_Player_Duck, "player", "fix");
+    //For using wind effects from feed. When taking damage the victim's crosshairs moves in direction of wind.
     RegisterHam(Ham_TakeDamage, "player", "windage");
+    //Duck resets.
+    RegisterHam(Ham_Player_Duck, "player", "fix");
 
-    register_clcmd("say /news", "ClCmd_NewS", 0, "Element | Takes you into a chat room");
+    register_clcmd("say /news", "ClCmd_NewS", 0, "Element | Takes you into a chat room"); //Deprecated since CS brower was put on hold.
     register_clcmd("say /mytemp", "ClCmd_TemP", 0, "Element | Googles your weather.");
 
     register_concmd("element_snow", "ClCmd_hl_snow", ADMIN_RCON, "-Creates HL1 snow.")  // , "test of hl1 weather")
@@ -173,10 +177,9 @@ public plugin_init()
     register_concmd("element_fog", "ClCmd_hl_fog", ADMIN_RCON, "-Creates HL1 fog.")   // , "test of hl1 weather")
     register_concmd("element_flash", "ClCmd_FlasheS", ADMIN_RCON, "-Creates random lights.")   // , "test of hl1 weather")
 
-    register_concmd("element_feed", "ClCmd_get_element", ADMIN_RESERVATION, "-Refreshes weather feed.")
+    register_concmd("element_feed", "ClCmd_get_element", ADMIN_RESERVATION, "-Refreshes weather feed.") //Should do it all automatically now including when saying /time or /temp for instance if feed wasn't current.
 
     g_cvar_minlight = register_cvar("dark", "23");  //not too dark
-    g_cvar_uplink = register_cvar("uplink", "GET /data/2.5/weather?id=");
     g_cvar_maxlight = register_cvar("lums", "0");  //vivid at noon
     g_cvar_time = register_cvar("time", "0");      //auto light Time of Day
 
@@ -192,9 +195,6 @@ public plugin_init()
 
     g_cvar_token = register_cvar("sv_openweather-key", "null");
     g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
-    g_cvar_debug = register_cvar("weather_debug", "0");
-
-    bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 100.0), g_cvar_fog)
 
     register_cvar("element_hud", "200");
     register_clcmd("say /temp", "showinfo");
@@ -204,15 +204,6 @@ public plugin_init()
 
     set_task_ex(10.0, "get_element", 167, .flags = SetTask_AfterMapStart);
     set_task_ex(60.0, "get_element", 167, .flags = SetTask_BeforeMapChange);
-
-    g_visi = nvault_get(g_vault, "visi");
-    g_temp = nvault_get(g_vault, "temp");
-    g_hum = nvault_get(g_vault, "humidity");
-    g_code = nvault_get(g_vault, "code");
-    nvault_get(g_vault, "location", g_location, charsmax(g_location));
-    nvault_get(g_vault, "env", g_env, 2);
-
-    nvault_get(g_vault, "element", g_element_name, 8);
 
     #define TWO_HR_VAULT_PRUNE nvault_prune(g_vault, 0, get_systime() - (60 * 60 * 2));
     TWO_HR_VAULT_PRUNE
@@ -264,8 +255,6 @@ public plugin_cfg()
         g_SunDownHour = get_pcvar_num(g_cvar_night)
 
     !g_SunUpHour && !g_SunDownHour ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
-
-    g_debugger_on = get_pcvar_num(g_cvar_debug)
 }
 
 public plugin_end()
@@ -286,6 +275,18 @@ public plugin_precache()
     g_sunset = nvault_get(g_vault, "sunset");
     g_DeG = nvault_get(g_vault, "deg");
 
+    g_visi = nvault_get(g_vault, "visi");
+    g_temp = nvault_get(g_vault, "temp");
+    g_hum = nvault_get(g_vault, "humidity");
+    g_code = nvault_get(g_vault, "code");
+    nvault_get(g_vault, "location", g_location, charsmax(g_location));
+    nvault_get(g_vault, "env", g_env, 2);
+    nvault_get(g_vault, "element", g_element_name, 8);
+    //Bind mission critial cvars
+    bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 100.0), g_cvar_fog)
+    bind_pcvar_num(get_cvar_pointer("weather_debug") ? get_cvar_pointer("weather_debug") : create_cvar("weather_fog", "0" ,FCVAR_SERVER), g_debugger_on)
+
+    //Make the weather!
     makeelement();
 }
 @dod(id)
@@ -530,14 +531,12 @@ public ClCmd_get_element(id, level, cid)
         if(g_debugger_on)
             log_amx("Starting the sockets routine...");
 
-
-        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], uplink[26], region[63], units[9], token[33];
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], units[9], token[MAX_PLAYERS + 1];
         get_pcvar_string(g_cvar_region, region, charsmax (region));
-        get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
         get_pcvar_string(g_cvar_units, units, charsmax (units));
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
+        format(constring,charsmax (constring), "%s%s&units=%s&APPID=GET /data/2.5/weather?id=&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, units, token);
         write_web(constring);
 
         if(g_debugger_on)
@@ -582,15 +581,19 @@ public finish_weather(id)
 
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
 
+    new SzUnits[8]
+    get_pcvar_string(g_cvar_units, SzUnits, charsmax(SzUnits))
+    copy(SzUnits, charsmax(SzUnits), equali(SzUnits, "metric") ? "kph":"mph")
+
     //If Dusk-to-Dawn is manually set or fed.
     if(g_SunUpHour && g_SunDownHour)
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i mph at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
         client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_SunUpHour, g_SunDownHour-12, g_iHour )
     }
     else
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i mph at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
         epoch_clock(id);
     }
 
@@ -611,13 +614,12 @@ public get_element()
         client_print(0, print_console,"Making connection to weather feed...")
         client_print(0, print_chat,"Possible interruption. Weather feed sync...")
 
-        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], uplink[26], region[63], units[9], token[33];
-        get_pcvar_string(g_cvar_region, region, charsmax (region));
-        get_pcvar_string(g_cvar_uplink, uplink, charsmax (uplink));
-        get_pcvar_string(g_cvar_units, units, charsmax (units));
-        get_pcvar_string(g_cvar_token, token, charsmax (token));
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], units[9], token[MAX_PLAYERS + 1];
+        get_pcvar_string(g_cvar_region, region, charsmax(region));
+        get_pcvar_string(g_cvar_units, units, charsmax(units));
+        get_pcvar_string(g_cvar_token, token, charsmax(token));
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "%s%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", uplink, region, units, token);
+        format(constring,charsmax (constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", region, units, token);
 
         write_web(constring);
         if(g_debugger_on)
@@ -705,7 +707,7 @@ public read_web()
             nvault_set(g_vault, "visi", out);
             g_visi = str_to_num(out);
         }
-        if (containi(buf, "humidity") >= 0 && g_hum == 0)
+        if (containi(buf, "humidity") >= 0 )
         {
             new out[MAX_PLAYERS];
             copyc(out, 6, buf[containi(buf, "humidity") + 10], '"');
@@ -733,8 +735,8 @@ public read_web()
         if (containi(buf, "deg") != -1 )
         {
             new out[MAX_IP_LENGTH];
-            copyc(out, 3, buf[containi(buf, "deg") + 5], ',');
-            replace(out, 3, "}", "");
+            copyc(out, 5, buf[containi(buf, "deg") + 5], ',');
+            replace(out, 5, "}", "");
 
             if(g_debugger_on)
                 log_amx("Deg: %s", out);
@@ -852,13 +854,13 @@ stock code_to_weather(iWeather_code)
 
 public makeelement()
 {
-    new humi = nvault_get(g_vault, "humidity");
+   // new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
 
     HL_WeatheR();
 
-    if ( humi >  g_cvar_fog )
-        makeFog(humi);
+    if ( g_hum >  g_cvar_fog )
+        makeFog(g_hum);
 
     if(bCSDoD)
     switch (e)
@@ -888,17 +890,18 @@ public makeelement()
         }
 
     }
-    set_sky(humi);
+
 }
 
 public HL_WeatheR()
 {
     if(bCSDoD) return;
 
-    new humi = nvault_get(g_vault, "humidity");
+    //new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
-    if ( humi > g_cvar_fog )
-    makeFog(humi);
+
+    if ( g_hum > g_cvar_fog )
+        makeFog(g_hum);
 
     switch (e)
     {
@@ -925,10 +928,10 @@ public HL_WeatheR()
             hl_snow();
         }
     }
-    set_sky(humi);
+    set_sky(g_hum);
 }
 
-public set_sky(humi)
+public set_sky(g_hum)
 {
     new phase;
     new hour[3];
@@ -957,7 +960,9 @@ public set_sky(humi)
         phase =  SKYNIGHT;
 
     //Set skies to match the weather.
-    humi <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
+    if(g_debugger_on)
+        server_print "Humidity vault global cvar is running as %d", g_hum
+    g_hum  <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
 }
 
 public precache_sky(const skyname[])
@@ -1093,9 +1098,6 @@ public makeFog(amount)
     else
     {
         hl_fog();
-        new Zoo = nvault_get(g_vault, "humidity");
-        if ( Zoo < g_cvar_fog )
-            no_snow();
     }
     return;
 }
