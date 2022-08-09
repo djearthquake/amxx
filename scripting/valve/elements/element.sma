@@ -125,6 +125,8 @@ new g_SzUnits[16]
 new bool:bCompassOn[MAX_PLAYERS +1];
 new bool:bTokenOkay
 new bool:bCSDoD
+new bool:bDayOver
+new bool:bNightOver
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,12 +183,6 @@ public plugin_init()
 
     g_cvar_minlight = register_cvar("dark", "23");  //not too dark
     g_cvar_maxlight = register_cvar("lums", "0");  //vivid at noon
-    g_cvar_time = register_cvar("time", "0");      //auto light Time of Day
-
-    //override the feeds dusk and dawn settings in military time
-    //zero both to disable
-    g_cvar_day = register_cvar("day", "0");      //sunrise Hour
-    g_cvar_night = register_cvar("night", "0");     //night fall Hour
 
     g_cvar_region = register_cvar("sv_region", "4887398");
     g_cvar_units = register_cvar("sv_units", "metric");
@@ -246,15 +242,16 @@ public plugin_cfg()
 
     if (!equal(token, "null"))
         bTokenOkay = true
-
+/*
     //Are Sunrise and Sunset on CVAR override?
-    if(get_pcvar_num(g_cvar_day))
-        g_SunUpHour = get_pcvar_num(g_cvar_day)
+    if(g_cvar_day)
+        g_SunUpHour = g_cvar_day
 
-    if(get_pcvar_num(g_cvar_night))
-        g_SunDownHour = get_pcvar_num(g_cvar_night)
+    if(g_cvar_night)
+        g_SunDownHour = g_cvar_night
 
     !g_SunUpHour && !g_SunDownHour ? server_print("Relying on sunrise and set from feed!") : server_print("Server dusk to down OVERRIDE.")
+*/
 }
 
 public plugin_end()
@@ -273,6 +270,8 @@ public plugin_precache()
     g_env = nvault_get(g_vault, "env");
     g_sunrise = nvault_get(g_vault, "sunrise");
     g_sunset = nvault_get(g_vault, "sunset");
+    g_SunUpHour= nvault_get(g_vault, "day");
+    g_SunDownHour= nvault_get(g_vault, "night");
     g_DeG = nvault_get(g_vault, "deg");
 
     g_visi = nvault_get(g_vault, "visi");
@@ -285,6 +284,14 @@ public plugin_precache()
     //Bind mission critial cvars
     bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 100.0), g_cvar_fog)
     bind_pcvar_num(get_cvar_pointer("weather_debug") ? get_cvar_pointer("weather_debug") : create_cvar("weather_fog", "0" ,FCVAR_SERVER), g_debugger_on)
+
+    //zero both to disable
+    //override the feeds dusk and dawn settings in military time
+    bind_pcvar_num(get_cvar_pointer("day") ? get_cvar_pointer("day") : register_cvar("day", "0"), g_cvar_day )
+    bind_pcvar_num(get_cvar_pointer("night") ? get_cvar_pointer("night") : register_cvar("night", "0"), g_cvar_night )
+
+    bind_pcvar_num(get_cvar_pointer("time") ? get_cvar_pointer("time") : register_cvar("time", "0"), g_cvar_time )  //auto light Time of Day && phase override
+    epoch_clock();
 
     //Make the weather!
     makeelement();
@@ -385,33 +392,6 @@ if(is_user_connected(id))
     client_print(id, print_chat, "Humidity, Clouds, Sunrise/Sunset all effect visibility.");
 }
 
-public showinfo(id)
-{
-    if(is_user_connected(id) && bTokenOkay)
-    {
-        if(!g_code)
-            get_element();
-
-        set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //-1 auto makes flicker
-
-        client_print(id, print_console, "Welcome to %s! Visibility is %d'. Temperature feels like %d°.", g_location, g_visi, g_feel);
-        nvault_get(g_vault, "element", g_element_name, 8);
-        client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
-
-        if(bCSDoD)
-        {
-            show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
-            g_element_name[g_element], g_hum, g_cvar_fog);
-        }
-        else
-        {
-            show_hudmessage(id, "Welcome to %s.^nTemperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
-            g_cvar_fog);
-        }
-        epoch_clock(id);
-    }
-    return PLUGIN_HANDLED
-}
 stock human_readable_time(epoch_stamp)
 {
     new SzSun[MAX_PLAYERS]
@@ -420,40 +400,10 @@ stock human_readable_time(epoch_stamp)
     return SzSun
 }
 
-public epoch_clock(id)
-if(is_user_connected(id))
+public epoch_clock()
+//if(is_user_connected(id))
 {
-    new bool:bDayOver
-    new bool:bNightOver
-
-    new day_override = get_pcvar_num(g_cvar_day)
-    new night_override = get_pcvar_num(g_cvar_night)
-
-    if(!day_override && !night_override)
-    {
-        g_sunrise = nvault_get(g_vault, "sunrise");
-        bDayOver = false
-
-        g_sunset = nvault_get(g_vault, "sunset");
-        bNightOver = false
-    }
-    else
-    {
-        new SzDay[3]
-        num_to_str(day_override, SzDay, charsmax(SzDay))
-        nvault_set(g_vault, "day", SzDay);
-
-        g_SunUpHour  = day_override
-        bDayOver = true
-
-        new SzNight[3]
-        num_to_str(night_override, SzNight, charsmax(SzNight))
-        nvault_set(g_vault, "night", SzNight);
-
-        bNightOver = true
-        g_SunDownHour  = night_override
-    }
-
+    /*
     if(bDayOver && bNightOver)
         client_print(id, print_chat,"Sunrise and sunset are manually set not fed.")
     else if(!bDayOver && bNightOver)
@@ -462,7 +412,7 @@ if(is_user_connected(id))
         client_print(id, print_chat,"Sunrise is manually set not fed.")
     else
         client_print(id, print_chat,"Lighting is socket fed!")
-
+*/
     new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
 
     format_time(SzSunRise, charsmax(SzSunRise), "%H", g_sunrise);
@@ -476,14 +426,14 @@ if(is_user_connected(id))
 
     if(g_debugger_on)
         server_print "Sunset at %s", SzSunSet
-
+/*
     new SzTime[MAX_PLAYERS]
     static iCurrent_time = -1
     format_time(SzTime, charsmax(SzTime), "%H:%M:%S",  iCurrent_time );
     client_print id, print_chat,"Sunrise hour %s.^nSunset hour %s.^nTime is %s", SzSunRise, SzSunSet, SzTime
-
-    new iNightoverride = get_pcvar_num(g_cvar_night)
-    new iMorningoverride = get_pcvar_num(g_cvar_day)
+*/
+    new iNightoverride = g_cvar_night
+    new iMorningoverride = g_cvar_day
 
     if(iNightoverride)
     {
@@ -513,7 +463,7 @@ if(is_user_connected(id))
             server_print "%s vaulted sunset", SzSunSet
     }
 
-    client_print(id, print_console, "Skyname is %s",g_SkyNam);
+    ///client_print(id, print_console, "Skyname is %s",g_SkyNam);
 
     //Setting for skies
     if(!bDayOver)
@@ -522,6 +472,68 @@ if(is_user_connected(id))
     if(!bNightOver)
         g_SunDownHour = str_to_num(SzSunSet)
 
+}
+
+public showinfo(id)
+{
+    if(is_user_connected(id) && bTokenOkay)
+    {
+        if(!g_code)
+            get_element();
+
+        set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //-1 auto makes flicker
+
+        client_print(id, print_console, "Visibility is %d'. Temperature feels like %d°.", g_visi, g_feel);
+        nvault_get(g_vault, "element", g_element_name, 8);
+        client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
+
+        if(bCSDoD)
+        {
+            show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
+            g_element_name[g_element], g_hum, g_cvar_fog);
+        }
+        else
+        {
+            show_hudmessage(id, "Welcome to %s.^nTemperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
+            g_cvar_fog);
+        }
+        epoch_clock(); //update settings
+
+        finish_weather(id)
+    }
+    return PLUGIN_HANDLED
+}
+
+public finish_weather(id)
+{
+    if (task_exists(556)) remove_task(556);
+
+    g_SpeeD = nvault_get(g_vault, "speed");
+    g_DeG = nvault_get(g_vault, "deg");
+    g_feel =  nvault_get(g_vault, "feelslike");
+
+    nvault_get(g_vault, "location", g_location, charsmax(g_location));
+
+    new SzUnits[8]
+    get_pcvar_string(g_cvar_units, SzUnits, charsmax(SzUnits))
+    copy(SzUnits, charsmax(SzUnits), equali(SzUnits, "metric") ? "kph":"mph")
+
+    //If Dusk-to-Dawn is manually set or fed.
+    if(g_SunUpHour && g_SunDownHour)
+    {
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_SunUpHour, g_SunDownHour-12, g_iHour )
+    }
+    else
+    {
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
+        //epoch_clock(id);
+    }
+
+    new g_SkyNam[MAX_NAME_LENGTH];
+    get_cvar_string("sv_skyname",g_SkyNam, charsmax(g_SkyNam));
+
+    server_print("[%s version %s]Map using sky of %s, enjoy.", PLUGIN, VERSION, g_SkyNam);
 }
 
 public ClCmd_get_element(id, level, cid)
@@ -558,8 +570,7 @@ if(is_user_connected(id))
     if(iWind)
         client_print(id, print_chat, "Due to wind or injury you may have to compensate at range by squatting!");
 
-    if (g_code >= 0)
-        finish_weather(id)
+    finish_weather(id)
 
     if (is_user_admin(id))
     {
@@ -569,38 +580,6 @@ if(is_user_connected(id))
 
         set_task_ex(random_float(3.0, 5.0), "ring_saturn", 556, .flags = SetTask_RepeatTimes, .repeat = 3);
     }
-}
-
-public finish_weather(id)
-{
-    if (task_exists(556)) remove_task(556);
-
-    g_SpeeD = nvault_get(g_vault, "speed");
-    g_DeG = nvault_get(g_vault, "deg");
-    g_feel =  nvault_get(g_vault, "feelslike");
-
-    nvault_get(g_vault, "location", g_location, charsmax(g_location));
-
-    new SzUnits[8]
-    get_pcvar_string(g_cvar_units, SzUnits, charsmax(SzUnits))
-    copy(SzUnits, charsmax(SzUnits), equali(SzUnits, "metric") ? "kph":"mph")
-
-    //If Dusk-to-Dawn is manually set or fed.
-    if(g_SunUpHour && g_SunDownHour)
-    {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
-        client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_SunUpHour, g_SunDownHour-12, g_iHour )
-    }
-    else
-    {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
-        epoch_clock(id);
-    }
-
-    new g_SkyNam[16];
-    get_cvar_string("sv_skyname",g_SkyNam, charsmax (g_SkyNam));
-
-    server_print("[%s version %s]Map using sky of %s, enjoy.", PLUGIN, VERSION, g_SkyNam);
 }
 
 public get_element()
@@ -783,14 +762,14 @@ public read_web()
 
             code_to_weather(g_code)
 
-            new num[1];
-            num_to_str(g_env, num, 1);
+            new num[2];
+            num_to_str(g_env, num, charsmax(num));
             nvault_set(g_vault, "env", num);
 
             if(g_debugger_on)
                 server_print("Finished reading code and checking sunrise time...")
 
-            num_to_str(g_element, num, 1);
+            num_to_str(g_element, num, charsmax(num));
             nvault_set(g_vault, "element", num);
         }
         set_task_ex(0.2, "read_web");
@@ -935,38 +914,86 @@ public set_sky(g_hum)
 {
     new phase;
     new hour[3];
-    get_time("%H", hour, charsmax(hour));
-    g_iHour = str_to_num(hour);
 
-    new iNoon = 12;
+    get_time("%H", hour, charsmax(hour))
+    g_iHour = g_cvar_time > 0 ? g_cvar_time : str_to_num(hour)
 
+    //Able to override the time of day to get sky at whatever time
+    static iNoon = 12;
     //Time of day or night sky setting
-    if (g_iHour >= g_SunUpHour - 1|| g_iHour ==g_SunUpHour|| g_iHour <= g_SunUpHour + 1)
-        phase = SKYRISE ;
 
-    else if (g_iHour > g_SunUpHour + 1 && g_iHour <= iNoon - 1)
-        phase = SKYDAY; //MORNING DAY
+    if(g_debugger_on)
+        g_cvar_time > 0 ? server_print("SKY HOUR IS SET TO %d VIA CVAR.", g_iHour) : server_print("SKY HOUR IS SET TO %d BY SERVER CLOCK.", g_iHour)
 
-    else if (g_iHour == iNoon || g_iHour <= iNoon + 1)
-        phase = SKYNOON ;
 
-    else if (g_iHour > iNoon + 1 && g_iHour <= g_SunDownHour - 1)
-        phase = SKYDAY; //AFTERNOON DAY
+    if (g_iHour == g_SunUpHour )
+    {
+        phase = SKYRISE
+        if(g_debugger_on)
+             server_print("Phase is SKYRISE due to hour being %d", g_iHour)
+    }
+    if (g_iHour == iNoon)
+    {
+        phase = SKYNOON
+        if(g_debugger_on)
+            server_print("Phase is SKYNOON due to hour being %d", g_iHour)
+    }
+    if (g_iHour  == g_SunDownHour)
+    {
+        phase = SKYSUNSET
+        if(g_debugger_on)
+             server_print("Phase is SKYSUNSET due to hour being %d", g_iHour)
+    }
+    if(g_iHour < iNoon  && g_iHour > g_SunUpHour || g_iHour > iNoon && g_iHour < g_SunDownHour) 
+    {
+        phase = SKYDAY
+        if(g_debugger_on)
+            server_print("Phase is DAY due to hour being %d", g_iHour)
+    }
+    if ( g_iHour < g_SunUpHour  || g_iHour > g_SunDownHour)
+    {
+        phase = SKYNIGHT
+        if(g_debugger_on)
+            server_print("Phase is SKYNIGHT due to hour being %d", g_iHour)
+    }
 
-    else if (g_iHour == g_SunDownHour || g_iHour == g_SunDownHour + 1)
-        phase = SKYSUNSET;
 
-    else if (g_iHour < g_SunUpHour - 1 || g_iHour > g_SunDownHour + 1)
-        phase =  SKYNIGHT;
-
-    //Set skies to match the weather.
     if(g_debugger_on)
         server_print "Humidity vault global cvar is running as %d", g_hum
-    g_hum  <= g_cvar_fog ? precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]) : precache_sky(g_skynames[(3 * 5) + phase])
+
+    g_hum  > g_cvar_fog ? precache_sky(g_skynames[(3 * 5) + phase]) : precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase])
 }
 
 public precache_sky(const skyname[])
 {
+    new day_override = g_cvar_day
+    new night_override = g_cvar_night
+
+    if(!day_override && !night_override)
+    {
+        g_sunrise = nvault_get(g_vault, "sunrise");
+        bDayOver = false
+
+        g_sunset = nvault_get(g_vault, "sunset");
+        bNightOver = false
+    }
+    else
+    {
+        new SzDay[3]
+        num_to_str(day_override, SzDay, charsmax(SzDay))
+        nvault_set(g_vault, "day", SzDay);
+
+        g_SunUpHour  = day_override
+        bDayOver = true
+
+        new SzNight[3]
+        num_to_str(night_override, SzNight, charsmax(SzNight))
+        nvault_set(g_vault, "night", SzNight);
+
+        bNightOver = true
+        g_SunDownHour  = night_override
+    }
+
     new bool: pres = true;
     static file[MAX_PLAYERS+2];
 
@@ -995,26 +1022,26 @@ public daylight()
     g_feel = nvault_get(g_vault, "feelslike");
 
     //Using sockets feed or CVAR?
-    if(get_pcvar_num(g_cvar_day) > 0)
+    if(g_cvar_day > 0)
     {
-        sunrise = get_pcvar_num(g_cvar_day)
+        sunrise = g_cvar_day
     }
     else
     {
         sunrise = nvault_get(g_vault, "day")
         g_SunUpHour = sunrise
-        if(g_debugger_on)
+        if(g_debugger_on > 1)
             server_print "Illumination fed sunrise %i", sunrise
     }
-    if(get_pcvar_num(g_cvar_night) > 0 )
+    if(g_cvar_night > 0)
     {
-        sunset  = get_pcvar_num(g_cvar_night)
+        sunset  = g_cvar_night
     }
     else
     {
         sunset  = nvault_get(g_vault, "night")
         g_SunDownHour  = sunset
-        if(g_debugger_on)
+        if(g_debugger_on > 1)
             server_print "Illumination fed sunset %i", sunset
     }
 
@@ -1024,8 +1051,8 @@ public daylight()
 
     new now = str_to_num(serv_time);
 
-    if (get_pcvar_num(g_cvar_time) > 0)
-        now = get_cvar_num("time");
+    if (g_cvar_time > 0)
+        now = g_cvar_time
 
     new light, lightspan = get_pcvar_num(g_cvar_minlight) + 1 - get_pcvar_num(g_cvar_maxlight);
     //new tempspan = g_temp - g_temp_min;
