@@ -941,22 +941,22 @@ public set_sky(g_hum)
     new iNoon = 12;
 
     //Time of day or night sky setting
-    if (g_iHour >= g_SunUpHour - 1|| g_iHour ==g_SunUpHour|| g_iHour <= g_SunUpHour + 2)
+    if (g_iHour >= g_SunUpHour - 1|| g_iHour ==g_SunUpHour|| g_iHour <= g_SunUpHour + 1)
         phase = SKYRISE ;
 
-    else if (g_iHour > g_SunUpHour + 2 && g_iHour < iNoon - 1)
+    else if (g_iHour > g_SunUpHour + 1 && g_iHour <= iNoon - 1)
         phase = SKYDAY; //MORNING DAY
 
-    else if (g_iHour >= iNoon - 1 || g_iHour == iNoon || g_iHour <= iNoon + 1)
+    else if (g_iHour == iNoon || g_iHour <= iNoon + 1)
         phase = SKYNOON ;
 
-    else if (g_iHour > iNoon + 2 && g_iHour < g_SunDownHour - 1)
+    else if (g_iHour > iNoon + 1 && g_iHour <= g_SunDownHour - 1)
         phase = SKYDAY; //AFTERNOON DAY
 
-    else if (g_iHour == g_SunDownHour - 1 || g_iHour == g_SunDownHour || g_iHour == g_SunDownHour + 2)
+    else if (g_iHour == g_SunDownHour || g_iHour == g_SunDownHour + 1)
         phase = SKYSUNSET;
 
-    else if (g_iHour < g_SunUpHour - 1 || g_iHour >= g_SunDownHour + 2)
+    else if (g_iHour < g_SunUpHour - 1 || g_iHour > g_SunDownHour + 1)
         phase =  SKYNIGHT;
 
     //Set skies to match the weather.
