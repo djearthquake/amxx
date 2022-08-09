@@ -114,7 +114,7 @@ new DirSymbol[MAX_PLAYERS] = "----<>----"
 
 new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_time, g_cvar_day, g_cvar_night;
 new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_code, g_visi;
-new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_debug, g_cvar_fog;
+new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_fog;
 new g_vault, g_SunUpHour, g_SunDownHour, g_iHour,  g_debugger_on, g_feel;
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
@@ -1251,11 +1251,8 @@ public Compass(id)
 {
     if(!is_user_bot(id) && is_user_alive(id) && bCompassOn[id])
     {
-        g_debugger_on = get_pcvar_num(g_cvar_debug)
-
         if(g_debugger_on > 1)
             server_print "%n compass on", id
-
         ///Compass code by Tirant
         new Float:fAngles[3], iAngles[3]
         pev(id, pev_angles, fAngles)
