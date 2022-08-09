@@ -141,12 +141,7 @@ new g_skynames[][] =
     "CCCP","CCCP","CCCP","dashnight256","CCCP"        /*X҉****☾FOGGY☽*****X҉*/
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-enum {
-    DODW_AMERKNIFE = 1,
-    DODW_GERKNIFE,
-    DODW_SPADE,
-    DODW_BRITKNIFE
-};
+
 new Float:g_fNextStep[MAX_PLAYERS + 1];
 
 new bool:b_Is_raining
@@ -240,7 +235,12 @@ public plugin_init()
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_crowbar", "compass_tic", 1)
 
     if(is_running("dod") == 1 )
-        register_event("CurWeapon", "@dod", "bce", "1=1");
+    {
+        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_amerknife", "compass_tic", 1)
+        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_brit_knife", "compass_tic", 1)
+        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_gerknife", "compass_tic", 1)
+        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_spade", "compass_tic", 1)
+    }
 
     gHudSyncInfo = CreateHudSyncObj();
     gHudSyncInfo2 = CreateHudSyncObj();
@@ -301,33 +301,6 @@ public plugin_precache()
 
     //Make the weather!
     makeelement();
-}
-@dod(id)
-{
-    if(is_user_alive(id))
-    {
-        /*
-        new wpnid = get_user_weapon(id)
-        if ( wpnid == DODW_AMERKNIFE || wpnid == DODW_BRITKNIFE || wpnid == DODW_GERKNIFE || wpnid == DODW_SPADE )
-        */
-        {
-            if (get_user_button(id) & IN_ATTACK)
-            {
-                bCompassOn[id] = true
-                Compass(id)
-            }
-            if (get_user_button(id) & IN_ATTACK2)
-            {
-                bCompassOn[id] = true
-                Compass(id)
-            }
-            return PLUGIN_CONTINUE
-
-        }
-
-    }
-    return PLUGIN_CONTINUE
-
 }
 
 public ClCmd_NewS(id, level, cid)
