@@ -16,18 +16,21 @@ new bool: bAdjustedAmbient
 
 @_t_music()
 {
-    server_print("Remaking ambient radio.")
-    new iTerrorist_music
-    iTerrorist_music = create_entity("ambient_generic")
-    DispatchKeyValue(iTerrorist_music, "origin", "-840 -1820 75") //radio
-    DispatchKeyValue(iTerrorist_music, "targetname", "radio")
-    DispatchKeyValue(iTerrorist_music, "pitchstart", "100")
-    DispatchKeyValue(iTerrorist_music, "pitch", "100")
-    DispatchKeyValue(iTerrorist_music, "health", "10.0")
-    DispatchKeyValue(iTerrorist_music, "message", SzAmbientFilePath1)
-
-    DispatchKeyValue(iTerrorist_music, "spawnflags", "8")
-    DispatchSpawn(iTerrorist_music)
+    if(bAdjustedAmbient)
+    {
+        server_print("Remaking ambient radio.")
+        new iTerrorist_music
+        iTerrorist_music = create_entity("ambient_generic")
+        DispatchKeyValue(iTerrorist_music, "origin", "-840 -1820 75") //radio
+        DispatchKeyValue(iTerrorist_music, "targetname", "radio")
+        DispatchKeyValue(iTerrorist_music, "pitchstart", "100")
+        DispatchKeyValue(iTerrorist_music, "pitch", "100")
+        DispatchKeyValue(iTerrorist_music, "health", "10.0")
+        DispatchKeyValue(iTerrorist_music, "message", SzAmbientFilePath1)
+    
+        DispatchKeyValue(iTerrorist_music, "spawnflags", "8")
+        DispatchSpawn(iTerrorist_music)
+    }
 }
 @speaker()
 {
@@ -78,8 +81,15 @@ new bool: bAdjustedAmbient
 
 public plugin_precache()
 {
+    new mapname[MAX_RESOURCE_PATH_LENGTH]
+    get_mapname(mapname,charsmax(mapname))
+
+    if(!equali(mapname,"cs_arabstreets"))
+        pause "a"
+
     precache_sound(SzAmbientFilePath)
     precache_model(battery);
+
     @_t_music
 }
 
@@ -88,18 +98,12 @@ public plugin_init()
     new iRadio = find_ent_by_target(-1,"radio")
     if(iRadio)
     {
-
         DispatchKeyValue(iRadio, "explodemagnitude", "100") //make it hurt
         DispatchKeyValue(iRadio, "spawnobject", "1") //make armor
         DispatchKeyValue(iRadio, "gibmodel", battery)
 
         DispatchKeyValue(iRadio, "targetname", "radio_breakable")
         DispatchKeyValue(iRadio, "target", "radio")
-
-        //set_pev(iRadio, pev_target, "door_opener") //"door1") //shut garage door down after destroying radio that does not cut the ambient Arabian music
-        //set_pev(iRadio, pev_target, "hostage_window")
-        //update not accepting being destroyed with a targetname or name not being applied, needs validation
-
         DispatchSpawn(iRadio); //make gib work
         server_print "Rigged the radio!"
 
@@ -128,29 +132,12 @@ public plugin_init()
         iGarage_Door = find_ent_by_tname(-1,"door1")
         if(iGarage_Door)
         {
-            //DispatchKeyValue(iGarage_Door, "killtarget", "radio_ambient")
             DispatchKeyValue(iGarage_Door, "angles", "-180 0 0")
             DispatchKeyValue(iGarage_Door, "targetname", "door1")
-            //DispatchKeyValue(iGarage_Door, "lip", "-100")
             DispatchKeyValue(iGarage_Door, "spawnflags", "32") //start closed
             DispatchKeyValue(iGarage_Door, "unlocked_sentence", "8") //start closed
             //DispatchKeyValue(iGarage_Door, "health", "1")
             DispatchKeyValue(iGarage_Door, "rendercolor", "150 51 200")
-
-            /*
-            "model" "*7"
-            "angles" "-90 0 0"
-            "dmg" "10"
-            "lip" "15"
-            "wait" "-1"
-            "movesnd" "3"
-            "speed" "40"
-            "targetname" "door1"
-            "rendercolor" "0 0 0"
-            "spawnflags" "33"
-            */
-
-            //DispatchSpawn(iGarage_Door);
             server_print "Adjusting the door's killtarget"
         }
 
@@ -183,18 +170,13 @@ public pfn_keyvalue( ent )
         server_print "Adjusted radio sound parameters."
     }
 
-    if(equali(Classname,Ent_of_interest) && equali(key,"message") && equali(value,"ambience/arabmusic.wav") && !bAdjustedAmbient) //intercept
+    if(equali(Classname,Ent_of_interest) && equali(key,"message") && equali(value,"ambience/arabmusic.wav"))
     {
         bAdjustedAmbient = true
         register_plugin("Arabsteets Radio 2", "1.1", ".sρiηX҉.")
 
-        new mapname[MAX_RESOURCE_PATH_LENGTH]
-        get_mapname(mapname,charsmax(mapname))
-        if(!equali(mapname,"cs_arabstreets"))
-            pause "a"
-
         ///DispatchKeyValue("message", "") //voids what is now sheep sound
-        DispatchKeyValue("message", SzAmbientFilePath) //adding sheep as Hollywood makes us think there are always sheep noises in background.
+        DispatchKeyValue("message", SzAmbientFilePath) 
 
         @speaker() //replace
         server_print "Adjusted radio output sound."
