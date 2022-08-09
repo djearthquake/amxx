@@ -237,7 +237,6 @@ public plugin_init()
     if(is_running("dod") == 1 )
     {
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_amerknife", "compass_tic", 1)
-        RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_brit_knife", "compass_tic", 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_gerknife", "compass_tic", 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_spade", "compass_tic", 1)
     }
