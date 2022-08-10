@@ -16,7 +16,8 @@
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #define PLUGIN "Element"
-#define VERSION "5.0.2"
+#define VERSION "5.0.3"
+#define ELEMENT_TASK 2022
 /*Elements☀ ☁ ☂ ☃ ☉ ☼ ☽ ☾ ♁ ♨ ❄ ❅ ❆ ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗  ♘ ♞ ϟ THIS IS COPYLEFT!!◐  ◖   ◒   ◕   ◑   ◔   ◗   ◓
 *
 *
@@ -27,9 +28,9 @@
 Changelog
  * --------------
  * August 2014 - August 2022 v1 - 5.00 | AutoWeather Fork. Code feed always current going from BCC weather to Yahoo to Openweathermap. Added HL weather during 'North American Polar Vortex of 2019', a compass, and windage, as well as slowly advance the script and fix many bugs from feed and optimizing sockets and human readable debugging.
- * Aug 8 2022 v5.0.0 - 5.0.1 |Remove uplink CVAR, bound debugger, see why HL fog is starting out of turn from expanded debugger. Adjusted socket feed copy of windage speed.
- * Aug 9 2022 v5.0.1-5.0.2 | Put snowsteps back in and bound and optimized many cvars. Made skies match time override. Before it was only lighting.
- *
+ * Aug 8 2022  v5.0.0 - 5.0.1 |Remove uplink CVAR, bound debugger, see why HL fog is starting out of turn from expanded debugger. Adjusted socket feed copy of windage speed.
+ * Aug 9 2022  v5.0.1-5.0.2   | Put snowsteps back in and bound and optimized many cvars. Made skies match time override. Before it was only lighting.
+ * Aug 10 2022 v5.0.2-5.0.3  | Add passes in sockets and make it more effecient so as not to have to reload the maps to make it work, etc. Fixed speed from kph to m/s, had it right the first time! Making speed a str to get the float! Perpetual script cleanup. Did not like how weather code was being harvested.
 *
 *
 ☼
@@ -75,20 +76,22 @@ CL_COMMANDS
 #define PRECIPY random_num(-100000,180000)
 #define PRECIPZ random_num(-100000,180000)
 
-//compass
-#define NORTH   0
-#define WEST    90
-#define SOUTH   180
-#define EAST    270
+//Compass
+#define NORTH       0
+#define WEST          90
+#define SOUTH       180
+#define EAST           270
 
-#include <amxmodx>           /*All plugins need*/
-#include <amxmisc>             /*mod checks && task_ex*/
+//AMXX MODULES NEEDED TO COMPILE.
+                                                                        ///USE
+#include <amxmodx>                                    /*All plugins need*/
+#include <amxmisc>                                      /*mod checks && task_ex*/
 #include <engine_stocks>
-#include <hamsandwich>    /*compass activation*/
-#include <sockets>               /*feed needs*/
-#include <fakemeta>           /*PEV*/
-#include <fakemeta_stocks> ///crosshair///
-#include <nvault>                /*feed storage Global*/
+#include <hamsandwich>                              /*compass activation*/
+#include <sockets>                                         /*feed needs*/
+#include <fakemeta>                                      /*PEV*/
+#include <fakemeta_stocks>                          /*crosshair*/
+#include <nvault>                                          /*feed storage Global*/
 #include <xs>
 
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
@@ -96,38 +99,17 @@ CL_COMMANDS
 
 #define Radian2Degree(%1) (%1 * 180.0 / M_PI)
 
-#define MAX_PLAYERS     32
-#define MAX_CMD_LENGTH             128
-#define MAX_USER_INFO_LENGTH       256
+#define MAX_PLAYERS                                32
+#define MAX_CMD_LENGTH                      128
+#define MAX_USER_INFO_LENGTH          256
+#define charsmin                                          -1
 
+//HELPS PICK SKY IN ARRAY PER PHASE OF DAY
 #define SKYDAY           0
 #define SKYRISE           1
 #define SKYNOON       2
 #define SKYSUNSET     3
 #define SKYNIGHT       4
-
-new sprLightning, sprFlare6, g_F0g, g_Saturn, g_SzRainSprite; /*Half-Life Fog v.1 2019*/
-
-new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
-new const g_DirNames[4][] = { "N", "E", "S", "W" }
-new DirSymbol[MAX_PLAYERS] = "----<>----"
-
-new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_time, g_cvar_day, g_cvar_night;
-new g_sckelement, g_DeG, g_SpeeD, g_temp, g_element, g_hum, g_code, g_visi;
-new g_env, g_fog, g_sunrise, g_sunset, g_location[MAX_PLAYERS], g_cvar_wind, g_cvar_fog;
-new g_vault, g_SunUpHour, g_SunDownHour, g_iHour,  g_debugger_on, g_feel;
-new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
-new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
-new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
-new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
-new g_cvar_token, g_cvar_units, g_SkyNam[16];
-new g_SzUnits[16]
-
-new bool:bCompassOn[MAX_PLAYERS +1];
-new bool:bTokenOkay
-new bool:bCSDoD
-new bool:bDayOver
-new bool:bNightOver
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,6 +123,39 @@ new g_skynames[][] =
     "CCCP","CCCP","CCCP","dashnight256","CCCP"        /*X҉****☾FOGGY☽*****X҉*/
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+new sprLightning, sprFlare6, g_F0g, g_Saturn, g_SzRainSprite; /*Half-Life Fog v.1 2019*/
+
+new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
+new const g_DirNames[4][] = { "N", "E", "S", "W" }
+new DirSymbol[MAX_PLAYERS] = "----<>----"
+
+new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_time, g_cvar_day, g_cvar_night;
+new g_sckelement, g_socket_pass,  g_element, g_temp, g_hum, g_code, g_visi;
+
+//WINDAGE
+new g_DeG
+new g_SpeeD[7]
+//WEATHER
+new g_location[MAX_NAME_LENGTH] //city_name
+new g_env, g_fog, g_sunrise, g_sunset, g_cvar_wind, g_cvar_fog;
+new g_vault, g_SunUpHour, g_SunDownHour, g_iHour,  g_debugger_on, g_feel;
+
+new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
+
+new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
+new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
+
+new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
+new g_cvar_token, g_cvar_units, g_SkyNam[MAX_IP_LENGTH];
+new g_SzUnits[MAX_IP_LENGTH]
+
+new bool:bCompassOn[MAX_PLAYERS +1];
+new bool:bTokenOkay
+new bool:bCSDoD
+new bool:bDayOver
+new bool:bNightOver
+new bool:bGotTheWeather
 
 new Float:g_fNextStep[MAX_PLAYERS + 1];
 
@@ -381,7 +396,7 @@ stock human_readable_time(epoch_stamp)
 @client_epoch_clock(id)
 {
     new SzTime[MAX_PLAYERS]
-    static iCurrent_time = -1
+    static iCurrent_time = charsmin
 
     if(is_user_connected(id))
     {
@@ -469,7 +484,7 @@ public showinfo(id)
         if(!g_code)
             get_element();
 
-        set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //-1 auto makes flicker
+        set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
 
         client_print(id, print_console, "Visibility is %d'. Temperature feels like %d°.", g_visi, g_feel);
         nvault_get(g_vault, "element", g_element_name, 8);
@@ -497,7 +512,7 @@ public finish_weather(id)
 {
     if (task_exists(556)) remove_task(556);
 
-    g_SpeeD = nvault_get(g_vault, "speed");
+    nvault_get(g_vault, "speed",g_SpeeD,charsmax(g_SpeeD))
     g_DeG = nvault_get(g_vault, "deg");
     g_feel =  nvault_get(g_vault, "feelslike");
 
@@ -505,17 +520,17 @@ public finish_weather(id)
 
     new SzUnits[8]
     get_pcvar_string(g_cvar_units, SzUnits, charsmax(SzUnits))
-    copy(SzUnits, charsmax(SzUnits), equali(SzUnits, "metric") ? "kph":"mph")
+    copy(SzUnits, charsmax(SzUnits), equali(SzUnits, "metric") ? "m/s":"mph")
 
     //If Dusk-to-Dawn is manually set or fed.
     if(g_SunUpHour && g_SunDownHour)
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %s %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
         client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_SunUpHour, g_SunDownHour-12, g_iHour )
     }
     else
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %i %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %s %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
         @client_epoch_clock(id)
     }
 
@@ -564,6 +579,7 @@ if(is_user_connected(id))
 
     if (is_user_admin(id))
     {
+        //Make some extraordinary weather, aurora borealis, when admin enters the server.
         set_task_ex(random_float(0.3,2.0), "ring_saturn", 223, .flags = SetTask_RepeatTimes, .repeat = 2);
 
         set_task_ex(random_float(0.3,5.0), "HellRain_Blizzard", 226, .flags = SetTask_RepeatTimes, .repeat = 7);
@@ -588,7 +604,7 @@ public get_element()
         get_pcvar_string(g_cvar_units, units, charsmax(units));
         get_pcvar_string(g_cvar_token, token, charsmax(token));
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.0^nHost: api.openweathermap.org^n^n", region, units, token);
+        format(constring,charsmax (constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, units, token);
 
         write_web(constring);
         if(g_debugger_on)
@@ -604,29 +620,37 @@ public get_element()
 public write_web(text[MAX_USER_INFO_LENGTH])
 {
     if(g_debugger_on)
-        server_print("HTTP 1.0-1.1  trying socket write.");
+        server_print("[%s]Trying socket write.", PLUGIN);
 
-    socket_is_writable(g_sckelement, 100000) ?
-    socket_send(g_sckelement,text,charsmax (text))
-    : server_print("Unable to write to the web!");
+    if(socket_is_writable(g_sckelement, 100000))
+    {
+        socket_send(g_sckelement,text,charsmax(text))
+    }
+    else
+        server_print("[%s]Unable to write to the web!", PLUGIN);
 }
 
 public read_web()
 {
     if(g_debugger_on)
-        server_print("reading the web")
-    new buf[668];
-    if (socket_is_readable(g_sckelement, 100000))
-        socket_recv(g_sckelement,buf,charsmax (buf));
-    else
-        return
+        server_print "[%s]Reading the web", PLUGIN
 
-    if (!equal(buf, ""))
+    new buf[MAX_MENU_LENGTH+MAX_MENU_LENGTH ]
+    if(socket_is_readable(g_sckelement, 100000))
     {
-        if (containi(buf, "name") >= 0)
+        socket_recv(g_sckelement,buf,charsmax(buf));
+    }
+    else
+    {
+        log_amx "[%s]Unable to read from socket, retrying...", PLUGIN
+        get_element()
+    }
+    if(!equal(buf, "") && containi(buf, "name") != charsmin && containi(buf, "cod") != charsmin)
+    {
+        if (containi(buf, "name") != charsmin)
         {
-            new out[MAX_PLAYERS];
-            copyc(out, 24, buf[containi(buf, "name") + 7], '"');
+            new out[MAX_NAME_LENGTH];
+            copyc(out, charsmax(out), buf[containi(buf, "name") + 7], '"');
             if(g_debugger_on)
                 server_print("writing the name")
 
@@ -636,14 +660,12 @@ public read_web()
             nvault_set(g_vault, "location", out);
             g_location = out;
         }
-        if (containi(buf, "temp") != -1 )
+        if (containi(buf, "temp") != charsmin )
         {
             server_print("[%s]Ck real temp time..", PLUGIN)
 
             new out[MAX_IP_LENGTH]
-            copyc(out, 6, buf[containi(buf, "temp") + 6], '.');
-            replace(out, 6, ":", "");
-            replace(out, 6, ",", "");
+            copyc(out, charsmax(out), buf[containi(buf, "temp") + 6], ',');
 
             if(g_debugger_on)
                 log_amx("Temperature: %s", out);
@@ -652,10 +674,10 @@ public read_web()
 
             g_temp = str_to_num(out);
         }
-        if (containi(buf, "feels_like") != -1)
+        if (containi(buf, "feels_like") != charsmin)
         {
-            new out[MAX_PLAYERS];
-            copyc(out, 4, buf[containi(buf, "feels_like") + 12], '.');
+            new out[MAX_IP_LENGTH];
+            copyc(out, charsmax(out), buf[containi(buf, "feels_like") + 12], ',');
 
             if(g_debugger_on)
                 log_amx("Feels like: %s", out);
@@ -663,7 +685,7 @@ public read_web()
             nvault_set(g_vault, "feelslike", out);
             g_feel = str_to_num(out);
         }
-        if (containi(buf, "visibility") >= 0)
+        if (containi(buf, "visibility") > charsmin)
         {
             new out[7];
             copyc(out, charsmax(out), buf[containi(buf, "visibility") + 12], '"');
@@ -676,12 +698,12 @@ public read_web()
             nvault_set(g_vault, "visi", out);
             g_visi = str_to_num(out);
         }
-        if (containi(buf, "humidity") >= 0 )
+        if (containi(buf, "humidity") != charsmin)
         {
-            new out[MAX_PLAYERS];
-            copyc(out, 6, buf[containi(buf, "humidity") + 10], '"');
-            replace(out, 6, ",", "");
-            replace(out, 6, "}", "");
+            new out[7];
+            copyc(out, charsmax(out), buf[containi(buf, "humidity") + 10], ',');
+            replace(out, charsmax(out), ",", "");
+            replace(out, charsmax(out), "}", "");
 
             if(g_debugger_on)
                 log_amx("Humidity: %s", out);
@@ -689,10 +711,10 @@ public read_web()
             nvault_set(g_vault, "humidity", out);
             g_hum = str_to_num(out);
         }
-        if (containi(buf, "sunrise") !=  -1)
+        if (containi(buf, "sunrise") !=  charsmin)
         {
-            new out[MAX_PLAYERS];
-            copy(out, 10, buf[containi(buf, "sunrise") + 9]);
+            new out[11];
+            copy(out, charsmax(out), buf[containi(buf, "sunrise") + 9]);
             replace(out, charsmax(out), ",", "");
 
             if(g_debugger_on)
@@ -701,11 +723,11 @@ public read_web()
             nvault_set(g_vault, "sunrise", out);
             g_sunrise = str_to_num(out);
         }
-        if (containi(buf, "deg") != -1 )
+        if (containi(buf, "deg") != charsmin )
         {
-            new out[MAX_IP_LENGTH];
-            copyc(out, 5, buf[containi(buf, "deg") + 5], ',');
-            replace(out, 5, "}", "");
+            new out[6];
+            copyc(out, charsmax(out), buf[containi(buf, "deg") + 5], ',');
+            replace(out, charsmax(out), "}", "");
 
             if(g_debugger_on)
                 log_amx("Deg: %s", out);
@@ -713,22 +735,22 @@ public read_web()
             nvault_set(g_vault, "deg", out);
             g_DeG = str_to_num(out);
         }
-        if (containi(buf, "speed") != -1)
+        if (containi(buf, "speed") != charsmin)
         {
-            new out[MAX_IP_LENGTH];
-            copyc(out, 5, buf[containi(buf, "speed") + 7], ',');
-            replace(out, 5, ":", "");
+            new out[6];
+            copyc(out, charsmax(out), buf[containi(buf, "speed") + 7], ',');
 
             if(g_debugger_on)
                 log_amx("Speed: %s", out);
 
             nvault_set(g_vault, "speed", out);
-            g_SpeeD = str_to_num(out);
+            copy(g_SpeeD, charsmax(g_SpeeD), out)
+            //g_SpeeD = str_to_float(out)
         }
-        if (containi(buf, "sunset") != -1)
+        if (containi(buf, "sunset") != charsmin)
         {
-            new out[MAX_PLAYERS];
-            copy(out, 10, buf[containi(buf, "sunset") + 8]);
+            new out[11];
+            copy(out, charsmax(out), buf[containi(buf, "sunset") + 8]);
             replace(out, charsmax(out), "}", "");
 
             if(g_debugger_on)
@@ -737,12 +759,10 @@ public read_web()
             nvault_set(g_vault, "sunset", out);
             g_sunset = str_to_num(out);
         }
-        if (containi(buf, "[") >= 0)
+        if (containi(buf, "cod") > charsmin)
         {
-            new out[MAX_PLAYERS];
-            copy(out, 3, buf[containi(buf, "[") + 7]);
-            replace(out, 3, "&", "");
-            replace(out, 3, "#", "");
+            new out[6];
+            copyc(out, charsmax(out), buf[containi(buf, "cod") + 5],'}');
 
             if(g_debugger_on)
                 log_amx("Code: %s", out);
@@ -762,13 +782,42 @@ public read_web()
             num_to_str(g_element, num, charsmax(num));
             nvault_set(g_vault, "element", num);
         }
-        set_task_ex(0.2, "read_web");
+    }
+    else if(!bGotTheWeather && g_socket_pass < 20)
+    {
+        if(g_debugger_on)
+            server_print "[%s]No buffer checking again", PLUGIN
+
+        set_task_ex(0.2, "read_web", ELEMENT_TASK);
+        g_socket_pass++
+
+        if(g_debugger_on)
+            server_print "pass:%i",g_socket_pass
+    }
+    else if(!bGotTheWeather && g_socket_pass < 5)
+    {
+        server_print "[%s]Sending socket again as there is no buffer.", PLUGIN
+        get_element()
+    }
+
+    else if(!bGotTheWeather && g_socket_pass >= 20)
+    {
+        if(task_exists(ELEMENT_TASK))
+        {
+            remove_task(ELEMENT_TASK)
+            if(g_debugger_on)
+                server_print"[%s]Removed task %d", PLUGIN, ELEMENT_TASK
+        }
+        if(g_debugger_on)
+            server_print "[%s]Could not get a read =(", PLUGIN
     }
     else
     {
         socket_close(g_sckelement);
+        bGotTheWeather = true
+
         if(g_debugger_on)
-            server_print("finished reading")
+            server_print("[%s]finished reading", PLUGIN)
     }
 
 }
@@ -823,7 +872,6 @@ stock code_to_weather(iWeather_code)
 
 public makeelement()
 {
-   // new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
 
     HL_WeatheR();
@@ -865,8 +913,6 @@ public makeelement()
 public HL_WeatheR()
 {
     if(bCSDoD) return;
-
-    //new humi = nvault_get(g_vault, "humidity");
     new e = nvault_get(g_vault, "env");
 
     if ( g_hum > g_cvar_fog )
@@ -914,7 +960,6 @@ public set_sky(g_hum)
 
     if(g_debugger_on)
         g_cvar_time > 0 ? server_print("SKY HOUR IS SET TO %d VIA CVAR.", g_iHour) : server_print("SKY HOUR IS SET TO %d BY SERVER CLOCK.", g_iHour)
-
 
     if (g_iHour == g_SunUpHour )
     {
@@ -1634,7 +1679,7 @@ public streak(Float:Vectors[3])
     write_byte(COLOR);  /*0 wht  3 blu  7 blu*/  ///ever hear of red or green rain???
     write_short(DROPS); //# of streaks
     write_short(random_num(1, 2)); //base speed
-    write_short(-1); //ran velocity factor
+    write_short(charsmin); //ran velocity factor
     message_end();
 
     ///SPLASH UP or STEAM from RAIN
