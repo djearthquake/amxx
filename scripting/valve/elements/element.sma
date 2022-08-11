@@ -213,10 +213,10 @@ public plugin_init()
 
     bind_pcvar_num(create_cvar("dark", "24", FCVAR_SERVER, "The higher the number the more realistic the night time.",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 25.0), g_cvar_minlight)
     bind_pcvar_num(create_cvar("lums", "0", FCVAR_SERVER, "Increasing makes daytime less bright.",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 25.0), g_cvar_maxlight)
-
+    
     g_cvar_region = register_cvar("sv_region", "4887398");
-    g_cvar_units = register_cvar("sv_units", "metric");
-
+    g_cvar_units = register_cvar("sv_units", "metric")
+    
     bind_pcvar_string(g_cvar_units, g_SzUnits, charsmax(g_SzUnits))
 
     g_cvar_token = register_cvar("sv_openweather-key", "null");
@@ -510,19 +510,27 @@ public showinfo(id)
             get_element();
 
         set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-
-        client_print(id, print_console, "Visibility is %d'. Temperature feels like %d°.", g_visi, g_feel);
-        client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
-
+        new SzUnits[2]
+        copy(SzUnits, charsmax(SzUnits), equali(g_SzUnits, "metric") ? "C":"F")
         nvault_get(g_vault, "description", SzSummary,charsmax(SzSummary))
         if(bCSDoD)
         {
-            show_hudmessage(id, "╚»★Welcome to %s★«╝^nIt's %s. Temperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nSay /news /mytemp for more.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
+            g_debugger_on > 0
+            ?
+                show_hudmessage(id, "╚»★Welcome to %s★«╝^n%s^nTemperature is %d°%s, Feels like %d°%s.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nSay /news /mytemp for more.", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog)
+            :
+                show_hudmessage(id, "╚»★Welcome to %s★«╝^n%s^nTemperature is %d°%s. Feels like %d°%s.", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits)
         }
         else
         {
-            show_hudmessage(id, "Welcome to %s.^nIt's %s. Temperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
+            g_debugger_on > 0
+            ?
+                show_hudmessage(id, "Welcome to %s.^n%s ^n^nTemperature is %d%s. Feels like %d%s.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d.", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits, g_env_name[g_env], g_element_name[g_element], g_hum,  g_cvar_fog)
+            :
+                show_hudmessage(id, "Welcome to %s.^n %s^n^nTemperature is %d%s Feels like %d.%s", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits)
         }
+        client_print(id, print_console, "Visibility is %d'. Temperature feels like %d°%s.", g_visi, g_feel, SzUnits);
+        client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
 
         @client_epoch_clock(id)
 
@@ -532,6 +540,7 @@ public showinfo(id)
 }
 
 public finish_weather(id)
+if(is_user_connected(id))
 {
     if (task_exists(556)) remove_task(556);
 
@@ -540,27 +549,26 @@ public finish_weather(id)
     g_feel =  nvault_get(g_vault, "feelslike");
 
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
-
-    new SzUnits[8]
-    get_pcvar_string(g_cvar_units, SzUnits, charsmax(SzUnits))
-    copy(SzUnits, charsmax(SzUnits), equali(SzUnits, "metric") ? "m/s":"mph")
+    new SzUnits[MAX_IP_LENGTH]
+    copy(SzUnits, charsmax(SzUnits), equali(g_SzUnits, "metric") ? "m/s":"mph")
 
     //If Dusk-to-Dawn is manually set or fed.
     if(g_SunUpHour && g_SunDownHour)
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %s %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
-        client_print(id, print_console,"SunRise is %i AM SunSet hour %i PM. It's %i hundred hours.", g_SunUpHour, g_SunDownHour-12, g_iHour )
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %s %s at %i deg. Fog must be over %i to appear.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
+
+        client_print(id, print_console,"SunRise is %i.  SunSet is %i. It's %i hundred hours.", g_SunUpHour, g_SunDownHour, g_iHour )
     }
     else
     {
-        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %s %s at %i deg. Fog must be over %i in real life to generate.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
+        client_print(id, print_console,"Welcome to %s %n where the temp is %i... Wind speed is %s %s at %i deg. Fog must be over %i to appear.", g_location, id, g_feel, g_SpeeD, SzUnits, g_DeG, g_cvar_fog)
         @client_epoch_clock(id)
     }
 
     new g_SkyNam[MAX_NAME_LENGTH];
     get_cvar_string("sv_skyname",g_SkyNam, charsmax(g_SkyNam));
 
-    server_print("[%s version %s]Map using sky of %s, enjoy.", PLUGIN, VERSION, g_SkyNam);
+    client_print id, print_console, "[%s version %s]Map using sky of %s, enjoy.", PLUGIN, VERSION, g_SkyNam
 }
 
 public ClCmd_get_element(id, level, cid)
@@ -570,12 +578,11 @@ public ClCmd_get_element(id, level, cid)
         if(g_debugger_on)
             log_amx("Starting the sockets routine...");
 
-        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], units[9], token[MAX_PLAYERS + 1];
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], token[MAX_PLAYERS + 1];
         get_pcvar_string(g_cvar_region, region, charsmax (region));
-        get_pcvar_string(g_cvar_units, units, charsmax (units));
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "%s%s&units=%s&APPID=GET /data/2.5/weather?id=&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, units, token);
+        format(constring,charsmax (constring), "%s%s&units=%s&APPID=GET /data/2.5/weather?id=&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, g_SzUnits, token);
         write_web(constring);
 
         if(g_debugger_on)
@@ -622,12 +629,11 @@ public get_element()
         client_print(0, print_console,"Making connection to weather feed...")
         client_print(0, print_chat,"Possible interruption. Weather feed sync...")
 
-        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], units[9], token[MAX_PLAYERS + 1];
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], token[MAX_PLAYERS + 1];
         get_pcvar_string(g_cvar_region, region, charsmax(region));
-        get_pcvar_string(g_cvar_units, units, charsmax(units));
         get_pcvar_string(g_cvar_token, token, charsmax(token));
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, units, token);
+        format(constring,charsmax (constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, g_SzUnits, token);
 
         write_web(constring);
         if(g_debugger_on)
@@ -1415,7 +1421,9 @@ public compass_tic(iPlayerIndex)
     {
         if(g_debugger_on > 1)
             server_print "%n compass", id
+    
         bCompassOn[id] = true
+
         if(get_pcvar_num(g_pcvar_compass) && !task_exists(id))
             set_task_ex(0.3, "Compass", id, .flags = SetTask_Once)
     }
@@ -1427,6 +1435,7 @@ public Compass(id)
     {
         if(g_debugger_on > 1)
             server_print "%n compass on", id
+
         ///Compass code by Tirant
         new Float:fAngles[3], iAngles[3]
         pev(id, pev_angles, fAngles)
@@ -1438,6 +1447,7 @@ public Compass(id)
 
         new iFakeAngle = iAngles[1] % 90
         new Float:fFakeHudAngle = (float(iFakeAngle) / 100.0) + 0.49
+
         if (iFakeAngle>45)
             fFakeHudAngle += 0.05
 
@@ -1516,6 +1526,7 @@ public windage(id)
 if(get_pcvar_num(g_cvar_wind))
 {
     g_DeG = nvault_get(g_vault, "deg");
+
     new Float:g_Wind
     g_Wind =  g_DeG*-0.7;
     EF_CrosshairAngle(id, g_Wind, g_Wind ); {}
