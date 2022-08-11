@@ -288,7 +288,18 @@ public plugin_precache()
     sprFlare6 = precache_model("sprites/Flare6.spr");
     g_Saturn = precache_model("sprites/zerogxplode.spr");
     g_SzRainSprite = precache_model("sprites/rain.spr");
-    sprLightning = precache_model("sprites/lightning.spr");
+
+    new const SzLightning[] ="sprites/lightning.spr"
+
+    if(file_exists(SzLightning))
+    {
+        sprLightning = precache_model(SzLightning);
+    }
+    else
+    {
+        log_amx("Pause due to missing file:%s", SzLightning)
+    }
+
     //cache globals
     g_vault = nvault_open("element");
     g_env = nvault_get(g_vault, "env");
