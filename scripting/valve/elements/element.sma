@@ -26,12 +26,12 @@
 *
 *
 Changelog
- * --------------
+ * ------------------------------------*
  * August 2014 - August 2022 v1 - 5.00 | AutoWeather Fork. Code feed always current going from BCC weather to Yahoo to Openweathermap. Added HL weather during 'North American Polar Vortex of 2019', a compass, and windage, as well as slowly advance the script and fix many bugs from feed and optimizing sockets and human readable debugging.
- * Aug 8 2022  v5.0.0 - 5.0.1 |Remove uplink CVAR, bound debugger, see why HL fog is starting out of turn from expanded debugger. Adjusted socket feed copy of windage speed.
- * Aug 9 2022  v5.0.1-5.0.2   | Put snowsteps back in and bound and optimized many cvars. Made skies match time override. Before it was only lighting.
- * Aug 10 2022 v5.0.2-5.0.3  | Add passes in sockets and make it more effecient so as not to have to reload the maps to make it work, etc. Fixed speed from kph to m/s, had it right the first time! Making speed a str to get the float! Perpetual script cleanup. Did not like how weather code was being harvested.
- * Aug 11 2022  v5.0.4-5.0.4   | Made a weather code override and updated when and where skyname is cached for client display. Updated zip file with missing sky and pause plugin when even 1 sky file or sprite is missing.
+ * Aug 8  2022 v5.0.0 - 5.0.1          | Remove uplink CVAR, bound debugger, see why HL fog is starting out of turn from expanded debugger. Adjusted socket feed copy of windage speed.
+ * Aug 9  2022 v5.0.1-5.0.2            | Put snowsteps back in and bound and optimized many cvars. Made skies match time override. Before it was only lighting.
+ * Aug 10 2022 v5.0.2-5.0.3            | Add passes in sockets and make it more effecient so as not to have to reload the maps to make it work, etc. Fixed speed from kph to m/s, had it right the first time! Making speed a str to get the float! Perpetual script cleanup. Did not like how weather code was being harvested.
+ * Aug 11 2022 v5.0.4-5.0.4            | Made a weather code override and updated when and where skyname is cached for client display. Updated zip file with missing sky and pause plugin when even 1 sky file or sprite is missing.
 *
 ☼
 ◖ ◗
@@ -45,7 +45,7 @@ CVARS:
     *
     region  <region>    | "region" is "4887398" Get from openweathermap.org by looking at weather in your city click a pager deeper on something and copy the ID from end of URL.
     *
-    day <0-24> D: 0 | Override sunrise hour Y38K futureproof. Dark is unpopular smaller darktimeframe keeps 'most' players!
+    day <0-24> D: 0     | Override sunrise hour Y38K futureproof. Dark is unpopular smaller darktimeframe keeps 'most' players!
     *
     night   <0-24> D: 0 | Override sunset hour Y38K futureproof.
     *
