@@ -340,7 +340,7 @@ public ClCmd_NewS(id, level, cid)
     if(bCSDoD)
     {
         new motd[MAX_CMD_LENGTH];
-        format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=http://www.SRNLive.com/listen.html'><body BGCOLOR='#FFFFFF'><br><center>Loading</center></html>");
+        format(motd, charsmax(motd), "<html><meta http-equiv='Refresh' content='0; URL=https://www.google.com/news'><body BGCOLOR='#FFFFFF'><br><center>Loading</center></html>");
         show_motd(id, motd, "International and local news");
     }
 }
@@ -350,7 +350,7 @@ public ClCmd_TemP(id, level, cid)
     if(bCSDoD)
     {
         new motd[MAX_USER_INFO_LENGTH];
-        format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://google.com/search?q=weather'><body BGCOLOR='#FFFFFF'><br><center>If we can not determine your country off your IP then this will display generic weather page...</center></html>");
+        format(motd, charsmax(motd), "<html><meta http-equiv='Refresh' content='0; URL=https://google.com/search?q=weather'><body BGCOLOR='#FFFFFF'><br><center>If we can not determine your country off your IP then this will display generic weather page...</center></html>");
         show_motd(id, motd, "Weather Browser");
     }
 }
