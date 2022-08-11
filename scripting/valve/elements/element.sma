@@ -963,7 +963,7 @@ public makeelement()
                 case 2:
                 {
                     DispatchKeyValue(iEnt ,"detect_weather_type", "1")
-
+                    precache_generic("sprites/snowflake.spr")
                     if(g_debugger_on)
                         server_print "[%s]making rain for DoD", PLUGIN
                     //snow
@@ -971,6 +971,8 @@ public makeelement()
                 case 3:
                 {
                     DispatchKeyValue(iEnt ,"detect_weather_type", "2")
+                    precache_generic("sprites/ripple.spr")
+                    precache_generic("sprites/rain.spr")
 
                     if(g_debugger_on)
                         server_print "[%s]making snow for DoD", PLUGIN
@@ -979,6 +981,9 @@ public makeelement()
                 case 4:
                 {
                     DispatchKeyValue(iEnt,"detect_weather_type", "3")
+                    precache_generic("sprites/ripple.spr")
+                    precache_generic("sprites/rain.spr")
+                    precache_generic("sprites/snowflake.spr")
 
                     if(g_debugger_on)
                         server_print "[%s]making snow and rain maybe for DoD", PLUGIN
