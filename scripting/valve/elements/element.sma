@@ -143,8 +143,8 @@ new g_vault, g_SunUpHour, g_SunDownHour, g_iHour,  g_debugger_on, g_feel;
 
 new g_LightLevel[][]=   { "z","y","x","w","v","u","t","s","r","q","p","o","n","m","l","k","j","i","h","g","f","e","d","c","b","a" };
 
-new g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
-new g_element_name[][]= { "","..fair..","..cloud..","..partial.." };
+new const g_env_name[][]=     { ""," ..::DRY::.. "," ..::WET::.. "," ..::ICE::.. " }; // APPLIED SIM: (1-3)(no rain, rain, snow)
+new const g_element_name[][]= { "..clear..","..fair..","..cloud..","..partial.." };
 
 new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
 new g_cvar_token, g_cvar_units, g_SkyNam[MAX_IP_LENGTH];
@@ -302,7 +302,7 @@ public plugin_precache()
     g_hum = nvault_get(g_vault, "humidity");
     g_code = nvault_get(g_vault, "code");
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
-    nvault_get(g_vault, "element", g_element_name, charsmax(g_element_name));
+    g_element = nvault_get(g_vault, "element");
 
     //Bind mission critical cvars
     bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 100.0), g_cvar_fog)
@@ -487,24 +487,24 @@ public showinfo(id)
 {
     if(is_user_connected(id) && bTokenOkay)
     {
+        new SzSummary[MAX_NAME_LENGTH];
+
         if(!g_code)
             get_element();
 
         set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
 
         client_print(id, print_console, "Visibility is %d'. Temperature feels like %d°.", g_visi, g_feel);
-        nvault_get(g_vault, "element", g_element_name, 8);
         client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
 
+        nvault_get(g_vault, "description", SzSummary,charsmax(SzSummary))
         if(bCSDoD)
         {
-            show_hudmessage(id, "╚»★Welcome to %s★«╝^nTemperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env],
-            g_element_name[g_element], g_hum, g_cvar_fog);
+            show_hudmessage(id, "╚»★Welcome to %s★«╝^nIt's %s. Temperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
         }
         else
         {
-            show_hudmessage(id, "Welcome to %s.^nTemperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum,
-            g_cvar_fog);
+            show_hudmessage(id, "Welcome to %s.^nIt's %s. Temperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
         }
 
         @client_epoch_clock(id)
@@ -651,7 +651,7 @@ public read_web()
         log_amx "[%s]Unable to read from socket, retrying...", PLUGIN
         get_element()
     }
-    if(!equal(buf, "") && containi(buf, "name") != charsmin && containi(buf, "cod") != charsmin)
+    if(!equal(buf, "") && containi(buf, "name") != charsmin && containi(buf, "[") != charsmin)
     {
         if (containi(buf, "name") != charsmin)
         {
@@ -665,6 +665,19 @@ public read_web()
 
             nvault_set(g_vault, "location", out);
             g_location = out;
+        }
+        if (containi(buf, "description") > charsmin)
+        {
+            new out[MAX_NAME_LENGTH];
+            copyc(out, charsmax(out), buf[containi(buf, "description") + 13], ',');
+
+            if(g_debugger_on)
+                server_print("writing the description")
+
+            if(g_debugger_on)
+                log_amx("Description: %s", out);
+
+            nvault_set(g_vault, "description", out);
         }
         if (containi(buf, "temp") != charsmin )
         {
@@ -765,16 +778,15 @@ public read_web()
             nvault_set(g_vault, "sunset", out);
             g_sunset = str_to_num(out);
         }
-        if (containi(buf, "cod") > charsmin)
+        if (containi(buf, "[") > charsmin)
         {
-            new out[6];
-            copyc(out, charsmax(out), buf[containi(buf, "cod") + 5],'}');
+            new out[4];
+            copyc(out, charsmax(out), buf[containi(buf, "[") + 7],',');
 
             if(g_debugger_on)
                 log_amx("Code: %s", out);
 
             nvault_set(g_vault, "code", out);
-            nvault_set(g_vault, "env", out);
             g_code = str_to_num(out);
 
             code_to_weather(g_code)
@@ -788,26 +800,27 @@ public read_web()
 
             num_to_str(g_element, num, charsmax(num));
             nvault_set(g_vault, "element", num);
+            bGotTheWeather = true
         }
     }
-    else if(!bGotTheWeather && g_socket_pass < 20)
+    else if(!bGotTheWeather && g_socket_pass < 10)
     {
         if(g_debugger_on)
             server_print "[%s]No buffer checking again", PLUGIN
 
-        set_task_ex(0.2, "read_web", ELEMENT_TASK);
+        set_task_ex(0.3, "read_web", ELEMENT_TASK);
         g_socket_pass++
 
         if(g_debugger_on)
             server_print "pass:%i",g_socket_pass
     }
-    else if(!bGotTheWeather && g_socket_pass < 5)
+    else if(!bGotTheWeather && g_socket_pass == 5)
     {
         server_print "[%s]Sending socket again as there is no buffer.", PLUGIN
         get_element()
     }
 
-    else if(!bGotTheWeather && g_socket_pass >= 20)
+    else if(!bGotTheWeather && g_socket_pass >= 10)
     {
         if(task_exists(ELEMENT_TASK))
         {
@@ -987,7 +1000,7 @@ public pfn_keyvalue( ent )
 
     new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
     copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
-
+    if(!g_bDodWeatherDetected)
     if(equali(Classname,"info_doddetect") && equali(key,"detect_weather_type"))
     {
         if(g_env > 1)
@@ -1018,7 +1031,6 @@ public pfn_keyvalue( ent )
         }
         server_print "[%s]Adjusted DoD weather map had aleady.", PLUGIN
         g_bDodWeatherDetected  = true
-
     }
 
 }
@@ -1169,8 +1181,6 @@ public precache_sky(const skyname[])
 public daylight()
 {
     new sunrise, sunset
-    nvault_get(g_vault, "element", g_element_name, 8);
-
     g_temp = nvault_get(g_vault, "temp");
     g_feel = nvault_get(g_vault, "feelslike");
 
