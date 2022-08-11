@@ -102,6 +102,7 @@ CL_COMMANDS
 #define MAX_PLAYERS                                32
 #define MAX_CMD_LENGTH                      128
 #define MAX_USER_INFO_LENGTH          256
+#define MAX_MENU_LENGTH                   512
 #define charsmin                                          -1
 
 //HELPS PICK SKY IN ARRAY PER PHASE OF DAY
@@ -652,7 +653,7 @@ public read_web()
     if(g_debugger_on)
         server_print "[%s]Reading the web", PLUGIN
 
-    new buf[MAX_MENU_LENGTH+MAX_MENU_LENGTH ]
+    new buf[MAX_MENU_LENGTH+MAX_MENU_LENGTH]
     if(socket_is_readable(g_sckelement, 100000))
     {
         socket_recv(g_sckelement,buf,charsmax(buf));
@@ -661,6 +662,7 @@ public read_web()
     {
         log_amx "[%s]Unable to read from socket, retrying...", PLUGIN
         get_element()
+        return
     }
     if(!equal(buf, "") && containi(buf, "name") != charsmin && containi(buf, "[") != charsmin)
     {
@@ -850,7 +852,6 @@ public read_web()
         if(g_debugger_on)
             server_print("[%s]finished reading", PLUGIN)
     }
-
 }
 
 stock code_to_weather(iWeather_code)
