@@ -282,8 +282,6 @@ public plugin_precache()
 
     if(cstrike_running() || bDod_running)
         bCSDoD = true
-
-    get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
     //cache sfx
     g_F0g = precache_model("sprites/ballsmoke.spr");
     sprFlare6 = precache_model("sprites/Flare6.spr");
@@ -1052,7 +1050,6 @@ public pfn_keyvalue( ent )
 
 }
 
-
 public HL_WeatheR()
 {
     if(bCSDoD) return;
@@ -1138,6 +1135,7 @@ public set_sky(g_hum)
         server_print "Humidity vault global cvar is running as %d", g_hum
 
     g_hum  > g_cvar_fog ? precache_sky(g_skynames[(3 * 5) + phase]) : precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase])
+
     if(g_debugger_on)
         server_print "[%s]precaching skies %s",PLUGIN, g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]
 }
@@ -1193,6 +1191,9 @@ public precache_sky(const skyname[])
     }
     if (pres)
         set_cvar_string("sv_skyname", skyname);
+
+    get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
+    
 }
 
 public daylight()
