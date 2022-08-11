@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #define PLUGIN "Element"
-#define VERSION "5.0.3"
+#define VERSION "5.0.4"
 #define ELEMENT_TASK 2022
 /*Elements☀ ☁ ☂ ☃ ☉ ☼ ☽ ☾ ♁ ♨ ❄ ❅ ❆ ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗  ♘ ♞ ϟ THIS IS COPYLEFT!!◐  ◖   ◒   ◕   ◑   ◔   ◗   ◓
 *
@@ -31,7 +31,7 @@ Changelog
  * Aug 8 2022  v5.0.0 - 5.0.1 |Remove uplink CVAR, bound debugger, see why HL fog is starting out of turn from expanded debugger. Adjusted socket feed copy of windage speed.
  * Aug 9 2022  v5.0.1-5.0.2   | Put snowsteps back in and bound and optimized many cvars. Made skies match time override. Before it was only lighting.
  * Aug 10 2022 v5.0.2-5.0.3  | Add passes in sockets and make it more effecient so as not to have to reload the maps to make it work, etc. Fixed speed from kph to m/s, had it right the first time! Making speed a str to get the float! Perpetual script cleanup. Did not like how weather code was being harvested.
-*
+ * Aug 11 2022  v5.0.4-5.0.4   | Made a weather code override and updated when and where skyname is cached for client display. Updated zip file with missing sky and pause plugin when even 1 sky file or sprite is missing.
 *
 ☼
 ◖ ◗
@@ -77,21 +77,21 @@ CL_COMMANDS
 #define PRECIPZ random_num(-100000,180000)
 
 //Compass
-#define NORTH       0
-#define WEST          90
-#define SOUTH       180
-#define EAST           270
+#define NORTH           0
+#define WEST            90
+#define SOUTH           180
+#define EAST            270
 
 //AMXX MODULES NEEDED TO COMPILE.
                                                                         ///USE
-#include <amxmodx>                                    /*All plugins need*/
-#include <amxmisc>                                      /*mod checks && task_ex*/
+#include <amxmodx>                                              /*All plugins need*/
+#include <amxmisc>                                              /*mod checks && task_ex*/
 #include <engine_stocks>
-#include <hamsandwich>                              /*compass activation*/
-#include <sockets>                                         /*feed needs*/
-#include <fakemeta>                                      /*PEV*/
-#include <fakemeta_stocks>                          /*crosshair*/
-#include <nvault>                                          /*feed storage Global*/
+#include <hamsandwich>                                          /*compass activation*/
+#include <sockets>                                              /*feed needs*/
+#include <fakemeta>                                             /*PEV*/
+#include <fakemeta_stocks>                                      /*crosshair*/
+#include <nvault>                                               /*feed storage Global*/
 #include <xs>
 
 #define fm_create_entity(%1) engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, %1))
@@ -99,18 +99,18 @@ CL_COMMANDS
 
 #define Radian2Degree(%1) (%1 * 180.0 / M_PI)
 
-#define MAX_PLAYERS                                32
-#define MAX_CMD_LENGTH                      128
+#define MAX_PLAYERS                    32
+#define MAX_CMD_LENGTH                128
 #define MAX_USER_INFO_LENGTH          256
-#define MAX_MENU_LENGTH                   512
-#define charsmin                                          -1
+#define MAX_MENU_LENGTH               512
+#define charsmin                       -1
 
 //HELPS PICK SKY IN ARRAY PER PHASE OF DAY
 #define SKYDAY           0
-#define SKYRISE           1
-#define SKYNOON       2
-#define SKYSUNSET     3
-#define SKYNIGHT       4
+#define SKYRISE          1
+#define SKYNOON          2
+#define SKYSUNSET        3
+#define SKYNIGHT         4
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*          0   1   2   3   4                       /
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +131,7 @@ new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
 new const g_DirNames[4][] = { "N", "E", "S", "W" }
 new DirSymbol[MAX_PLAYERS] = "----<>----"
 
-new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_time, g_cvar_day, g_cvar_night;
+new g_cvar_minlight, g_cvar_maxlight, g_cvar_region, g_cvar_time, g_cvar_day, g_cvar_night, g_cvar_code;
 new g_sckelement, g_socket_pass,  g_element, g_temp, g_hum, g_code, g_visi;
 
 //WINDAGE
@@ -310,7 +310,7 @@ public plugin_precache()
     g_visi = nvault_get(g_vault, "visi");
     g_temp = nvault_get(g_vault, "temp");
     g_hum = nvault_get(g_vault, "humidity");
-    g_code = nvault_get(g_vault, "code");
+    //g_code = nvault_get(g_vault, "code");
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
     g_element = nvault_get(g_vault, "element");
 
@@ -325,6 +325,11 @@ public plugin_precache()
     bind_pcvar_num(get_cvar_pointer("night") ? get_cvar_pointer("night") : register_cvar("night", "0"), g_cvar_night )
 
     bind_pcvar_num(get_cvar_pointer("time") ? get_cvar_pointer("time") : register_cvar("time", "0"), g_cvar_time )  //auto light Time of Day && phase override
+
+    bind_pcvar_num(get_cvar_pointer("weather_code") ? get_cvar_pointer("weather_code") : register_cvar("weather_code", "0"), g_cvar_code)
+    //weather override(no feed needed)
+    g_code = g_cvar_code > 0 ?  g_cvar_code : nvault_get(g_vault, "code");
+
 
     //Do some conversion
     epoch_clock();
@@ -798,7 +803,9 @@ public read_web()
                 log_amx("Code: %s", out);
 
             nvault_set(g_vault, "code", out);
-            g_code = str_to_num(out);
+
+            if(g_cvar_code == 0)
+                g_code = str_to_num(out);
 
             code_to_weather(g_code)
 
@@ -1171,7 +1178,7 @@ public precache_sky(const skyname[])
     }
 
     new bool: pres = true;
-    new file[34];
+    new file[MAX_PLAYERS+2];
 
     for (new i = 0; i < 6; ++i)
     {
@@ -1180,20 +1187,21 @@ public precache_sky(const skyname[])
         if(file_exists(file))
         {
             precache_generic(file);
-            server_print("caching %s",file)
+
+            if(g_debugger_on)
+                server_print("caching %s",file)
         }
         else
         {
-            server_print("FILE NOT FOUND %s",file)
+            log_amx("FILE NOT FOUND %s",file)
             pres = false;
             break;
         }
     }
-    if (pres)
-        set_cvar_string("sv_skyname", skyname);
+    pres ? set_cvar_string("sv_skyname", skyname) : pause("a")
 
     get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
-    
+
 }
 
 public daylight()
