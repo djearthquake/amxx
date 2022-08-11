@@ -37,21 +37,23 @@ Changelog
 ◖ ◗
 ϟ
 CVARS:
-    dark    <0-25> D: 24| The higher the number, the darker after sunset.
+    dark      <0-25> D: 24      | The higher the number, the darker after sunset.
     *
-    lums    <0-25> D: 0 | The lower the number, the brighter it gets at noon.
+    lums      <0-25> D: 0       | The lower the number, the brighter it gets at noon.
     *
-    time    <0-24> D: 0 | Manually sets timeOday 0 = off
+    time      <0-24> D: 0       | Manually sets time of day in military format. 0 = off
     *
-    region  <region>    | "region" is "4887398" Get from openweathermap.org by looking at weather in your city click a pager deeper on something and copy the ID from end of URL.
+    region    <region>          | "region" is "4887398" Get from openweathermap.org by looking at weather in your city click a pager deeper on something and copy the ID from end of URL.
     *
-    day <0-24> D: 0     | Override sunrise hour Y38K futureproof. Dark is unpopular smaller darktimeframe keeps 'most' players!
+    day       <0-24> D: 0       | Override sunrise hour Y38K futureproof. Dark is unpopular smaller darktimeframe keeps 'most' players!
     *
-    night   <0-24> D: 0 | Override sunset hour Y38K futureproof.
+    night     <0-24> D: 0       | Override sunset hour Y38K futureproof.
     *
-    sv_region <regioncode>      | 616411 ....[URL="https://openweathermap.org/find?q="]
+    sv_region <regioncode>      | 616411 <https://openweathermap.org/find?q=>
     *
-    sv_units <metric|imperial>  | Simply pick what unit you prefer for weather readings.
+    sv_units  <metric|imperial> | Simply pick what unit you prefer for weather readings.
+    *
+    weather_code <#> D: 0       |Override the weatherfeed to any openweathermap.org code from <https://openweathermap.org/weather-conditions>
 
 CL_COMMANDS
 ------------------------
