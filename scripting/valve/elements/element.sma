@@ -161,6 +161,9 @@ new Float:g_fNextStep[MAX_PLAYERS + 1];
 
 new bool:b_Is_raining
 new bool:b_Is_snowing
+new bool:bDod_running
+new bool:g_bDodWeatherDetected
+new const SzDoDWeatherEnt[] = "info_doddetect"
 
 #define MAX_RAIN_STEPS 4
 new const g_szStepSound[MAX_RAIN_STEPS][] =
@@ -240,20 +243,18 @@ public plugin_init()
     g_pcvar_method = register_cvar("amx_compass_method", "2");
     g_Method = get_pcvar_num(g_pcvar_method)
 
-    if(cstrike_running() || is_running("dod") == 1)
-        bCSDoD = true
-
     if(cstrike_running() || is_running("gearbox") == 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "compass_tic", 1)
 
     if(is_running("valve") == 1 )
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_crowbar", "compass_tic", 1)
 
-    if(is_running("dod") == 1 )
+    if(bDod_running)
     {
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_amerknife", "compass_tic", 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_gerknife", "compass_tic", 1)
         RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_spade", "compass_tic", 1)
+        server_print("Compass registered for DoD.")
     }
 
     gHudSyncInfo = CreateHudSyncObj();
@@ -275,6 +276,12 @@ public plugin_end()
 
 public plugin_precache()
 {
+    if(is_running("dod") == 1)
+        bDod_running = true
+
+    if(cstrike_running() || bDod_running)
+        bCSDoD = true
+
     get_cvar_string("sv_skyname", g_SkyNam, charsmax (g_SkyNam) );
     //cache sfx
     g_F0g = precache_model("sprites/ballsmoke.spr");
@@ -295,8 +302,7 @@ public plugin_precache()
     g_hum = nvault_get(g_vault, "humidity");
     g_code = nvault_get(g_vault, "code");
     nvault_get(g_vault, "location", g_location, charsmax(g_location));
-    nvault_get(g_vault, "env", g_env, 2);
-    nvault_get(g_vault, "element", g_element_name, 8);
+    nvault_get(g_vault, "element", g_element_name, charsmax(g_element_name));
 
     //Bind mission critical cvars
     bind_pcvar_num(get_cvar_pointer("weather_fog") ? get_cvar_pointer("weather_fog") : create_cvar("weather_fog", "90.0" ,FCVAR_SERVER, CvarFogDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 100.0), g_cvar_fog)
@@ -768,6 +774,7 @@ public read_web()
                 log_amx("Code: %s", out);
 
             nvault_set(g_vault, "code", out);
+            nvault_set(g_vault, "env", out);
             g_code = str_to_num(out);
 
             code_to_weather(g_code)
@@ -872,53 +879,159 @@ stock code_to_weather(iWeather_code)
 
 public makeelement()
 {
-    new e = nvault_get(g_vault, "env");
-
+    set_sky(g_hum);
     HL_WeatheR();
-
-    if ( g_hum >  g_cvar_fog )
-        makeFog(g_hum);
-
     if(bCSDoD)
-    switch (e)
     {
-        case 2:
+        new iDoD;
+
+        if ( g_hum >  g_cvar_fog )
+            makeFog(g_hum);
+
+        switch(g_env)
         {
-            b_Is_raining = true
-            fm_create_entity("env_rain");
-            const OFFSET_AMBIENCE = (1<<0);
-            precache_sound("ambience/rain.wav");
-            new entity = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "ambient_generic"));
-            set_pev(entity, pev_health, 10.0);
-            set_pev(entity, pev_message,"ambience/rain.wav");
-            set_pev(entity, pev_spawnflags, OFFSET_AMBIENCE);
-            dllfunc(DLLFunc_Spawn, entity);
+            case 2:
+            {
+                b_Is_raining = true
+                fm_create_entity("env_rain");
+                const OFFSET_AMBIENCE = (1<<0);
+                precache_sound("ambience/rain.wav");
+                new entity = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "ambient_generic"));
+                set_pev(entity, pev_health, 10.0);
+                set_pev(entity, pev_message,"ambience/rain.wav");
+                set_pev(entity, pev_spawnflags, OFFSET_AMBIENCE);
+                dllfunc(DLLFunc_Spawn, entity);
+            }
+            case 3:
+            {
+                fm_create_entity("env_snow");
+            }
+            case 4:
+            {
+                fm_create_entity("env_rain")
+                fm_create_entity("env_snow")
+                hl_precip()
+                hl_snow();
+            }
         }
-        case 3:
+        if(bDod_running /*&& !g_bDodWeatherDetected && g_env > 1*/)
         {
-            fm_create_entity("env_snow");
+            iDoD = find_ent(charsmin, SzDoDWeatherEnt)
+            if(iDoD>0)
+            {
+                if(is_valid_ent(iDoD) == 2)
+                {
+                    server_print("Removing %s|%d",SzDoDWeatherEnt ,iDoD)
+                    remove_entity(iDoD)
+                }
+                else
+                    server_print("%d is not valid enough to remove.",iDoD)
+            }
+
+            new iEnt = create_entity(SzDoDWeatherEnt)
+
+            DispatchKeyValue(iEnt,"origin","0 0 0")
+            DispatchKeyValue(iEnt,"detect_points_timerexpired","5")
+            DispatchKeyValue(iEnt,"detect_axis_paras","1")
+            DispatchKeyValue(iEnt,"detect_timer_team","1")
+            DispatchKeyValue(iEnt,"detect_allies_paras","1")
+            DispatchKeyValue(iEnt,"detect_wind_velocity_y","0.0")
+            DispatchKeyValue(iEnt,"detect_wind_velocity_x","0.0")
+            DispatchKeyValue(iEnt,"detect_axis_respawnfactor","1.0")
+            DispatchKeyValue(iEnt,"detect_allies_respawnfactor","1.0")
+            DispatchKeyValue(iEnt,"detect_points_allieseliminated","5")
+            DispatchKeyValue(iEnt,"detect_points_axiseliminated","5")
+            DispatchKeyValue(iEnt,"detect_axis_infinite","1")
+            DispatchKeyValue(iEnt,"detect_allies_infinite","1")
+
+            //make DoD
+            switch(g_env)
+            {
+                case 2:
+                {
+                    DispatchKeyValue(iEnt ,"detect_weather_type", "1")
+
+                    if(g_debugger_on)
+                        server_print "[%s]making rain for DoD", PLUGIN
+                    //snow
+                }
+                case 3:
+                {
+                    DispatchKeyValue(iEnt ,"detect_weather_type", "2")
+
+                    if(g_debugger_on)
+                        server_print "[%s]making snow for DoD", PLUGIN
+                    //rain
+                }
+                case 4:
+                {
+                    DispatchKeyValue(iEnt,"detect_weather_type", "3")
+
+                    if(g_debugger_on)
+                        server_print "[%s]making snow and rain maybe for DoD", PLUGIN
+                    //both?
+                }
+
+            }
+            DispatchSpawn(iEnt )
+
+            if(iEnt  > 0)
+                server_print("DoD weather ent:%d",iEnt )
         }
-        case 4:
+    }
+}
+public pfn_keyvalue( ent )
+{
+    //For DoD weather
+    g_env = nvault_get(g_vault, "env");
+
+    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+
+    if(equali(Classname,"info_doddetect") && equali(key,"detect_weather_type"))
+    {
+        if(g_env > 1)
         {
-            fm_create_entity("env_rain")
-            fm_create_entity("env_snow")
-            hl_precip()
-            hl_snow();
+            DispatchKeyValue("detect_weather_type", "")
+            switch(g_env)
+            {
+                case 2:
+                {
+                    DispatchKeyValue("detect_weather_type", "1")
+                    server_print "Touching rain"
+                    //rain
+                }
+                case 3:
+                {
+                    DispatchKeyValue("detect_weather_type", "2")
+                    server_print "Touching snow"
+                    //snow
+                }
+                case 4:
+                {
+                    DispatchKeyValue("detect_weather_type", "3")
+                    //both?
+                }
+
+            }
+
         }
+        server_print "[%s]Adjusted DoD weather map had aleady.", PLUGIN
+        g_bDodWeatherDetected  = true
 
     }
 
 }
 
+
 public HL_WeatheR()
 {
     if(bCSDoD) return;
-    new e = nvault_get(g_vault, "env");
 
     if ( g_hum > g_cvar_fog )
         makeFog(g_hum);
 
-    switch (e)
+    switch (g_env)
     {
         case 2:
         {
@@ -943,7 +1056,6 @@ public HL_WeatheR()
             hl_snow();
         }
     }
-    set_sky(g_hum);
 }
 
 public set_sky(g_hum)
@@ -997,6 +1109,8 @@ public set_sky(g_hum)
         server_print "Humidity vault global cvar is running as %d", g_hum
 
     g_hum  > g_cvar_fog ? precache_sky(g_skynames[(3 * 5) + phase]) : precache_sky(g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase])
+    if(g_debugger_on)
+        server_print "[%s]precaching skies %s",PLUGIN, g_skynames[((nvault_get(g_vault, "element") - 1) * 5) + phase]
 }
 
 public precache_sky(const skyname[])
@@ -1030,15 +1144,20 @@ public precache_sky(const skyname[])
     }
 
     new bool: pres = true;
-    static file[MAX_PLAYERS+2];
+    new file[34];
 
     for (new i = 0; i < 6; ++i)
     {
         formatex(file, charsmax(file), "gfx/env/%s%s.tga", skyname, g_skysuf[i]);
-        if (file_exists(file))
+
+        if(file_exists(file))
+        {
             precache_generic(file);
+            server_print("caching %s",file)
+        }
         else
         {
+            server_print("FILE NOT FOUND %s",file)
             pres = false;
             break;
         }
