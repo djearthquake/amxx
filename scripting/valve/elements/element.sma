@@ -517,11 +517,11 @@ public showinfo(id)
         nvault_get(g_vault, "description", SzSummary,charsmax(SzSummary))
         if(bCSDoD)
         {
-            show_hudmessage(id, "╚»★Welcome to %s★«╝^nIt's %s. Temperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
+            show_hudmessage(id, "╚»★Welcome to %s★«╝^nIt's %s. Temperature feels like %d° and was forecasted as %d°.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nSay /news /mytemp for more.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
         }
         else
         {
-            show_hudmessage(id, "Welcome to %s.^nIt's %s. Temperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d. ^n^n^nCS1.6|Say /news /mytemp for more.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
+            show_hudmessage(id, "Welcome to %s.^nIt's %s. Temperature feels like %d and was forecasted as %d.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d.", g_location, SzSummary, g_feel, g_temp, g_env_name[g_env], g_element_name[g_element], g_hum, g_cvar_fog);
         }
 
         @client_epoch_clock(id)
