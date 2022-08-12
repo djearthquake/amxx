@@ -423,9 +423,9 @@ stock human_readable_time(epoch_stamp)
 
     if(is_user_connected(id))
     {
-        format_time(SzTime, charsmax(SzTime), "%H:%M:%S",  iCurrent_time );
+        format_time(SzTime, charsmax(SzTime), "%c",  iCurrent_time );//https://cplusplus.com/reference/ctime/strftime/
 
-        client_print id, print_chat,"Sunrise hour %d.^nSunset hour %d.^nTime is %s", g_SunUpHour, g_SunDownHour, SzTime
+        client_print id, print_chat,"Sunrise hour %d.^nSunset hour %d.^nTime/Date: %s", g_SunUpHour, g_SunDownHour, SzTime
         client_print(id, print_console, "Skyname is %s",g_SkyNam);
 
         if(!g_debugger_on)
@@ -527,7 +527,7 @@ public showinfo(id)
             ?
                 show_hudmessage(id, "Welcome to %s.^n%s ^n^nTemperature is %d%s. Feels like %d%s.^nSim:%s Sky: %s ^nHumidity %d.^nServer set fog to %d.", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits, g_env_name[g_env], g_element_name[g_element], g_hum,  g_cvar_fog)
             :
-                show_hudmessage(id, "Welcome to %s.^n %s^n^nTemperature is %d%s Feels like %d.%s", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits)
+                show_hudmessage(id, "Welcome to %s.^n %s^n^nTemperature is %d%s. Feels like %d%s.", g_location, SzSummary, g_temp, SzUnits, g_feel, SzUnits)
         }
         client_print(id, print_console, "Visibility is %d'. Temperature feels like %d°%s.", g_visi, g_feel, SzUnits);
         client_print(id, print_console, "|||||||||||code %d||||||||||Element: %s%s | humidity: %d | ♞dawn %s ♘dusk %s", g_code, g_env_name[g_env], g_element_name[g_element], g_hum, human_readable_time(g_sunrise), human_readable_time(g_sunset));
