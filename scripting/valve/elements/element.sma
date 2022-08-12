@@ -672,7 +672,8 @@ public read_web()
     else
     {
         log_amx "[%s]Unable to read from socket, retrying...", PLUGIN
-        get_element()
+        if(!task_exists(81122))
+            set_task(5.0,"get_element",81122)
         return
     }
     if(!equal(buf, "") && containi(buf, "name") != charsmin && containi(buf, "[") != charsmin)
