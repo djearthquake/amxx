@@ -102,6 +102,7 @@ CL_COMMANDS
 #define Radian2Degree(%1) (%1 * 180.0 / M_PI)
 
 #define MAX_PLAYERS                    32
+#define MAX_RESOURCE_PATH_LENGTH       64
 #define MAX_CMD_LENGTH                128
 #define MAX_USER_INFO_LENGTH          256
 #define MAX_MENU_LENGTH               512
@@ -447,7 +448,7 @@ stock human_readable_time(epoch_stamp)
 
 public epoch_clock()
 {
-    new SzSunRise[MAX_PLAYERS], SzSunSet[MAX_PLAYERS];
+    new SzSunRise[3], SzSunSet[3];
 
     format_time(SzSunRise, charsmax(SzSunRise), "%H", g_sunrise);
     nvault_set(g_vault, "day", SzSunRise);
@@ -642,7 +643,7 @@ public get_element()
             log_amx(constring);
             log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
         }
-        read_web();
+        //read_web();
     }
 }
 
@@ -654,6 +655,7 @@ public write_web(text[MAX_USER_INFO_LENGTH])
     if(socket_is_writable(g_sckelement, 100000))
     {
         socket_send(g_sckelement,text,charsmax(text))
+        read_web();
     }
     else
         server_print("[%s]Unable to write to the web!", PLUGIN);
@@ -673,7 +675,7 @@ public read_web()
     {
         log_amx "[%s]Unable to read from socket, retrying...", PLUGIN
         if(!task_exists(81122))
-            set_task(5.0,"get_element",81122)
+            set_task(1.0,"get_element",81122)
         return
     }
     if(!equal(buf, "") && containi(buf, "name") != charsmin && containi(buf, "[") != charsmin)
