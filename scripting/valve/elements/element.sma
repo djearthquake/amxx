@@ -130,7 +130,7 @@ new g_skynames[][] =
 
 new sprLightning, sprFlare6, g_F0g, g_Saturn, g_SzRainSprite; /*Half-Life Fog v.1 2019*/
 
-new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method,g_Method
+new gHudSyncInfo, gHudSyncInfo2, g_pcvar_compass, g_pcvar_method, g_Method;
 new const g_DirNames[4][] = { "N", "E", "S", "W" }
 new DirSymbol[MAX_PLAYERS] = "----<>----"
 
@@ -152,7 +152,9 @@ new const g_element_name[][]= { "..clear..","..fair..","..cloud..","..partial.."
 
 new g_skysuf[6][3]=     { "up", "dn", "ft", "bk", "lf", "rt" };
 new g_cvar_token, g_cvar_units, g_SkyNam[MAX_IP_LENGTH];
-new g_SzUnits[MAX_IP_LENGTH]
+new g_SzRegion[MAX_IP_LENGTH];
+new g_SzToken[MAX_PLAYERS+1];
+new g_SzUnits[MAX_IP_LENGTH];
 
 new bool:bCompassOn[MAX_PLAYERS +1];
 new bool:bTokenOkay
@@ -214,13 +216,18 @@ public plugin_init()
 
     bind_pcvar_num(create_cvar("dark", "24", FCVAR_SERVER, "The higher the number the more realistic the night time.",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 25.0), g_cvar_minlight)
     bind_pcvar_num(create_cvar("lums", "0", FCVAR_SERVER, "Increasing makes daytime less bright.",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 25.0), g_cvar_maxlight)
-    
+
     g_cvar_region = register_cvar("sv_region", "4887398");
+    bind_pcvar_string(g_cvar_region, g_SzRegion, charsmax(g_SzRegion))
+
     g_cvar_units = register_cvar("sv_units", "metric")
-    
     bind_pcvar_string(g_cvar_units, g_SzUnits, charsmax(g_SzUnits))
 
     g_cvar_token = register_cvar("sv_openweather-key", "null");
+    bind_pcvar_string(g_cvar_token, g_SzToken, charsmax(g_SzToken))
+
+    bTokenOkay = equal(g_SzToken, "null") ? false : true
+
     g_cvar_wind = register_cvar("sv_wind", "0") //offsets crosshair in direction of fed weather when shot (for now), Duck to reset.
 
     register_cvar("element_hud", "200");
@@ -263,16 +270,6 @@ public plugin_init()
 
     gHudSyncInfo = CreateHudSyncObj();
     gHudSyncInfo2 = CreateHudSyncObj();
-}
-
-public plugin_cfg()
-{
-    //Do not overcheck for token.
-    new token[MAX_PLAYERS+1];
-    get_pcvar_string(g_cvar_token, token, charsmax (token));
-
-    if (!equal(token, "null"))
-        bTokenOkay = true
 }
 
 public plugin_end()
@@ -384,10 +381,7 @@ public client_putinserver(id)
 
 public needan(id)
 {
-    new token[MAX_PLAYERS+1];
-    get_pcvar_string(g_cvar_token, token, charsmax (token));
-
-    if (equal(token, "null"))
+    if (equal(g_SzToken, "null") && is_user_connected(id))
     {
         if(bCSDoD)
         {
@@ -395,7 +389,6 @@ public needan(id)
             format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-key detected.</center></html>");
             show_motd(id, motd, "Invalid 32-bit API key!");
         }
-        if(bCSDoD) return;
         client_print(id,print_chat,"Check your API key validity!")
         client_print(id,print_center,"Null sv_openweather-key detected.")
         client_print(id,print_console,"Get key from openweathermap.org/appid.")
@@ -579,20 +572,22 @@ public ClCmd_get_element(id, level, cid)
         if(g_debugger_on)
             log_amx("Starting the sockets routine...");
 
-        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], token[MAX_PLAYERS + 1];
-        get_pcvar_string(g_cvar_region, region, charsmax (region));
-        get_pcvar_string(g_cvar_token, token, charsmax (token));
-        g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "%s%s&units=%s&APPID=GET /data/2.5/weather?id=&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, g_SzUnits, token);
-        write_web(constring);
-
-        if(g_debugger_on)
+        bTokenOkay = equal(g_SzToken, "null") ? false : true
+        if(bTokenOkay)
         {
-            log_amx("This is where we are trying to get weather from");
-            log_amx(constring);
-            log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
+            new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH];
+            g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
+            format(constring,charsmax (constring), "%s%s&units=%s&APPID=GET /data/2.5/weather?id=&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", g_SzRegion, g_SzUnits, g_SzToken);
+            write_web(constring);
+
+            if(g_debugger_on)
+            {
+                log_amx("This is where we are trying to get weather from");
+                log_amx(constring);
+                log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
+            }
+            read_web();
         }
-        read_web();
     }
     return PLUGIN_HANDLED
 }
@@ -624,17 +619,18 @@ public get_element()
     if(g_debugger_on)
         log_amx "Starting the sockets routine..."
 
-    new numplayers = get_playersnum_ex(GetPlayersFlags:GetPlayers_ExcludeBots);
-    if (numplayers < 3 )
+    bTokenOkay = equal(g_SzToken, "null") ? false : true
+    if(bTokenOkay)
     {
-        client_print(0, print_console,"Making connection to weather feed...")
-        client_print(0, print_chat,"Possible interruption. Weather feed sync...")
-
-        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH], region[MAX_IP_LENGTH], token[MAX_PLAYERS + 1];
-        get_pcvar_string(g_cvar_region, region, charsmax(region));
-        get_pcvar_string(g_cvar_token, token, charsmax(token));
+        new numplayers = get_playersnum_ex(GetPlayersFlags:GetPlayers_ExcludeBots);
+        if (numplayers > 3 )
+        {
+            client_print(0, print_console,"Making connection to weather feed...")
+            client_print(0, print_chat,"Possible interruption. Weather feed sync...")
+        }
+        new Soc_O_ErroR, constring[MAX_USER_INFO_LENGTH];
         g_sckelement = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
-        format(constring,charsmax (constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", region, g_SzUnits, token);
+        format(constring,charsmax(constring), "GET /data/2.5/weather?id=%s&units=%s&APPID=%s&u=c HTTP/1.1^nHost: api.openweathermap.org^n^n", g_SzRegion, g_SzUnits, g_SzToken);
 
         write_web(constring);
         if(g_debugger_on)
@@ -643,7 +639,6 @@ public get_element()
             log_amx(constring);
             log_amx("Debugging enabled::telnet api.openweathermap.org 80 copy and paste link from above into session.");
         }
-        //read_web();
     }
 }
 
@@ -1424,7 +1419,7 @@ public compass_tic(iPlayerIndex)
     {
         if(g_debugger_on > 1)
             server_print "%n compass", id
-    
+
         bCompassOn[id] = true
 
         if(get_pcvar_num(g_pcvar_compass) && !task_exists(id))
