@@ -1,81 +1,69 @@
-#include <amxmodx   >
-#include <engine_stocks>
-#include <hamsandwich>
+#include <amxmodx>
+new bool:bRoundTimerFixed[MAX_PLAYERS + 1]
+new bool:bDefuseMap
+new vbuffer[MAX_IP_LENGTH]
+
+enum _:authors_details
+{
+    plugin[MAX_NAME_LENGTH],
+    version[MAX_IP_LENGTH],
+    author[MAX_NAME_LENGTH]
+}
+new plugin_registry[ authors_details ]
 
 new g_ForceRoundTimer
-
-new bool:bFixAllPlayers
-new bool:bFixedPlayer[MAX_PLAYERS + 1]
-
-/*
- * Request by: Ark_Procession https://forums.alliedmods.net/member.php?u=301170
- * Aug 9 2022 1.0-1.1 make script more robust to prevent bug from reoccuring albeit temporarily.
- */
-
-
-#define PLUGIN "RoundTimer Fix"
-#define VERSION "1.1"
-#define AUTHOR ".sρiηX҉."
-
-new g_cvar_debugger_on
+new fix_counter
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, VERSION, AUTHOR)
+    new hour,min,sec
+    time(hour,min,sec)
+    formatex(vbuffer,charsmax(vbuffer),"%i:%i:%i", hour, min, sec)
 
-    new SzMapname[MAX_NAME_LENGTH]
-    get_mapname(SzMapname, charsmax(SzMapname))
-    {
-        if(containi(SzMapname,"de_") < 0)
-            pause "a"
-    }
+    plugin_registry[ plugin ] = "CS roundtimer fix"
+    plugin_registry[ version ] = vbuffer
+    plugin_registry[ author ] = ".sρiηX҉."
 
-    bind_pcvar_num(get_cvar_pointer("roundfix_debug") ? get_cvar_pointer("roundfix_debug") : create_cvar("roundfix_debug", "0" ,FCVAR_SERVER, "Roundfix plugin debugger", .has_min = false, .has_max = false), g_cvar_debugger_on)
+    set_task( 5.0, "@register", 777, plugin_registry, authors_details )
+}
 
+@register()
+{
+    register_plugin
+    (
+        .plugin_name = plugin_registry[ plugin ],
+        .version =  plugin_registry[ version ],
+        .author = plugin_registry[ author ]
+    )
+
+    new mname[MAX_RESOURCE_PATH_LENGTH]
+    get_mapname(mname,charsmax(mname));
+    if(containi(mname, "de_") !=-1)
+        bDefuseMap = true
+
+    register_event("ResetHUD", "@RoundTimerFix", "bef")
     g_ForceRoundTimer = get_user_msgid("ShowTimer")
-    register_logevent("@RoundTimerFixAllPlayers", 3 ,"2=Planted_The_Bomb");
-    register_logevent("@round_start", 2, "1=Round_Start");
-    RegisterHamPlayer(Ham_Spawn, "@eventSpawn", 1)
-}
-
-public client_putinserver(id)
-{
-    if(is_user_connected(id))
-    {
-        set_task(0.5,"@RoundTimerFix",id)
-    }
-}
-
-@RoundTimerFixAllPlayers()
-{
-    bFixAllPlayers = true
-
-    if(g_cvar_debugger_on > 0)
-        server_print("%s %s %s| Fix needs to be reapplied to everybody!",PLUGIN, VERSION, AUTHOR)
-}
-
-@eventSpawn(id)
-{
-    if(bFixAllPlayers && !bFixedPlayer[id])
-        @RoundTimerFix(id)
-}
-
-@round_start()
-{
-    bFixAllPlayers = false
 }
 
 @RoundTimerFix(id)
-if(is_user_connected(id))
+if(bDefuseMap || !bRoundTimerFixed[id])
 {
     emessage_begin(MSG_ONE_UNRELIABLE, g_ForceRoundTimer, _, id);
     emessage_end();
 
-    if(bFixAllPlayers)
-    {
-        bFixedPlayer[id] = true
+    if(!bDefuseMap)
+        bRoundTimerFixed[id] = true
 
-        if(g_cvar_debugger_on > 0)
-            server_print("%s %s %s| Fix reapplied to [%n]", PLUGIN, VERSION, AUTHOR, id)
-    }
+    fix_counter++
+}
+
+public client_disconnected(id)
+{
+    bRoundTimerFixed[id] = false
+}
+
+public plugin_end()
+{
+    if(fix_counter)
+        log_amx "%s %s by %s fixed %i clients!", plugin_registry[ plugin ], plugin_registry[ version ], plugin_registry[ author ], fix_counter
 }
