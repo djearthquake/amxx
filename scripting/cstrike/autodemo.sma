@@ -15,6 +15,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
         return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
+
 }
 
 public client_disconnected(id)
@@ -27,13 +28,16 @@ public client_disconnected(id)
 }
 
 public SendCmd(SzCommand[], id)
-if(is_user_connected(id))
 {
-    server_print "Trying %s on %n", SzCommand, id
-    client_print id, print_chat, "Host issued command %s", SzCommand
-    message_begin(MSG_ONE_UNRELIABLE, SVC_DIRECTOR, _, id);
-    write_byte(strlen(SzCommand)+2);
-    write_byte(10);
-    write_string(SzCommand);
-    message_end();
+    if(is_user_connected(id))
+    {
+        server_print "Trying %s on %n", SzCommand, id
+        client_print id, print_chat, "Host issued command %s", SzCommand
+        message_begin(MSG_ONE_UNRELIABLE, SVC_DIRECTOR, _, id);
+        write_byte(strlen(SzCommand)+2);
+        write_byte(10);
+        write_string(SzCommand);
+        message_end();
+    }
+
 }
