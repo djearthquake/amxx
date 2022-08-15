@@ -36,17 +36,16 @@ public plugin_init()
         .author = plugin_registry[ author ]
     )
 
-    new mname[MAX_RESOURCE_PATH_LENGTH]
-    get_mapname(mname,charsmax(mname));
-    if(containi(mname, "de_") !=-1)
-        bDefuseMap = true
-
     register_event("ResetHUD", "@RoundTimerFix", "bef")
+    register_logevent("@Plant",3,"2=Planted_The_Bomb");
     g_ForceRoundTimer = get_user_msgid("ShowTimer")
 }
 
+@Plant()
+    bDefuseMap = true
+
 @RoundTimerFix(id)
-if(bDefuseMap || !bRoundTimerFixed[id])
+if(bDefuseMap || !bRoundTimerFixed[id] && is_user_connecting(id) /*Downloading next*/|| is_user_connected(id) /*Not timed-out yet*/)
 {
     emessage_begin(MSG_ONE_UNRELIABLE, g_ForceRoundTimer, _, id);
     emessage_end();
@@ -59,11 +58,12 @@ if(bDefuseMap || !bRoundTimerFixed[id])
 
 public client_disconnected(id)
 {
+    @RoundTimerFix(id)
     bRoundTimerFixed[id] = false
 }
 
 public plugin_end()
 {
     if(fix_counter)
-        log_amx "%s %s by %s fixed %i clients!", plugin_registry[ plugin ], plugin_registry[ version ], plugin_registry[ author ], fix_counter
+        log_amx fix_counter == 1 ? "%s %s by %s fixed %i client." : "%s %s by %s fixed %i clients!", plugin_registry[ plugin ], plugin_registry[ version ], plugin_registry[ author ], fix_counter
 }
