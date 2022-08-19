@@ -1,4 +1,4 @@
-#include <amxmodx   >
+#include <amxmodx>
 #include <engine_stocks>
 #include <hamsandwich>
 
@@ -22,19 +22,12 @@ new g_cvar_debugger_on
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
-/*
-    new SzMapname[MAX_NAME_LENGTH]
-    get_mapname(SzMapname, charsmax(SzMapname))
-    {
-        if(containi(SzMapname,"de_") < 0)
-            pause "a"
-    }
-*/
+ 
     bind_pcvar_num(get_cvar_pointer("roundfix_debug") ? get_cvar_pointer("roundfix_debug") : create_cvar("roundfix_debug", "0" ,FCVAR_SERVER, "Roundfix plugin debugger", .has_min = false, .has_max = false), g_cvar_debugger_on)
 
     g_ForceRoundTimer = get_user_msgid("ShowTimer")
     register_logevent("@RoundTimerFixAllPlayers", 3 ,"2=Planted_The_Bomb");
-    register_logevent("@round_start", 2, "1=Round_Start");
+    //register_logevent("@round_start", 2, "1=Round_Start");
     RegisterHamPlayer(Ham_Spawn, "@eventSpawn", 1)
 }
 
