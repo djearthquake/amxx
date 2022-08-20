@@ -3,7 +3,7 @@
 /*******************************************************************************
   Parachute
 
-  Version: 1.6
+  Version: 1.7
   Author: SPiNX/KRoTaL/JTP10181
   0.1    Release
   0.1.1  Players can't buy a parachute if they already own one
