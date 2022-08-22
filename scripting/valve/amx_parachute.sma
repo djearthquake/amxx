@@ -87,7 +87,7 @@
 #define charsmin                  -1
 
 //define how large parachute is to shoot
-#define Parachute_size  0.5
+#define Parachute_size  0.1
 
 #if !defined get_pcvar_bool
 #define get_pcvar_bool get_pcvar_num
@@ -100,7 +100,6 @@ new para_ent[ MAX_PLAYERS +1 ]
 new gCStrike = 0
 new pDetach, pFallSpeed, pEnabled, pCost, pPayback, pAutoDeploy /*MAY2020*/,pAutoRules /*MAY2020*/;
 new g_safemode, g_debug
-//new character_parachute_model[MAX_NAME_LENGTH +1][MAX_NAME_LENGTH +1]
 
 new const LOST_CHUTE_SOUND[] = "misc/erriewind.wav"
 new const PARA_MODELO[] = "models/parachute.mdl"
@@ -114,7 +113,7 @@ new g_model, g_packHP
 public plugin_init()
 {
     register_plugin("Parachute", "1.7", "SPiNX")
-    register_touch("parachute", "*", "@chute_touch")
+    register_touch("parachute", "", "@chute_touch")
     pEnabled    = register_cvar("sv_parachute", "1" )
     pFallSpeed  = register_cvar("parachute_fallspeed", "100")
     pDetach     = register_cvar("parachute_detach", "1")
@@ -127,7 +126,6 @@ public plugin_init()
 
     if (gCStrike)
     {
-
         pCost = register_cvar("parachute_cost", "1000")
         pPayback = register_cvar("parachute_payback", "75")
 
@@ -170,7 +168,7 @@ public plugin_precache()
     precache_sound(LOST_CHUTE_SOUND);
     g_model = precache_model("models/glassgibs.mdl");
 
-    //for func_brekable
+    //for func_breakable
     precache_sound("debris/bustglass2.wav");
     precache_sound("debris/bustglass1.wav");
     precache_sound("debris/metal1.wav");
@@ -208,7 +206,6 @@ public plugin_precache()
 
 }
 
-
 public parachute_reset(id)
 {
     new print = get_pcvar_num(g_debug)
@@ -242,7 +239,6 @@ public parachute_reset(id)
     }
 }
 
-
 @chute_touch(chute,whatever)
 {
     new id = pev(chute, pev_owner)
@@ -274,6 +270,7 @@ public parachute_prethink(id)
     if(is_user_connected(id))
         parachute_think(id)
 }
+
 public parachute_think(id)
 {
     /*
@@ -359,8 +356,11 @@ public parachute_think(id)
                         new Float:maxbox[3] = { Parachute_size, Parachute_size, Parachute_size }
                         new Float:angles[3] = { 0.0, 0.0, 0.0 }
                         set_pev(para_ent[id], pev_spawnflags, 6)
+                        new NotBreakable = get_pcvar_bool(g_safemode)
+                        para_ent[id] =  NotBreakable ? create_entity("info_target") : create_entity("func_breakable")
 
-                        para_ent[id] =  get_pcvar_bool(g_safemode) ? create_entity("info_target") : create_entity("func_breakable")
+                        ///CHUTE WORLD PHYSICS.
+                        set_pev(para_ent[id],pev_solid,NotBreakable ? SOLID_TRIGGER : SOLID_BBOX)
 
                         new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
                         formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
@@ -389,13 +389,9 @@ public parachute_think(id)
                             entity_set_size(para_ent[id], minbox, maxbox )
                             set_pev(para_ent[id],pev_angles,angles)
 
-                            ///HOW BREAKBLE CHUTE REACTS WIH WORLD
-                            set_pev(para_ent[id],pev_solid,SOLID_BBOX)
-
                             set_pev(para_ent[id],pev_takedamage, get_pcvar_bool(g_safemode) ? DAMAGE_NO : DAMAGE_YES)
 
                             DispatchKeyValue(para_ent[id], "explodemagnitude", "15")
-
 
                             //Give the parachute health so we can destroy it later in a fight.
                             entity_set_float(para_ent[id], EV_FL_health, get_pcvar_float(g_packHP))
@@ -509,9 +505,7 @@ public chute_pop(id)
     }
 }
 
-
 //administrative code/////////////////////////////////
-
 public client_connect(id)
 if(is_user_connected(id))
     parachute_reset(id)
@@ -665,8 +659,8 @@ public give_parachute(id,args[])
     return PLUGIN_HANDLED
 }
 
-public admin_give_parachute(id, level, cid) {
-
+public admin_give_parachute(id, level, cid)
+{
     if (!gCStrike) return PLUGIN_CONTINUE
 
     if(!cmd_access(id,level,cid,2)) return PLUGIN_HANDLED
@@ -681,11 +675,11 @@ public admin_give_parachute(id, level, cid) {
     get_user_name(id,name,charsmax(name))
     get_user_authid(id,authid, charsmax(authid))
 
-    if (arg[0]=='@'){
+    if (arg[0]=='@')
+    {
         new players[32], inum
-        if (equali("T",arg[1]))     copy(arg[1],31,"TERRORIST")
-        if (equali("ALL",arg[1]))   get_players(players,inum)
-        else                        get_players(players,inum,"e",arg[1])
+        if (equali("T",arg[1])) copy(arg[1],31,"TERRORIST")
+        equali("ALL",arg[1]) ? get_players(players,inum) : get_players(players,inum,"e",arg[1])
 
         if (inum == 0) {
             console_print(id,"No clients in such team")
@@ -704,8 +698,8 @@ public admin_give_parachute(id, level, cid) {
         console_print(id,"[AMXX] You gave a parachute to ^"%s^" players",arg[1])
         log_amx("^"%s<%d><%s><>^" gave a parachute to ^"%s^"", name,get_user_userid(id),authid,arg[1])
     }
-    else {
-
+    else
+    {
         new player = cmd_target(id,arg,6)
         if (!player) return PLUGIN_HANDLED
 
