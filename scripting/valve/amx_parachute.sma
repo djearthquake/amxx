@@ -5,7 +5,7 @@
 /*******************************************************************************
     Original AMX Author: KRoTaL
     Original AMXX Porter: JTP10181
-    0.1     Release
+    0.1    Release
     0.1.1  Players can't buy a parachute if they already own one
     0.1.2  Release for AMX MOD X
     0.1.3  Minor changes
@@ -13,23 +13,24 @@
     0.1.5  Added amx_parachute cvar
     0.1.6  Changed set_origin to movetype_follow (you won't see your own parachute)
     0.1.7  Added amx_parachute <name> | admins with admin level a get a free parachute
-    0.1.8  JTP - Cleaned up code, fixed runtime error
-    1.0     JTP - Should be final version, made it work on basically any mod
-    1.1     JTP - Added Changes from AMX Version 0.1.8
-             Added say give_parachute and parachute_fallspeed cvar
-             Plays the release animation when you touch the ground
-             Added chat responder for automatic help
-    1.2     JTP - Added cvar to disable the detach animation
-             Redid animation code to improve organization
-             Force "walk" animation on players when falling
-             Change users gravity when falling to avoid choppiness
-    1.3     JTP - Upgraded to pCVARs
-    1.4     SPiNX 10/22/19 17:59 - Revised prethink per 'Invalid entity' run-time error.
-             SPiNX Sun Oct 27 10:24:39 CDT 2019 - Finished testing new install without model install. No crash!
-    1.5     SPiNX Sun 17 May 2020 01:21:55 PM CDT - Auto-parachute! Deployment has a depth CVAR.
-    1.6     SPiNX Sun 17 May 2020 11:41:39 PM CDT - Parachute can be blown up and user freefalls.
-    1.7     SPiNX over last few months. Added 3 chutes. Bot or admin or not. Fixed stabily on mods outside of cstrike when chute is shot down.
-    1.8     SPiNX Mon Aug 22 2022 16:00:00 PM CDT - Updated to show admin speed and incorporate Arkshine's wind request properly. Optimize code. Fail-safe for jk_botti crashing servers from breakables.
+    0.1.8  JTP   - Cleaned up code, fixed runtime error
+    1.0    JTP   - Should be final version, made it work on basically any mod
+    1.1    JTP   - Added Changes from AMX Version 0.1.8
+                   Added say give_parachute and parachute_fallspeed cvar
+                   Plays the release animation when you touch the ground
+                   Added chat responder for automatic help
+    1.2    JTP   - Added cvar to disable the detach animation
+                   Redid animation code to improve organization
+                   Force "walk" animation on players when falling
+                   Change users gravity when falling to avoid choppiness
+    1.3    JTP   - Upgraded to pCVARs
+    1.4    SPiNX - 10/22/19 17:59                  - Revised prethink per 'Invalid entity' run-time error.
+           SPiNX - Sun Oct 27 10:24:39 CDT 2019    - Finished testing new install without model install. No crash!
+    1.5    SPiNX - Sun 17 May 2020 01:21:55 PM CDT - Auto-parachute! Deployment has a depth CVAR.
+    1.6    SPiNX - Sun 17 May 2020 11:41:39 PM CDT - Parachute can be blown up and user freefalls.
+    1.7    SPiNX -                                 - Over last few months. Added 3 chutes. Bot or admin or not. Fixed stabily on mods outside of cstrike when chute is shot down.
+    1.8    SPiNX - Mon Aug 22 2022 16:00:00 PM CDT - Updated to show admin speed and incorporate Arkshine's wind request properly. Optimize code. Fail-safe for jk_botti crashing servers from breakables.
+    1.9    What is it going to be?  Please comment.
 
   Commands:
 
