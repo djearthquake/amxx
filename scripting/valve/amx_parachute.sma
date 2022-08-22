@@ -122,7 +122,7 @@ public plugin_init()
     pAutoRules  = register_cvar("parachute_autoadmin", "2") //0|off 1|admin 2|all
     g_safemode  = register_cvar("parachute_safemode", "false")
     g_packHP    = register_cvar("parachute_health", "75")
-    g_debug       = register_cvar("parachute_debug", "0")
+    g_debug     = register_cvar("parachute_debug", "0")
     if (cstrike_running()) gCStrike = true
 
     if (gCStrike)
