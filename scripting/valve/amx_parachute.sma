@@ -243,25 +243,38 @@ public parachute_reset(id)
 
         if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
         {
-            remove_entity(para_ent[id])
+            set_pev(para_ent[id], pev_flags, FL_KILLME)
             para_ent[id] = 0
         }
     }
 }
 
 public newSpawn(id)
+if(is_user_connected(id))
 {
     if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
     {
         set_user_gravity(id, 1.0)
 
         if(bOF_run && is_user_bot(id))
-            return
+        {
+            if(g_UnBreakable)
+            {
+                remove_entity(para_ent[id])
+                para_ent[id] = 0
+            }
+            else
+            {
+                set_task(20.0, "parachute_reset", id)
+            }
+        }
+        else
+        {
+            remove_entity(para_ent[id])
+            para_ent[id] = 0
+        }
 
-        remove_entity(para_ent[id])
-        para_ent[id] = 0
     }
-
     if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0)
         has_parachute[id] = true
 }
@@ -337,7 +350,7 @@ public parachute_think(flags, id, button, oldbutton)
                     {
                         remove_entity(para_ent[id])
                         para_ent[id] = 0
-                        if(task_exists(id))remove_task(id);
+                        //if(task_exists(id))remove_task(id);
                     }
 
                 }
