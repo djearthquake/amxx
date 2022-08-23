@@ -237,12 +237,15 @@ public parachute_reset(id)
 @chute_touch(chute,whatever)
 {
     new id = pev(chute, pev_owner)
-    server_print "Adjusting %n parachute", id
-
-    if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
+    if(is_user_connected(id))
     {
-        remove_entity(para_ent[id])
-        para_ent[id] = 0
+        server_print "Adjusting %n parachute", id
+
+        if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
+        {
+            remove_entity(para_ent[id])
+            para_ent[id] = 0
+        }
     }
 }
 
