@@ -307,11 +307,11 @@ public parachute_think(flags, id, button, oldbutton)
         new Rip_Cord = get_pcvar_num(pAutoDeploy);
         new iDrop = pev(id,pev_flFallVelocity)
         new print = get_pcvar_num(g_debug)
+        new fParachuteSpeed = get_pcvar_num(pFallSpeed)
 
         if (get_pcvar_num(pAutoRules) == 1 && is_user_admin(id) || get_pcvar_num(pAutoRules) == 2)
         {
-            //AUTO = (iDrop >= (get_pcvar_num(pFallSpeed) + Rip_Cord) )
-            AUTO = !bFirstAuto[id] ? iDrop > Rip_Cord : iDrop > 100
+            AUTO = !bFirstAuto[id] ? iDrop >= Rip_Cord : iDrop > fParachuteSpeed
         }
 
         if(is_user_admin(id) && print && iDrop > 0)
@@ -327,7 +327,7 @@ public parachute_think(flags, id, button, oldbutton)
         {
             new Float:frame
 
-            new Float:fallspeed = get_pcvar_float(pFallSpeed) * -1.0
+            new Float:fallspeed = fParachuteSpeed * -1.0
 
             if( (pev_valid(para_ent[id]) > 1) && (para_ent[id] > 0 && (flags & FL_ONGROUND)) )
             {
@@ -354,7 +354,6 @@ public parachute_think(flags, id, button, oldbutton)
                     {
                         remove_entity(para_ent[id])
                         para_ent[id] = 0
-                        //if(task_exists(id))remove_task(id);
                     }
 
                 }
