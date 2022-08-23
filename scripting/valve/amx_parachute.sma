@@ -262,10 +262,17 @@ public parachute_prethink(id)
 {
     if(!get_pcvar_num(pEnabled)) return
     if(is_user_connected(id))
-        parachute_think(id)
+    {
+        new flags = get_entity_flags(id)
+
+        if(flags & FL_ONGROUND)
+            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
+
+        parachute_think(flags, id)
+    }
 }
 
-public parachute_think(id)
+public parachute_think(flags, id)
 {
     /*
      * parachute.mdl animation information
@@ -273,7 +280,6 @@ public parachute_think(id)
      * 1 - idle - 39 frames
      * 2 - detach - 29 frames
      */
-    new flags = get_entity_flags(id)
     if(is_user_alive(id))
     {
         new AUTO;
@@ -457,7 +463,6 @@ public parachute_think(id)
             }
         }
     }
-    emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 }
 
 //effects
