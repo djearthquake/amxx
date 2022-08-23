@@ -102,6 +102,7 @@ new const PARA_MODEL[] = "models/parachute2.mdl"
 
 new g_model, g_packHP
 new bool:bOF_run
+new bool:bFirstAuto[MAX_PLAYERS+1]
 
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
@@ -112,7 +113,7 @@ public plugin_init()
     pEnabled    = register_cvar("sv_parachute", "1" )
     pFallSpeed  = register_cvar("parachute_fallspeed", "100")
     pDetach     = register_cvar("parachute_detach", "1")
-    pAutoDeploy = register_cvar("parachute_autorip", "200")
+    pAutoDeploy = register_cvar("parachute_autorip", "1200")
     pAutoRules  = register_cvar("parachute_autoadmin", "2") //0|off 1|admin 2|all
     bind_pcvar_num(register_cvar("parachute_safemode", "0"),g_UnBreakable)
     g_packHP    = register_cvar("parachute_health", "75")
@@ -308,7 +309,10 @@ public parachute_think(flags, id, button, oldbutton)
         new print = get_pcvar_num(g_debug)
 
         if (get_pcvar_num(pAutoRules) == 1 && is_user_admin(id) || get_pcvar_num(pAutoRules) == 2)
-            AUTO = (iDrop >= (get_pcvar_num(pFallSpeed) + Rip_Cord) )
+        {
+            //AUTO = (iDrop >= (get_pcvar_num(pFallSpeed) + Rip_Cord) )
+            AUTO = !bFirstAuto[id] ? iDrop > Rip_Cord : iDrop > 100
+        }
 
         if(is_user_admin(id) && print && iDrop > 0)
             client_print id, print_center, "Fall Velocity:%d", iDrop
@@ -365,12 +369,16 @@ public parachute_think(flags, id, button, oldbutton)
             }
             if(button & IN_USE|AUTO)
             {
+                if(AUTO && !bFirstAuto[id])
+                    bFirstAuto[id] = true
+                else if(button & IN_USE)
+                bFirstAuto[id] = false
+
                 new Float:velocity[3]
                 entity_get_vector(id, EV_VEC_velocity, velocity)
 
                 if (velocity[2] < 0.0)
                 {
-
                     if(para_ent[id] <= 0)
                     {
                         new Float:minbox[3] = { -Parachute_size, -Parachute_size, -Parachute_size }
@@ -378,12 +386,12 @@ public parachute_think(flags, id, button, oldbutton)
                         new Float:angles[3] = { 0.0, 0.0, 0.0 }
                         set_pev(para_ent[id], pev_spawnflags, 6)
 
-                        para_ent[id] =   g_UnBreakable  ? create_entity("info_target") : create_entity("func_breakable")
-                        set_pev(para_ent[id], pev_solid,  g_UnBreakable  ? SOLID_NOT : SOLID_BBOX)
+                        para_ent[id] = g_UnBreakable ?create_entity("info_target") : create_entity("func_breakable")
+                        set_pev(para_ent[id], pev_solid, g_UnBreakable  ? SOLID_NOT : SOLID_BBOX)
 
                         new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
                         formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
-                        set_pev(para_ent[id],pev_classname, "parachute")
+                        set_pev(para_ent[id], pev_classname, "parachute")
 
                         if(pev_valid(para_ent[id]) > 1)
                         {
@@ -408,7 +416,7 @@ public parachute_think(flags, id, button, oldbutton)
                             entity_set_size(para_ent[id], minbox, maxbox )
                             set_pev(para_ent[id],pev_angles,angles)
 
-                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable /*|| is_user_bot(id) && bOF_run */? DAMAGE_NO : DAMAGE_YES)
+                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable || is_user_bot(id) && bOF_run ? DAMAGE_NO : DAMAGE_YES)
 
                             //Give the parachute health so we can destroy it later in a fight.
                             if(!g_UnBreakable)
