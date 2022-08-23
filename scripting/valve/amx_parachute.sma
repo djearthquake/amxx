@@ -57,7 +57,7 @@
 
     parachute_autoadmin "2"         - Admins can automatically deploy chute or allow everybody. 0|off   1|admin     2|all.
 
-    parachute_autorip   "200"       - Depth sensor for automatic deployment of parachute. 1-450+. Depends on map.
+    parachute_autorip   "300"       - Depth sensor for automatic deployment of parachute. 300-3150. Depends on map.
 
     parachute_debug     "0"         - Print out details about breakable chute and fall velocity if an admin.
 
@@ -317,7 +317,7 @@ public parachute_think(flags, id, button, oldbutton)
             AUTO = !bFirstAuto[id] ? iDrop >= Rip_Cord : iDrop > fParachuteSpeed
         }
 
-        if(is_user_admin(id) && print && iDrop > 0)
+        if(is_user_admin(id) && print && iDrop != 0)
             client_print id, print_center, "Fall Velocity:%d", iDrop
 
         if(button & IN_ATTACK)/*Sniper first shot sound is still clipped*/
