@@ -1,7 +1,7 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8"
+#define VERSION "1.8.1"
 /*******************************************************************************
     Original AMX Author: KRoTaL
     Original AMXX Porter: JTP10181
@@ -30,6 +30,7 @@
     1.6    SPiNX - Sun 17 May 2020 11:41:39 PM CDT - Parachute can be blown up and user freefalls.
     1.7    SPiNX -                                 - Over last few months. Added 3 chutes. Bot or admin or not. Fixed stabily on mods outside of cstrike when chute is shot down.
     1.8    SPiNX - Mon Aug 22 2022 16:00:00 PM CDT - Updated to show admin speed and incorporate Arkshine's wind request properly. Optimize code. Fail-safe for jk_botti crashing servers from breakables.
+    1.8.1 SPiNX - Tues Aug 23 2022 07:43:00 AM CDT - Worked on wind not colliding when firing weapon.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -57,7 +58,7 @@
     parachute_autoadmin "2"         - Admins can automatically deploy chute or allow everybody. 0|off   1|admin     2|all.
 
     parachute_autorip   "200"       - Depth sensor for automatic deployment of parachute. 1-450+. Depends on map.
-    
+
     parachute_debug     "0"         - Print out details about breakable chute and fall velocity if an admin.
 
   Setup (AMXX 1.x):
@@ -264,15 +265,14 @@ public parachute_prethink(id)
     if(is_user_connected(id))
     {
         new flags = get_entity_flags(id)
+        new button = get_user_button(id)
+        new oldbutton = get_user_oldbutton(id)
 
-        if(flags & FL_ONGROUND)
-            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
-
-        parachute_think(flags, id)
+        parachute_think(flags, id, button, oldbutton)
     }
 }
 
-public parachute_think(flags, id)
+public parachute_think(flags, id, button, oldbutton)
 {
     /*
      * parachute.mdl animation information
@@ -293,14 +293,15 @@ public parachute_think(flags, id)
         if(is_user_admin(id) && print && iDrop > 0)
             client_print id, print_center, "Fall Velocity:%d", iDrop
 
-        emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 999 ? 0 : SND_STOP, PITCH)
+        if(button & IN_ATTACK)
+            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
+
+        else if(flags & ~FL_ONGROUND)
+            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 999 ? 0 : SND_STOP, PITCH)
 
         if(has_parachute[id])
         {
             new Float:frame
-
-            new button = get_user_button(id)
-            new oldbutton = get_user_oldbutton(id)
 
             new Float:fallspeed = get_pcvar_float(pFallSpeed) * -1.0
 
@@ -341,7 +342,6 @@ public parachute_think(flags, id)
 
                 return
             }
-
             if(button & IN_USE|AUTO)
             {
                 new Float:velocity[3]
@@ -432,7 +432,7 @@ public parachute_think(flags, id)
                             }
                         }
                     }
-                    if ( para_ent[id] < 1 || !pev_valid(para_ent[id])  || !g_UnBreakable && pev(para_ent[id],pev_health) < 20.0 )
+                    if ( para_ent[id] < 1 || !pev_valid(para_ent[id])  || !g_UnBreakable && pev(para_ent[id],pev_health) < (1.0 - (get_pcvar_num(pPayback) /100) * get_pcvar_float(g_packHP)) )
                     {
                         emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
                         colorize(id)
@@ -463,6 +463,8 @@ public parachute_think(flags, id)
             }
         }
     }
+    if(flags & FL_ONGROUND)
+        emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 }
 
 //effects
