@@ -457,6 +457,7 @@ public parachute_think(id)
             }
         }
     }
+    emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 }
 
 //effects
