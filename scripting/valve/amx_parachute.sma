@@ -30,7 +30,7 @@
     1.6    SPiNX - Sun 17 May 2020 11:41:39 PM CDT - Parachute can be blown up and user freefalls.
     1.7    SPiNX -                                 - Over last few months. Added 3 chutes. Bot or admin or not. Fixed stabily on mods outside of cstrike when chute is shot down.
     1.8    SPiNX - Mon Aug 22 2022 16:00:00 PM CDT - Updated to show admin speed and incorporate Arkshine's wind request properly. Optimize code. Fail-safe for jk_botti crashing servers from breakables.
-    1.8.1 SPiNX - Tues Aug 23 2022 07:43:00 AM CDT - Worked on wind not colliding when firing weapon.
+    1.8.1 SPiNX - Tues Aug 23 2022 07:43:00 AM CDT - Worked on wind not colliding when firing weapon. Stable jk_botti tested.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -250,8 +250,12 @@ public newSpawn(id)
 {
     if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
     {
-        remove_entity(para_ent[id])
         set_user_gravity(id, 1.0)
+
+        if(bOF_run && is_user_bot(id))
+            return
+
+        remove_entity(para_ent[id])
         para_ent[id] = 0
     }
 
@@ -293,7 +297,7 @@ public parachute_think(flags, id, button, oldbutton)
         if(is_user_admin(id) && print && iDrop > 0)
             client_print id, print_center, "Fall Velocity:%d", iDrop
 
-        if(button & IN_ATTACK)
+        if(button & IN_ATTACK)/*Sniper first shot sound is still clipped*/
             emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 
         else if(flags & ~FL_ONGROUND)
@@ -332,6 +336,7 @@ public parachute_think(flags, id, button, oldbutton)
                         para_ent[id] = 0
                         if(task_exists(id))remove_task(id);
                     }
+
                 }
                 else
                 {
@@ -357,8 +362,8 @@ public parachute_think(flags, id, button, oldbutton)
                         new Float:angles[3] = { 0.0, 0.0, 0.0 }
                         set_pev(para_ent[id], pev_spawnflags, 6)
 
-                        para_ent[id] =   g_UnBreakable || is_user_bot(id) && bOF_run ? create_entity("info_target") : create_entity("func_breakable")
-                        set_pev(para_ent[id], pev_solid,  g_UnBreakable  || is_user_bot(id) && bOF_run ? SOLID_NOT : SOLID_BBOX)
+                        para_ent[id] =   g_UnBreakable  ? create_entity("info_target") : create_entity("func_breakable")
+                        set_pev(para_ent[id], pev_solid,  g_UnBreakable  ? SOLID_NOT : SOLID_BBOX)
 
                         new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
                         formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
@@ -387,7 +392,7 @@ public parachute_think(flags, id, button, oldbutton)
                             entity_set_size(para_ent[id], minbox, maxbox )
                             set_pev(para_ent[id],pev_angles,angles)
 
-                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable|| is_user_bot(id) && bOF_run ? DAMAGE_NO : DAMAGE_YES)
+                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable /*|| is_user_bot(id) && bOF_run */? DAMAGE_NO : DAMAGE_YES)
 
                             //Give the parachute health so we can destroy it later in a fight.
                             if(!g_UnBreakable)
@@ -432,7 +437,7 @@ public parachute_think(flags, id, button, oldbutton)
                             }
                         }
                     }
-                    if ( para_ent[id] < 1 || !pev_valid(para_ent[id])  || !g_UnBreakable && pev(para_ent[id],pev_health) < (1.0 - (get_pcvar_num(pPayback) /100) * get_pcvar_float(g_packHP)) )
+                    if ( para_ent[id] < 1 || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
                     {
                         emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
                         colorize(id)
