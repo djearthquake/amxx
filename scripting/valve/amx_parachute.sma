@@ -57,7 +57,7 @@
 
     parachute_autoadmin "2"         - Admins can automatically deploy chute or allow everybody. 0|off   1|admin     2|all.
 
-    parachute_autorip   "300"       - Depth sensor for automatic deployment of parachute. 300-3150. Depends on map.
+    parachute_autorip   "500"       - Depth sensor for automatic deployment of parachute. 1-3150. Depends on map.
 
     parachute_debug     "0"         - Print out details about breakable chute and fall velocity if an admin.
 
@@ -336,8 +336,11 @@ public parachute_think(flags, id, button, oldbutton)
             {
                 if (get_pcvar_num(pDetach))
                 {
+                    bFirstAuto[id] = false
+
                     if (get_user_gravity(id) == 0.1)
                         set_user_gravity(id, 1.0)
+
                     if( (pev_valid(para_ent[id]) > 1))
                     {
                         entity_set_int(para_ent[id], EV_INT_sequence, 2)
@@ -495,7 +498,9 @@ public parachute_think(flags, id, button, oldbutton)
         }
     }
     if(flags & FL_ONGROUND)
+    {
         emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
+    }
 }
 
 //effects
