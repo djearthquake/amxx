@@ -244,7 +244,10 @@ public parachute_reset(id)
 
         if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
         {
-            set_pev(para_ent[id], pev_flags, FL_KILLME)
+            if(!is_user_alive(id))/*Spec interference*/
+                set_pev(para_ent[id], pev_solid, SOLID_NOT)
+
+            remove_entity(para_ent[id])
             para_ent[id] = 0
         }
     }
