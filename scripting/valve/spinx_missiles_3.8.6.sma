@@ -1,5 +1,5 @@
 
-#define CSTRIKE /*uncomment for continued cstrike buy system.*/
+//#define CSTRIKE /*uncomment for continued cstrike buy system.*/
 ///comment or uncomment to switch between cstrike or non-cstrike mods
 //#define TEST //missile menu shoots non-lethal
 /**
@@ -403,7 +403,7 @@ public plugin_init(){
     register_concmd("amx_missile3","admin_missile",ADMIN_MISSILES,"[speed] [chicken:0|1|2] [deadly:0|1] - Gun Cam Missile")
     register_concmd("amx_missile5","admin_missile",ADMIN_MISSILES,"[speed] [chicken:0|1|2] [deadly:0|1] - Heat-Seeking Missile")
     register_concmd("amx_missile6","admin_missile",ADMIN_MISSILES,"[speed] [chicken:0|1|2] [deadly:0|1] - Parachute-Seeking Missile")
-    register_concmd("amx_missile7","admin_missile",ADMIN_MISSILES,"[speed] [chicken:0|1|2] [deadly:0|1] - Swrirling Death Missile")
+    register_concmd("amx_missile7","admin_missile",ADMIN_MISSILES,"[speed] [chicken:0|1|2] [deadly:0|1] - Swirling Death Missile")
 
     register_clcmd("amx_missile","fire_missile")
     register_clcmd("amx_laserguided_missile","fire_missile")
@@ -813,6 +813,10 @@ do_victim(victim,attacker,damage,unarmed,tk){
                 set_user_frags(attacker,get_user_frags(attacker) - 1 )
             }
 
+            //set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
+            if(cstrike_running())
+                set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
+            if(!cstrike_running())
                 set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
 
             fakedamage(victim," Missile",500.0,DMG_MORTAR);
