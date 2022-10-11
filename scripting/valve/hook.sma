@@ -134,12 +134,13 @@ public plugin_init()
 
         // Player spawn stuff
         register_event("TextMsg", "Restart", "a", "2=#Game_will_restart_in")
+        RegisterHam(Ham_Spawn, "player", "ResetHUD", 1)
     }
     else
-
-    //register_clcmd("fullupdate", "Update")
-    cstrike_running() ? RegisterHam(Ham_Spawn, "player", "ResetHUD", 1):
-    register_event("ResetHUD", "ResetHUD", "b")
+    {
+        //register_clcmd("fullupdate", "Update")
+        register_event("ResetHUD", "ResetHUD", "b")
+    }
 
     // Register cvars
     register_cvar("sv_spinxhookmod",  "V1.7", FCVAR_SERVER) // yay public cvar
@@ -672,7 +673,7 @@ public fwTouch(ptr, ptd)
             if (get_pcvar_num(pWeapons))
             {
                 static ent
-                while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 125.0)) > 0)
+                while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 125.0)) > 0 && pev_valid(ent))
                 {
                     static szentClass[MAX_NAME_LENGTH]
                     pev(ent, pev_classname, szentClass, charsmax(szentClass))
