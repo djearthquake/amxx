@@ -86,7 +86,7 @@ if(pev_valid(entid) &&  get_pcvar_num(g_activate_playerstomp))
     entity_get_vector(entid,EV_VEC_angles,Axis);
 
     ///explode models on explode or touch.
-    emessage_begin( MSG_ALL, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS);
+    emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS);
     ewrite_byte(TE_EXPLODEMODEL)
     ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)))      // XYZ (start)
     ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)))
