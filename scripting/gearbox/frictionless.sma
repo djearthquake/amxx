@@ -6,7 +6,7 @@
 #define AUTHOR  "SPiNX"
 #define REMOVE  "func_friction"
 #define MAX_NAME_LENGTH                     32
-#define charsmin                                            -1
+#define charsmin                            -1
 
 new bool:g_bFlagMap
 
