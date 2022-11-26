@@ -19,5 +19,5 @@ public plugin_init()
 
     g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
     
-    g_bFlagMap ? remove_entity_name(REMOVE) &  server_print("%s|%s by %s is removing %s on %s.", PLUGIN, VERSION, AUTHOR, REMOVE, mname) : server_print("%s|%s by %s is not removing %s on %s.", PLUGIN, VERSION, AUTHOR, REMOVE, mname)
+    g_bFlagMap && find_ent(-1, REMOVE) ? remove_entity_name(REMOVE) & server_print("%s|%s by %s is removing %s on %s.", PLUGIN, VERSION, AUTHOR, REMOVE, mname) : pause( "a" )
 }
