@@ -1,10 +1,10 @@
 #include amxmodx
 #include engine_stocks
 
-#define PLUGIN    "Frictionless"
-#define VERSION "1.1"
-#define AUTHOR  "SPiNX"
-#define REMOVE  "func_friction"
+#define PLUGIN                   "Frictionless"
+#define VERSION                           "1.1"
+#define AUTHOR                          "SPiNX"
+#define REMOVE                  "func_friction"
 #define MAX_NAME_LENGTH                     32
 #define charsmin                            -1
 
