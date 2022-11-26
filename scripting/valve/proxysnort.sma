@@ -141,7 +141,7 @@ public plugin_init()
     ReadProxyFromFile( )
 }
 
-public client_authorized(id)//https://github.com/alliedmodders/amxmodx/pull/840
+public client_connect(id)//https://github.com/alliedmodders/amxmodx/pull/840
     @proxy_begin(id)
 @proxy_begin(id)
 {
