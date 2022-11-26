@@ -790,14 +790,6 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
-    IS_SOCKET_IN_USE = true;
-    if(is_plugin_loaded(PROXY_SCRIPT,true)!=charsmin)
-    if( g_proxy_version && callfunc_begin("@lock_socket",PROXY_SCRIPT))
-    {
-        callfunc_end()
-    }
-    else
-        log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
     new id = Task - WEATHER
 
     server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
@@ -805,10 +797,26 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
     if (socket_is_writable(g_Weather_Feed, 100000))
     #endif
     {
+        IS_SOCKET_IN_USE = true;
         socket_send(g_Weather_Feed,text,charsmax (text));
         server_print "Yes! %s:writing the web for ^n%s",PLUGIN, ClientName[id]
+        @latch(id)
     }
 
+}
+
+@latch(id)
+{
+    if(is_plugin_loaded(PROXY_SCRIPT,true)!=charsmin)
+    {
+        if( g_proxy_version )
+        {
+            callfunc_begin("@lock_socket",PROXY_SCRIPT)
+            callfunc_end()
+        }
+        else
+            log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
+    }
 }
 
 public read_web(feeding)
@@ -836,7 +844,7 @@ public read_web(feeding)
         }
 
         else
-        if(g_proxy_version && !IS_SOCKET_IN_USE && !gotatemp[id])
+        if(g_proxy_version && is_plugin_loaded(PROXY_SCRIPT,true)!=charsmin && !IS_SOCKET_IN_USE && !gotatemp[id])
         {
             IS_SOCKET_IN_USE = true;
             callfunc_begin("@lock_socket",PROXY_SCRIPT) ? callfunc_end() : log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
