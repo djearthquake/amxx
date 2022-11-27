@@ -108,7 +108,7 @@ if(pev_valid(entid) &&  get_pcvar_num(g_activate_playerstomp))
     entity_get_vector(entid,EV_VEC_angles,Axis);
 
     ///explode models on explode or touch.
-    emessage_begin( MSG_ALL, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS);
+    emessage_begin( MSG_PVS, SVC_TEMPENTITY, _, SEND_MSG_ALLPLAYERS);
     ewrite_byte(TE_EXPLODEMODEL)
     ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)))      // XYZ (start)
     ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)))
@@ -124,111 +124,115 @@ if(pev_valid(entid) &&  get_pcvar_num(g_activate_playerstomp))
 {
     #define PITCH (random_num(85,140))
     if(get_pcvar_num(g_activate_playerstomp))
-    if(pev_valid(victim) && pev_valid(attacker))
     {
-        new Vhealth = pev(victim,pev_health)
-        new Ahealth = pev(attacker,pev_health)
-        new Vhealth_max = pev(victim,pev_max_health)
-        new Float:aOrigin[3], vOrigin[3]
-        new SzAClassname[MAX_NAME_LENGTH], SzVClassname[MAX_NAME_LENGTH]
-
-        new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
-        if(Button & IN_JUMP && (OldButton & IN_JUMP) && pev(attacker, pev_flags) /*&& (is_valid_player(victim) && !get_user_godmode(victim) && is_valid_player(attacker) && !get_user_godmode(attacker))*/)
-        //also check if off ground
-        //if(Vhealth > 1  && Ahealth > 1 && health_max > 1/* && is_user_alive(attacker)*/)
-        if(Vhealth > 1  && Ahealth > 1 )
-        if(get_pcvar_num(g_activate_playerstomp) > 1|| Vhealth_max > 1)
+        if(victim == 0 || attacker == 0 || attacker == victim) //stops self kills and world kills
+            return PLUGIN_HANDLED_MAIN;
+        //else
+        if(pev_valid(victim) && pev_valid(attacker))
         {
+            new Vhealth = pev(victim,pev_health)
+            new Ahealth = pev(attacker,pev_health)
+            new Vhealth_max = pev(victim,pev_max_health)
+            new Float:aOrigin[3], vOrigin[3]
+            new SzAClassname[MAX_NAME_LENGTH], SzVClassname[MAX_NAME_LENGTH]
 
-            //Vhealth = pev(victim,pev_health)
-            pev(victim, pev_classname, SzVClassname, charsmax(SzVClassname));
-            pev(victim, pev_origin, vOrigin);
-
-            pev(attacker, pev_classname, SzAClassname, charsmax(SzAClassname));
-            pev(attacker, pev_origin, aOrigin);
-
-            if( aOrigin[2] - vOrigin[2] > 50/* && !is_user_bot(victim)*/)
+            new Button = pev(attacker,pev_button),OldButton = pev(attacker,pev_oldbuttons);
+            if(Button & IN_JUMP && (OldButton & IN_JUMP) && pev(attacker, pev_flags) /*&& (is_valid_player(victim) && !get_user_godmode(victim) && is_valid_player(attacker) && !get_user_godmode(attacker))*/)
+            //also check if off ground
+            //if(Vhealth > 1  && Ahealth > 1 && health_max > 1/* && is_user_alive(attacker)*/)
+            if(Vhealth > 1  && Ahealth > 1 )
+            if(get_pcvar_num(g_activate_playerstomp) > 1|| Vhealth_max > 1)
             {
 
-                new id;
-                fExpOrigin = aOrigin
-                if(is_valid_player(attacker)  && get_user_godmode(attacker) || is_valid_player(victim) && get_user_godmode(victim) )
-                {
-                    if(get_user_godmode(attacker))
-                        id = attacker
-                    if(get_user_godmode(victim))
-                        id = victim
-    
-                    //If either player is in Godmode like from Spawn Protection script I want it to be like magnets repelling with some force.
-                    fExpOrigin[2] += 500.0
-                    new origin[3]
-                    origin[0] = floatround(fExpOrigin[0])
-                    origin[1] = floatround(fExpOrigin[1])
-                    origin[2] = floatround(fExpOrigin[2])
-                    ///entity_explosion_knockback(id, origin
-                    emit_sound(id, CHAN_WEAPON, FART_SND, 5.0, ATTN_NORM, 0, PITCH);
-                    @burst_fail(victim)
-                }
-                else
-                {
-                    //Otherwise whatever player is a neck higher and in jump to squash other player and do effects both sound and coins
-                    ExecuteHam(Ham_TakeDamage, victim, get_weaponid(""), attacker, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
-    
-                    emit_sound(attacker, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
-    
-                    if(is_user_connected(victim))
-                        g_bStomped[victim] = true
-    
-                    if(is_user_connected(victim) && !is_user_bot(victim) && !is_user_alive(victim))
-                       // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH);
-                        client_cmd(victim,"mp3 play ^"%s^"",MARIO_DEATH_SND)
-                }
+                //Vhealth = pev(victim,pev_health)
+                pev(victim, pev_classname, SzVClassname, charsmax(SzVClassname));
+                pev(victim, pev_origin, vOrigin);
 
-                if(!is_user_bot(attacker) &&  is_user_connected(attacker) &&  victim < 33 && pev(victim, pev_deadflag) != DEAD_NO)
-                    client_print attacker, print_center, "%n stamped %n | %s", attacker, victim, SzVClassname
+                pev(attacker, pev_classname, SzAClassname, charsmax(SzAClassname));
+                pev(attacker, pev_origin, aOrigin);
 
-                else if(!is_user_bot(attacker) &&  is_user_connected(attacker) && pev(victim, pev_deadflag) != DEAD_NO )
+                if( aOrigin[2] - vOrigin[2] > 50/* && !is_user_bot(victim)*/)
                 {
-                    client_print attacker, print_center, "%n stamped %s", attacker, SzVClassname
-                    if(!is_valid_player(victim) && pev_valid(victim))
-                        @burst_coin(victim) //monster needs coin too!
-                }
-            }
-
-            else if(vOrigin[2] - aOrigin[2] > 50) 
-            {
-                if(get_pcvar_num(g_activate_playerstomp) || (victim, EV_FL_takedamage) > 0.0)
-                {
-                    /*
-                    //DAMAGE
-                    if(containi(SzVClassname,"able") != charsmin)
+                    new id;
+                    fExpOrigin = aOrigin
+                    if(is_valid_player(attacker)  && get_user_godmode(attacker) || is_valid_player(victim) && get_user_godmode(victim) )
                     {
-                        //func_breakable was stomping player!!
+                        if(get_user_godmode(attacker))
+                            id = attacker
+                        if(get_user_godmode(victim))
+                            id = victim
+
+                        //If either player is in Godmode like from Spawn Protection script I want it to be like magnets repelling with some force.
+                        fExpOrigin[2] += 500.0
+                        new origin[3]
+                        origin[0] = floatround(fExpOrigin[0])
+                        origin[1] = floatround(fExpOrigin[1])
+                        origin[2] = floatround(fExpOrigin[2])
+                        ///entity_explosion_knockback(id, origin
+                        emit_sound(id, CHAN_WEAPON, FART_SND, 5.0, ATTN_NORM, 0, PITCH);
+                        @burst_fail(victim)
+                    }
+                    else
+                    {
+                        //Otherwise whatever player is a neck higher and in jump to squash other player and do effects both sound and coins
+                        ExecuteHam(Ham_TakeDamage, victim, get_weaponid(""), attacker, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
+
+                        emit_sound(attacker, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
+
+                        if(is_user_connected(victim))
+                            g_bStomped[victim] = true
+
+                        if(is_user_connected(victim) && !is_user_bot(victim) && !is_user_alive(victim))
+                           // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH);
+                            client_cmd(victim,"mp3 play ^"%s^"",MARIO_DEATH_SND)
+                    }
+
+                    if(!is_user_bot(attacker) &&  is_user_connected(attacker) &&  victim < 33 && pev(victim, pev_deadflag) != DEAD_NO)
+                        client_print attacker, print_center, "%n stamped %n | %s", attacker, victim, SzVClassname
+
+                    else if(!is_user_bot(attacker) &&  is_user_connected(attacker) && pev(victim, pev_deadflag) != DEAD_NO )
+                    {
+                        client_print attacker, print_center, "%n stamped %s", attacker, SzVClassname
+                        if(!is_valid_player(victim) && pev_valid(victim))
+                            @burst_coin(victim) //monster needs coin too!
+                    }
+                }
+                else if(vOrigin[2] - aOrigin[2] > 50)
+                {
+                    if(get_pcvar_num(g_activate_playerstomp) || (victim, EV_FL_takedamage) > 0.0)
+                    {
+                        /*
+                        //DAMAGE
+                        if(containi(SzVClassname,"able") != charsmin)
+                        {
+                            //func_breakable was stomping player!!
+                            attacker = victim
+                            victim = attacker
+                        }*/
+                        //offset physics
                         attacker = victim
                         victim = attacker
-                    }*/
-                    //offset physics
-                    attacker = victim
-                    victim = attacker
-                    ExecuteHam(Ham_TakeDamage, attacker, get_weaponid(""), victim, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
-                    //player killing bot
-                    emit_sound(victim, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
-                    if(is_user_connected(attacker))
-                        g_bStomped[attacker] = true
-                    //SND EFFECT
-                    if(is_valid_player(attacker) && !is_user_bot(attacker) && !is_user_alive(attacker))
-                       // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH); //all can hear
-                        client_cmd(attacker,"mp3 play ^"%s^"",MARIO_DEATH_SND)
-                    //ANNOUNCEMENT
-                    if(is_valid_player(victim) && !is_user_bot(victim) && !is_user_alive(attacker) )
-                        client_print victim, print_center, "%n stomped %n | %s", victim, attacker, SzAClassname
+                        ExecuteHam(Ham_TakeDamage, attacker, get_weaponid(""), victim, 500.0, DMG_CRUSH|DMG_ALWAYSGIB)
+                        //player killing bot
+                        emit_sound(victim, CHAN_STATIC, SOUND_GOOMBA, 5.0, ATTN_NORM, 0, PITCH);
+                        if(is_user_connected(attacker))
+                            g_bStomped[attacker] = true
+                        //SND EFFECT
+                        if(is_valid_player(attacker) && !is_user_bot(attacker) && !is_user_alive(attacker))
+                           // emit_sound(attacker, CHAN_STATIC, MARIO_DEATH_SND, 5.0, ATTN_NORM, 0, PITCH); //all can hear
+                            client_cmd(attacker,"mp3 play ^"%s^"",MARIO_DEATH_SND)
+                        //ANNOUNCEMENT
+                        if(is_valid_player(victim) && !is_user_bot(victim) && !is_user_alive(attacker) )
+                            client_print victim, print_center, "%n stomped %n | %s", victim, attacker, SzAClassname
 
-                    else if(is_user_bot(victim) && pev_valid(attacker) )
-                        client_print victim, print_center, "%n stomped %s", attacker, SzAClassname
+                        else if(is_user_bot(victim) && pev_valid(attacker) )
+                            client_print victim, print_center, "%n stomped %s", attacker, SzAClassname
+                    }
                 }
             }
         }
     }
+    return PLUGIN_CONTINUE;
 }
 
 public plugin_precache()
