@@ -141,19 +141,12 @@ public plugin_init()
     ReadProxyFromFile( )
 }
 
-//https://github.com/alliedmodders/amxmodx/pull/840
-#if AMXX_VERSION_NUM != 110
-public client_connect(id)
-#else
-public client_authorized(id, const authid[])
-    if(!equali(authid, "BOT"))
-#endif
+public client_putinserver(id)
     @proxy_begin(id)
-//Starts checking index for PROXY or VPN.
+
 @proxy_begin(id)
 {
-    if(is_user_connected(id) || is_user_connecting(id))
-    if(!g_processing[id])
+    if(is_user_connected(id) && !g_processing[id])
     {
         if(is_user_bot(id) || g_has_been_checked[id] || id == 0)
             return PLUGIN_HANDLED_MAIN
