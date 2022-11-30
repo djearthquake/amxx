@@ -1,4 +1,4 @@
-#define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
+                                                                                    #define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
 //This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
 ///If you do not use it, ignore or study it.
 //https://github.com/djearthquake/amxx/blob/main/scripting/valve/clientemp.sma
@@ -139,6 +139,16 @@ public plugin_init()
     formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
     @file_data(SzSave)
     ReadProxyFromFile( )
+}
+
+#if !defined client_disconnect
+#define client_disconnected client_disconnect
+#endif
+
+public client_disconnected(id)
+{
+    g_has_been_checked[id]  = false
+    g_processing[id] = false
 }
 
 public client_putinserver(id)
