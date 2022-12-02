@@ -20,18 +20,21 @@
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
+#define TOGGLE 2022
 
 //heads up display char gen
 #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
 
 #define OK if(is_user_connected(id)
-new bool:g_spectating[MAX_PLAYERS]
+new bool:g_spectating[MAX_PLAYERS+1]
 new bool:g_bFlagMap
+new g_random_view[MAX_PLAYERS+1]
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
-new g_iViewtype[MAX_PLAYERS] 
+new Float:g_user_origin[MAX_PLAYERS + 1][3]
+new g_iViewtype[MAX_PLAYERS + 1] 
 new g_startaspec
 
 public plugin_init()
@@ -56,7 +59,7 @@ public plugin_init()
 */
     server_print("Loading %s.", PLUGIN)
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
-    register_concmd("!spec_switch","random_view",0,"spectate random")
+    register_concmd("say !spec_switch","random_view",0,"spectate random")
     g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
     register_forward(FM_PlayerPreThink, "client_prethink");
@@ -65,32 +68,45 @@ public plugin_init()
 
 public client_prethink( id )
 {
-    if(is_user_connected(id) && g_spectating[id])
+    if(is_user_connected(id) && is_user_alive(id))
     {
-        //Remember!
-        #define OBS_NONE                        0
-        #define OBS_CHASE_LOCKED                1           // Locked Chase Cam
-        #define OBS_CHASE_FREE                  2           // Free Chase Cam
-        #define OBS_ROAMING                     3           // Free Look
-        #define OBS_IN_EYE                      4           // First Person //attach_view(id,id)
-        #define OBS_MAP_FREE                    5           // Free Overview
-        #define OBS_MAP_CHASE                   6           // Chase Overview
-
-        if( pev(id, pev_button) & IN_RELOAD)
+        if(g_spectating[id] && !is_user_bot(id))
+        if(is_user_admin(id) || get_user_time(id) > 180)
         {
-            set_pev(id, pev_iuser1, g_iViewtype[id])
-            //switch(iView)
-            {
-                client_print id, print_center, "Trying spec %d", g_iViewtype[id]
-                g_iViewtype[id]++  //cycle through the 6
+            //Remember!
+            #define OBS_NONE                        0
+            #define OBS_CHASE_LOCKED                1           // Locked Chase Cam
+            #define OBS_CHASE_FREE                  2           // Free Chase Cam
+            #define OBS_ROAMING                     3           // Free Look
+            #define OBS_IN_EYE                      4           // First Person //attach_view(id,id)
+            #define OBS_MAP_FREE                    5           // Free Overview
+            #define OBS_MAP_CHASE                   6           // Chase Overview
 
-                //reset back to one
-                if(g_iViewtype[id] > 6 )
+            if(get_user_time(id) < 180)
+                client_print id, print_center, "%f|%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2]
+
+            if( pev(id, pev_button) & IN_RELOAD)
+            {
+                set_pev(id, pev_iuser1, g_iViewtype[id])
+                //switch(iView)
                 {
-                     client_print id, print_chat, "Reset spec counter %i", g_iViewtype[id] 
-                     g_iViewtype[id]  = 0
+                    client_print id, print_center, "Trying spec %d", g_iViewtype[id]
+                    g_iViewtype[id]++  //cycle through the 6
+    
+                    //reset back to one
+                    if(g_iViewtype[id] > 6 )
+                    {
+                         client_print id, print_chat, "Reset spec counter %i", g_iViewtype[id] 
+                         g_iViewtype[id]  = 0
+                    }
                 }
             }
+            if(g_random_view[id])
+                set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
+        }
+        if(!is_user_connecting(id))
+        {
+            pev(id, pev_origin, g_user_origin[id]);
         }
     }
 }
@@ -116,6 +132,7 @@ public client_prethink( id )
         pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
     }
 }
+
 public client_putinserver(id)
 OK)
 {
@@ -156,6 +173,7 @@ OK)
                 dllfunc(DLLFunc_SpectatorDisconnect, id)
                 set_user_godmode(id,false)
                 g_spectating[id] = false
+                g_random_view[id] = 0
                 set_user_info(id, "Spectator", "no")
                 //set_view(id, CAMERA_NONE)
                 console_cmd(id, "default_fov 100")
@@ -191,40 +209,87 @@ public client_command(id)
     read_argv(0,szArgCmd, charsmax(szArgCmd));
     read_argv(1,szArgCmd1, charsmax(szArgCmd1));
 
-    if(g_spectating[id] == true && !equal(szArgCmd, "say") && !equal(szArgCmd1, "!spec") )
-    {
-        //client_print(id,print_center,"Spectator mode...")
-        client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-
-        #define HUD_RAN 0,0,random_num(0,255)
-        #if AMXX_VERSION_NUM != 182
-        set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-        #endif
-        set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-        show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-        //end HUD
-
-        set_user_godmode(id,true)
-        fm_strip_user_weapons(id)
-        //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
-        client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
-        return PLUGIN_HANDLED_MAIN
-    }
+    if(g_spectating[id])
+        if( !equal(szArgCmd, "say") && (!equal(szArgCmd1, "!spec") || !equal(szArgCmd1, "!spec_switch" )) )
+        {
+            client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
+    
+            #define HUD_RAN 0,0,random_num(0,255)
+            #if AMXX_VERSION_NUM != 182
+            set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+            #endif
+            set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+            show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
+            //end HUD
+    
+            set_user_godmode(id,true)
+            fm_strip_user_weapons(id)
+            //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
+            client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
+            return PLUGIN_HANDLED_MAIN
+        }
     return PLUGIN_CONTINUE
 }
 
 public random_view(id)
 {
-    new players[MAX_PLAYERS], playercount, viewable, ent;
-    get_players(players,playercount,"i");
-
-    for (viewable=1; viewable < playercount; viewable++)
-    if(playercount > 1)
-    ent = random_num(1,playercount+1)
-    fm_attach_view(id,ent)
-    engfunc(EngFunc_SetView, id, ent);
+    if(is_user_connected(id))
+    {
+        if(!task_exists(id+TOGGLE))
+        {
+            set_task(2.0,"@random_view",id+TOGGLE,.flags="b")
+            client_print(id, print_chat, "Say !spec_switch to change perspectives.")
+        }
+        else
+        {
+            g_random_view[id] = 0
+            remove_task(id+TOGGLE)
+        }
+    }
     return PLUGIN_HANDLED;
 }
+
+@random_view(Tsk)
+{
+    new id = Tsk - TOGGLE
+    if(is_user_connected(id) && g_spectating[id])
+    {
+        new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
+        get_players(players,playercount,"i");
+        
+        for (viewable=1; viewable < playercount; viewable++)
+        if(playercount > 1)
+
+        if(!g_random_view[id])
+        {
+            iViewPlayer = random_num(1,playercount+1)
+            set_view(id, CAMERA_NONE)
+            //engfunc(EngFunc_SetView, id, ent);
+            if( id != iViewPlayer)
+            {
+                client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
+                //otherwise switches players randomly
+                g_random_view[id] = iViewPlayer /*Need making following info_target on each player*/
+                return PLUGIN_CONTINUE;
+            }
+        }
+        else
+        {
+            //engfunc(EngFunc_SetView, id, g_random_view[id]);
+            //fm_attach_view(id, g_random_view[id])/*Doing sound only with players need an info_target per player*/
+            set_pev(id, pev_origin, g_user_origin[g_random_view[id]]);
+        }
+        
+    }
+    else
+    {
+        if(task_exists(id))
+            remove_task(id)
+    }
+    return PLUGIN_HANDLED
+    
+}
+
 #if !defined client_disconnected
 #define client_disconnect client_disconnected
 #endif
