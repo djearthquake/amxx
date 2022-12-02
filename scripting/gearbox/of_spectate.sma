@@ -34,8 +34,13 @@ new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
 new Float:g_user_origin[MAX_PLAYERS + 1][3]
-new g_iViewtype[MAX_PLAYERS + 1] 
+
+///new g_iViewtype[MAX_PLAYERS + 1]
+
 new g_startaspec
+
+
+#define IS_THERE (~(1<<IN_SCORE))
 
 public plugin_init()
 {
@@ -85,24 +90,35 @@ public client_prethink( id )
             if(get_user_time(id) < 180)
                 client_print id, print_center, "%f|%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2]
 
-            if( pev(id, pev_button) & IN_RELOAD)
-            {
-                set_pev(id, pev_iuser1, g_iViewtype[id])
+            //if( pev(id, pev_button) & IN_RELOAD)
+            //{
+            //    random_view(id)
+
+                /*set_pev(id, pev_iuser1, g_iViewtype[id])
                 //switch(iView)
                 {
                     client_print id, print_center, "Trying spec %d", g_iViewtype[id]
                     g_iViewtype[id]++  //cycle through the 6
-    
+
                     //reset back to one
                     if(g_iViewtype[id] > 6 )
                     {
-                         client_print id, print_chat, "Reset spec counter %i", g_iViewtype[id] 
+                         client_print id, print_chat, "Reset spec counter %i", g_iViewtype[id]
                          g_iViewtype[id]  = 0
                     }
-                }
-            }
+                }*/
+
+           // }
+
             if(g_random_view[id])
+            {
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
+
+                new effects = pev(id, pev_effects)
+                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
+
+                g_spectating[id] = true
+            }
         }
         if(!is_user_connecting(id))
         {
@@ -114,7 +130,10 @@ public client_prethink( id )
 @play(id)
 {
     if(is_user_connected(id))
-    set_task(2.0,"@reset",id)
+    {
+        console_print 0,"%n spectator mode is resetting.",id
+        set_task(2.0,"@reset",id)
+    }
     //@reset(id)
 }
 
@@ -128,7 +147,7 @@ public client_prethink( id )
         set_view(id, CAMERA_NONE)
         console_cmd(id, "default_fov 100")
         new effects = pev(id, pev_effects)
-        set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET | !FL_PROXY | !FL_DORMANT));
+        set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
         pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
     }
 }
@@ -155,6 +174,7 @@ OK)
                 dllfunc(DLLFunc_SpectatorConnect, id)
                 server_print "GOING TO SPEC"
                 g_spectating[id] = true
+                //set_pev(id, pev_deadflag)
                 set_user_info(id, "Spectator", "yes")
                 //set_view(id, CAMERA_3RDPERSON)
                 new effects = pev(id, pev_effects)
@@ -209,11 +229,14 @@ public client_command(id)
     read_argv(0,szArgCmd, charsmax(szArgCmd));
     read_argv(1,szArgCmd1, charsmax(szArgCmd1));
 
+    if(g_random_view[id])
+        g_spectating[id] = true
+
     if(g_spectating[id])
         if( !equal(szArgCmd, "say") && (!equal(szArgCmd1, "!spec") || !equal(szArgCmd1, "!spec_switch" )) )
         {
             client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-    
+
             #define HUD_RAN 0,0,random_num(0,255)
             #if AMXX_VERSION_NUM != 182
             set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
@@ -221,7 +244,7 @@ public client_command(id)
             set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
             show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
             //end HUD
-    
+
             set_user_godmode(id,true)
             fm_strip_user_weapons(id)
             //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
@@ -237,13 +260,16 @@ public random_view(id)
     {
         if(!task_exists(id+TOGGLE))
         {
-            set_task(2.0,"@random_view",id+TOGGLE,.flags="b")
-            client_print(id, print_chat, "Say !spec_switch to change perspectives.")
+            set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
+            client_cmd id, "spk ../../valve/sound/holo/tr_ba_use.wav"
+            //client_cmd( id, random(2) == 0 ? ("spk ../../valve/sound/buttons/button6.wav" ):("spk ../../valve/sound/buttons/button7.wav") )
         }
         else
         {
             g_random_view[id] = 0
             remove_task(id+TOGGLE)
+            client_print(id, print_chat,"Stopping spectator follow.")
+            client_cmd id,"spk ../../valve/sound/misc/talk.wav"
         }
     }
     return PLUGIN_HANDLED;
@@ -256,38 +282,42 @@ public random_view(id)
     {
         new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
         get_players(players,playercount,"i");
-        
+
         for (viewable=1; viewable < playercount; viewable++)
         if(playercount > 1)
 
         if(!g_random_view[id])
         {
             iViewPlayer = random_num(1,playercount+1)
-            set_view(id, CAMERA_NONE)
+
             //engfunc(EngFunc_SetView, id, ent);
-            if( id != iViewPlayer)
+            if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) && is_user_connected(iViewPlayer) )
             {
+                set_view(id, CAMERA_3RDPERSON)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
+                client_cmd(id,"spk ../../valve/sound/fvox/targetting_system.wav")
+                client_print(id, print_chat, "Say !spec_switch to change perspectives.")
                 //otherwise switches players randomly
-                g_random_view[id] = iViewPlayer /*Need making following info_target on each player*/
+                g_random_view[id] = iViewPlayer
                 return PLUGIN_CONTINUE;
             }
         }
         else
         {
             //engfunc(EngFunc_SetView, id, g_random_view[id]);
-            //fm_attach_view(id, g_random_view[id])/*Doing sound only with players need an info_target per player*/
+            //fm_attach_view(id, g_random_view[id])
+            //set_view(id, CAMERA_NONE)
             set_pev(id, pev_origin, g_user_origin[g_random_view[id]]);
         }
-        
+
     }
     else
     {
-        if(task_exists(id))
-            remove_task(id)
+        if(task_exists(id + TOGGLE))
+            remove_task(id + TOGGLE)
     }
     return PLUGIN_HANDLED
-    
+
 }
 
 #if !defined client_disconnected
@@ -299,7 +329,7 @@ public client_disconnected(id)
         remove_task(id)
     g_spectating[id] = false
     id > 0 && id < 33 ?
-    console_cmd(id, "default_fov 100") : server_print("Invalid client") 
+    console_cmd(id, "default_fov 100") : server_print("Invalid client")
 }
 
 stock players_who_see_effects()
