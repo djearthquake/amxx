@@ -132,11 +132,11 @@ public client_prethink( id )
 {
     if(is_user_connected(id))
     {
-        console_print 0,"%n spectator mode is resetting.",id+RESET
+        console_print 0,"%n spectator mode is resetting.", id
         client_cmd id,"spk ../../valve/sound/UI/buttonclick.wav"
-        set_task(2.0,"@reset",id+RESET)
+        set_task(2.0,"@reset", id+RESET)
     }
-    //@reset(id)
+
 }
 
 @reset(Tsk)
@@ -216,6 +216,7 @@ OK)
     new id = value - MOTD
     show_motd(id, g_motd, "SPECTATOR MODE")
     client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
+    set_task(30.0,"random_view", id)
 }
 
 @update_player(id)
@@ -331,9 +332,11 @@ public client_disconnected(id)
 {
     if(task_exists(id))
         remove_task(id)
+
     g_spectating[id] = false
+
     id > 0 && id < 33 ?
-    console_cmd(id, "default_fov 100") : server_print("Invalid client")
+        console_cmd(id, "default_fov 100") : server_print("Invalid client")
 }
 
 stock players_who_see_effects()
