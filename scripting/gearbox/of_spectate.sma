@@ -20,6 +20,7 @@
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
+#define RESET    1999
 #define TOGGLE 2022
 
 //heads up display char gen
@@ -131,14 +132,16 @@ public client_prethink( id )
 {
     if(is_user_connected(id))
     {
-        console_print 0,"%n spectator mode is resetting.",id
-        set_task(2.0,"@reset",id)
+        console_print 0,"%n spectator mode is resetting.",id+RESET
+        client_cmd id,"spk ../../valve/sound/UI/buttonclick.wav"
+        set_task(2.0,"@reset",id+RESET)
     }
     //@reset(id)
 }
 
-@reset(id)
+@reset(Tsk)
 {
+    new id = Tsk - RESET
     if(g_spectating[id] && is_user_connected(id) )
     {
         set_user_godmode(id,false)
@@ -212,6 +215,7 @@ OK)
 {
     new id = value - MOTD
     show_motd(id, g_motd, "SPECTATOR MODE")
+    client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
 }
 
 @update_player(id)
