@@ -5,7 +5,7 @@
 #include fakemeta
 
 #define alert 911
-#define SPEC_PRG "spec.amxx"
+#define SPEC_PRG "spectate.amxx"
 //Define your spec plugin pathway!
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
@@ -45,7 +45,7 @@ public plugin_init()
         get_cvar_pointer("sv_sptime") ? bind_pcvar_num(get_cvar_pointer("sv_sptime"), g_spawn_wait ) : 1
     #endif
 
-    g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
+    ///g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
 
     g_afk_spec_player = register_cvar("mp_autospec", "75")
 
@@ -150,23 +150,26 @@ public new_users()
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
                 if(g_spec && is_plugin_loaded(SPEC_PRG,true)!=charsmin)
                 {
-                    if(/*callfunc_begin("@go_spec",SPEC_PRG ) && */!get_cvar_pointer("gg_enable"))
+                    if(!get_cvar_pointer("gg_enable"))
                     {
                         new Group_of_players =  players[downloader]
                         log_amx "Sending %s to spec", ClientName[Group_of_players]
-/*
 
-                        callfunc_push_int(Group_of_players)
-                        callfunc_end()
-*/
-                        dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
-                        sleepy[Group_of_players] = 1
+                        if(is_user_connected(Group_of_players) && !is_user_bot(Group_of_players))
+                        {
+                            dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
+                            callfunc_begin("@go_spec",SPEC_PRG)
+                            callfunc_push_int(Group_of_players)
+                            callfunc_end()
 
-                        #if AMXX_VERSION_NUM == 182
-                        set_task(get_pcvar_float(g_spawn_wait), "@make_spec", Group_of_players)
-                        #else
-                        set_task(float(g_spawn_wait), "@make_spec", Group_of_players)
-                        #endif
+                            sleepy[Group_of_players] = 1
+
+                            #if AMXX_VERSION_NUM == 182
+                            set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
+                            #else
+                            set_task(float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
+                            #endif
+                        }
 
                     }
                     else
@@ -199,9 +202,10 @@ public new_users()
 @make_spec(id)
 if(is_user_connected(id))
 {
-    server_print "Sending %n spec...",id
-    client_cmd id, "say !spec"
+    server_print("Sending %n spec...", id)
+    client_cmd(id, "say !spec")
 }
+
 public screensaver_stop(id,{Float,_}:...)
 {
     new duration = 1<<12
