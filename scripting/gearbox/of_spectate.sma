@@ -234,11 +234,11 @@ public client_command(id)
     read_argv(0,szArgCmd, charsmax(szArgCmd));
     read_argv(1,szArgCmd1, charsmax(szArgCmd1));
 
-    if(g_random_view[id])
+    if(g_random_view[id] && !g_spectating[id])
         g_spectating[id] = true
 
     if(g_spectating[id])
-        if( !equal(szArgCmd, "say") && (!equal(szArgCmd1, "!spec") || !equal(szArgCmd1, "!spec_switch" )) )
+        if( /* !equal(szArgCmd, "menuselect") || */( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
         {
             client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
 
@@ -254,8 +254,11 @@ public client_command(id)
             fm_strip_user_weapons(id)
             //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
             client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
+            if(equal(szArgCmd, "menuselect"))
+                goto SKIP/*MENU ALLOWANCE*/
             return PLUGIN_HANDLED_MAIN
         }
+    SKIP:
     return PLUGIN_CONTINUE
 }
 
