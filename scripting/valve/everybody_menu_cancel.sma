@@ -49,4 +49,5 @@ public client_disconnected(id)
     {
         menu_destroy(menu)
     }
+    return PLUGIN_HANDLED
 }
