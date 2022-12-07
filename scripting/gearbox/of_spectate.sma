@@ -16,7 +16,7 @@
 #define charsmin                                            -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -238,7 +238,7 @@ public client_command(id)
         g_spectating[id] = true
 
     if(g_spectating[id])
-        if( /* !equal(szArgCmd, "menuselect") || */( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
+        if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
         {
             client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
 
@@ -254,8 +254,8 @@ public client_command(id)
             fm_strip_user_weapons(id)
             //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
             client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
-            if(equal(szArgCmd, "menuselect"))
-                goto SKIP/*MENU ALLOWANCE*/
+            if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/)
+                goto SKIP
             return PLUGIN_HANDLED_MAIN
         }
     SKIP:
