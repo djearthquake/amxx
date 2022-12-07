@@ -20,6 +20,7 @@
 
 
 #include <amxmodx>
+#include <amxmisc>
 #include <engine>
 #include <fakemeta>
 #include <hlsdk_const>
@@ -36,10 +37,10 @@
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_Szsatchel_ring
 
+new const SzSatchSfx[]="valve/sound/items/airtank1.wav"
 new disarmament[][]=
 {
-    /*"monster_satchelcharge",*/
-    //"monster_satchel",
+    "monster_satchel",
     "mortar_shell",
     "monster_snark",
     "monster_tripmine",
@@ -58,14 +59,39 @@ public plugin_init()
 
     for( new list; list < sizeof disarmament; list++)
         register_touch(disarmament[list], "player", "disarm_")
-
+    register_touch("monster_satchel", "player", "@touch")
     g_enable = register_cvar("hl_satchel", "1")
     g_health = register_cvar("hl_satchel_health", "15")
+    register_event("WeapPickup", "@satch", "b", "1=weapon_satchel")
 }
 
 public plugin_precache()
 {
     g_Szsatchel_ring = precache_model("sprites/zerogxplode.spr")
+    precache_sound(SzSatchSfx)
+}
+
+public satch(id)
+{
+    if(!is_user_bot(id) && is_user_connected(id))
+        client_cmd(id,"spk valve/sound/fvox/get_satchel.wav")
+}
+
+@touch(ent, id)
+{
+     client_cmd(id,"spk valve/sound/weapons/dryfire1.wav")
+
+     if(have_tool(id))
+        remove_entity(ent);
+}
+
+@test(Szentid[], id)
+{
+    if(is_user_admin(id))
+    {
+        client_print id, print_chat,"Resetting your tripmine..."
+        set_pev(str_to_num(Szentid),pev_owner, 0)
+    }
 }
 
 public FORWARD_SET_MODEL(entid, model[])
@@ -91,27 +117,15 @@ public FORWARD_SET_MODEL(entid, model[])
 
         set_pev(entid,pev_health,health);
         set_pev(entid,pev_takedamage,DAMAGE_AIM); //aim is bullets, yes is blast
-        set_pev(entid,pev_solid,SOLID_TRIGGER);
-        set_pev(entid,pev_movetype,MOVETYPE_FLY);
+        set_pev(entid,pev_solid,SOLID_SLIDEBOX);
+        set_pev(entid,pev_movetype,MOVETYPE_FOLLOW);
         set_pev(entid,pev_effects,EF_BRIGHTLIGHT); //assure settings are applying while playing
-        client_cmd(id,"spk ../../valve/sound/common/launch_deny2.wav")
 
-        emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY)
-        ewrite_byte(TE_BEAMRING)
-        ewrite_short(entid)  //(start entity)
-        ewrite_short(id)  //(end entity)
-        ewrite_short(g_Szsatchel_ring)  //(sprite index)
-        ewrite_byte(1)   //(starting frame)
-        ewrite_byte(4)   //(frame rate in 0.1's)
-        ewrite_byte(75)   //(life in 0.1's)
-        ewrite_byte(50)   //(line width in 0.1's)
-        ewrite_byte(10)   //(noise amplitude in 0.01's)
-        ewrite_byte(100)   //(red)
-        ewrite_byte(50)   //(green)
-        ewrite_byte(75)   //(blue)
-        ewrite_byte(100)   //(brightness)
-        ewrite_byte(35)   //(scroll speed in 0.1's)
-        emessage_end()
+        new Szentid[5]
+        format(Szentid, charsmax(Szentid), "%i", entid)
+        set_task(2.0, "@test", id, Szentid, charsmax(Szentid))
+        
+        client_cmd(id,"spk valve/sound/items/clipinsert1.wav")
 
         new players[ MAX_PLAYERS ]
         new playercount
@@ -121,17 +135,40 @@ public FORWARD_SET_MODEL(entid, model[])
         {
             new playerlocation[3]
             if(is_user_connected(players[m]))
-            if(is_user_bot(players[m]) ||  !is_user_bot(players[m])) 
+            if(is_user_bot(players[m]) ||  !is_user_bot(players[m]))
             {
                 get_user_origin(players[m], playerlocation)
                 new resultdance = get_entity_distance(entid, players[m]);
-                if (resultdance < 500)
+                if (resultdance < 350)
                 {
                     if(players[m] != id)
                     {
-                        fakedamage(players[m],"Satchel lash",75.0,DMG_ENERGYBEAM)
+                        fakedamage(players[m],"Satchel lash",35.0,DMG_ENERGYBEAM)
+
+                        emit_sound(players[m], CHAN_BODY, SzSatchSfx, VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
+
+                        if(!is_user_bot(players[m]))
+                            client_cmd players[m],"spk valve/sound/common/wpn_denyselect.wav"
+
+                        emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY)
+                        ewrite_byte(TE_BEAMRING)
+                        ewrite_short(entid)  //(start entity)
+                        ewrite_short(players[m])  //(end entity)
+                        ewrite_short(g_Szsatchel_ring)  //(sprite index)
+                        ewrite_byte(1)   //(starting frame)
+                        ewrite_byte(4)   //(frame rate in 0.1's)
+                        ewrite_byte(75)   //(life in 0.1's)
+                        ewrite_byte(random_num(35,75))   //(line width in 0.1's)
+                        ewrite_byte(10)   //(noise amplitude in 0.01's)
+                        ewrite_byte(random(100))   //(red)
+                        ewrite_byte(random_num(5,75))   //(green)
+                        ewrite_byte(random(75))   //(blue)
+                        ewrite_byte(100)   //(brightness)
+                        ewrite_byte(35)   //(scroll speed in 0.1's)
+                        emessage_end()
+                        
                         if(!is_user_bot(id))
-                            client_cmd id,"spk ../../valve/sound/common/wpn_denyselect.wav"
+                            client_cmd id,"spk valve/sound/plats/elevbell1.wav"
                     }
                 }
             }
@@ -168,7 +205,7 @@ public disarm_(entid, id)
         set_pev(entid,pev_effects,EF_BRIGHTFIELD );
 
         client_print(0,print_center,"[ %s ]^n^n%s handled a %s.", PLUGIN, ClientName[id], g_SzMonster_class );
-        if(equali(g_SzMonster_class,"tripmine"))
+        if(equal(g_SzMonster_class,"tripmine"))
         {
             if(get_pcvar_num(g_enable) == 1)
             {
@@ -182,7 +219,7 @@ public disarm_(entid, id)
             }
 
         }
-        if(equali(g_SzMonster_class,"satchel"))
+        if(equal(g_SzMonster_class,"satchel"))
         {
             remove_entity(entid);
         }
