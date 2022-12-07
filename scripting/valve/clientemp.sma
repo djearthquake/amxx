@@ -240,7 +240,7 @@ public plugin_precache()
 {
     if(file_exists("sound/misc/Temp.wav")){
         precache_sound(SOUND_GOTATEMP);
-        precache_generic("sound/misc/Temp.wav")
+        //precache_generic("sound/misc/Temp.wav")
     }
         else
     {
@@ -1043,11 +1043,10 @@ public read_web(feeding)
 
 @mark_socket_client(id)
 {
-    if(is_user_connected(id))
-        server_print "Socket is being freed up from %s", ClientName[id]
     IS_SOCKET_IN_USE = false;
     bServer = false //unbusy for next in queue
     somebody_is_being_help = false
+    is_user_connected(id) || is_user_connecting(id) ? server_print("Socket is being freed up from %s", ClientName[id]) : server_print("Socket is being freed up from client.")
 }
 
 @lock_socket()
