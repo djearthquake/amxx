@@ -135,6 +135,9 @@ public client_prethink( id )
         console_print 0,"%n spectator mode is resetting.", id
         client_cmd id,"spk ../../valve/sound/UI/buttonclick.wav"
         set_task(2.0,"@reset", id+RESET)
+
+        if(task_exists(id + TOGGLE))
+            remove_task(id + TOGGLE)
     }
 
 }
