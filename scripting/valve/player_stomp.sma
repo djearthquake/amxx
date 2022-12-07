@@ -239,7 +239,7 @@ public plugin_precache()
 {
     if(file_exists("sound/misc/goomba_stomp.wav")){
         precache_sound(SOUND_GOOMBA);
-        precache_generic("sound/misc/goomba_stomp.wav")
+        //precache_generic("sound/misc/goomba_stomp.wav")
     }
     else
     {
@@ -256,7 +256,7 @@ public plugin_precache()
     }
     if(file_exists(SPIN_COIN)){
         g_coin = precache_model(SPIN_COIN)
-        precache_generic(SPIN_COIN)
+        //precache_generic(SPIN_COIN)
     }
     else
     {
