@@ -77,39 +77,43 @@ public plugin_init()
 public plugin_precache()
 {
     //Note: This exist just in-case you wanted to append more or remove less audios
+    new SzFormat[128]
     for (new i = 0; i < sizeof(g_WhizSounds); ++i)
     {
-        if(file_exists(g_WhizSounds[i]))
+        formatex(SzFormat,charsmax(SzFormat),"sound/%s", g_WhizSounds[i])
+        if(file_exists(SzFormat))
         {
             precache_sound(g_WhizSounds[i])
         }
         else
         {
-            log_amx("Paused to prevent crash from missing %s.",g_WhizSounds[i])
+            log_amx("Paused to prevent crash from missing %s.", SzFormat)
             pause "a";
         }
     }
     for (new i = 0; i < sizeof(g_SnapSounds); ++i)
     {
-        if(file_exists(g_SnapSounds[i]))
+        format(SzFormat,charsmax(SzFormat),"sound/%s", g_SnapSounds[i])
+        if(file_exists(SzFormat))
         {
             precache_sound(g_SnapSounds[i])
         }
         else
         {
-            log_amx("Paused to prevent crash from missing %s.",g_SnapSounds[i])
+            log_amx("Paused to prevent crash from missing %s.", SzFormat)
             pause "a";
         }
     }
     for (new i = 0; i < sizeof(g_ThudSounds); ++i)
     {
-        if(file_exists(g_ThudSounds[i]))
+        format(SzFormat,charsmax(SzFormat),"sound/%s", g_ThudSounds[i])
+        if(file_exists(SzFormat))
         {
             precache_sound(g_ThudSounds[i])
         }
         else
         {
-            log_amx("Paused to prevent crash from missing %s.",g_ThudSounds[i])
+            log_amx("Paused to prevent crash from missing %s.", SzFormat)
             pause "a"
         }
     }
