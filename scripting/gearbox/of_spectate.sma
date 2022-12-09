@@ -186,8 +186,11 @@ OK)
     if(is_user_connected(id))
     {
         menu_destroy(menu)
-        bAlready_shown_menu[id] = true
-        @go_spec(id)
+        if(item == 1)
+        {
+            bAlready_shown_menu[id] = true
+            @go_spec(id)
+        }
     }
     return PLUGIN_HANDLED
 }
