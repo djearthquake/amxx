@@ -116,22 +116,31 @@ public new_users()
             }
             else
             {
+                /*
                 #if AMXX_VERSION_NUM == 182
 
                 //show_hudmessage 0, "%s is downloading...", ClientName[players[downloader]]
                 ShowSyncHudMsg 0, download_sync_msg, "%s is downloading...", ClientName[players[downloader]]
 
                 client_print 0,print_chat,"%s is downloading...", ClientName[players[downloader]]
+
                 server_print "%s is downloading...", ClientName[players[downloader]]
 
                 #else
 
                 //show_hudmessage 0, "%n is downloading...", players[downloader]
                 ShowSyncHudMsg 0, download_sync_msg, "%n is downloading...", players[downloader]
+                
                 client_print 0,print_chat,"%n is downloading...", players[downloader]
                 server_print "%n is downloading...", players[downloader]
+                
 
                 #endif
+                */
+                //Update server's built-in AMXX scrolling message.
+                new SzScrolling[256]
+                format(SzScrolling, charsmax(SzScrolling), "%s is downloading... ",ClientName[players[downloader]] )
+                server_cmd "amx_scrollmsg ^"%s^" 10", SzScrolling
             }
 
         }
