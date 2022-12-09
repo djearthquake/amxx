@@ -212,7 +212,7 @@ OK)
             case 2:
             {
                 new Loop, iTrack = random_num(1,27)
-                emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
+                emessage_begin(MSG_ONE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
                 menu_display(id, menu, 0);
             }
         }
@@ -281,40 +281,43 @@ if(is_user_connected(id) && !is_user_bot(id))
 
 public client_command(id)
 {
-    new szArg[MAX_PLAYERS];
-    new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
-
-    read_args(szArg, charsmax(szArg));
-    read_argv(0,szArgCmd, charsmax(szArgCmd));
-    read_argv(1,szArgCmd1, charsmax(szArgCmd1));
-
-    if(g_random_view[id] && !g_spectating[id])
-        g_spectating[id] = true
-
-    if(g_spectating[id])
-        if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
-        {
-            client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-
-            #define HUD_RAN 0,0,random_num(0,255)
-            #if AMXX_VERSION_NUM != 182
-            set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-            #endif
-            set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-            show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-            //end HUD
-
-            set_user_godmode(id,true)
-            fm_strip_user_weapons(id)
-            client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
-            if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
-                goto SKIP
-            return PLUGIN_HANDLED_MAIN
-        }
-    SKIP:
-    return PLUGIN_CONTINUE
+    if(is_user_connected(id) && !is_user_bot(id))
+    {
+        new szArg[MAX_PLAYERS];
+        new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
+    
+        read_args(szArg, charsmax(szArg));
+        read_argv(0,szArgCmd, charsmax(szArgCmd));
+        read_argv(1,szArgCmd1, charsmax(szArgCmd1));
+    
+        if(g_random_view[id] && !g_spectating[id])
+            g_spectating[id] = true
+    
+        if(g_spectating[id])
+            if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
+            {
+                client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
+    
+                #define HUD_RAN 0,0,random_num(0,255)
+                #if AMXX_VERSION_NUM != 182
+                set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                #endif
+                set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
+                //end HUD
+    
+                set_user_godmode(id,true)
+                fm_strip_user_weapons(id)
+                client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
+                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
+                    goto SKIP
+                return PLUGIN_HANDLED_MAIN
+            }
+        SKIP:
+        return PLUGIN_CONTINUE
+    }
+    return PLUGIN_HANDLED
 }
-
 public random_view(id)
 {
     if(is_user_connected(id))
