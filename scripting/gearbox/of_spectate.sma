@@ -29,6 +29,7 @@
 
 #define OK if(is_user_connected(id)
 new bool:g_spectating[MAX_PLAYERS+1]
+new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
 new bool:g_bFlagMap
 new g_random_view[MAX_PLAYERS+1]
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
@@ -64,6 +65,7 @@ public plugin_init()
         pause "a"
 */
     server_print("Loading %s.", PLUGIN)
+    register_clcmd("!spec", "@menu", 0, "- Spectator Menu")
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
     register_concmd("say !spec_switch","random_view",0,"spectate random")
     g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
@@ -166,6 +168,30 @@ OK)
         get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id)
 }
 
+@menu(id)
+{
+    if(g_spectating[id])
+    {
+        new menu = menu_create ("Spectate", "@spec_menu");
+        menu_additem(menu, "Play game?", "1");
+        menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
+        menu_display(id, menu, 0);
+        return PLUGIN_CONTINUE
+    }
+    return PLUGIN_HANDLED
+}
+
+@spec_menu(id, menu, item)
+{
+    if(is_user_connected(id))
+    {
+        menu_destroy(menu)
+        bAlready_shown_menu[id] = true
+        @go_spec(id)
+    }
+    return PLUGIN_HANDLED
+}
+
 @go_spec(id)
 //if(!g_bFlagMap)
 {
@@ -177,9 +203,12 @@ OK)
             fm_strip_user_weapons(id)
             if(!g_spectating[id])
             {
+                g_spectating[id] = true
                 dllfunc(DLLFunc_SpectatorConnect, id)
                 server_print "GOING TO SPEC"
-                g_spectating[id] = true
+                if(!bAlready_shown_menu[id])
+                    @menu(id)
+
                 //set_pev(id, pev_deadflag)
                 set_user_info(id, "Spectator", "yes")
                 //set_view(id, CAMERA_3RDPERSON)
