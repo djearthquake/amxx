@@ -170,26 +170,37 @@ OK)
 
 @menu(id)
 {
-    if(g_spectating[id])
+    if(is_user_connected(id))
     {
         new menu = menu_create ("Spectate", "@spec_menu");
-        menu_additem(menu, "Play game?", "1");
+        menu_additem(menu, "PLAY/WATCH", "1");
+        menu_additem(menu, "Chase Cam/Free-look", "2")
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
         menu_display(id, menu, 0);
-        return PLUGIN_CONTINUE
+        return PLUGIN_HANDLED
     }
-    return PLUGIN_HANDLED
+    return PLUGIN_CONTINUE
 }
 
 @spec_menu(id, menu, item)
 {
     if(is_user_connected(id))
     {
-        menu_destroy(menu)
-        if(item == 1)
+        bAlready_shown_menu[id] = true
+        switch(item)
         {
-            bAlready_shown_menu[id] = true
-            @go_spec(id)
+            case 0:
+            {
+                @go_spec(id)
+                if(g_spectating[id])
+                    menu_display(id, menu, 0);
+            }
+            case 1:
+            {
+                random_view(id)
+                if(g_spectating[id])
+                    menu_display(id, menu, 0);
+            }
         }
     }
     return PLUGIN_HANDLED
@@ -289,7 +300,7 @@ public client_command(id)
             fm_strip_user_weapons(id)
             //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
             client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
-            if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/)
+            if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
                 goto SKIP
             return PLUGIN_HANDLED_MAIN
         }
