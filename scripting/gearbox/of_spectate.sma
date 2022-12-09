@@ -135,6 +135,9 @@ public client_prethink( id )
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
         set_task(2.0,"@reset", id+RESET)
 
+        if(task_exists(id+MOTD))
+            remove_task(id + MOTD)
+
         if(task_exists(id + TOGGLE))
             remove_task(id + TOGGLE)
     }
@@ -148,9 +151,17 @@ public client_prethink( id )
     {
         set_user_godmode(id,false)
         server_print "Spec mode reset for ^n%n",id
+
+        if(task_exists(id+MOTD))
+            remove_task(id + MOTD)
+
+        if(task_exists(id))
+            remove_task(id)
+
         g_spectating[id] = false
         set_view(id, CAMERA_NONE)
         console_cmd(id, "default_fov 100")
+
         new effects = pev(id, pev_effects)
         set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
         pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
