@@ -16,7 +16,7 @@
 #define charsmin                                            -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.2"
+#define VERSION "1.0.3"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -60,10 +60,7 @@ public plugin_init()
     new mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
     g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
-/*
-    if(g_bFlagMap)
-        pause "a"
-*/
+
     server_print("Loading %s.", PLUGIN)
     register_clcmd("!spec", "@menu", 0, "- Spectator Menu")
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
@@ -135,7 +132,7 @@ public client_prethink( id )
     if(is_user_connected(id))
     {
         console_print 0,"%n spectator mode is resetting.", id
-        client_cmd id,"spk ../../valve/sound/UI/buttonclick.wav"
+        client_cmd id,"spk valve/sound/UI/buttonclick.wav"
         set_task(2.0,"@reset", id+RESET)
 
         if(task_exists(id + TOGGLE))
@@ -163,7 +160,6 @@ public client_prethink( id )
 public client_putinserver(id)
 OK)
 {
-        //if(!is_user_admin(id)) //with cvar later
         if(!g_bFlagMap)
         get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id)
 }
@@ -175,6 +171,7 @@ OK)
         new menu = menu_create ("Spectate", "@spec_menu");
         menu_additem(menu, "PLAY/WATCH", "1");
         menu_additem(menu, "Chase Cam/Free-look", "2")
+        menu_additem(menu, "Play song", "3")
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
         menu_display(id, menu, 0);
         return PLUGIN_HANDLED
@@ -201,17 +198,21 @@ OK)
                 if(g_spectating[id])
                     menu_display(id, menu, 0);
             }
+            case 2:
+            {
+                new Loop, iTrack = random_num(1,27)
+                emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
+                menu_display(id, menu, 0);
+            }
         }
     }
     return PLUGIN_HANDLED
 }
 
 @go_spec(id)
-//if(!g_bFlagMap)
 {
     OK)
     {
-//        fm_strip_user_weapons(id)
         if(!is_user_bot(id) && !is_user_hltv(id))
         {
             fm_strip_user_weapons(id)
@@ -223,11 +224,9 @@ OK)
                 if(!bAlready_shown_menu[id])
                     @menu(id)
 
-                //set_pev(id, pev_deadflag)
                 set_user_info(id, "Spectator", "yes")
-                //set_view(id, CAMERA_3RDPERSON)
                 new effects = pev(id, pev_effects)
-                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET)) // | FL_PROXY | FL_DORMANT));
+                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
                 console_cmd(id, "default_fov 150")
                 get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
                 set_user_godmode(id,true) //specs can be killed otherwise
@@ -244,7 +243,6 @@ OK)
                 g_spectating[id] = false
                 g_random_view[id] = 0
                 set_user_info(id, "Spectator", "no")
-                //set_view(id, CAMERA_NONE)
                 console_cmd(id, "default_fov 100")
                 change_task(id, 60.0) //less spam
                 remove_task(id+MOTD)
@@ -267,7 +265,6 @@ OK)
 
 @update_player(id)
 if(is_user_connected(id) && !is_user_bot(id))
-    //g_spectating[id] ? client_print(id,print_chat,"Spectator mode.^nSay !spec to play.") : client_print(id,print_chat,"Regular mode.^nSay !spec to spectate.")
     g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
 
 
@@ -298,7 +295,6 @@ public client_command(id)
 
             set_user_godmode(id,true)
             fm_strip_user_weapons(id)
-            //client_print(id,print_chat,"Spectator mode.^nSay !spec to play.")
             client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
             if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
                 goto SKIP
@@ -315,15 +311,14 @@ public random_view(id)
         if(!task_exists(id+TOGGLE))
         {
             set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
-            client_cmd id, "spk ../../valve/sound/holo/tr_ba_use.wav"
-            //client_cmd( id, random(2) == 0 ? ("spk ../../valve/sound/buttons/button6.wav" ):("spk ../../valve/sound/buttons/button7.wav") )
+            client_cmd id, "spk holo/tr_ba_use.wav"
         }
         else
         {
             g_random_view[id] = 0
             remove_task(id+TOGGLE)
             client_print(id, print_chat,"Stopping spectator follow.")
-            client_cmd id,"spk ../../valve/sound/misc/talk.wav"
+            client_cmd id,"spk valve/sound/misc/talk.wav"
         }
     }
     return PLUGIN_HANDLED;
@@ -343,13 +338,11 @@ public random_view(id)
         if(!g_random_view[id])
         {
             iViewPlayer = random_num(1,playercount+1)
-
-            //engfunc(EngFunc_SetView, id, ent);
             if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) && is_user_connected(iViewPlayer) )
             {
                 set_view(id, CAMERA_3RDPERSON)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
-                client_cmd(id,"spk ../../valve/sound/fvox/targetting_system.wav")
+                client_cmd(id,"spk fvox/targetting_system.wav")
                 client_print(id, print_chat, "Say !spec_switch to change perspectives.")
                 //otherwise switches players randomly
                 g_random_view[id] = iViewPlayer
@@ -358,9 +351,6 @@ public random_view(id)
         }
         else
         {
-            //engfunc(EngFunc_SetView, id, g_random_view[id]);
-            //fm_attach_view(id, g_random_view[id])
-            //set_view(id, CAMERA_NONE)
             set_pev(id, pev_origin, g_user_origin[g_random_view[id]]);
         }
 
