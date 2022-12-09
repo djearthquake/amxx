@@ -20,7 +20,7 @@ public fw_PlayerPostThink(id)
     {
 
         static ent,bh
-        static classname[MAX_NAME_LENGTH],color[3]
+        static classname[MAX_RESOURCE_PATH_LENGTH],color[3]
 
         get_user_aiming(id,ent,bh)
 
