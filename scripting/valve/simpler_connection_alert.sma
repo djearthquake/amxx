@@ -25,6 +25,7 @@ new g_mname[MAX_NAME_LENGTH]
 new bool:b_Op4c
 new bool:g_bFlagMap
 new afk_sync_msg, download_sync_msg, g_spawn_wait
+new g_SzMapName[MAX_NAME_LENGTH]
 
 #define ALRT 84641
 #define FADE_HOLD (1<<2)
@@ -32,9 +33,8 @@ new afk_sync_msg, download_sync_msg, g_spawn_wait
 public plugin_init()
 {
     register_plugin("Connect Alert System","1.1","SPiNX");
-    new mname[MAX_NAME_LENGTH]
-    get_mapname(mname, charsmax(mname));
-    g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
+    get_mapname(g_SzMapName, charsmax(g_SzMapName));
+    g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin?true:false
     set_task(1.0, "new_users",alert,"",0,"b");
 
     #if AMXX_VERSION_NUM == 182
@@ -138,9 +138,19 @@ public new_users()
                 #endif
                 */
                 //Update server's built-in AMXX scrolling message.
-                new SzScrolling[256]
-                format(SzScrolling, charsmax(SzScrolling), "%s is downloading... ",ClientName[players[downloader]] )
-                server_cmd "amx_scrollmsg ^"%s^" 10", SzScrolling
+                new SzScrolling[256], SzNewScroller[256]
+                new iPlayers = players[downloader]
+
+                implode_strings(ClientName, charsmax(ClientName[]), " ", SzNewScroller, charsmax(SzNewScroller))
+                new SzBuffer[256]
+                copy(SzBuffer, charsmax(SzBuffer), SzNewScroller)
+                trim(SzBuffer)
+                replace_string(SzBuffer, charsmax(SzBuffer), " ", ",", true)
+                equal(SzNewScroller, "") 
+                ? format(SzScrolling, charsmax(SzScrolling), "%s is downloading %s",ClientName[iPlayers], g_SzMapName )
+                :  format(SzScrolling, charsmax(SzScrolling), "%s is downloading %s", SzBuffer, g_SzMapName )
+
+                server_cmd "amx_scrollmsg ^"%s^" 35", SzScrolling
             }
 
         }
