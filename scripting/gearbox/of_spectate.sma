@@ -387,6 +387,7 @@ public client_disconnected(id)
         remove_task(id)
 
     g_spectating[id] = false
+    bAlready_shown_menu[id] = false
 
     id > 0 && id < 33 ?
         console_cmd(id, "default_fov 100") : server_print("Invalid client")
