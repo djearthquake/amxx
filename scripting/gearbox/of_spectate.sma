@@ -30,6 +30,7 @@
 #define OK if(is_user_connected(id)
 new bool:g_spectating[MAX_PLAYERS+1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
+new bool:bListening[MAX_PLAYERS + 1]
 new bool:g_bFlagMap
 new g_random_view[MAX_PLAYERS+1]
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
@@ -182,7 +183,9 @@ OK)
         new menu = menu_create ("Spectate", "@spec_menu");
         menu_additem(menu, "PLAY/WATCH", "1");
         menu_additem(menu, "Chase Cam/Free-look", "2")
-        menu_additem(menu, "Play song", "3")
+        menu_additem(menu, "Play/STOP song", "3")
+        menu_additem(menu, "Rock the Vote (frags required)", "4")
+        menu_additem(menu, "LEAVE SERVER!", "5")
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
         menu_display(id, menu, 0);
         return PLUGIN_HANDLED
@@ -212,8 +215,26 @@ OK)
             case 2:
             {
                 new Loop, iTrack = random_num(1,27)
-                emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
                 menu_display(id, menu, 0);
+                if( bListening[id] )
+                {
+                    client_cmd id, "mp3 stop" 
+                    bListening[id] = false
+                }
+                else
+                {
+                    emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
+                    bListening[id] = true
+                }
+
+            }
+            case 3:
+            {
+                client_cmd id, "say rtv"
+            }
+            case 4:
+            {
+                client_cmd id, "dropclient"
             }
         }
     }
