@@ -145,9 +145,9 @@ public new_users()
                 new SzBuffer[256]
                 copy(SzBuffer, charsmax(SzBuffer), SzNewScroller)
                 trim(SzBuffer)
-                replace_string(SzBuffer, charsmax(SzBuffer), " ", ",", true)
+                replace_string(SzBuffer, charsmax(SzBuffer), " ", ", ", true)
                 equal(SzNewScroller, "") 
-                ? format(SzScrolling, charsmax(SzScrolling), "%s is downloading %s",ClientName[iPlayers], g_SzMapName )
+                ? format(SzScrolling, charsmax(SzScrolling), "%s is downloading %s", ClientName[iPlayers], g_SzMapName )
                 :  format(SzScrolling, charsmax(SzScrolling), "%s is downloading %s", SzBuffer, g_SzMapName )
 
                 server_cmd "amx_scrollmsg ^"%s^" 35", SzScrolling
