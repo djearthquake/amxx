@@ -21,6 +21,7 @@ new g_afk_spec_player
 new const CvarAFKTimeDesc[] = "Seconds before moving AFK player into spectator mode."
 new sleepy[MAX_PLAYERS + 1], g_spec
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
+new DownloaderName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_mname[MAX_NAME_LENGTH]
 new bool:b_Op4c
 new bool:g_bFlagMap
@@ -116,6 +117,7 @@ public new_users()
             }
             else
             {
+                //copy(DownloaderName[players[downloader]], charsmax(DownloaderName[]), ClientName[players[downloader]])
                 /*
                 #if AMXX_VERSION_NUM == 182
 
@@ -140,15 +142,21 @@ public new_users()
                 //Update server's built-in AMXX scrolling message.
                 new SzScrolling[256], SzNewScroller[256]
                 new iPlayers = players[downloader]
+                if(!is_user_bot(iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
+                    copy(DownloaderName[iPlayers], charsmax(DownloaderName[]), ClientName[iPlayers])
+                
+                //implode_strings(ClientName, charsmax(ClientName[]), " ", SzNewScroller, charsmax(SzNewScroller))
+                implode_strings( DownloaderName, charsmax(DownloaderName[]), " ", SzNewScroller, charsmax(SzNewScroller) )
+                //ClientName[players[downloader]]
 
-                implode_strings(ClientName, charsmax(ClientName[]), " ", SzNewScroller, charsmax(SzNewScroller))
                 new SzBuffer[256]
                 copy(SzBuffer, charsmax(SzBuffer), SzNewScroller)
                 trim(SzBuffer)
                 replace_string(SzBuffer, charsmax(SzBuffer), " ", ", ", true)
+
                 equal(SzNewScroller, "") 
-                ? format(SzScrolling, charsmax(SzScrolling), "%s are downloading %s.", ClientName[iPlayers], g_SzMapName )
-                :  format(SzScrolling, charsmax(SzScrolling), "%s are downloading %s.", SzBuffer, g_SzMapName )
+                ? format(SzScrolling, charsmax(SzScrolling), "%s --> downloading %s.", ClientName[iPlayers], g_SzMapName )
+                :  format(SzScrolling, charsmax(SzScrolling), "%s is in process of downloading %s.", SzBuffer, g_SzMapName )
 
                 server_cmd "amx_scrollmsg ^"%s^" 35", SzScrolling
             }
