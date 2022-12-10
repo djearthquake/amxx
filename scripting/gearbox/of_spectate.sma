@@ -212,7 +212,7 @@ OK)
             case 2:
             {
                 new Loop, iTrack = random_num(1,27)
-                emessage_begin(MSG_ONE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
+                emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
                 menu_display(id, menu, 0);
             }
         }
@@ -320,7 +320,7 @@ public client_command(id)
 }
 public random_view(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && g_spectating[id])
     {
         if(!task_exists(id+TOGGLE))
         {
