@@ -1,429 +1,270 @@
 #include amxmodx
 #include amxmisc
 #include engine
-#include fakemeta
-#include fakemeta_util
-#include fun
 #include hamsandwich
+#include fakemeta
 
-#define MAX_PLAYERS                                  32
-#define MAX_RESOURCE_PATH_LENGTH  64
-#define MAX_MENU_LENGTH                     512
-#define MAX_NAME_LENGTH                     32
-#define MAX_AUTHID_LENGTH                  64
-#define MAX_IP_LENGTH                             16
-#define MAX_USER_INFO_LENGTH            256
-#define charsmin                                            -1
+#define alert 911
+#define SPEC_PRG "spectate.amxx"
+//Define your spec plugin pathway!
+#define MAX_PLAYERS                32
+#define MAX_RESOURCE_PATH_LENGTH   64
+#define MAX_MENU_LENGTH            512
+#define MAX_NAME_LENGTH            32
+#define MAX_AUTHID_LENGTH          64
+#define MAX_IP_LENGTH              16
+#define MAX_USER_INFO_LENGTH       256
+#define charsmin                  -1
 
-#define PLUGIN "OF spectator"
-#define VERSION "1.0.3"
-#define AUTHOR ".sρiηX҉."
-
-#define MOTD    1337
-#define RESET    1999
-#define TOGGLE 2022
-
-//heads up display char gen
-#define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
-#define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
-
-#define OK if(is_user_connected(id)
-new bool:g_spectating[MAX_PLAYERS+1]
-new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
-new bool:bListening[MAX_PLAYERS + 1]
+new g_timer[MAX_PLAYERS + 1]
+new g_afk_spec_player
+new const CvarAFKTimeDesc[] = "Seconds before moving AFK player into spectator mode."
+new sleepy[MAX_PLAYERS + 1], g_spec
+new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
+new DownloaderName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
+new g_mname[MAX_NAME_LENGTH]
+new bool:b_Op4c
 new bool:g_bFlagMap
-new g_random_view[MAX_PLAYERS+1]
-new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
-new g_motd[MAX_RESOURCE_PATH_LENGTH]
-new const DIC[] = "of_spectate.txt"
-new Float:g_user_origin[MAX_PLAYERS + 1][3]
+new afk_sync_msg, download_sync_msg, g_spawn_wait
+new g_SzMapName[MAX_NAME_LENGTH]
 
-///new g_iViewtype[MAX_PLAYERS + 1]
-
-new g_startaspec
-
-
-#define IS_THERE (~(1<<IN_SCORE))
+#define ALRT 84641
+#define FADE_HOLD (1<<2)
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, VERSION, AUTHOR)
-    if(!lang_exists(DIC))
+    register_plugin("Connect Alert System","1.1","SPiNX");
+    get_mapname(g_SzMapName, charsmax(g_SzMapName));
+    g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin?true:false
+    set_task(1.0, "new_users",alert,"",0,"b");
 
-        register_dictionary(DIC);
+    #if AMXX_VERSION_NUM == 182
+        g_afk_spec_player = register_cvar("mp_autospec", "75")
+        g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 0.5
+    #else
+        bind_pcvar_num(get_cvar_pointer("mp_autospec") ? get_cvar_pointer("mp_autospec") : create_cvar("mp_autospec", "90", FCVAR_NONE, CvarAFKTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 300.0),g_afk_spec_player)
+        get_cvar_pointer("sv_sptime") ? bind_pcvar_num(get_cvar_pointer("sv_sptime"), g_spawn_wait ) : 1
+    #endif
 
-    else
+    ///g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
 
-    {
-        log_amx("%s %s by %s paused to prevent data key leakage from missing %s.", PLUGIN, VERSION, AUTHOR, DIC);
-        pause "a";
-    }
-    new mname[MAX_NAME_LENGTH]
-    get_mapname(mname, charsmax(mname));
-    g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
+    g_afk_spec_player = register_cvar("mp_autospec", "75")
 
-    server_print("Loading %s.", PLUGIN)
-    register_clcmd("!spec", "@menu", 0, "- Spectator Menu")
-    register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
-    register_concmd("say !spec_switch","random_view",0,"spectate random")
-    g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
-    g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
-    register_forward(FM_PlayerPreThink, "client_prethink");
-    RegisterHam(Ham_Spawn, "player", "@play", 1);
+    g_spec = get_cvar_pointer("sv_spectate_spawn")
+    RegisterHam(Ham_Spawn, "player", "screensaver_stop", 1);
+    get_mapname(g_mname, charsmax(g_mname))
+    if(containi(g_mname, "op4c") > charsmin)
+        b_Op4c=true
+    //no over-lapping
+    afk_sync_msg        = CreateHudSyncObj( )
+    download_sync_msg   = CreateHudSyncObj( )
 }
 
-public client_prethink( id )
+public client_putinserver(index)
 {
-    if(is_user_connected(id) && is_user_alive(id))
+
+    if(!task_exists(ALRT) && !is_user_bot(index) && !is_user_admin(index))
     {
-        if(g_spectating[id] && !is_user_bot(id))
-        if(is_user_admin(id) || get_user_time(id) > 180)
+        set_task(1.75,"the_alert", ALRT)
+    }
+    g_timer[index] = 1
+}
+
+public the_alert()
+{
+    client_cmd(0,"spk ^"alert a intruder is here^"")
+}
+
+public client_authorized(id) //auth was messing up names on download
+{
+    get_user_name(id,ClientName[id],charsmax(ClientName[]))
+    client_print 0,print_chat,"%s is lurking...", ClientName[id]
+    server_print "%s is lurking...", ClientName[id]
+}
+
+
+public new_users()
+{
+    new players[MAX_PLAYERS], playercount, downloader;
+    get_players(players,playercount,"i");
+
+
+    for (downloader=0; downloader<playercount; ++downloader)
+    {
+
+        if(is_user_connecting(players[downloader]))
         {
-            //Remember!
-            #define OBS_NONE                        0
-            #define OBS_CHASE_LOCKED                1           // Locked Chase Cam
-            #define OBS_CHASE_FREE                  2           // Free Chase Cam
-            #define OBS_ROAMING                     3           // Free Look
-            #define OBS_IN_EYE                      4           // First Person //attach_view(id,id)
-            #define OBS_MAP_FREE                    5           // Free Overview
-            #define OBS_MAP_CHASE                   6           // Chase Overview
+            set_hudmessage(255, 255, 255, 0.00, 0.50, .effects= 0 , .holdtime= 5.0)
+            new uptime = g_timer[players[downloader]]++
+            #if AMXX_VERSION_NUM == 182
+            server_print"%s download time:%i", ClientName[players[downloader]], uptime
+            #else
+            server_print"%n download time:%i", players[downloader], uptime
+            #endif
 
-            if(get_user_time(id) < 180)
-                client_print id, print_center, "%f|%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2]
-
-            //if( pev(id, pev_button) & IN_RELOAD)
-            //{
-            //    random_view(id)
-
-                /*set_pev(id, pev_iuser1, g_iViewtype[id])
-                //switch(iView)
-                {
-                    client_print id, print_center, "Trying spec %d", g_iViewtype[id]
-                    g_iViewtype[id]++  //cycle through the 6
-
-                    //reset back to one
-                    if(g_iViewtype[id] > 6 )
-                    {
-                         client_print id, print_chat, "Reset spec counter %i", g_iViewtype[id]
-                         g_iViewtype[id]  = 0
-                    }
-                }*/
-
-           // }
-
-            if(g_random_view[id])
+            if(uptime < 5)
             {
-                set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
+                #if AMXX_VERSION_NUM == 182
 
-                new effects = pev(id, pev_effects)
-                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
+                client_print 0,print_chat,"%s is connecting...", ClientName[players[downloader]]
+                server_print "%s is connecting...", ClientName[players[downloader]
 
-                g_spectating[id] = true
+                #else
+                client_print 0,print_chat,"%n is connecting...", players[downloader]
+                server_print "%n is connecting...", players[downloader]
+
+                #endif
+            }
+            else if (uptime > 4 && uptime < 15)
+            {
+
+                #if AMXX_VERSION_NUM == 182
+
+
+                ShowSyncHudMsg 0, download_sync_msg, "%s is downloading...", ClientName[players[downloader]]
+
+                client_print 0,print_chat,"%s is downloading...", ClientName[players[downloader]]
+
+                server_print "%s is downloading...", ClientName[players[downloader]]
+
+                #else
+
+                ShowSyncHudMsg 0, download_sync_msg, "%n is downloading...", players[downloader]
+
+                client_print 0,print_chat,"%n is downloading...", players[downloader]
+                server_print "%n is downloading...", players[downloader]
+
+                #endif
+            }
+            else
+            {
+                //Update server's built-in AMXX scrolling message.
+                new SzScrolling[256], SzNewScroller[256]
+                new iPlayers = players[downloader]
+                if(!is_user_bot(iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
+                    copy(DownloaderName[iPlayers], charsmax(DownloaderName[]), ClientName[iPlayers])
+
+                implode_strings( DownloaderName, charsmax(DownloaderName[]), " ", SzNewScroller, charsmax(SzNewScroller) )
+
+                new SzBuffer[256]
+                copy(SzBuffer, charsmax(SzBuffer), SzNewScroller)
+                trim(SzBuffer)
+                replace_string(SzBuffer, charsmax(SzBuffer), " ", ", ", true)
+
+                equal(SzNewScroller, "")
+                ? format(SzScrolling, charsmax(SzScrolling), "%s --> downloading %s.", ClientName[iPlayers], g_SzMapName )
+                :  format(SzScrolling, charsmax(SzScrolling), "%s is in process of downloading %s.", SzBuffer, g_SzMapName )
+
+                server_cmd "amx_scrollmsg ^"%s^" 35", SzScrolling
+            }
+
+        }
+
+        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
+        {
+            new uptime = sleepy[players[downloader]]++
+            new spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
+
+            if(spec_screensaver_engage < 0)
+                return PLUGIN_HANDLED_MAIN
+
+
+            if (uptime > spec_screensaver_engage && !b_Op4c)
+            {
+                set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
+                if(g_spec && is_plugin_loaded(SPEC_PRG,true)!=charsmin)
+                {
+                    if(!get_cvar_pointer("gg_enable"))
+                    {
+                        new Group_of_players =  players[downloader]
+                        log_amx "Sending %s to spec", ClientName[Group_of_players]
+
+                        if(is_user_connected(Group_of_players) && !is_user_bot(Group_of_players))
+                        {
+                            dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
+                            callfunc_begin("@go_spec",SPEC_PRG)
+                            callfunc_push_int(Group_of_players)
+                            callfunc_end()
+
+                            sleepy[Group_of_players] = 1
+
+                            #if AMXX_VERSION_NUM == 182
+                            set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
+                            #else
+                            set_task(float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
+                            #endif
+                        }
+
+                    }
+                    else
+                    {
+                        ///SCREENSAVER:
+                        screensaver(players[downloader], uptime)
+                        ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
+                        //server_print "Screensaver applied to %s",  ClientName[players[downloader]]
+                    }
+
+                }
+                else
+                {
+                    ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
+                    //server_print "Screensaver applied to %s",  ClientName[players[downloader]]
+                    screensaver(players[downloader], uptime)
+                }
+
+            }
+            else
+            {
+                ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
+                client_print players[downloader],print_chat, "AFK time:%i", uptime
             }
         }
-        if(!is_user_connecting(id))
-        {
-            pev(id, pev_origin, g_user_origin[id]);
-        }
-    }
-}
-
-@play(id)
-{
-    if(is_user_connected(id))
-    {
-        console_print 0,"%n spectator mode is resetting.", id
-        client_cmd id,"spk valve/sound/UI/buttonclick.wav"
-        set_task(2.0,"@reset", id+RESET)
-
-        if(task_exists(id+MOTD))
-            remove_task(id + MOTD)
-
-        if(task_exists(id + TOGGLE))
-            remove_task(id + TOGGLE)
-    }
-
-}
-
-@reset(Tsk)
-{
-    new id = Tsk - RESET
-    if(g_spectating[id] && is_user_connected(id) )
-    {
-        set_user_godmode(id,false)
-        server_print "Spec mode reset for ^n%n",id
-
-        if(task_exists(id+MOTD))
-            remove_task(id + MOTD)
-
-        if(task_exists(id))
-            remove_task(id)
-
-        g_spectating[id] = false
-        set_view(id, CAMERA_NONE)
-        console_cmd(id, "default_fov 100")
-
-        new effects = pev(id, pev_effects)
-        set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
-        pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
-    }
-}
-
-public client_putinserver(id)
-OK)
-{
-        if(!g_bFlagMap)
-        get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id)
-}
-
-@menu(id)
-{
-    if(is_user_connected(id))
-    {
-        new menu = menu_create ("Spectate", "@spec_menu");
-        menu_additem(menu, "PLAY/WATCH", "1");
-        menu_additem(menu, "Chase Cam/Free-look", "2")
-        menu_additem(menu, "Play/STOP song", "3")
-        menu_additem(menu, "Rock the Vote (frags required)", "4")
-        menu_additem(menu, "LEAVE SERVER!", "5")
-        menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
-        menu_display(id, menu, 0);
-        return PLUGIN_HANDLED
     }
     return PLUGIN_CONTINUE
 }
 
-@spec_menu(id, menu, item)
+@make_spec(id)
+if(is_user_connected(id))
 {
-    if(is_user_connected(id))
+    server_print("Sending %n spec...", id)
+    client_cmd(id, "say !spec")
+}
+
+public screensaver_stop(id,{Float,_}:...)
+{
+    new duration = 1<<12
+    new holdTime = 1<<8
+    new fadeType = FADE_HOLD
+    new blindness = 0
+    g_timer[id] = 1
+    sleepy[id] = 1
+    if (is_user_connected(id) && !is_user_bot(id))
     {
-        bAlready_shown_menu[id] = true
-        switch(item)
-        {
-            case 0:
-            {
-                @go_spec(id)
-                if(g_spectating[id])
-                    menu_display(id, menu, 0);
-            }
-            case 1:
-            {
-                random_view(id)
-                if(g_spectating[id])
-                    menu_display(id, menu, 0);
-            }
-            case 2:
-            {
-                new Loop, iTrack = random_num(1,27)
-                menu_display(id, menu, 0);
-                if( bListening[id] )
-                {
-                    client_cmd id, "mp3 stop" 
-                    bListening[id] = false
-                }
-                else
-                {
-                    emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
-                    bListening[id] = true
-                }
+        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id); // if _unreliable was failing too often
+        //message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // if _one was crashing too often
 
-            }
-            case 3:
-            {
-                client_cmd id, "say rtv"
-            }
-            case 4:
-            {
-                client_cmd id, "dropclient"
-            }
-        }
+        write_short(duration); // fade lasts this long duration
+        write_short(holdTime); // fade lasts this long hold time
+        write_short(fadeType); // fade type
+        write_byte(0); // fade red
+        write_byte(0); // fade green
+        write_byte(0); // fade blue
+        write_byte(blindness); // fade alpha
+        message_end();
     }
-    return PLUGIN_HANDLED
 }
 
-@go_spec(id)
+public screensaver(id, uptime,{Float,_}:...)
+if (is_user_connected(id) && !is_user_bot(id))
 {
-    OK)
-    {
-        if(!is_user_bot(id) && !is_user_hltv(id))
-        {
-            fm_strip_user_weapons(id)
-            if(!g_spectating[id])
-            {
-                g_spectating[id] = true
-                dllfunc(DLLFunc_SpectatorConnect, id)
-                server_print "GOING TO SPEC"
-                if(!bAlready_shown_menu[id])
-                    @menu(id)
-
-                set_user_info(id, "Spectator", "yes")
-                new effects = pev(id, pev_effects)
-                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
-                console_cmd(id, "default_fov 150")
-                get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
-                set_user_godmode(id,true) //specs can be killed otherwise
-                set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
-                //inform client they are in spec
-                set_task(10.0,"@update_player",id,_,_,"b")
-            }
-            else
-            {
-                server_print "EXITING SPEC"
-                dllfunc(DLLFunc_ClientPutInServer, id)
-                dllfunc(DLLFunc_SpectatorDisconnect, id)
-                set_user_godmode(id,false)
-                g_spectating[id] = false
-                g_random_view[id] = 0
-                set_user_info(id, "Spectator", "no")
-                console_cmd(id, "default_fov 100")
-                change_task(id, 60.0) //less spam
-                remove_task(id+MOTD)
-
-            }
-
-        }
-
-    }
-
-}
-
-@show_motd(value)
-{
-    new id = value - MOTD
-    show_motd(id, g_motd, "SPECTATOR MODE")
-    client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
-    set_task(30.0,"random_view", id)
-}
-
-@update_player(id)
-if(is_user_connected(id) && !is_user_bot(id))
-    g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
-
-
-public client_command(id)
-{
-    if(is_user_connected(id) && !is_user_bot(id))
-    {
-        new szArg[MAX_PLAYERS];
-        new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
-    
-        read_args(szArg, charsmax(szArg));
-        read_argv(0,szArgCmd, charsmax(szArgCmd));
-        read_argv(1,szArgCmd1, charsmax(szArgCmd1));
-    
-        if(g_random_view[id] && !g_spectating[id])
-            g_spectating[id] = true
-    
-        if(g_spectating[id])
-            if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
-            {
-                client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-    
-                #define HUD_RAN 0,0,random_num(0,255)
-                #if AMXX_VERSION_NUM != 182
-                set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                #endif
-                set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-                //end HUD
-    
-                set_user_godmode(id,true)
-                fm_strip_user_weapons(id)
-                client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
-                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
-                    goto SKIP
-                return PLUGIN_HANDLED_MAIN
-            }
-        SKIP:
-        return PLUGIN_CONTINUE
-    }
-    return PLUGIN_HANDLED
-}
-public random_view(id)
-{
-    if(is_user_connected(id) && g_spectating[id])
-    {
-        if(!task_exists(id+TOGGLE))
-        {
-            set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
-            client_cmd id, "spk holo/tr_ba_use.wav"
-        }
-        else
-        {
-            g_random_view[id] = 0
-            remove_task(id+TOGGLE)
-            client_print(id, print_chat,"Stopping spectator follow.")
-            client_cmd id,"spk valve/sound/misc/talk.wav"
-        }
-    }
-    return PLUGIN_HANDLED;
-}
-
-@random_view(Tsk)
-{
-    new id = Tsk - TOGGLE
-    if(is_user_connected(id) && g_spectating[id])
-    {
-        new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
-        get_players(players,playercount,"i");
-
-        for (viewable=1; viewable < playercount; viewable++)
-        if(playercount > 1)
-
-        if(!g_random_view[id])
-        {
-            iViewPlayer = random_num(1,playercount+1)
-            if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) && is_user_connected(iViewPlayer) )
-            {
-                set_view(id, CAMERA_3RDPERSON)
-                client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
-                client_cmd(id,"spk fvox/targetting_system.wav")
-                client_print(id, print_chat, "Say !spec_switch to change perspectives.")
-                //otherwise switches players randomly
-                g_random_view[id] = iViewPlayer
-                return PLUGIN_CONTINUE;
-            }
-        }
-        else
-        {
-            set_pev(id, pev_origin, g_user_origin[g_random_view[id]]);
-        }
-
-    }
-    else
-    {
-        if(task_exists(id + TOGGLE))
-            remove_task(id + TOGGLE)
-    }
-    return PLUGIN_HANDLED
-
-}
-
-#if !defined client_disconnected
-#define client_disconnect client_disconnected
-#endif
-public client_disconnected(id)
-{
-    if(task_exists(id))
-        remove_task(id)
-
-    g_spectating[id] = false
-    bAlready_shown_menu[id] = false
-
-    id > 0 && id < 33 ?
-        console_cmd(id, "default_fov 100") : server_print("Invalid client")
-}
-
-stock players_who_see_effects()
-{
-    iPlayers()
-    for (new SEE; SEE<g_iHeadcount; SEE++)
-        return SEE;
-    return PLUGIN_CONTINUE;
-}
-
-stock iPlayers()
-{
-    get_players(g_players, g_iHeadcount,"ch")
-    return g_iHeadcount
+    client_print id,print_center, "Screen saver active for:%i seconds", uptime
+    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // use the magic #1 for "one client"
+    write_short(1<<12); // fade lasts this long duration
+    write_short(1<<8); // fade lasts this long hold time
+    write_short(FADE_HOLD); // fade type
+    write_byte(0); // fade red
+    write_byte(0); // fade green
+    write_byte(0); // fade blue
+    write_byte(255); // fade alpha
+    message_end();
 }
