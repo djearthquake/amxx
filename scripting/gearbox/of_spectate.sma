@@ -70,8 +70,10 @@ public plugin_init()
     register_concmd("say !spec_switch","random_view",0,"spectate random")
     g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
-    register_forward(FM_PlayerPreThink, "client_prethink");
-    register_forward(FM_AddToFullPack, "AddToFullPack", 1)
+
+    register_forward(FM_PlayerPreThink, "client_prethink", 0);
+    register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
+
     RegisterHam(Ham_Spawn, "player", "@play", 1);
 }
 
@@ -119,10 +121,11 @@ public client_prethink( id )
                 
                 if(bFirstPerson[id])
                 {
-                    attach_view(id, g_random_view[id]);
+                    new iTarget = g_random_view[id]
+
+                    attach_view(id, iTarget);
                     set_view(id, CAMERA_NONE)
                     console_cmd(id, "default_fov 100")
-                    new iTarget = g_random_view[id]
 
                     entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
                     entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
@@ -146,16 +149,18 @@ public client_prethink( id )
     }
 }
 
-public AddToFullPack(es_handle, e, ent, host, hostflags, player, pset)
+public fwdAddToFullPack_Post( es_handle, e, ent, host, hostflags, player, pset )
 {
-    if(player)
+    if( player )
     {
-        if(bFirstPerson[player] && g_random_view[player] == ent)
+        if( bFirstPerson[host] && host != ent )
         {
-            set_es( es_handle, ES_Effects, get_es(es_handle, ES_Effects) | EF_NODRAW)
-            set_es( es_handle, ES_RenderMode, kRenderTransAlpha );
-            set_es( es_handle, ES_RenderAmt, 0 );
-            server_print("Trying help %s with %s.", player, ent)
+            if( ent == g_random_view[host])
+            {
+                set_es( es_handle, ES_Origin, { 999999999.0, 999999999.0, 999999999.0 } );
+                set_es( es_handle, ES_RenderMode, kRenderTransAlpha );
+                set_es( es_handle, ES_RenderAmt, 0 );
+            }
         }
     }
 }
@@ -215,8 +220,8 @@ OK)
         new menu = menu_create ("Spectate", "@spec_menu");
         menu_additem(menu, "PLAY/WATCH^n", "1");
         menu_additem(menu, "Chase Cam/Free-look^n^n", "2")
-        menu_additem(menu, "MonkeyBack Cam^n^n", "3")
-        menu_additem(menu, "Take-over Bot!^n^n^n", "4")
+        menu_additem(menu, "First Person Chase Cam^n^n", "3")
+        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4")
         menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
         menu_additem(menu, "New Map(frags required)^n^n^n", "6")
         menu_additem(menu, "LEAVE SERVER!^n", "7")
