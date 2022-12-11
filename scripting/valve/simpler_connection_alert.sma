@@ -46,8 +46,6 @@ public plugin_init()
         get_cvar_pointer("sv_sptime") ? bind_pcvar_num(get_cvar_pointer("sv_sptime"), g_spawn_wait ) : 1
     #endif
 
-    ///g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
-
     g_afk_spec_player = register_cvar("mp_autospec", "75")
 
     g_spec = get_cvar_pointer("sv_spectate_spawn")
@@ -102,7 +100,7 @@ public new_users()
             server_print"%n download time:%i", players[downloader], uptime
             #endif
 
-            if(uptime < 5)
+            if(uptime < 8)
             {
                 #if AMXX_VERSION_NUM == 182
 
@@ -115,46 +113,40 @@ public new_users()
 
                 #endif
             }
-            else
+            else if (uptime > 7 && uptime < 15)
             {
-                //copy(DownloaderName[players[downloader]], charsmax(DownloaderName[]), ClientName[players[downloader]])
-                /*
+
                 #if AMXX_VERSION_NUM == 182
 
-                //show_hudmessage 0, "%s is downloading...", ClientName[players[downloader]]
                 ShowSyncHudMsg 0, download_sync_msg, "%s is downloading...", ClientName[players[downloader]]
 
                 client_print 0,print_chat,"%s is downloading...", ClientName[players[downloader]]
-
                 server_print "%s is downloading...", ClientName[players[downloader]]
 
                 #else
 
-                //show_hudmessage 0, "%n is downloading...", players[downloader]
                 ShowSyncHudMsg 0, download_sync_msg, "%n is downloading...", players[downloader]
-                
+
                 client_print 0,print_chat,"%n is downloading...", players[downloader]
                 server_print "%n is downloading...", players[downloader]
-                
 
                 #endif
-                */
+            }
+            else
+            {
                 //Update server's built-in AMXX scrolling message.
                 new SzScrolling[256], SzNewScroller[256]
                 new iPlayers = players[downloader]
                 if(!is_user_bot(iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
                     copy(DownloaderName[iPlayers], charsmax(DownloaderName[]), ClientName[iPlayers])
-                
-                //implode_strings(ClientName, charsmax(ClientName[]), " ", SzNewScroller, charsmax(SzNewScroller))
+
                 implode_strings( DownloaderName, charsmax(DownloaderName[]), " ", SzNewScroller, charsmax(SzNewScroller) )
-                //ClientName[players[downloader]]
 
                 new SzBuffer[256]
                 copy(SzBuffer, charsmax(SzBuffer), SzNewScroller)
                 trim(SzBuffer)
-                replace_string(SzBuffer, charsmax(SzBuffer), " ", ", ", true)
 
-                equal(SzNewScroller, "") 
+                equal(SzNewScroller, "")
                 ? format(SzScrolling, charsmax(SzScrolling), "%s --> downloading %s.", ClientName[iPlayers], g_SzMapName )
                 :  format(SzScrolling, charsmax(SzScrolling), "%s is in process of downloading %s.", SzBuffer, g_SzMapName )
 
@@ -243,9 +235,7 @@ public screensaver_stop(id,{Float,_}:...)
     sleepy[id] = 1
     if (is_user_connected(id) && !is_user_bot(id))
     {
-        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id); // if _unreliable was failing too often
-        //message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // if _one was crashing too often
-
+        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id);
         write_short(duration); // fade lasts this long duration
         write_short(holdTime); // fade lasts this long hold time
         write_short(fadeType); // fade type
@@ -261,7 +251,7 @@ public screensaver(id, uptime,{Float,_}:...)
 if (is_user_connected(id) && !is_user_bot(id))
 {
     client_print id,print_center, "Screen saver active for:%i seconds", uptime
-    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); // use the magic #1 for "one client"
+    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); 
     write_short(1<<12); // fade lasts this long duration
     write_short(1<<8); // fade lasts this long hold time
     write_short(FADE_HOLD); // fade type
