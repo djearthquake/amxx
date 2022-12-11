@@ -291,34 +291,27 @@ public plugin_precache()
     precache_model("models/hair.mdl")
 
     precache_sound("debris/bustglass2.wav");
-    //precache_generic("sound/debris/bustglass2.wav");
-
     precache_sound("debris/bustglass1.wav");
-    //precache_generic("sound/debris/bustglass1.wav");
 
     precache_sound("debris/bustmetal1.wav");
-    //precache_generic("sound/debris/bustmetal1.wav");
-
     precache_sound("debris/bustmetal2.wav");
-    //precache_generic("sound/debris/bustmetal2.wav");
+
 
     precache_sound("debris/metal1.wav");
-    //precache_generic("sound/debris/metal1.wav");
-
     precache_sound("debris/metal2.wav");
-    //precache_generic("sound/debris/metal2.wav");
-
     precache_sound("debris/metal3.wav");
-    //precache_generic("sound/debris/metal3.wav");
+
+    precache_sound("smallmedkit1.wav")
+    precache_sound("smallmedkit2.wav")
 
     precache_model("sprites/fexplo.spr")
-    //precache_generic("sprites/fexplo.spr")
+
 
     precache_model("models/w_battery.mdl")
     precache_model("models/w_medkit.mdl")
-    //precache_generic("models/w_battery.mdl")
+
     precache_model("models/hair.mdl")
-    //precache_generic("models/hair.mdl")
+
 
     ////////////////fun C  breakable!!///////////////
 
