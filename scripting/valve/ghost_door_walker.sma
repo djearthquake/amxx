@@ -301,8 +301,8 @@ public plugin_precache()
     precache_sound("debris/metal2.wav");
     precache_sound("debris/metal3.wav");
 
-    precache_sound("smallmedkit1.wav")
-    precache_sound("smallmedkit2.wav")
+    precache_sound("items/smallmedkit1.wav")
+    precache_sound("items/smallmedkit2.wav")
 
     precache_model("sprites/fexplo.spr")
 
