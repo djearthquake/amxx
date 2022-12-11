@@ -78,6 +78,14 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "player", "@play", 1);
 }
 
+public client_impulse(id)
+{
+    if(g_spectating[id])
+        return PLUGIN_HANDLED
+
+    return PLUGIN_CONTINUE
+}
+
 public client_prethink( id )
 {
     if(is_user_connected(id) && is_user_alive(id))
