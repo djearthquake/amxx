@@ -32,6 +32,7 @@ new bool:g_spectating[MAX_PLAYERS+1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
 new bool:bListening[MAX_PLAYERS + 1]
 new bool:bFirstPerson[MAX_PLAYERS + 1]
+new bool:g_bRenderApplied[MAX_PLAYERS + 1]
 new bool:g_bFlagMap
 new g_random_view[MAX_PLAYERS+1]
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
@@ -118,11 +119,10 @@ public client_prethink( id )
                 set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
 
                 g_spectating[id] = true
-                
+
                 if(bFirstPerson[id])
                 {
                     new iTarget = g_random_view[id]
-
                     attach_view(id, iTarget);
                     set_view(id, CAMERA_NONE)
                     console_cmd(id, "default_fov 100")
@@ -132,6 +132,8 @@ public client_prethink( id )
                     entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
                     entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
                     entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+
+                    g_bRenderApplied[id] = loss() ? false : true
                 }
                 else
                 {
@@ -139,7 +141,7 @@ public client_prethink( id )
                     set_view(id, CAMERA_3RDPERSON)
                     console_cmd(id, "default_fov 150")
                 }
-                
+
             }
         }
         if(!is_user_connecting(id))
@@ -151,18 +153,28 @@ public client_prethink( id )
 
 public fwdAddToFullPack_Post( es_handle, e, ent, host, hostflags, player, pset )
 {
-    if( player )
+    if (!player)
+        return FMRES_IGNORED; 
+
+    if( bFirstPerson[host] && host != ent )
     {
-        if( bFirstPerson[host] && host != ent )
+        if( ent == g_random_view[host]  && g_bRenderApplied[host] )
         {
-            if( ent == g_random_view[host])
-            {
-                set_es( es_handle, ES_Origin, { 999999999.0, 999999999.0, 999999999.0 } );
-                set_es( es_handle, ES_RenderMode, kRenderTransAlpha );
-                set_es( es_handle, ES_RenderAmt, 0 );
-            }
+            set_es(es_handle, ES_Effects, get_es(es_handle, ES_Effects) | EF_NODRAW)
         }
     }
+    return FMRES_IGNORED;
+}
+
+stock loss()
+{
+    new iPing,iLoss
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"i")
+
+    for(new lot;lot < sizeof players;lot++)
+        get_user_ping(players[lot],iPing,iLoss)
+
+    return iLoss
 }
 
 @play(id)
@@ -302,7 +314,7 @@ OK)
                 menu_display(id, menu, 0,300);
                 if( bListening[id] )
                 {
-                    client_cmd id, "mp3 stop" 
+                    client_cmd id, "mp3 stop"
                     bListening[id] = false
                 }
                 else
@@ -391,26 +403,26 @@ public client_command(id)
     {
         new szArg[MAX_PLAYERS];
         new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
-    
+
         read_args(szArg, charsmax(szArg));
         read_argv(0,szArgCmd, charsmax(szArgCmd));
         read_argv(1,szArgCmd1, charsmax(szArgCmd1));
-    
+
         if(g_random_view[id] && !g_spectating[id])
             g_spectating[id] = true
-    
+
         if(g_spectating[id])
             if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
             {
                 client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-    
+
                 #define HUD_RAN 0,0,random_num(0,255)
                 #if AMXX_VERSION_NUM != 182
                 set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
                 #endif
                 set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
                 show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-    
+
                 set_user_godmode(id,true)
                 fm_strip_user_weapons(id)
                 client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
@@ -456,7 +468,7 @@ public random_view(id)
 
         if(!g_random_view[id])
         {
-            iViewPlayer = random_num(1,playercount+1)
+            iViewPlayer = random_num(1,playercount)
             if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) && is_user_connected(iViewPlayer) )
             {
                 set_view(id, CAMERA_3RDPERSON)
