@@ -39,10 +39,11 @@ new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
 new Float:g_user_origin[MAX_PLAYERS + 1][3]
 
-///new g_iViewtype[MAX_PLAYERS + 1]
+new g_iViewtype[MAX_PLAYERS + 1]
 
 new g_startaspec
 
+new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3];
 
 #define IS_THERE (~(1<<IN_SCORE))
 
@@ -70,6 +71,7 @@ public plugin_init()
     g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
     register_forward(FM_PlayerPreThink, "client_prethink");
+    register_forward(FM_AddToFullPack, "AddToFullPack", 1)
     RegisterHam(Ham_Spawn, "player", "@play", 1);
 }
 
@@ -78,7 +80,6 @@ public client_prethink( id )
     if(is_user_connected(id) && is_user_alive(id))
     {
         if(g_spectating[id] && !is_user_bot(id))
-        if(is_user_admin(id) || get_user_time(id) > 180)
         {
             //Remember!
             #define OBS_NONE                        0
@@ -92,26 +93,21 @@ public client_prethink( id )
             if(get_user_time(id) < 180)
                 client_print id, print_center, "%f|%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2]
 
-            //if( pev(id, pev_button) & IN_RELOAD)
-            //{
-            //    random_view(id)
-
-                /*set_pev(id, pev_iuser1, g_iViewtype[id])
-                //switch(iView)
+            if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
+            {
+                set_pev(id, pev_iuser1, g_iViewtype[id]) //not op4
                 {
-                    client_print id, print_center, "Trying spec %d", g_iViewtype[id]
+                    client_print id, print_center, "Trying spec %d.", g_iViewtype[id]
                     g_iViewtype[id]++  //cycle through the 6
 
                     //reset back to one
                     if(g_iViewtype[id] > 6 )
                     {
-                         client_print id, print_chat, "Reset spec counter %i", g_iViewtype[id]
+                         client_print id, print_chat, "Reset spec counter %i.", g_iViewtype[id]
                          g_iViewtype[id]  = 0
                     }
-                }*/
-
-           // }
-
+                }
+            }
             if(g_random_view[id])
             {
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
@@ -123,24 +119,16 @@ public client_prethink( id )
                 
                 if(bFirstPerson[id])
                 {
-                    new Float:Angles[3], Float:Plane[3], Float:Punch[3], Float:Vangle[3];
-
                     attach_view(id, g_random_view[id]);
                     set_view(id, CAMERA_NONE)
                     console_cmd(id, "default_fov 100")
+                    new iTarget = g_random_view[id]
 
-                    entity_get_vector(g_random_view[id], EV_VEC_angles, Angles);
-                    entity_set_vector(id, EV_VEC_angles, Angles);
-
-                    entity_get_vector(g_random_view[id], EV_VEC_view_ofs, Plane);
-                    entity_set_vector(id, EV_VEC_view_ofs, Plane);
-                    
-                    entity_get_vector(g_random_view[id], EV_VEC_v_angle, Punch);
-                    entity_set_vector(id, EV_VEC_punchangle, Punch);
-                    
-                    entity_get_vector(g_random_view[id], EV_VEC_v_angle, Vangle);
-                    entity_set_vector(id, EV_VEC_punchangle, Vangle);
-
+                    entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
+                    entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
+                    entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
+                    entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
+                    entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
                 }
                 else
                 {
@@ -154,6 +142,20 @@ public client_prethink( id )
         if(!is_user_connecting(id))
         {
             pev(id, pev_origin, g_user_origin[id]);
+        }
+    }
+}
+
+public AddToFullPack(es_handle, e, ent, host, hostflags, player, pset)
+{
+    if(player)
+    {
+        if(bFirstPerson[player] && g_random_view[player] == ent)
+        {
+            set_es( es_handle, ES_Effects, get_es(es_handle, ES_Effects) | EF_NODRAW)
+            set_es( es_handle, ES_RenderMode, kRenderTransAlpha );
+            set_es( es_handle, ES_RenderAmt, 0 );
+            server_print("Trying help %s with %s.", player, ent)
         }
     }
 }
@@ -211,13 +213,13 @@ OK)
     if(is_user_connected(id))
     {
         new menu = menu_create ("Spectate", "@spec_menu");
-        menu_additem(menu, "PLAY/WATCH", "1");
-        menu_additem(menu, "Chase Cam/Free-look", "2")
-        menu_additem(menu, "MonkeyBack Cam", "3")
-        menu_additem(menu, "Take-over Bot!", "4")
-        menu_additem(menu, "Play/STOP song", "5")
-        menu_additem(menu, "New Map(frags required)", "6")
-        menu_additem(menu, "LEAVE SERVER!", "7")
+        menu_additem(menu, "PLAY/WATCH^n", "1");
+        menu_additem(menu, "Chase Cam/Free-look^n^n", "2")
+        menu_additem(menu, "MonkeyBack Cam^n^n", "3")
+        menu_additem(menu, "Take-over Bot!^n^n^n", "4")
+        menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
+        menu_additem(menu, "New Map(frags required)^n^n^n", "6")
+        menu_additem(menu, "LEAVE SERVER!^n", "7")
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
         menu_display(id, menu, 0, 900);
         return PLUGIN_HANDLED
@@ -259,8 +261,34 @@ OK)
             {
                 if(g_spectating[id])
                 {
-                    client_print id, print_chat, "COMING SOON!"
-                    menu_display(id, menu, 0,900);
+                    new iTarget = g_random_view[id]
+                    if(is_user_bot(iTarget) && bFirstPerson[id])
+                    {
+                        server_print "TAKING OVER BOT!"
+                        dllfunc(DLLFunc_ClientPutInServer, id)
+                        dllfunc(DLLFunc_SpectatorDisconnect, id)
+                        g_iViewtype[id]  = 0
+                        g_spectating[id] = false
+                        g_random_view[id] = 0
+                        set_user_info(id, "Spectator", "no")
+                        console_cmd(id, "default_fov 100")
+                        change_task(id, 60.0) //less spam
+                        remove_task(id+MOTD)
+
+                        entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
+                        entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
+                        entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
+                        entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
+                        entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+
+                        client_print id, print_chat, "%n took control of %n.", id, iTarget
+                        server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
+                        set_pev(id, pev_origin, g_user_origin[iTarget]);
+                        set_user_godmode(id,false)
+                        client_cmd 0, "spk debris/beamstart6.wav"
+                    }
+                    else
+                        menu_display(id, menu, 0,900);
                 }
             }
             case 4:
@@ -322,6 +350,7 @@ OK)
                 server_print "EXITING SPEC"
                 dllfunc(DLLFunc_ClientPutInServer, id)
                 dllfunc(DLLFunc_SpectatorDisconnect, id)
+                g_iViewtype[id]  = 0
                 set_user_godmode(id,false)
                 g_spectating[id] = false
                 g_random_view[id] = 0
@@ -376,7 +405,6 @@ public client_command(id)
                 #endif
                 set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
                 show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-                //end HUD
     
                 set_user_godmode(id,true)
                 fm_strip_user_weapons(id)
