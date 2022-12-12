@@ -44,7 +44,8 @@ new g_iViewtype[MAX_PLAYERS + 1]
 
 new g_startaspec
 
-new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3];
+new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
+new Float:g_Velocity[MAX_PLAYERS + 1][3];
 
 #define IS_THERE (~(1<<IN_SCORE))
 
@@ -143,15 +144,16 @@ public client_prethink( id )
                     {
                         attach_view(id, iTarget);
                         set_view(id, CAMERA_NONE)
-                        console_cmd(id, "default_fov 100")
+                        entity_set_float(id, EV_FL_fov, 100.0)
 
                         entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
                         entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
                         entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
                         entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
                         entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
-
-                        //g_bRenderApplied[iTarget] = loss() < 1 ? true : false
+                        //trying to makes players necks match up
+                        trace_line(0, g_Plane[id], g_Plane[iTarget], g_Velocity[iTarget])
+                        entity_set_int( id, EV_INT_fixangle, 1 )
                         if(loss() > 1)
                         {
                             bFirstPerson[id] = false
@@ -166,7 +168,8 @@ public client_prethink( id )
                 {
                     attach_view(id, id);
                     set_view(id, CAMERA_3RDPERSON)
-                    console_cmd(id, "default_fov 150")
+                    entity_set_int( id, EV_INT_fixangle, 0 )
+                    entity_set_float(id, EV_FL_fov, 150.0)
                 }
 
             }
@@ -174,6 +177,14 @@ public client_prethink( id )
         if(!is_user_connecting(id))
         {
             pev(id, pev_origin, g_user_origin[id]);
+        }
+        if(!g_spectating[id])
+        {
+            entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
+            entity_get_vector(id, EV_VEC_view_ofs, g_Plane[id]);
+            entity_get_vector(id, EV_VEC_punchangle, g_Punch[id]);
+            entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
+            entity_get_vector(id, EV_VEC_movedir, g_Mdir[id]);
         }
     }
 }
@@ -238,7 +249,7 @@ stock loss()
 
         g_spectating[id] = false
         set_view(id, CAMERA_NONE)
-        console_cmd(id, "default_fov 100")
+        entity_set_float(id, EV_FL_fov, 100.0)
 
         new effects = pev(id, pev_effects)
         set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
@@ -316,7 +327,7 @@ OK)
                         g_spectating[id] = false
                         g_random_view[id] = 0
                         set_user_info(id, "Spectator", "no")
-                        console_cmd(id, "default_fov 100")
+                        entity_set_float(id, EV_FL_fov, 100.0)
                         change_task(id, 60.0) //less spam
                         remove_task(id+MOTD)
 
@@ -383,7 +394,7 @@ OK)
                 set_user_info(id, "Spectator", "yes")
                 new effects = pev(id, pev_effects)
                 set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
-                console_cmd(id, "default_fov 150")
+                entity_set_float(id, EV_FL_fov, 150.0)
                 get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
                 set_user_godmode(id,true) //specs can be killed otherwise
                 set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
@@ -400,7 +411,7 @@ OK)
                 g_spectating[id] = false
                 g_random_view[id] = 0
                 set_user_info(id, "Spectator", "no")
-                console_cmd(id, "default_fov 100")
+                entity_set_float(id, EV_FL_fov, 100.0)
                 change_task(id, 60.0) //less spam
                 remove_task(id+MOTD)
 
@@ -534,7 +545,7 @@ public client_disconnected(id)
     @clear_menu(id)
 
     id > 0 && id < 33 ?
-        console_cmd(id, "default_fov 100") : server_print("Invalid client")
+        entity_set_float(id, EV_FL_fov, 100.0) : server_print("Invalid client")
 }
 
 stock players_who_see_effects()
