@@ -74,8 +74,16 @@ public plugin_init()
 
     register_forward(FM_PlayerPreThink, "client_prethink", 0);
     register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
-
+    register_event("WeapPickup", "@strip_spec", "bef")
     RegisterHam(Ham_Spawn, "player", "@play", 1);
+}
+
+@strip_spec(id)
+{
+    if( bFirstPerson[id] && g_spectating[id] )
+    {
+        fm_strip_user_weapons(id)
+    }
 }
 
 public client_impulse(id)
@@ -101,7 +109,7 @@ public client_prethink( id )
             #define OBS_MAP_FREE                    5           // Free Overview
             #define OBS_MAP_CHASE                   6           // Chase Overview
 
-            if(get_user_time(id) < 180)
+            if(get_user_time(id) < 30)
                 client_print id, print_center, "%f|%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2]
 
             if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
@@ -131,17 +139,28 @@ public client_prethink( id )
                 if(bFirstPerson[id])
                 {
                     new iTarget = g_random_view[id]
-                    attach_view(id, iTarget);
-                    set_view(id, CAMERA_NONE)
-                    console_cmd(id, "default_fov 100")
+                    if(is_user_connected(iTarget)) //needs checked here as index was made up!
+                    {
+                        attach_view(id, iTarget);
+                        set_view(id, CAMERA_NONE)
+                        console_cmd(id, "default_fov 100")
 
-                    entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
-                    entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
-                    entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
-                    entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
-                    entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+                        entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
+                        entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
+                        entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
+                        entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
+                        entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
 
-                    g_bRenderApplied[id] = loss() ? false : true
+                        //g_bRenderApplied[iTarget] = loss() < 1 ? true : false
+                        if(loss() > 1)
+                        {
+                            bFirstPerson[id] = false
+                        }
+                        else
+                        {
+                            g_bRenderApplied[iTarget] = true
+                        }
+                    }
                 }
                 else
                 {
@@ -166,10 +185,11 @@ public fwdAddToFullPack_Post( es_handle, e, ent, host, hostflags, player, pset )
 
     if( bFirstPerson[host] && host != ent )
     {
-        if( ent == g_random_view[host]  && g_bRenderApplied[host] )
+        if( ent == g_random_view[host]  && g_bRenderApplied[ent])
         {
             set_es(es_handle, ES_Effects, get_es(es_handle, ES_Effects) | EF_NODRAW)
         }
+
     }
     return FMRES_IGNORED;
 }
@@ -423,14 +443,14 @@ public client_command(id)
             if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
             {
                 client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-
+/*
                 #define HUD_RAN 0,0,random_num(0,255)
                 #if AMXX_VERSION_NUM != 182
                 set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
                 #endif
                 set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
                 show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-
+*/
                 set_user_godmode(id,true)
                 fm_strip_user_weapons(id)
                 client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
@@ -449,7 +469,7 @@ public random_view(id)
     {
         if(!task_exists(id+TOGGLE))
         {
-            set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
+            set_task(0.1,"@random_view",id+TOGGLE,.flags = "b")
             client_cmd id, "spk holo/tr_ba_use.wav"
         }
         else
@@ -471,12 +491,10 @@ public random_view(id)
         new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
         get_players(players,playercount,"i");
 
-        for (viewable=1; viewable < playercount; viewable++)
-        if(playercount > 1)
-
-        if(!g_random_view[id])
+        for (viewable=1; viewable < playercount; ++viewable)
+        if(playercount > 1 && !g_random_view[id])
         {
-            iViewPlayer = random_num(1,playercount)
+            iViewPlayer = random_num(1,playercount+1)
             if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) && is_user_connected(iViewPlayer) )
             {
                 set_view(id, CAMERA_3RDPERSON)
