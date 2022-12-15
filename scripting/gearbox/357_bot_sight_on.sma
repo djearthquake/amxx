@@ -20,7 +20,7 @@ new ent;
 /*https://forums.alliedmods.net/showthread.php?t=320610*/
 new const SzDebug[]="Made %n set laser sight on 357."
 new const SzBindAlias[]="+attack2;wait;+attack2;wait;-attack2;-attack2"
-new const SzBotAlias[]="+attack2;wait;-attack2"
+//new const SzBotAlias[]="+attack2;wait;-attack2"
 
 new const CvarLserDesc[] ="Force Eagle laser on 1|2 Force off bottomless mag"
 new  XCvar_deagle_ray
@@ -37,8 +37,8 @@ public plugin_init()
 
     RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_eagle", "Ham_EagleSecondaryAttack")
     register_plugin("Weapon_eagle CVARS","12-12-22",".sρiηX҉.");
-    register_event ( "ResetHUD" , "@client_spawn", "b"  )
-    RegisterHam(Ham_Spawn, "player", "@client_spawn", 1)
+    register_event ( "ResetHUD" , "@client_spawn", "be"  )
+    ///RegisterHam(Ham_Spawn, "player", "@client_spawn", 1)
     RegisterHam(Ham_Killed, "player", "@death");
     
     register_clcmd("weapon_eagle", "trigger_laser", 0, "- null")
@@ -107,7 +107,7 @@ public trigger_laser(id)
             set_pev(id,pev_button,IN_ATTACK2)
         
 
-        if(g_bLasered_357[id][ent] == false/* && !task_exists(id + 357)*/)
+        if(g_bLasered_357[id][ent] == false && !task_exists(id + 357))
         {
             set_task(0.7, "@mouse2", id+357)
         }
@@ -125,7 +125,7 @@ public trigger_laser(id)
         //is_user_bot(id) ? amxclient_cmd(id, SzBotAlias) :  client_cmd(id, SzBindAlias)
 
         if(is_user_bot(id))
-            set_pev(id,pev_button,!IN_ATTACK2)
+            set_pev(id,pev_button,~IN_ATTACK2)
         else
              client_cmd(id, SzBindAlias)
         log_amx SzDebug, id
