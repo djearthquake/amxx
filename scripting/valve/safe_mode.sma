@@ -26,17 +26,17 @@ new bool:bCMDCALL
 
 enum _:Safe_Mode
 {
-    SzMaps[ MAX_NAME_LENGTH ],
-    SzPlugin0[ MAX_NAME_LENGTH ],
-    SzPlugin1[ MAX_NAME_LENGTH ],
-    SzPlugin2[ MAX_NAME_LENGTH ],
-    SzPlugin3[ MAX_NAME_LENGTH ],
-    SzPlugin4[ MAX_NAME_LENGTH ],
-    SzPlugin5[ MAX_NAME_LENGTH ],
-    SzPlugin6[ MAX_NAME_LENGTH ],
-    SzPlugin7[ MAX_NAME_LENGTH ],
-    SzPlugin8[ MAX_NAME_LENGTH ],
-    SzPlugin9[ MAX_NAME_LENGTH ]
+    SzMaps[ 2048 ],
+    SzPlugin0[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin1[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin2[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin3[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin4[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin5[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin6[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin7[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin8[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin9[ MAX_RESOURCE_PATH_LENGTH ]
 }
 new Data[ Safe_Mode ]
 
@@ -50,7 +50,8 @@ public plugin_init()
     Xsafe = register_cvar("safe_mode", "0")
     XAlready = register_cvar("safe_already", "0")
     g_cvar_debugger   = register_cvar("safemode_debug", "0");
-    set_task_ex(3.5,"@clear_plugins", 2022, .flags = SetTask_BeforeMapChange)
+
+    set_task_ex(3.5,"@clear_plugins", 61522, .flags = SetTask_BeforeMapChange)
     g_SafeMode = TrieCreate()
     
     //Backup file check time
