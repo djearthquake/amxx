@@ -17,12 +17,10 @@
 
 new ent;
 
-/*https://forums.alliedmods.net/showthread.php?t=320610*/
 new const SzDebug[]="Made %n set laser sight on 357."
 new const SzBindAlias[]="+attack2;wait;+attack2;wait;-attack2;-attack2"
-//new const SzBotAlias[]="+attack2;wait;-attack2"
 
-new const CvarLserDesc[] ="Force Eagle laser on 1|2 Force off bottomless mag"
+new const CvarLserDesc[] ="Force Eagle laser on 1|3 Spawn with 357."
 new  XCvar_deagle_ray
 
 new bool:g_bLasered_357[ MAX_PLAYERS + 1 ][512]
@@ -69,7 +67,10 @@ public Ham_EagleSecondaryAttack(const ent, id)
     {
         g_bLasered_357[id][ent] = false
         g_bSpawned[id] =  true
-        //set_pdata_int(id, EAGLE, MAX_BOX)
+        if(XCvar_deagle_ray > 2)
+        {
+            set_pdata_int(id, EAGLE, MAX_BOX)
+        }
     }
 }
 
@@ -84,7 +85,7 @@ public client_putinserver(id)
     if(is_user_connected(id))
         g_bLasered_357[id][ent] = false
 
-    if(g_bMapSpawns357/* && !task_exists(id + 357)*/)
+    if(g_bMapSpawns357)
         set_task(0.2, "@mouse2", id+357)     
 
 }
@@ -98,11 +99,10 @@ public client_disconnected(id)
 public trigger_laser(id)
 {
     new iEagle = get_weaponid("weapon_eagle")
-    //server_print "eagle id %i", iEagle
+
     if(g_bSpawned[id] == true && get_user_weapon(id) == iEagle && XCvar_deagle_ray == 1)
     {
         
-        //make bots dont shoot
         if(is_user_bot(id))
             set_pev(id,pev_button,IN_ATTACK2)
         
@@ -122,12 +122,14 @@ public trigger_laser(id)
     {
         g_bLasered_357[id][ent] = true
 
-        //is_user_bot(id) ? amxclient_cmd(id, SzBotAlias) :  client_cmd(id, SzBindAlias)
-
         if(is_user_bot(id))
+        {
             set_pev(id,pev_button,~IN_ATTACK2)
+        }
         else
+        {
              client_cmd(id, SzBindAlias)
+        }
         log_amx SzDebug, id
     }
 }
@@ -142,14 +144,13 @@ public pfn_keyvalue( ent )
     }
 
 }
-/*
+
 public plugin_precache()
 {
-    if(!g_bMapSpawns357)
+    if(!g_bMapSpawns357 && XCvar_deagle_ray > 2)
     {
         new ent = create_entity(ent_type)
         DispatchKeyValue( ent, "weapon_eagle", "1" )
         DispatchSpawn(ent);
     }
 }
-*/
