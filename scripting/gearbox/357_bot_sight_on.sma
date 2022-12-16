@@ -69,7 +69,7 @@ public Ham_EagleSecondaryAttack(const ent, id)
     {
         g_bLasered_357[id][ent] = false
         g_bSpawned[id] =  true
-        set_pdata_int(id, EAGLE, MAX_BOX)
+        //set_pdata_int(id, EAGLE, MAX_BOX)
     }
 }
 
@@ -142,7 +142,7 @@ public pfn_keyvalue( ent )
     }
 
 }
-
+/*
 public plugin_precache()
 {
     if(!g_bMapSpawns357)
@@ -152,3 +152,4 @@ public plugin_precache()
         DispatchSpawn(ent);
     }
 }
+*/
