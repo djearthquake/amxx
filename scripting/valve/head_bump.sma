@@ -94,7 +94,9 @@ public plugin_init()
 @damage(szBuffer[], iWall)
 {
     new head_down = str_to_num(szBuffer)
-    fakedamage(iWall,"Head Bang",1.0, iWall < MAX_PLAYERS ? DMG_RADIATION : DMG_CRUSH)
+
+    if(pev_valid(iWall) || is_user_connected(iWall))
+        fakedamage(iWall,"Head Bang",1.0, is_user_alive(iWall) ? DMG_RADIATION : DMG_CRUSH)
 
     if(is_user_connected(iWall))
     {
