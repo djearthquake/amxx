@@ -38,7 +38,7 @@ public plugin_init()
     register_event ( "ResetHUD" , "@client_spawn", "be"  )
     ///RegisterHam(Ham_Spawn, "player", "@client_spawn", 1)
     RegisterHam(Ham_Killed, "player", "@death");
-    
+
     register_clcmd("weapon_eagle", "trigger_laser", 0, "- null")
 }
 
@@ -86,7 +86,7 @@ public client_putinserver(id)
         g_bLasered_357[id][ent] = false
 
     if(g_bMapSpawns357)
-        set_task(0.2, "@mouse2", id+357)     
+        set_task(0.2, "@mouse2", id+357)
 
 }
 
@@ -98,14 +98,14 @@ public client_disconnected(id)
 
 public trigger_laser(id)
 {
-    new iEagle = get_weaponid("weapon_eagle")
+    //new iEagle = get_weaponid("weapon_eagle")
 
-    if(g_bSpawned[id] == true && get_user_weapon(id) == iEagle && XCvar_deagle_ray == 1)
+    if(g_bSpawned[id] == true && get_user_weapon(id) == HLW_357 && XCvar_deagle_ray == 1)
     {
-        
+
         if(is_user_bot(id))
             set_pev(id,pev_button,IN_ATTACK2)
-        
+
 
         if(g_bLasered_357[id][ent] == false && !task_exists(id + 357))
         {
@@ -138,7 +138,7 @@ public pfn_keyvalue( ent )
 {
     new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
     copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
-    if(equali( Classname, ent_type) && containi(key,"weapon_357") > charsmin )
+    if(equali( Classname, ent_type) && containi(key,"weapon_eagle") > charsmin )
     {
         g_bMapSpawns357 = true
     }
