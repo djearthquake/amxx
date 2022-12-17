@@ -63,6 +63,18 @@ static GraphicT;
 #define PACK5 600 //bullet/shield
 #define ALL   700 //1006  is all w/ grn flag
 
+//Comment out for regular HL. Define for OP4 to include powerups.
+#define OP4
+#if defined OP4
+
+new bool:bBackpack,
+    bool:bRegeneration,
+    bool:bPortablehev,
+    bool:bLongjump,
+    bool:bAccelerator
+
+#endif
+
 //111 skull/shield/jump green
 //499 all mp shield grn flag
 //900 health jump
@@ -173,7 +185,16 @@ new const szBotsOP4Weapon_Crate[][]={
 "weapon_sniperrifle",
 "weapon_displacer"
 }
-
+#if defined OP4
+new const GIVES[][]=
+{
+    "item_ctfbackpack",
+    "item_ctfregeneration",
+    "item_ctfportablehev",
+    "item_ctflongjump",
+    "item_ctfaccelerator"
+}
+#endif
 new const szTeleport_Enabled_Weapons[][]={"weapon_tripmine","weapon_snark","weapon_knife","weapon_shockrifle"}
 
 new const TELEPORT_SOUND[] = "debris/beamstart4.wav";
@@ -421,6 +442,7 @@ name: @SpawnGearboxPowerups
 */
 @SpawnGearboxPowerups(id)
 {
+/*
     if(is_user_bot(id))
     {
         switch(random_num(0,2))
@@ -438,7 +460,58 @@ name: @SpawnGearboxPowerups
         server_print "Trying %i",RANDOM_POWER_UP
         @Unload_crate(id);
     }
+    //overloads
+*/
+    if(is_user_connected(id))
+    {
+        @Unload_crate(id);
 
+        //#if defined OP4
+        //use is running
+        new SzPowerup[MAX_NAME_LENGTH];
+        formatex(SzPowerup, charsmax(SzPowerup), GIVES[random(sizeof(GIVES))]);
+    
+        //power-up control
+        if(equali(SzPowerup,"item_ctfbackpack"))
+        {
+            if(bBackpack)
+                goto END
+            else
+                bBackpack = true
+        }
+        if(equali(SzPowerup,"item_ctfregeneration"))
+        {
+            if(bRegeneration)
+                goto END
+            else
+                bRegeneration = true
+        }
+    
+        if(equali(SzPowerup,"item_ctfportablehev"))
+        {
+            if(bPortablehev)
+                goto END
+            else
+                bPortablehev = true
+        }
+        if(equali(SzPowerup,"item_ctflongjump"))
+        {
+            if(bLongjump)
+                goto END
+            else
+                bLongjump = true
+        }
+        if(equali(SzPowerup,"item_ctfaccelerator"))
+        {
+            if(bAccelerator)
+                goto END
+            else
+                bAccelerator = true
+        }
+        give_item(id, SzPowerup);
+        END:
+       // #endif
+    }
 }
 
 @Unload_crate(id)
