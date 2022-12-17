@@ -3,6 +3,7 @@
 #include engine
 #include fakemeta
 #include fakemeta_util //kv
+#define charsmin -1
 
 #define     PLUGIN         "HeadTump"
 #define     VERSION      "1.0"
@@ -11,8 +12,7 @@
 #define     HEAD_FIRST  30.0
 #define     WRITEABLE_ENT   2
 
-#define DELAY ewrite_short(/*get_pcvar_num(g_cvar_bsod_iDelay)*/ 5 *4096) //Remember 4096 is ~1-sec per 'spec unit'
-//10+ works better on hpb wheres lower the better on JK and can crash if set too high whereby otherwise hpb bots wouldnt crash
+#define DELAY ewrite_short(/*get_pcvar_num(g_cvar_bsod_iDelay)*/ 20 *4096) //Remember 4096 is ~1-sec per 'spec unit'
 
 #define FLAGS ewrite_short(0x0001)
 
@@ -30,7 +30,7 @@
 #define PUR ewrite_byte(118);ewrite_byte(random_num(25,75));ewrite_byte(137)
 
 new bool:bSFX[ MAX_PLAYERS + 1]
-new bool:bHeadButtedEnts[ 2048 ]
+new bool:bHeadButtedEnts[ MAX_MENU_LENGTH ]
 new g_ALL
 
 public plugin_init()
@@ -41,17 +41,17 @@ public plugin_init()
 
 @bump(iWall, iBull)
 {
-    if(!is_user_connected(iBull) || pev_valid(iWall < WRITEABLE_ENT) || iWall == 0)
+    if(!is_user_connected(iBull) || pev_valid(iWall) != 2 ||pev_valid(iBull) != 2 || iWall == 0 || iBull == 0 || is_user_bot(iBull) || !is_user_admin(iBull))
         return PLUGIN_HANDLED_MAIN
 
-    if(is_user_connected(iBull) && is_user_alive(iBull) && !is_user_bot(iBull))
+    if(is_user_alive(iBull))
     {
         new Float:ViewAngles[2];
         pev(iBull, pev_v_angle, ViewAngles);
 
         if (ViewAngles[0] > HEAD_FIRST && !bSFX[iBull])
         {
-            ///client_print iBull, print_center, "%f", ViewAngles[0]
+            client_print iBull, print_center, "%f", ViewAngles[0]
 
             set_pev(iWall, pev_rendermode, kRenderFxStrobeFaster);
             set_pev(iWall, pev_rendermode, kRenderGlow);
@@ -66,22 +66,30 @@ public plugin_init()
 
                 set_task(0.5, "@damage", iWall, szBuffer, charsmax(szBuffer))
             }
-
-            if(!bHeadButtedEnts[iWall] && !is_user_connected(iWall) && iWall > 32)
+            if(!bHeadButtedEnts[iWall])
             {
                 set_pev(iWall, pev_classname, "func_breakable")
-                set_pev(iWall, pev_takedamage, 2.0)
-                set_pev(iWall, pev_health, 50.0)
-                fm_set_kvd(iWall, "spawnobject", "1") //battery
-                fm_set_kvd(iWall, "material", "2"); //glass
 
+                set_pev(iWall, pev_takedamage, 2.0)
+                set_pev(iWall, pev_health, 200.0)
+                fm_set_kvd(iWall, "spawnobject", "0") //1-battery, 5=mp5
+                fm_set_kvd(iWall, "material", "2");
+                //fm_set_kvd(iWall, "gibmodel", "models/hair.mdl")
+                fm_set_kvd(iWall, "explosion", "0")
+                fm_set_kvd(iWall, "zhlt_lightflags", "1")
+                fm_set_kvd(iWall,"renderfx", "16")
+                fm_set_kvd(iWall,"explodemagnitude", "0")
+                fm_set_kvd(iWall,"rendermode", "2")
                 bSFX[iBull] = true
 
                 bHeadButtedEnts[iWall] = true
             }
+
         }
         else
         {
+            //fm_set_kvd(iWall,"texture", "PINUPXENA4") //precache?
+            //set_pev(iWall, pev_classname, "infodecal")
             bSFX[iBull] = false
             /*
             iWall ? client_print( iBull, print_center,  "[PITCH: %f|YAW:%f]^n[ENT: %i]", ViewAngles[0], ViewAngles[1], iWall ) : client_print( iBull, print_center, "[PITCH: %f|YAW:%f]", ViewAngles[0], ViewAngles[1] )*/
@@ -94,15 +102,40 @@ public plugin_init()
 @damage(szBuffer[], iWall)
 {
     new head_down = str_to_num(szBuffer)
-
-    if(pev_valid(iWall) || is_user_connected(iWall))
-        fakedamage(iWall,"Head Bang",1.0, is_user_alive(iWall) ? DMG_RADIATION : DMG_CRUSH)
-
-    if(is_user_connected(iWall))
+    new bool:bIsBot[MAX_PLAYERS+1]
+    if(is_user_bot(iWall))
     {
-        //if(!is_user_bot(head_down))
-            //client_cmd head_down, random(2) == 1 ? "spk ^"in head^"" : "spk pain"
-        ///client_cmd head_down, "spk exterminate"
+        bIsBot[iWall] = true
+    }
+    else if(is_user_bot(head_down))
+    {
+        bIsBot[head_down] = true
+    }
+
+    if(iWall > 0 && pev_valid(iWall))
+    {
+        //fakedamage(iWall,"Head Bang",1.0, is_user_alive(iWall) ? DMG_RADIATION : DMG_CRUSH)
+        if(is_user_alive(iWall))
+        {
+            fakedamage(iWall,"Head Bang",1.0, DMG_RADIATION)
+            if(!bIsBot[head_down])
+            {
+                client_cmd head_down, random(2) == 1 ? "spk ^"in head^"" : "spk pain"
+            }
+            else if(bIsBot[iWall])
+            {
+                client_cmd head_down, "spk exterminate"
+            }
+        }
+        else
+        {
+            fakedamage(iWall,"Smashing",2.0, DMG_CRUSH)
+            client_cmd head_down, random(2) == 1 ? "spk ^"break this^"" : "spk area"
+        }
+    }
+
+    if(is_user_connected(iWall) && is_user_bot(iWall))
+    {
         emessage_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenFade"),{0,0,0},iWall);
         DELAY;DELAY;FLAGS;PNK;ALPHA; //This is where one can change BLU to GRN.
         emessage_end();
@@ -117,21 +150,30 @@ public plugin_init()
             client_cmd head_down, szSpeak
         }
     }
-    
-    if(is_user_connected(head_down) || is_user_connected(iWall) )
+    @kill_switch(head_down, iWall)
+}
+
+@kill_switch(iBull, iWall)
+{
+    new ping, loss;
+
+    if(is_user_connected(iBull))
     {
-        new ping, loss; get_user_ping(head_down ,ping,loss)
-        loss > 1 ? unregister_touch(g_ALL) : client_print(head_down, print_center, "Head first %n!", head_down)
+        get_user_ping(iBull,ping,loss)
+        loss > 0.5 ? unregister_touch(g_ALL) : client_print(iBull, print_center, "Head bump %n!", iBull)
+    }
+    if(is_user_connected(iWall))
+    {
+        get_user_ping(iWall,ping,loss)
+        loss > 0.5 ? unregister_touch(g_ALL) : client_print(iWall, print_center, "Head bump %n!", iWall)
     }
 }
 
 public plugin_precache()
 {
     precache_model("models/glassgibs.mdl");
-    //keep func_breakable, random near untraceable crashes
 
-    //if you bother to make a func_breakable out of thin air
-    precache_model("models/hair.mdl")
+    precache_model("models/w_9mmar.mdl")
 
     precache_sound("debris/bustglass2.wav");
     precache_sound("debris/bustglass1.wav");
@@ -149,9 +191,7 @@ public plugin_precache()
 
     precache_model("sprites/fexplo.spr")
 
-
     precache_model("models/w_battery.mdl")
     precache_model("models/w_medkit.mdl")
 
-    precache_model("models/hair.mdl")
 }
