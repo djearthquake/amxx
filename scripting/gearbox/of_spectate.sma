@@ -43,9 +43,10 @@ new Float:g_user_origin[MAX_PLAYERS + 1][3]
 new g_iViewtype[MAX_PLAYERS + 1]
 
 new g_startaspec
+new bool:g_bGunGameRunning
 
 new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
-new Float:g_Velocity[MAX_PLAYERS + 1][3];
+new Float:g_Velocity[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
 
 #define IS_THERE (~(1<<IN_SCORE))
 
@@ -62,6 +63,11 @@ public plugin_init()
         log_amx("%s %s by %s paused to prevent data key leakage from missing %s.", PLUGIN, VERSION, AUTHOR, DIC);
         pause "a";
     }
+    if(is_plugin_loaded("gungame.amxx",true)!=charsmin)
+    {
+        g_bGunGameRunning = true
+        pause "a";
+    }
     new mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
     g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
@@ -76,6 +82,7 @@ public plugin_init()
     register_forward(FM_PlayerPreThink, "client_prethink", 0);
     register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
     register_event("WeapPickup", "@strip_spec", "bef")
+
     RegisterHam(Ham_Spawn, "player", "@play", 1);
 }
 
@@ -115,6 +122,7 @@ public client_prethink( id )
 
             if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
             {
+                //helps unsticking
                 set_pev(id, pev_iuser1, g_iViewtype[id]) //not op4
                 {
                     client_print id, print_center, "Trying spec %d.", g_iViewtype[id]
@@ -128,6 +136,13 @@ public client_prethink( id )
                     }
                 }
             }
+
+            if(g_bGunGameRunning)
+            {
+                if(g_spectating[id])
+                    fm_strip_user_weapons(id)
+            }
+
             if(g_random_view[id])
             {
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
@@ -151,8 +166,8 @@ public client_prethink( id )
                         entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
                         entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
                         entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
-                        //trying to makes players necks match up
-                        trace_line(0, g_Plane[id], g_Plane[iTarget], g_Velocity[iTarget])
+
+                        //trace_line(0, g_Plane[id], g_Plane[iTarget], g_Velocity[iTarget])
                         entity_set_int( id, EV_INT_fixangle, 1 )
                         if(loss() > 1)
                         {
@@ -222,7 +237,9 @@ stock loss()
     {
         console_print 0,"%n spectator mode is resetting.", id
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
-        set_task(2.0,"@reset", id+RESET)
+
+        if(get_pcvar_num(g_startaspec))
+            set_task(2.0,"@reset", id+RESET)
 
         if(task_exists(id+MOTD))
             remove_task(id + MOTD)
@@ -254,14 +271,33 @@ stock loss()
         new effects = pev(id, pev_effects)
         set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
         pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
+
+        if(g_bGunGameRunning)
+        {
+            fm_strip_user_weapons(id)
+        }
     }
 }
+
 
 public client_putinserver(id)
 OK)
 {
-        if(!g_bFlagMap)
-        get_pcvar_num(g_startaspec) ? g_spectating[id] : g_spectating[id], set_task(1.0,"@go_spec",id)
+    if(!g_bFlagMap)
+    {
+        new timeout = get_pcvar_num(g_startaspec) 
+        if(get_pcvar_num(g_startaspec) > 1)
+        {
+            if(g_spectating[id])
+            {
+                g_spectating[id] = false
+            }
+            if(pev(id, pev_button) & ~IS_THERE && pev(id, pev_oldbuttons) & ~IS_THERE)
+            {
+                set_task(10.0,"@go_spec",id)
+            }
+        }
+    }
 }
 
 @menu(id)
@@ -287,6 +323,10 @@ OK)
 {
     if(is_user_connected(id))
     {
+        if(g_bGunGameRunning)
+        {
+            fm_strip_user_weapons(id)
+        }
         bAlready_shown_menu[id] = true
         switch(item)
         {
@@ -321,6 +361,7 @@ OK)
                     if(is_user_bot(iTarget) && bFirstPerson[id])
                     {
                         server_print "TAKING OVER BOT!"
+                        g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
                         dllfunc(DLLFunc_ClientPutInServer, id)
                         dllfunc(DLLFunc_SpectatorDisconnect, id)
                         g_iViewtype[id]  = 0
@@ -330,16 +371,21 @@ OK)
                         entity_set_float(id, EV_FL_fov, 100.0)
                         change_task(id, 60.0) //less spam
                         remove_task(id+MOTD)
-
+                        entity_set_int(id, EV_INT_bInDuck, g_Duck[iTarget]);
                         entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
                         entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
                         entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
                         entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
                         entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
 
+                        g_BackPack[iTarget] = entity_get_int(iTarget, EV_INT_weapons)
+                        entity_set_int(id, EV_INT_weapons, g_BackPack[iTarget])
+
+
                         client_print id, print_chat, "%n took control of %n.", id, iTarget
-                        server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
                         set_pev(id, pev_origin, g_user_origin[iTarget]);
+                        server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
+
                         set_user_godmode(id,false)
                         client_cmd 0, "spk debris/beamstart6.wav"
                     }
@@ -400,6 +446,14 @@ OK)
                 set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
                 //inform client they are in spec
                 set_task(10.0,"@update_player",id,_,_,"b")
+
+                #define HUD_RAN 0,0,random_num(0,255)
+                #if AMXX_VERSION_NUM != 182
+                set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                #endif
+                set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
+
             }
             else
             {
@@ -453,18 +507,9 @@ public client_command(id)
         if(g_spectating[id])
             if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
             {
-                client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
-/*
-                #define HUD_RAN 0,0,random_num(0,255)
-                #if AMXX_VERSION_NUM != 182
-                set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                #endif
-                set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
-*/
                 set_user_godmode(id,true)
                 fm_strip_user_weapons(id)
-                client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
+
                 if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
                     goto SKIP
                 return PLUGIN_HANDLED_MAIN
@@ -487,8 +532,10 @@ public random_view(id)
         {
             g_random_view[id] = 0
             remove_task(id+TOGGLE)
-            client_print(id, print_chat,"Stopping spectator follow.")
+            client_print(id, print_console,"Stopping spectator follow.")
             client_cmd id,"spk valve/sound/misc/talk.wav"
+            client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
+            client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
         }
     }
     return PLUGIN_HANDLED;
