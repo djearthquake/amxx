@@ -16,7 +16,7 @@
 #define MAX_MAG 16
 
 new const SzDebug[]="Made %n set laser sight on 357."
-new const SzBindAlias[]="+attack2;wait;+attack2;wait;-attack2;-attack2"
+new const SzBindAlias[]="+attack2;wait;-attack2"
 new const CvarLserDesc[] ="Auto laser on with CVARS!"
 new const ent_type[]="game_player_equip"
 
@@ -54,7 +54,7 @@ public plugin_init()
             set_pdata_float(ent, m_flNextSecondaryAttack, g_fDelay, 4)
             if(XCvar_deagle_ray > 2)
             {
-                set_pdata_int(id, EAGLE, MAX_BOX)
+                set_pdata_int(ent, EAGLE, MAX_BOX)
             }
         }
     }
