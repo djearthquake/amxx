@@ -136,7 +136,10 @@ public trigger_laser(iPlayer)
 {
     new iPlayer = Tsk - 357
     is_user_bot(iPlayer) ? set_pev(iPlayer,pev_button,~IN_ATTACK2) : client_cmd(iPlayer, SzBindAlias)
-    log_amx SzDebug, iPlayer
+    if(is_user_connected(iPlayer))
+    {
+        log_amx SzDebug, iPlayer
+    }
 }
 
 public pfn_keyvalue( ent )
