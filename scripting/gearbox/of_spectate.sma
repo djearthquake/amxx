@@ -76,7 +76,10 @@ public plugin_init()
     register_clcmd("!spec", "@menu", 0, "- Spectator Menu")
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
     register_concmd("say !spec_switch","random_view",0,"spectate random")
-    g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
+
+    //g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
+
+    bind_pcvar_num( create_cvar("sv_spectate_spawn", "0", FCVAR_NONE, "OF SPEC",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 60.0),  g_startaspec )
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
 
     register_forward(FM_PlayerPreThink, "client_prethink", 0);
@@ -117,8 +120,12 @@ public client_prethink( id )
             #define OBS_MAP_FREE                    5           // Free Overview
             #define OBS_MAP_CHASE                   6           // Chase Overview
 
-            if(get_user_time(id) < 30)
-                client_print id, print_center, "%f|%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2]
+            ///if(get_user_time(id) < 30)
+            if(pev(id, pev_button) & IN_SCORE)
+            {
+                entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
+                client_print id, print_center, "%f|%f|%f^n^n%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2], g_Vangle[id][0], g_Vangle[id][1]
+            }
 
             if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
             {
@@ -140,7 +147,11 @@ public client_prethink( id )
             if(g_bGunGameRunning)
             {
                 if(g_spectating[id])
+                {
                     fm_strip_user_weapons(id)
+                    set_view(id, CAMERA_NONE)
+                    entity_set_float(id, EV_FL_fov, 100.0)
+                }
             }
 
             if(g_random_view[id])
@@ -207,7 +218,7 @@ public client_prethink( id )
 public fwdAddToFullPack_Post( es_handle, e, ent, host, hostflags, player, pset )
 {
     if (!player)
-        return FMRES_IGNORED; 
+        return FMRES_IGNORED;
 
     if( bFirstPerson[host] && host != ent )
     {
@@ -238,7 +249,7 @@ stock loss()
         console_print 0,"%n spectator mode is resetting.", id
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
 
-        if(get_pcvar_num(g_startaspec))
+        if(g_startaspec)
             set_task(2.0,"@reset", id+RESET)
 
         if(task_exists(id+MOTD))
@@ -281,23 +292,42 @@ stock loss()
 
 
 public client_putinserver(id)
-OK)
+OK && !is_user_bot(id))
 {
     if(!g_bFlagMap)
     {
-        new timeout = get_pcvar_num(g_startaspec) 
-        if(get_pcvar_num(g_startaspec) > 1)
+        if(!g_startaspec)
         {
             if(g_spectating[id])
             {
                 g_spectating[id] = false
             }
-            if(pev(id, pev_button) & ~IS_THERE && pev(id, pev_oldbuttons) & ~IS_THERE)
-            {
-                set_task(10.0,"@go_spec",id)
-            }
+
+        }
+        else
+        {
+            set_task(g_startaspec*1.0,"@go_check",id)
         }
     }
+}
+
+@go_check(id)
+{
+    if(is_user_connected(id))
+    {
+        server_print("spec check %n if AFK...", id)
+
+        if(pev(id, pev_button) & IS_THERE & pev(id, pev_oldbuttons) & IS_THERE)
+            return PLUGIN_HANDLED
+
+        //@go_spec(id)
+        if(!g_spectating[id])
+        {
+            set_task(10.0,"@go_spec",id)
+            server_print("spec check %n IS AFK...", id)
+        }
+    }
+    return PLUGIN_CONTINUE
 }
 
 @menu(id)
@@ -426,55 +456,55 @@ OK)
 {
     OK)
     {
-        if(!is_user_bot(id) && !is_user_hltv(id))
+        if(!is_user_bot(id) || !is_user_hltv(id))
         {
-            fm_strip_user_weapons(id)
-            if(!g_spectating[id])
+            //if(pev(id, pev_button) & ~IS_THERE)
             {
-                g_spectating[id] = true
-                dllfunc(DLLFunc_SpectatorConnect, id)
-                server_print "GOING TO SPEC"
-                if(!bAlready_shown_menu[id])
-                    @menu(id)
+                fm_strip_user_weapons(id)
+                if(!g_spectating[id])
+                {
+                    g_spectating[id] = true
+                    dllfunc(DLLFunc_SpectatorConnect, id)
+                    server_print "GOING TO SPEC"
+                    if(!bAlready_shown_menu[id])
+                        @menu(id)
 
-                set_user_info(id, "Spectator", "yes")
-                new effects = pev(id, pev_effects)
-                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
-                entity_set_float(id, EV_FL_fov, 150.0)
-                get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
-                set_user_godmode(id,true) //specs can be killed otherwise
-                set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
-                //inform client they are in spec
-                set_task(10.0,"@update_player",id,_,_,"b")
+                    set_user_info(id, "Spectator", "yes")
+                    new effects = pev(id, pev_effects)
+                    set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
+                    entity_set_float(id, EV_FL_fov, 150.0)
+                    get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
+                    set_user_godmode(id,true) //specs can be killed otherwise
+                    set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
+                    //inform client they are in spec
+                    set_task(10.0,"@update_player",id,_,_,"b")
 
-                #define HUD_RAN 0,0,random_num(0,255)
-                #if AMXX_VERSION_NUM != 182
-                set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                #endif
-                set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
+                    #define HUD_RAN 0,0,random_num(0,255)
+                    #if AMXX_VERSION_NUM != 182
+                    set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                    #endif
+                    set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                    show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
 
+                }
+                else
+                {
+                    server_print "EXITING SPEC"
+                    dllfunc(DLLFunc_ClientPutInServer, id)
+                    dllfunc(DLLFunc_SpectatorDisconnect, id)
+                    g_iViewtype[id]  = 0
+                    set_user_godmode(id,false)
+                    g_spectating[id] = false
+                    g_random_view[id] = 0
+                    set_user_info(id, "Spectator", "no")
+                    entity_set_float(id, EV_FL_fov, 100.0)
+                    change_task(id, 60.0) //less spam
+                    remove_task(id+MOTD)
+
+                }
             }
-            else
-            {
-                server_print "EXITING SPEC"
-                dllfunc(DLLFunc_ClientPutInServer, id)
-                dllfunc(DLLFunc_SpectatorDisconnect, id)
-                g_iViewtype[id]  = 0
-                set_user_godmode(id,false)
-                g_spectating[id] = false
-                g_random_view[id] = 0
-                set_user_info(id, "Spectator", "no")
-                entity_set_float(id, EV_FL_fov, 100.0)
-                change_task(id, 60.0) //less spam
-                remove_task(id+MOTD)
-
-            }
-
         }
-
     }
-
 }
 
 @show_motd(value)
