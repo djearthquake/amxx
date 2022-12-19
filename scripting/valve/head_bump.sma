@@ -2,7 +2,9 @@
 #include amxmisc
 #include engine
 #include fakemeta
-#include fakemeta_util //kv
+#include fakemeta_util
+#include hamsandwich
+
 #define charsmin -1
 
 #define     PLUGIN         "HeadTump"
@@ -30,18 +32,37 @@
 #define PUR ewrite_byte(118);ewrite_byte(random_num(25,75));ewrite_byte(137)
 
 new bool:bSFX[ MAX_PLAYERS + 1]
-new bool:bHeadButtedEnts[ MAX_MENU_LENGTH ]
+new bool:bHeadButtedEnts[ 2048 ]
 new g_ALL
 
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
-    g_ALL = register_touch("", "player", "@bump")
+    //g_ALL = register_touch("", "player", "@bump")
+    register_touch("func_breakable", "player", "@bump")
+    register_touch("func_wall", "player", "@bump")
+    register_touch("player", "player", "@bump")
+    register_touch(cstrike_running() ? "func_vehicle" : "item_battery", "player", "@bump")
+    register_touch("weapon_egon", "player", "@bump")
+    RegisterHam(Ham_Spawn, "player", "@client_spawn", 1)
+    
+}
+
+@client_spawn(iBull)
+{
+    if(is_user_connected(iBull) && bHeadButtedEnts[iBull])
+    {
+        fm_set_kvd(iBull, "zhlt_lightflags", "0")
+        fm_set_kvd(iBull, "renderfx", "0")
+        //fm_set_kvd(iBull, "rendermode", "0")
+        bHeadButtedEnts[iBull] = false
+        //bSFX[iBull] = true
+    }
 }
 
 @bump(iWall, iBull)
 {
-    if(!is_user_connected(iBull) || pev_valid(iWall) != 2 ||pev_valid(iBull) != 2 || iWall == 0 || iBull == 0 || is_user_bot(iBull) || !is_user_admin(iBull))
+    if(!is_user_connected(iBull) || pev_valid(iWall) != 2 ||pev_valid(iBull) != 2 || iWall == 0 || iBull == 0 || is_user_bot(iBull) || !is_user_admin(iBull)/* get_user_time(iBull) < 300)*/)
         return PLUGIN_HANDLED_MAIN
 
     if(is_user_alive(iBull))
@@ -51,7 +72,7 @@ public plugin_init()
 
         if (ViewAngles[0] > HEAD_FIRST && !bSFX[iBull])
         {
-            client_print iBull, print_center, "%f", ViewAngles[0]
+            //client_print iBull, print_center, "%f", ViewAngles[0]
 
             set_pev(iWall, pev_rendermode, kRenderFxStrobeFaster);
             set_pev(iWall, pev_rendermode, kRenderGlow);
@@ -68,6 +89,7 @@ public plugin_init()
             }
             if(!bHeadButtedEnts[iWall])
             {
+                client_print iBull, print_console, "Ent %i", iWall
                 set_pev(iWall, pev_classname, "func_breakable")
 
                 set_pev(iWall, pev_takedamage, 2.0)
@@ -90,6 +112,7 @@ public plugin_init()
         {
             //fm_set_kvd(iWall,"texture", "PINUPXENA4") //precache?
             //set_pev(iWall, pev_classname, "infodecal")
+            set_pev(iWall, pev_rendercolor, Float:{60.0, 5.0, 215.0})
             bSFX[iBull] = false
             /*
             iWall ? client_print( iBull, print_center,  "[PITCH: %f|YAW:%f]^n[ENT: %i]", ViewAngles[0], ViewAngles[1], iWall ) : client_print( iBull, print_center, "[PITCH: %f|YAW:%f]", ViewAngles[0], ViewAngles[1] )*/
@@ -120,7 +143,7 @@ public plugin_init()
             fakedamage(iWall,"Head Bang",1.0, DMG_RADIATION)
             if(!bIsBot[head_down])
             {
-                client_cmd head_down, random(2) == 1 ? "spk ^"in head^"" : "spk pain"
+                //client_cmd head_down, random(2) == 1 ? "spk ^"in head^"" : "spk pain"
             }
             else if(bIsBot[iWall])
             {
@@ -130,7 +153,7 @@ public plugin_init()
         else
         {
             fakedamage(iWall,"Smashing",2.0, DMG_CRUSH)
-            client_cmd head_down, random(2) == 1 ? "spk ^"break this^"" : "spk area"
+            //client_cmd head_down, random(2) == 1 ? "spk ^"break this^"" : "spk area"
         }
     }
 
@@ -160,12 +183,12 @@ public plugin_init()
     if(is_user_connected(iBull))
     {
         get_user_ping(iBull,ping,loss)
-        loss > 0.5 ? unregister_touch(g_ALL) : client_print(iBull, print_center, "Head bump %n!", iBull)
+        loss > 1.5 ? unregister_touch(g_ALL) : client_print(iBull, print_center, "Head bump %n!", iBull)
     }
     if(is_user_connected(iWall))
     {
         get_user_ping(iWall,ping,loss)
-        loss > 0.5 ? unregister_touch(g_ALL) : client_print(iWall, print_center, "Head bump %n!", iWall)
+        loss > 1.5 ? unregister_touch(g_ALL) : client_print(iWall, print_center, "Head bump %n!", iWall)
     }
 }
 
