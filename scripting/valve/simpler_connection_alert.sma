@@ -182,13 +182,13 @@ public new_users()
                             callfunc_end()
 
                             sleepy[Group_of_players] = 1
-
+/*
                             #if AMXX_VERSION_NUM == 182
                             set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
                             #else
                             set_task(float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
                             #endif
-
+*/
                         }
 
                     }
