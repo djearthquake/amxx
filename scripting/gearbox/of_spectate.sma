@@ -48,6 +48,8 @@ new bool:g_bGunGameRunning
 new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
 new Float:g_Velocity[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
 
+new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
+
 #define IS_THERE (~(1<<IN_SCORE))
 
 public plugin_init()
@@ -398,7 +400,8 @@ OK && !is_user_bot(id))
                         g_iViewtype[id]  = 0
                         g_spectating[id] = false
                         g_random_view[id] = 0
-                        set_user_info(id, "Spectator", "no")
+                        set_user_info(id, "spec", "0")
+
                         entity_set_float(id, EV_FL_fov, 100.0)
                         change_task(id, 60.0) //less spam
                         remove_task(id+MOTD)
@@ -453,8 +456,15 @@ OK && !is_user_bot(id))
     return PLUGIN_HANDLED
 }
 
+public client_infochanged(id)
+{
+    //name sync
+    get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+}
+
 @go_spec(id)
 {
+    new SzSpecName[MAX_NAME_LENGTH]
     OK)
     {
         if(!is_user_bot(id) || !is_user_hltv(id))
@@ -464,32 +474,40 @@ OK && !is_user_bot(id))
                 fm_strip_user_weapons(id)
                 if(!g_spectating[id])
                 {
-                    g_spectating[id] = true
-                    dllfunc(DLLFunc_SpectatorConnect, id)
-                    server_print "GOING TO SPEC"
-                    if(!bAlready_shown_menu[id])
-                        @menu(id)
+                    if(!g_bGunGameRunning)
+                    {
+                        get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+                        format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
+                        set_user_info(id, "name", SzSpecName)
 
-                    set_user_info(id, "Spectator", "yes")
-                    new effects = pev(id, pev_effects)
-                    set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
-                    entity_set_float(id, EV_FL_fov, 150.0)
-                    get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
-                    set_user_godmode(id,true) //specs can be killed otherwise
-                    set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
-                    //inform client they are in spec
-                    set_task(10.0,"@update_player",id,_,_,"b")
+                        g_spectating[id] = true
+                        dllfunc(DLLFunc_SpectatorConnect, id)
+                        server_print "GOING TO SPEC"
 
-                    #define HUD_RAN 0,0,random_num(0,255)
-                    #if AMXX_VERSION_NUM != 182
-                    set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
-                    #endif
-                    set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                    show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
-
+                        if(!bAlready_shown_menu[id])
+                            @menu(id)
+    
+                        set_user_info(id, "spec", "1")
+                        new effects = pev(id, pev_effects)
+                        set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
+                        entity_set_float(id, EV_FL_fov, 150.0)
+                        get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
+                        set_user_godmode(id,true) //specs can be killed otherwise
+                        set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
+                        //inform client they are in spec
+                        set_task(10.0,"@update_player",id,_,_,"b")
+    
+                        #define HUD_RAN 0,0,random_num(0,255)
+                        #if AMXX_VERSION_NUM != 182
+                        set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                        #endif
+                        set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                        show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
+                    }
                 }
                 else
                 {
+                    set_user_info(id, "name", SzClientName[id])
                     server_print "EXITING SPEC"
                     dllfunc(DLLFunc_ClientPutInServer, id)
                     dllfunc(DLLFunc_SpectatorDisconnect, id)
@@ -497,7 +515,7 @@ OK && !is_user_bot(id))
                     set_user_godmode(id,false)
                     g_spectating[id] = false
                     g_random_view[id] = 0
-                    set_user_info(id, "Spectator", "no")
+                    set_user_info(id, "spec", "0")
                     entity_set_float(id, EV_FL_fov, 100.0)
                     change_task(id, 60.0) //less spam
                     remove_task(id+MOTD)
