@@ -66,7 +66,7 @@ public plugin_init()
     if(is_plugin_loaded("gungame.amxx",true)!=charsmin)
     {
         g_bGunGameRunning = true
-        pause "a";
+        //pause "a";
     }
     new mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
@@ -282,11 +282,12 @@ stock loss()
         new effects = pev(id, pev_effects)
         set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
         pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
-
+/*
         if(g_bGunGameRunning)
         {
             fm_strip_user_weapons(id)
         }
+*/
     }
 }
 
@@ -484,7 +485,7 @@ OK && !is_user_bot(id))
                     set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
                     #endif
                     set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
-                    show_hudmessage(players_who_see_effects(),"%L", LANG_PLAYER, "OF_SPEC_HELO")
+                    show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
 
                 }
                 else
