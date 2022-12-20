@@ -42,7 +42,7 @@ public plugin_init()
     register_touch("func_breakable", "player", "@bump")
     register_touch("func_wall", "player", "@bump")
     register_touch("player", "player", "@bump")
-    register_touch(cstrike_running() ? "func_vehicle" : "item_battery", "player", "@bump")
+    register_touch(cstrike_running() ? "hostage_entity" : "item_battery", "player", "@bump")
     register_touch("weapon_egon", "player", "@bump")
     RegisterHam(Ham_Spawn, "player", "@client_spawn", 1)
     
