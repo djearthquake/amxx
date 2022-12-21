@@ -400,7 +400,7 @@ OK && !is_user_bot(id))
                         g_iViewtype[id]  = 0
                         g_spectating[id] = false
                         g_random_view[id] = 0
-                        set_user_info(id, "spec", "0")
+                        set_user_info(id, "_spec", "0")
 
                         entity_set_float(id, EV_FL_fov, 100.0)
                         change_task(id, 60.0) //less spam
@@ -456,11 +456,13 @@ OK && !is_user_bot(id))
     return PLUGIN_HANDLED
 }
 
+/*
 public client_infochanged(id)
 {
     //name sync
     get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
 }
+*/
 
 @go_spec(id)
 {
@@ -487,7 +489,7 @@ public client_infochanged(id)
                         if(!bAlready_shown_menu[id])
                             @menu(id)
     
-                        set_user_info(id, "spec", "1")
+                        set_user_info(id, "_spec", "1")
                         new effects = pev(id, pev_effects)
                         set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
                         entity_set_float(id, EV_FL_fov, 150.0)
@@ -515,7 +517,7 @@ public client_infochanged(id)
                     set_user_godmode(id,false)
                     g_spectating[id] = false
                     g_random_view[id] = 0
-                    set_user_info(id, "spec", "0")
+                    set_user_info(id, "_spec", "0")
                     entity_set_float(id, EV_FL_fov, 100.0)
                     change_task(id, 60.0) //less spam
                     remove_task(id+MOTD)
@@ -631,17 +633,22 @@ public random_view(id)
 #if !defined client_disconnected
 #define client_disconnect client_disconnected
 #endif
+
 public client_disconnected(id)
 {
     if(task_exists(id))
         remove_task(id)
-
-    g_spectating[id] = false
-    bAlready_shown_menu[id] = false
-    @clear_menu(id)
+    if(g_spectating[id])
+    {
+        g_spectating[id] = false
+        bAlready_shown_menu[id] = false
+        set_user_info(id, "name", SzClientName[id])
+    }
 
     id > 0 && id < 33 ?
         entity_set_float(id, EV_FL_fov, 100.0) : server_print("Invalid client")
+
+    @clear_menu(id)
 }
 
 stock players_who_see_effects()
