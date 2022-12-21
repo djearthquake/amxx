@@ -44,6 +44,7 @@ new g_iViewtype[MAX_PLAYERS + 1]
 
 new g_startaspec
 new bool:g_bGunGameRunning
+new bool:g_bSpecNam[MAX_PLAYERS + 1]
 
 new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
 new Float:g_Velocity[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
@@ -259,8 +260,13 @@ stock loss()
 
         if(task_exists(id + TOGGLE))
             remove_task(id + TOGGLE)
-    }
 
+        if(g_bSpecNam[id])
+        {
+            set_user_info(id, "name", SzClientName[id])
+            g_bSpecNam[id] = false
+        }
+    }
 }
 
 @reset(Tsk)
@@ -456,13 +462,16 @@ OK && !is_user_bot(id))
     return PLUGIN_HANDLED
 }
 
-/*
+
 public client_infochanged(id)
 {
     //name sync
-    get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+    if(!g_bSpecNam[id])
+    {
+        get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+    }
 }
-*/
+
 
 @go_spec(id)
 {
@@ -478,9 +487,13 @@ public client_infochanged(id)
                 {
                     if(!g_bGunGameRunning)
                     {
-                        get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
-                        format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
-                        set_user_info(id, "name", SzSpecName)
+                        if(!g_bSpecNam[id])
+                        {
+                            get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+                            format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
+                            set_user_info(id, "name", SzSpecName)
+                            g_bSpecNam[id] = true
+                        }
 
                         g_spectating[id] = true
                         dllfunc(DLLFunc_SpectatorConnect, id)
@@ -488,7 +501,7 @@ public client_infochanged(id)
 
                         if(!bAlready_shown_menu[id])
                             @menu(id)
-    
+
                         set_user_info(id, "_spec", "1")
                         new effects = pev(id, pev_effects)
                         set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
@@ -498,7 +511,7 @@ public client_infochanged(id)
                         set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
                         //inform client they are in spec
                         set_task(10.0,"@update_player",id,_,_,"b")
-    
+
                         #define HUD_RAN 0,0,random_num(0,255)
                         #if AMXX_VERSION_NUM != 182
                         set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
@@ -638,7 +651,7 @@ public client_disconnected(id)
 {
     if(task_exists(id))
         remove_task(id)
-    if(g_spectating[id])
+    if(g_spectating[id] || g_bSpecNam[id])
     {
         g_spectating[id] = false
         bAlready_shown_menu[id] = false
