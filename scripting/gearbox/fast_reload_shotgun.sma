@@ -38,12 +38,14 @@
 public plugin_init()
 {
 
-    register_plugin( "Shotgun Reload/Fire Rate", "1.0.0", "Arkshine" );
-
+    register_plugin( "OF Street Sweeper", "1.0.0", "SPiNX" ); //originally "Shotgun Reload/Fire Rate", "1.0.0", "Arkshine"
+ 
     RegisterHam( Ham_Weapon_PrimaryAttack  , gShotgunClassname, "Shotgun_PrimaryAttack_Pre" , 0 );
     RegisterHam( Ham_Weapon_PrimaryAttack  , gShotgunClassname, "Shotgun_PrimaryAttack_Post", 1 );
+    /*
     RegisterHam( Ham_Weapon_SecondaryAttack, gShotgunClassname, "Shotgun_SecondaryAttack_Pre" , 0 );
     RegisterHam( Ham_Weapon_SecondaryAttack, gShotgunClassname, "Shotgun_SecondaryAttack_Post", 1 );
+    */
     RegisterHam( Ham_Weapon_Reload         , gShotgunClassname, "Shotgun_Reload_Pre" , 0 );
     RegisterHam( Ham_Weapon_Reload         , gShotgunClassname, "Shotgun_Reload_Post", 1 );
 }
@@ -63,8 +65,8 @@ public Shotgun_PrimaryAttack_Post ( const shotgun )
         return;
     }
 
-    set_pdata_float( shotgun, m_flNextPrimaryAttack  , 0.6, LINUX_OFFSET_WEAPONS );
-    set_pdata_float( shotgun, m_flNextSecondaryAttack, 0.6, LINUX_OFFSET_WEAPONS );
+    set_pdata_float( shotgun, m_flNextPrimaryAttack  , 0.1, LINUX_OFFSET_WEAPONS );
+    //set_pdata_float( shotgun, m_flNextSecondaryAttack, 0.6, LINUX_OFFSET_WEAPONS );
 
     if ( get_pdata_int( shotgun, m_iClip, LINUX_OFFSET_WEAPONS ) != 0 )
     {
