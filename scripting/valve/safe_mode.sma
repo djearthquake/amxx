@@ -8,25 +8,27 @@
 #define VERSION "1.32"
 #define AUTHOR "SPiNX"
 #define charsmin                                            -1
+#define MAX_MAPS                                       2048
 
 new Xsafe, XAlready
 new SzSave[MAX_CMD_LENGTH]
-new mname[MAX_NAME_LENGTH]
+new mname[MAX_RESOURCE_PATH_LENGTH]
 new Trie:g_SafeMode
 new g_cvar_debugger
 new g_szDataFromFile[ MAX_MOTD_LENGTH + MAX_MOTD_LENGTH ]
 new g_szFilePath[ MAX_CMD_LENGTH + MAX_NAME_LENGTH ]
 new g_szFilePathSafe[ MAX_CMD_LENGTH ]
 new g_szFilePathSafeAlready[ MAX_CMD_LENGTH ]
-new g_SzNextMap[MAX_NAME_LENGTH]
-new g_SzNextMapCmd[MAX_NAME_LENGTH]
+new g_SzNextMap[MAX_RESOURCE_PATH_LENGTH]
+new g_SzNextMapCmd[MAX_RESOURCE_PATH_LENGTH]
 new bool:bCallingfromEnd
 new bool:bBackupPluginsINI
 new bool:bCMDCALL
-
+new szArg[MAX_CMD_LENGTH];
+new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_RESOURCE_PATH_LENGTH];
 enum _:Safe_Mode
 {
-    SzMaps[ 2048 ],
+    SzMaps[ MAX_MAPS ],
     SzPlugin0[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin1[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin2[ MAX_RESOURCE_PATH_LENGTH ],
@@ -96,28 +98,35 @@ public plugin_init()
 
 public client_command(id)
 {
-    new szArg[MAX_CMD_LENGTH];
-    new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_NAME_LENGTH];
-    if(is_user_connected(id) && is_user_admin(id))
+    read_args(szArg, charsmax(szArg));
+    read_argv(0,szArgCmd, charsmax(szArgCmd));
+    read_argv(1,szArgCmd1, charsmax(szArgCmd1));
+    if(is_user_connected(id) && is_user_admin(id) && !is_str_num(szArgCmd1))
     {
-        bCMDCALL = true
-        read_args(szArg, charsmax(szArg));
-        read_argv(0,szArgCmd, charsmax(szArgCmd));
-        read_argv(1,szArgCmd1, charsmax(szArgCmd1));
-        if(!is_map_valid(szArgCmd1))
-            return
-        Data[ SzMaps ] =  szArgCmd1
-
-        if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
-        {
-            set_cvar_string "amx_nextmap", szArgCmd1
-            @clear_plugins()
-        }
-
-        server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
-        copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd), szArgCmd1)
-        ReadSafeModeFromFile( )
+        @cmd_call(szArgCmd1)
     }
+}
+
+@cmd_call(SzMapname[MAX_RESOURCE_PATH_LENGTH])
+{
+    bCMDCALL = true
+    
+    log_amx "Validating %s", SzMapname
+
+    if(!is_map_valid(SzMapname))
+        return
+
+    Data[ SzMaps ] =  SzMapname
+
+    if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
+    {
+        set_cvar_string "amx_nextmap", SzMapname
+        @clear_plugins()
+    }
+
+    server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
+    copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd), szArgCmd1)
+    ReadSafeModeFromFile( )
 }
 
 @clear_plugins()
