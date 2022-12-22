@@ -28,10 +28,10 @@
 #define charsmin -1
 #define ZERO_TIME "30"
 
-new g_nextMap[MAX_NAME_LENGTH]
-new g_mapCycle[MAX_NAME_LENGTH]
+new g_nextMap[MAX_RESOURCE_PATH_LENGTH]
+new g_mapCycle[MAX_RESOURCE_PATH_LENGTH]
 new g_pos
-new g_currentMap[MAX_NAME_LENGTH]
+new g_currentMap[MAX_RESOURCE_PATH_LENGTH]
 new finale[MAX_CMD_LENGTH]
 
 // pcvars
@@ -138,28 +138,29 @@ if(is_user_connected(id))
 public sayFFStatus(id)
 {
     if(g_teamplay || g_map_ent > charsmin)
+    {
         client_print 0, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, g_mp_friendlyfire ? "ON" : "OFF"
+    }
     else if(is_user_connected(id))
+    {
         client_print id, print_chat, "%L: %L", LANG_PLAYER, "FRIEND_FIRE", LANG_PLAYER, g_mp_friendlyfire ? "ON" : "OFF"
+    }
 }
 
 public delayedChange(Xdata[])
 {
-    log_amx "Pushing map %s through", Xdata
+    log_amx "Pushing map %s through change.", Xdata
 
     #if AMXX_VERSION_NUM == 182
     server_cmd("changelevel %s", Xdata)
-
     #else
     engine_changelevel(Xdata)
     #endif
-
-   return PLUGIN_HANDLED_MAIN
 }
 
 public changeMap()
 {
-    new Xstring[MAX_NAME_LENGTH]
+    new Xstring[MAX_RESOURCE_PATH_LENGTH]
     get_pcvar_string(g_amx_nextmap,Xstring,charsmax(Xstring))
     #if AMXX_VERSION_NUM == 182
     new Xchattime = get_pcvar_num(g_mp_chattime)
@@ -187,6 +188,14 @@ public changeMap()
         @finale(finale)
         @title()
         #endif
+
+        if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
+        {
+            log_amx "Pushing map %s through safemode plugin", Xstring
+            callfunc_begin("@cmd_call","safe_mode.amxx")
+            callfunc_push_str(Xstring)
+            callfunc_end()
+        }
 
     }
 
