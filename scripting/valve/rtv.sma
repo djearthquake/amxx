@@ -17,8 +17,8 @@ public handlesay(id)
     new rtv_minimum = iFrags_Needed - 1
     new Menu_DESIGN_privledges = iFrags_Needed
 
-    if(is_user_admin(id) || iPlayers() < (iFrags_Needed / 2)) //People leave if alone on map and can't RTV.
-        iFrags = (iFrags + 3) //Admin partial boost.
+    if(is_user_admin(id) || iPlayers() < (iFrags_Needed / 2) || get_user_time(id) > 120) //People leave if alone on map and can't RTV.
+        iFrags = (iFrags + 1) //Admin partial boost.
     if(iFrags >= rtv_minimum && iFrags < Menu_DESIGN_privledges)
     /*Standard*/
     {
@@ -31,6 +31,7 @@ public handlesay(id)
     /*Design a menu*/
     {
         callfunc_begin("cmdVoteMapMenu","mapsmenu.amxx")
+        callfunc_push_int(id)
         callfunc_end()
     }
 
