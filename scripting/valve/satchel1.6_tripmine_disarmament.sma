@@ -10,9 +10,12 @@
 #define AUTHOR "SPiNX"
 #define MAX_PLAYERS         32
 #define MAX_NAME_LENGTH     32
+
+#define charsmin                  -1
+
+//HL OF
 #define HLW_KNIFE           0x0019
 #define HLW_PIPEWRENCH      18
-#define charsmin                  -1
 
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_Szsatchel_ring
@@ -161,8 +164,6 @@ public FORWARD_SET_MODEL(iExplosive, model[])
     {
         client_print iExplosives_Handler, print_chat,"Resetting your explosive..."
         set_pev(iBom,pev_owner, 0)
-        //new effects = pev(iBom, pev_effects)
-        //https://www.amxmodx.org/api/hlsdk_const
     }
 }
 
@@ -171,7 +172,12 @@ public client_putinserver(iExplosives_Handler)
         get_user_name(iExplosives_Handler,ClientName[iExplosives_Handler],charsmax(ClientName[]))
 
 stock have_tool(iExplosives_Handler)
-    return get_user_weapon(iExplosives_Handler) == HLW_KNIFE || get_user_weapon(iExplosives_Handler) == HLW_CROWBAR || get_user_weapon(iExplosives_Handler) == HLW_PIPEWRENCH ? 1 : 0
+{
+    if(get_user_weapon(iExplosives_Handler) == HLW_KNIFE || get_user_weapon(iExplosives_Handler) == HLW_CROWBAR || get_user_weapon(iExplosives_Handler) == HLW_PIPEWRENCH)
+        return 1
+    else
+        return 0
+}
 
 public disarm_(iExplosive, iExplosives_Handler)
 {
@@ -194,10 +200,7 @@ public disarm_(iExplosive, iExplosives_Handler)
             {
                 iRealOwner2 = get_pdata_ent(iLiveTripMine,  iRTripMineOwner,  LINUX_OFFSET)
 
-                if(is_user_admin(iExplosives_Handler))
-                {
-                    client_print iExplosives_Handler, print_chat, "Mine possibly owned by %n",  iRealOwner2
-                }
+                client_print 0, print_chat, "Disarmed Mine was owned by^n %n!",  iRealOwner2
                 entity_set_float(iLiveTripMine, EV_FL_dmg, 1.0);
                 entity_set_vector(iLiveTripMine,EV_VEC_origin, null);
                 @kill_mine(iLiveTripMine, iExplosives_Handler)
@@ -230,14 +233,13 @@ public disarm_(iExplosive, iExplosives_Handler)
 
 @kill_mine(iLiveTripMine, iExplosives_Handler)
 {
-    // https://github.com/FWGS/halflife/blob/master/dlls/tripmine.cpp
     if(!pev_valid(iLiveTripMine))
     {
         client_cmd(iExplosives_Handler,"spk weapons/debris2.wav")
         return
     }
-    //find beam
-    new iBeam = get_pdata_cbase( iLiveTripMine,  iBeamEnt , LINUX_OFFSET_WEAPONS ); //perfect
-    //remove beam
+
+    new iBeam = get_pdata_cbase( iLiveTripMine,  iBeamEnt , LINUX_OFFSET_WEAPONS );
+
     remove_entity(iBeam)
 }
