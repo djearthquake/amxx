@@ -11,7 +11,7 @@ new
     gOldClip         [ MAX_PLAYERS + 1 char ],
     gOldSpecialReload[ MAX_PLAYERS + 1 char ],
     m_pPlayer ,
-    m_flPumptime ,
+    //m_flPumptime ,
     m_fInSpecialReload ,
     m_flNextPrimaryAttack ,
     m_flNextSecondaryAttack ,
@@ -44,7 +44,7 @@ public plugin_init()
 
     m_pPlayer = (find_ent_data_info("CBasePlayerItem", "m_pPlayer") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
 
-    m_flPumptime = (find_ent_data_info(cstrike_running() ?  "CXM1014" : "CBasePlayerWeapon", "m_flPumpTime") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
+    //m_flPumptime = (find_ent_data_info(cstrike_running() ?  "CXM1014" : "CBasePlayerWeapon", "m_flPumpTime") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
     m_fInSpecialReload = (find_ent_data_info("CBasePlayerWeapon", "m_fInSpecialReload") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
     m_flNextPrimaryAttack = (find_ent_data_info("CBasePlayerWeapon", "m_flNextPrimaryAttack") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
     m_flNextSecondaryAttack = (find_ent_data_info("CBasePlayerWeapon", "m_flNextSecondaryAttack") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
@@ -65,7 +65,7 @@ public Shotgun_PrimaryAttack_Pre ( const shotgun )
 public Shotgun_PrimaryAttack_Post ( const shotgun )
 {
     new player = get_pdata_cbase( shotgun, m_pPlayer, LINUX_OFFSET_WEAPONS );
-    new bool:bCS = cstrike_running()
+    new bCS = cstrike_running()
 
     if ( gOldClip{ player } <= 0 )
     {
