@@ -4,7 +4,6 @@
 #include <engine>
 #include <fakemeta>
 #include <hamsandwich>
-#include <hlsdk_const>
 
 #define PLUGIN "Disarmable Satchel Mine"
 #define VERSION "1.6"
@@ -14,7 +13,6 @@
 #define HLW_KNIFE           0x0019
 #define HLW_PIPEWRENCH      18
 #define charsmin                  -1
-//#define TEST //comment out to stop admin mines test disarm.
 
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_Szsatchel_ring
@@ -34,19 +32,13 @@ new disarmament[][]=
 new g_enable, g_health
 new g_SzMonster_class[MAX_NAME_LENGTH];
 const LINUX_OFFSET_WEAPONS = 4;
+const LINUX_OFFSET = 20;
 const LINUX_DIFF = 5;
 
 //tripmine data
-#if defined TEST
-new iOwner,  iRealOwner, iRealOwner2;
-#endif
-new iBeamEnt, iLength,  iTripMineOwner, iRTripMineOwner, SzType, SzType2, SzType3, iType, iType2, iType3;
+new iRealOwner2;
+new iBeamEnt, iRTripMineOwner;
 
-new bool:bUNsigned
-new bool:bUNsigned2
-new bool:bUNsigned3
-new offset_test
-///////////////////
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
@@ -59,10 +51,7 @@ public plugin_init()
     g_health = register_cvar("hl_satchel_health", "15")
 
     iBeamEnt = (find_ent_data_info("CTripmineGrenade", "m_pBeam")/LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
-    iLength  = (find_ent_data_info("CTripmineGrenade", "m_flBeamLength")/LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
-    iTripMineOwner = (find_ent_data_info("CTripmineGrenade", "m_hOwner", SzType, iType, bUNsigned) /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS //ehandle
-    iRTripMineOwner = (find_ent_data_info("CTripmineGrenade", "m_pRealOwner", SzType2, iType2, bUNsigned2) /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS  //edict_t*
-    offset_test = (find_ent_data_info("CTripmine", "m_usTripFire", SzType3, iType3, bUNsigned3)/LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
+    iRTripMineOwner = (find_ent_data_info("CTripmineGrenade", "m_pRealOwner") - LINUX_OFFSET)
 }
 
 public plugin_precache()
@@ -103,7 +92,6 @@ public FORWARD_SET_MODEL(iExplosive, model[])
         set_pev(iExplosive,pev_health,health);
         set_pev(iExplosive,pev_takedamage,DAMAGE_AIM); //aim is bullets, yes is blast
         set_pev(iExplosive,pev_solid,SOLID_SLIDEBOX);
-        //set_pev(iExplosive,pev_movetype,MOVETYPE_FOLLOW);
 
         new SziExplosive[5]
         format(SziExplosive, charsmax(SziExplosive), "%i", iExplosive)
@@ -173,8 +161,7 @@ public FORWARD_SET_MODEL(iExplosive, model[])
     {
         client_print iExplosives_Handler, print_chat,"Resetting your explosive..."
         set_pev(iBom,pev_owner, 0)
-        new effects = pev(iBom, pev_effects)
-        set_pev(iBom,pev_effects, (effects |~EF_BRIGHTFIELD|EF_BRIGHTLIGHT) );
+        //new effects = pev(iBom, pev_effects)
         //https://www.amxmodx.org/api/hlsdk_const
     }
 }
@@ -193,7 +180,7 @@ public disarm_(iExplosive, iExplosives_Handler)
     null[1] = -5000000.0;
     null[2] = -5000000.0;
 
-    if( get_pcvar_num(g_enable) && pev_valid(iExplosive) && have_tool(iExplosives_Handler))//!pev( iExplosive, pev_owner )
+    if( get_pcvar_num(g_enable) && pev_valid(iExplosive) && have_tool(iExplosives_Handler))
     {
         entity_get_string(iExplosive,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
         if(containi(g_SzMonster_class, "monster_") > charsmin)
@@ -205,16 +192,12 @@ public disarm_(iExplosive, iExplosives_Handler)
             new iLiveTripMine = iExplosive
             if(get_pcvar_num(g_enable) == 1)
             {
-                #if defined TEST
-                ///https://www.amxmodx.org/api/engine_const#edicts-use-with-entity-get-set-edict
-               //iRealOwner2 = entity_get_edict(iLiveTripMine, iRTripMineOwner)  //less than 0
-                iRealOwner2 = entity_get_edict2(iLiveTripMine, iRTripMineOwner)
-                //iRealOwner2  = get_pdata_ent(iExplosive, iRTripMineOwner, 20) //less than 0
+                iRealOwner2 = get_pdata_ent(iLiveTripMine,  iRTripMineOwner,  LINUX_OFFSET)
+
                 if(is_user_admin(iExplosives_Handler))
                 {
-                    client_print iExplosives_Handler, print_chat, "Mine possibly owned by %i",  iRealOwner2
+                    client_print iExplosives_Handler, print_chat, "Mine possibly owned by %n",  iRealOwner2
                 }
-                #endif
                 entity_set_float(iLiveTripMine, EV_FL_dmg, 1.0);
                 entity_set_vector(iLiveTripMine,EV_VEC_origin, null);
                 @kill_mine(iLiveTripMine, iExplosives_Handler)
@@ -255,21 +238,6 @@ public disarm_(iExplosive, iExplosives_Handler)
     }
     //find beam
     new iBeam = get_pdata_cbase( iLiveTripMine,  iBeamEnt , LINUX_OFFSET_WEAPONS ); //perfect
-    #if defined TEST
-    ///set_pdata_float(iLiveTripMine, iLength,  1.0, LINUX_OFFSET_WEAPONS ); //need done when planting
-    //who placed it
-    new iBeamOwner = get_pdata_cbase_safe( iLiveTripMine,  iRTripMineOwner , LINUX_OFFSET_WEAPONS) //just testing
-
-    iOwner = get_pdata_ehandle(iLiveTripMine, iTripMineOwner , 20, 20)
-    //edict
-    iRealOwner2 = entity_get_edict(iLiveTripMine, iRTripMineOwner)
-    //report
-    if(is_user_admin(iExplosives_Handler))
-    {
-        client_print iExplosives_Handler, print_chat, "%i | %i | %i^n %i %i %i",  iBeamEnt, iLength, iTripMineOwner, iBeam, iBeamOwner, iOwner
-        client_print iExplosives_Handler, print_chat, "Mine data %i %i %i %i^n Real Owner %i|%i|%i|%i ^n hOwner %i|%i|%i|%i", offset_test, SzType3, iType3, bUNsigned3, iRealOwner2, SzType2, iType2, bUNsigned2, iRealOwner, SzType, iType, bUNsigned
-    }
-    #endif
     //remove beam
     remove_entity(iBeam)
 }
