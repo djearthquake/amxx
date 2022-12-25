@@ -38,19 +38,37 @@ new finale[MAX_CMD_LENGTH]
 new g_mp_friendlyfire, g_teamplay, g_map_ent, g_frags, g_frags_remaining, g_captures_remaining
 new g_mp_chattime
 new g_amx_nextmap, g_finale
-new bool:B_op4c_map
+new bool:B_infinale
 
 #if AMXX_VERSION_NUM != 182
 new const CvarChatTimeDesc[]="Added by nextmap to include end game chat time."
 #endif
-public client_putinserver(id)
+public client_putinserver(client)
 {
-    if(is_user_bot(id))
+    if(is_user_connected(client))
+    {
+        if(B_infinale)
+        {
+            set_pev(client,pev_flags,pev(client,pev_flags) | FL_FROZEN);
+            fm_strip_user_weapons(client)
+            if(!is_user_bot(client))
+            {
+                new XstringF[MAX_RESOURCE_PATH_LENGTH]
+                get_pcvar_string(g_amx_nextmap,XstringF,charsmax(XstringF))
+                formatex(finale,charsmax(finale),"Next map is %s!",XstringF)
+                client_print client, print_chat, XstringF
+            }
+        }
+        else
+        {
+            set_pev(client,pev_flags,pev(client,pev_flags) & ~FL_FROZEN);
+        }
         return PLUGIN_CONTINUE
-    if(is_user_connected(id))
-        set_pev(id,pev_flags,pev(id,pev_flags) & ~FL_FROZEN);
+
+    }
     return PLUGIN_HANDLED
 }
+
 public plugin_init()
 {
     register_plugin("NextMap", AMXX_VERSION_STR, "AMXX Dev Team")
@@ -168,9 +186,17 @@ public changeMap()
     new bool:b_one_run
     if(!b_one_run)
     {
+        b_one_run = true
+        if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
+        {
+            log_amx "Pushing map %s through safemode plugin", Xstring
+            callfunc_begin("@cmd_call","safe_mode.amxx")
+            callfunc_push_str(Xstring)
+            callfunc_end()
+        }
+
         formatex(finale,charsmax(finale),"Next map is %s!",Xstring)
 
-        b_one_run = true
         #if AMXX_VERSION_NUM == 182
 
         set_task(float(Xchattime), "delayedChange", 0, Xstring, charsmax(Xstring))
@@ -188,14 +214,6 @@ public changeMap()
         @finale(finale)
         @title()
         #endif
-
-        if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
-        {
-            log_amx "Pushing map %s through safemode plugin", Xstring
-            callfunc_begin("@cmd_call","safe_mode.amxx")
-            callfunc_push_str(Xstring)
-            callfunc_end()
-        }
 
     }
 
@@ -338,7 +356,7 @@ readMapCycle(szFileName[], szNext[], iNext)
 @finale(finale[])
 if(get_pcvar_num(g_finale)>1)
 {
-
+    B_infinale = true
     message_begin(MSG_ALL,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
 
     for (new client=1; client<=get_playersnum(1); client++)
