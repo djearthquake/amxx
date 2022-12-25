@@ -93,13 +93,19 @@
 
     #pragma dynamic 32768
 
+    #define charsmin                  -1
+
     ///MSG_PVS is 4 ...0med 2hi 4lo (PVS EFFECTS BOTS, BLINDS THEM; USE IT)
 
     new g_teams;
 
-    new const SOUND_HAWK[] = "ambience/hawk1.wav";
-    new const SOUND_SHIT[] = "fvox/fuzz.wav";
-    new const SOUND_MAN[]  = "scientist/scream19.wav";
+    new const SOUND_HAWK[] = "sound/ambience/hawk1.wav";
+    new const SOUND_SHIT[] = "sound/fvox/fuzz.wav";
+    new const SOUND_MAN[]  = "sound/scientist/scream19.wav";
+
+    new const SOUND_HAWK1[] = "ambience/hawk1.wav";
+    new const SOUND_SHIT1[] = "fvox/fuzz.wav";
+    new const SOUND_MAN1[]  = "scientist/scream19.wav";
 
     new Float:Axis[3];
     new g_model,g_model2,sprite,g_ring;
@@ -112,7 +118,16 @@
     new g_cvar_bsod_iDelay;
     new g_iLoss,g_iPing;
     new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, g_tank_think, g_rocket_think;
-
+        
+public pligin_end()
+{
+    unregister_think(g_bolt_think);
+    unregister_think(g_hornet_think);
+    unregister_think(g_mortar_think);
+    unregister_think(g_rocket_think);
+    unregister_think(g_rpg_think);
+    unregister_think(g_tank_think);
+}
 public plugin_init()
 {
     register_event("CurWeapon", "CurentWeapon", "bce", "1=1");
@@ -147,14 +162,15 @@ public plugin_init()
 
     //GRENADES
 
-    register_think("grenade","CurentWeapon");
+    register_think("grenade","@tracer");
 
-    register_think("ARgrenade","CurentWeapon");
+    register_think("ARgrenade","@tracer");
 
     //HORNET
     if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
     {
-        //g_hornet_think = register_think("hornet", "CurentWeapon");
+        ///g_hornet_think = register_think("hornet", "CurentWeapon");
+        //register_think("hornet", "@tracer");
         //unregister_think(g_hornet_think);
 
         register_touch("hornet", "*", "Other_Attack_Touch");
@@ -163,7 +179,7 @@ public plugin_init()
     //BOW
     if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
     {
-        g_bolt_think = register_think("bolt","CurentWeapon");
+        g_bolt_think = register_think("bolt","@tracer");
 
         register_touch("bolt", "*", "HandGrenade_Attack2_Touch");
     }
@@ -172,25 +188,25 @@ public plugin_init()
     {
         //RPG
 
-        g_rpg_think = register_think("rpg_rocket","CurentWeapon");
+        g_rpg_think = register_think("rpg_rocket","@tracer");
 
         register_touch("rpg_rocket", "*", "HandGrenade_Attack2_Touch");
 
 
         //MORTAR
 
-        g_mortar_think = register_think("mortar_shell", "CurentWeapon");
+        g_mortar_think = register_think("mortar_shell", "@tracer");
 
         register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
 
         //TANK
 
-        g_tank_think = register_think("func_tank", "CurentWeapon");
+        g_tank_think = register_think("func_tank", "@tracer");
         register_touch("func_tank", "*", "HandGrenade_Attack2_Touch");
 
         //MISSILES
 
-        g_rocket_think = register_think("func_rocket", "CurentWeapon");
+        g_rocket_think = register_think("func_rocket", "@tracer");
         register_touch("func_rocket", "*", "HandGrenade_Attack2_Touch");
     }
 
@@ -212,16 +228,16 @@ public plugin_init()
 
 public sub_init_hl()
 {
-    RegisterHam(Ham_Weapon_PrimaryAttack, "grenade", "CurentWeapon", 1);
+    RegisterHam(Ham_Weapon_PrimaryAttack, "grenade", "@tracer", 1);
     RegisterHam(Ham_Weapon_SecondaryAttack, "grenade", "FnRainbows", 1);
 }
 
 
 public sub_init_cs()
-    {
+{
     register_logevent("plugin_save", 3, "2=Planted_The_Bomb")
 
-    RegisterHam(Ham_Weapon_PrimaryAttack, "grenade", "CurentWeapon", 1);
+    RegisterHam(Ham_Weapon_PrimaryAttack, "grenade", "@tracer", 1);
     RegisterHam(Ham_Weapon_SecondaryAttack, "grenade", "grenade_attack2", 1)
 
     RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_hegrenade", "CurentWeapon", 1);
@@ -230,20 +246,24 @@ public sub_init_cs()
 }
 
 public plugin_precache()
-    {
+{
     sprite       = precache_model("sprites/smoke.spr");
-    g_energy0    = precache_model("models/bleachbones.mdl");
-    g_energy1    = precache_model("models/bskull_template1.mdl");
-    g_energy2    = precache_model("models/sphere.mdl");
+    precache_generic("sprites/smoke.spr");
+    g_energy0    = precache_model("models/bleachbones.mdl");precache_generic("models/bleachbones.mdl");
+    g_energy1    = precache_model("models/bskull_template1.mdl");precache_generic("models/bskull_template1.mdl");
+    g_energy2    = precache_model("models/sphere.mdl");precache_generic("models/sphere.mdl");
 
-    g_ring       = precache_model("sprites/ballsmoke.spr");
-    gibs_models0 = precache_model("models/cindergibs.mdl");
-    gibs_models1 = precache_model("models/chromegibs.mdl");
+    g_ring       = precache_model("sprites/ballsmoke.spr");precache_generic("sprites/ballsmoke.spr");
+    gibs_models0 = precache_model("models/cindergibs.mdl");precache_generic("models/cindergibs.mdl")
+    gibs_models1 = precache_model("models/chromegibs.mdl");precache_generic("models/chromegibs.mdl")
     //also needed for breakable randomly using them
-    gibs_models2 = precache_model("models/glassgibs.mdl");
-    precache_sound(SOUND_HAWK);
-    precache_sound(SOUND_MAN);
-    precache_sound(SOUND_SHIT);
+    gibs_models2 = precache_model("models/glassgibs.mdl");precache_generic("models/glassgibs.mdl");
+    precache_sound(SOUND_HAWK1);
+    precache_sound(SOUND_MAN1);
+    precache_sound(SOUND_SHIT1);
+    precache_generic(SOUND_HAWK);
+    precache_generic(SOUND_MAN);
+    precache_generic(SOUND_SHIT);
 }
 
 public grenade_attack2(id)
@@ -251,44 +271,60 @@ public grenade_attack2(id)
     if(task_exists(g_model))
     {
         remove_task(g_model);
-        set_task(0.3, "hull_glow", g_model, "a", 1);
+        set_task(0.1, "hull_glow", g_model, "a", 1);
     }
 }
 public hull_glow(model)
 {
-    if(get_pcvar_num(g_cvar_neon_hull) !=1)
+    if(get_pcvar_num(g_cvar_neon_hull) !=1 && pev_valid(model) > 1)
     {
         switch(random_num(0,1))
         {
-            case 0: set_ent_rendering(g_model, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(g_model,1000));
-            case 1: set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
+            case 0: set_ent_rendering(model, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(model,1000));
+            case 1: set_ent_rendering(model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
         }
     }
     return PLUGIN_CONTINUE;
 }
+
+@tracer(s)
+{
+        if(pev_valid(s) && get_pcvar_num(g_cvar_neon_hull) == 1){
+
+          switch(random_num(0,1))
+           {
+            case 0: set_ent_rendering(s, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(s,1000));
+            case 1: set_ent_rendering(s, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
+           }
+
+        }
+        if(get_pcvar_num(g_cvar_neon_toss) == 1)
+        set_task(random_float(0.1,0.2), "Trail_me", s, "b");
+}
+
 public CurentWeapon(id)
 {
-    if (id > 0 && is_user_alive(id))
+    //if(is_user_connected(id) && is_user_alive(id) && !is_user_connecting(id))
     {
 
         new temp_ent1, temp_ent2, temp_ent3, temp_ent4, temp_ent5, temp_ent6, temp_ent7, temp_ent8;
         //Standard
-        temp_ent1 = find_ent_by_class(-1,"grenade");
-        temp_ent2 = find_ent_by_class(-1,"ARgrenade");
+        temp_ent1 = find_ent(charsmin,"grenade"); 
+        temp_ent2 = find_ent(charsmin,"ARgrenade");
 
         //Make hivehand into vorpal weapon.
         if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
-            temp_ent3 = find_ent_by_class(-1,"hornet");
+            temp_ent3 = find_ent(charsmin,"hornet");
         //Magic Missile variant.
         if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
-            temp_ent4 = find_ent_by_class(-1,"bolt");
+            temp_ent4 =  find_ent(charsmin,"bolt");
         //Baby nuke tipped RPG and alike.
         if(get_pcvar_num(g_cvar_neon_all) > 9)
         {
-            temp_ent5 = find_ent_by_class(-1,"rpg_rocket");
-            temp_ent6 = find_ent_by_class(-1,"mortar_shell");
-            temp_ent7 = find_ent_by_class(-1,"func_tank");
-            temp_ent8 = find_ent_by_class(-1,"func_rocket"); //spinx_missile fork of lud's
+            temp_ent5 = find_ent(charsmin,"rpg_rocket");
+            temp_ent6 = find_ent(charsmin,"mortar_shell");
+            temp_ent7 = find_ent(charsmin,"func_tank");
+            temp_ent8 = find_ent(charsmin,"func_rocket"); //spinx_missile fork of lud's
         }
 
 
@@ -316,19 +352,8 @@ public CurentWeapon(id)
         if(pev_valid(temp_ent8) )
             g_model = temp_ent8;
 
-
-        if(pev_valid(g_model) && get_pcvar_num(g_cvar_neon_hull) == 1){
-
-          switch(random_num(0,1))
-           {
-            case 0: set_ent_rendering(g_model, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(g_model,1000));
-            case 1: set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
-           }
-
-        }
-        if(get_pcvar_num(g_cvar_neon_toss) == 1)
-        set_task(random_float(0.1,0.3), "Trail_me", g_model, "b");
-
+        new s = g_model
+        @tracer(s)
     }
 
 }
@@ -378,7 +403,7 @@ stock set_ent_rendering(index, fx=kRenderFxNone, r=0, g=0, b=0, render=kRenderNo
 
 public FnRainbows()
 {
-    g_model = find_ent_by_class(-1,"grenade");
+    g_model = find_ent_by_class(charsmin,"grenade");
 
     if(pev_valid(g_model))
     {
@@ -390,7 +415,7 @@ public FnRainbows()
 
 public FnRainbowPG()
 {
-    g_model2 = find_ent_by_class(-1,g_pickerton);
+    g_model2 = find_ent_by_class(charsmin,g_pickerton);
     if(pev_valid(g_model2))
     {
     set_task(random_float(0.1,0.4), "Trail_mePG", g_model2, "a", 50);
@@ -424,10 +449,10 @@ public HandGrenade_Attack2_Touch(ent, id)
         if(get_pcvar_num(g_cvar_neon_snd))
         switch(random_num(0,3))
         {
-            case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT, VOL_NORM, ATTN_NORM, 0, PITCH);
-            case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK, VOL_NORM, ATTN_NORM, 0, PITCH);
-            case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-            case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+            case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0, PITCH);
+            case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
+            case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+            case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
         }
 
         new Float:End_Position[3];
@@ -553,16 +578,18 @@ public HandGrenade_Attack2_Touch(ent, id)
 
 
                             #if AMXX_VERSION_NUM == 182
-                                new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
-                                get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                                get_user_name(players[m], victims_name, charsmax(victims_name) );
-                                client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
+                            new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                            get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
+                            get_user_name(players[m], victims_name, charsmax(victims_name) );
+                            client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
                             #endif
 
 
                             #if AMXX_VERSION_NUM != 182
-                                if( nade_owner < 33)
+                            if( is_user_connected(nade_owner))
+                            {
                                 client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
+                            }
                             #endif
 
                             if(cstrike_running())
@@ -611,12 +638,12 @@ public Other_Attack_Touch(ent, id)
                 //if ( get_user_health(id) > 1.0 && get_user_health(id) < 9.0) //Save CPU/network graph turbulence
                 switch(random_num(0,5))
                 {
-                    case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT, VOL_NORM, ATTN_NORM, 0,        PITCH);
-                    case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK, VOL_NORM, ATTN_NORM, 0,        PITCH);
-                    case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                    case 3:emit_sound(ent, CHAN_AUTO, SOUND_MAN,  VOL_NORM, ATTN_NORM, 0,        PITCH);
-                    case 4:emit_sound(ent, CHAN_AUTO, SOUND_HAWK, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                    case 5:emit_sound(ent, CHAN_AUTO, SOUND_MAN,  VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                    case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0,        PITCH);
+                    case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0,        PITCH);
+                    case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                    case 3:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, 0,        PITCH);
+                    case 4:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                    case 5:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
                 }
             }
 
