@@ -9,11 +9,11 @@ new const GIVES[][]=
     "weapon_shotgun",
     "weapon_9mmAR",
     "ammo_9mmbox",
-     "ammo_buckshot",
-     "ammo_buckshot",
-     "ammo_buckshot",
-     "ammo_buckshot",
-     "ammo_buckshot"
+    "ammo_buckshot",
+    "ammo_buckshot",
+    "ammo_buckshot",
+    "ammo_buckshot",
+    "ammo_buckshot"
 }
 
 public plugin_init()
