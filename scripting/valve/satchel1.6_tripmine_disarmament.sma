@@ -200,7 +200,7 @@ public disarm_(iExplosive, iExplosives_Handler)
             {
                 iRealOwner2 = get_pdata_ent(iLiveTripMine,  iRTripMineOwner,  LINUX_OFFSET)
 
-                client_print 0, print_chat, "Disarmed Mine was owned by^n %n!",  iRealOwner2
+                client_print 0, print_chat, "Disarmed Mine was owned by %n!",  is_user_connected(iRealOwner2) ? iRealOwner2 : 0
                 entity_set_float(iLiveTripMine, EV_FL_dmg, 1.0);
                 entity_set_vector(iLiveTripMine,EV_VEC_origin, null);
                 @kill_mine(iLiveTripMine, iExplosives_Handler)
