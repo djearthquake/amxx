@@ -8,6 +8,7 @@ const LINUX_DIFF = 5;
 
 /* VARIABLES */
 new
+    gbCS ,
     gOldClip         [ MAX_PLAYERS + 1 char ],
     gOldSpecialReload[ MAX_PLAYERS + 1 char ],
     m_pPlayer ,
@@ -23,15 +24,9 @@ new
 public plugin_init()
 {
     register_plugin( "OF Street Sweeper", "1.0.1", "SPiNX" ); //originally "Shotgun Reload/Fire Rate", "1.0.0", "Arkshine"
+    gbCS = cstrike_running()
 
-    if(cstrike_running())
-    {
-        copy(gShotgunClassname, charsmax(gShotgunClassname), "weapon_xm1014");
-    }
-    else
-    {
-        copy(gShotgunClassname, charsmax(gShotgunClassname), "weapon_shotgun");
-    }
+    copy(gShotgunClassname, charsmax(gShotgunClassname), gbCS ? "weapon_xm1014" :  "weapon_shotgun");
 
     RegisterHam( Ham_Weapon_PrimaryAttack  , gShotgunClassname, "Shotgun_PrimaryAttack_Pre" , 0 );
     RegisterHam( Ham_Weapon_PrimaryAttack  , gShotgunClassname, "Shotgun_PrimaryAttack_Post", 1 );
@@ -52,8 +47,6 @@ public plugin_init()
     m_iClip = (find_ent_data_info("CBasePlayerWeapon", "m_iClip") / LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
 
     m_flNextAttack = (find_ent_data_info("CBaseMonster", "m_flNextAttack") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
-
-    //log_amx "%i |%i |%i |%i |%i |%i |%i |", m_pPlayer, m_flPumptime, m_fInSpecialReload, m_flNextPrimaryAttack, m_flNextSecondaryAttack, m_iClip, m_flNextAttack
 }
 
 public Shotgun_PrimaryAttack_Pre ( const shotgun )
@@ -65,7 +58,6 @@ public Shotgun_PrimaryAttack_Pre ( const shotgun )
 public Shotgun_PrimaryAttack_Post ( const shotgun )
 {
     new player = get_pdata_cbase( shotgun, m_pPlayer, LINUX_OFFSET_WEAPONS );
-    new bCS = cstrike_running()
 
     if ( gOldClip{ player } <= 0 )
     {
@@ -74,19 +66,19 @@ public Shotgun_PrimaryAttack_Post ( const shotgun )
     //355 is shotgun for gearbox (~+43 from hl), need to see cs offset
     set_pdata_int( player, 355, 32 )
 
-    set_pdata_float( shotgun, m_flNextPrimaryAttack  , bCS ? 0.1 : 0.05, LINUX_OFFSET_WEAPONS );
+    set_pdata_float( shotgun, m_flNextPrimaryAttack  , gbCS? 0.1 : 0.05, LINUX_OFFSET_WEAPONS );
     //set_pdata_float( shotgun, m_flNextSecondaryAttack, 0.6, LINUX_OFFSET_WEAPONS );
 
     if ( get_pdata_int( shotgun, m_iClip, LINUX_OFFSET_WEAPONS ) != 0 )
     {
-        set_pdata_float( shotgun, m_flTimeWeaponIdle, bCS ? 0.1 :0.03, LINUX_OFFSET_WEAPONS );
+        set_pdata_float( shotgun, m_flTimeWeaponIdle, gbCS? 0.1 :0.03, LINUX_OFFSET_WEAPONS );
     }
     else
     {
-        set_pdata_float( shotgun, m_flTimeWeaponIdle, bCS ? 0.1 :0.01, LINUX_OFFSET_WEAPONS );
+        set_pdata_float( shotgun, m_flTimeWeaponIdle, gbCS? 0.1 :0.01, LINUX_OFFSET_WEAPONS );
     }
 
-    if(bCS)
+    if(gbCS)
         return
 
     new Float:g_fDelay = 0.01
