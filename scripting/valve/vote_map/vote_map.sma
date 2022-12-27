@@ -55,7 +55,7 @@ public plugin_precache()
         mkdir(fileDir)
     }
     new line[MAX_USER_INFO_LENGTH]
-    if(!file_exists(random_file))
+    if(!file_exists(random_file) && cstrike_running())
     {
         format(line, charsmax(line), "// List maps here that you want to replace %s in the other map files",RANDOM)
         write_file(random_file, line,charsmin)
@@ -64,6 +64,11 @@ public plugin_precache()
         write_file(random_file, "cs_assault",charsmin)
         write_file(random_file, "cs_militia",charsmin)
         write_file(random_file, "de_aztec",charsmin)
+    }
+    else
+    {
+        log_amx "Pausing plugin due to missing config file."
+        pause "c"
     }
     if(VoteMap)
     {
@@ -107,6 +112,7 @@ public plugin_precache()
             {
                 format(sprite_precache,charsmax(sprite_precache),"sprites/vote_map/%s.spr",Left)
                 precache_model(sprite_precache)
+                precache_generic(sprite_precache)
             }
         }
     }
@@ -149,11 +155,20 @@ public entity_touch(ent1, ent2)
         if(mapchange)
         {
             new ent
-            new target[32]
+            new target[MAX_NAME_LENGTH]
             ent = (mapchange == 1) ? ent1 : ent2
             pev(ent, pev_target, target, charsmax(target))
             if(strlen(target))
             {
+                if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
+                {
+                    if(callfunc_begin("@cmd_call","safe_mode.amxx"))
+                    {
+                        callfunc_push_str(target, true)
+                        callfunc_end()
+                        log_amx "Pushed map %s through safemode plugin...", target
+                    }
+                }
                 new exec[MAX_CMD_LENGTH]
                 format(exec,charsmax(exec), "changelevel %s",target)
                 new SzWon[MAX_CMD_LENGTH]
