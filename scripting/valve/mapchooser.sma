@@ -14,6 +14,7 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <engine_stocks>
+#include <fakemeta_util>
 
 #define SELECTMAPS  8
 
@@ -136,7 +137,9 @@ public plugin_init()
 
         if(B_op4c_map)
         {
-            (b_set_caps) ? g_counter : set_cvar_num("mp_captures", 6) &g_counter
+            fm_set_kvd(B_op4c_map, "map_score_max", "0")
+            ///(b_set_caps) ? g_counter : set_cvar_num("mp_captures", 6) &g_counter
+            set_cvar_num("mp_captures", 6)&g_counter
             log_amx "CAPTURE POINT MAP DETECTED!"
             register_logevent("@count", 3, "2=CapturedFlag")
         }
@@ -580,7 +583,7 @@ public pfn_keyvalue( ent )
     if (is_running("gearbox") == 1 )
     {
         new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
-        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
+        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "5")
 
         copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
 
