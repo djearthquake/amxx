@@ -142,6 +142,7 @@ public plugin_init()
             set_cvar_num("mp_captures", 6)&g_counter
             log_amx "CAPTURE POINT MAP DETECTED!"
             register_logevent("@count", 3, "2=CapturedFlag")
+            register_logevent("@count", 2, "1=tc1_bmscore", "1=tc1_opscore", "1=tc2_bmscore", "1=tc2_opscore","1=tc3_bmscore", "1=tc3_opscore","1=tc4_bmscore", "1=tc4_opscore")
         }
         else
         {
