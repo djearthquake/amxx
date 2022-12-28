@@ -25,7 +25,7 @@ new bool:bCallingfromEnd
 new bool:bBackupPluginsINI
 new bool:bCMDCALL
 new szArg[MAX_CMD_LENGTH];
-new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_RESOURCE_PATH_LENGTH];
+new szArgCmd[MAX_NAME_LENGTH], szArgCmd1[MAX_RESOURCE_PATH_LENGTH];
 enum _:Safe_Mode
 {
     SzMaps[ MAX_MAPS ],
@@ -110,11 +110,11 @@ public client_command(id)
 @cmd_call(SzMapname[MAX_RESOURCE_PATH_LENGTH])
 {
     bCMDCALL = true
-    
-    log_amx "Validating %s", SzMapname
 
     if(!is_map_valid(SzMapname))
         return
+
+    log_amx "Validating %s", SzMapname
 
     Data[ SzMaps ] =  SzMapname
 
@@ -124,8 +124,8 @@ public client_command(id)
         @clear_plugins()
     }
 
-    server_print("%s MUST preload %s via command", PLUGIN, szArgCmd1)
-    copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd), szArgCmd1)
+    server_print("%s MUST preload %s via command", PLUGIN, SzMapname)
+    copy(g_SzNextMapCmd, charsmax(g_SzNextMapCmd), SzMapname)
     ReadSafeModeFromFile( )
 }
 
@@ -304,7 +304,7 @@ public ReadSafeModeFromFile( )
         server_print "trying save^n^n%s", g_szFilePathSafe
 
         //safemode plugin itself
-        formatex(SzSave,charsmax(SzSave),"%s.amxx debug", PLUGIN)
+        formatex(SzSave,charsmax(SzSave),"%s.amxx", PLUGIN)
         write_file(g_szFilePath, SzSave)
         //safemode needs nextmap to work
         formatex(SzSave,charsmax(SzSave),"nextmap.amxx")
@@ -318,7 +318,6 @@ public ReadSafeModeFromFile( )
 
             formatex(SzSave,charsmax(SzSave),"admincmd.amxx")
             write_file(g_szFilePath, SzSave)
-
 
             formatex(SzSave,charsmax(SzSave),"menufront.amxx")
             write_file(g_szFilePath, SzSave)
