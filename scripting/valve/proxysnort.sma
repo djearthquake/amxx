@@ -1,4 +1,4 @@
-                                                                                    #define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
+#define WEATHER_SCRIPT "clientemp.amxx" ///name you gave clientemp.sma
 //This is used to prevent both plugins of mine from uncontrollably clutching sockets mod.
 ///If you do not use it, ignore or study it.
 //https://github.com/djearthquake/amxx/blob/main/scripting/valve/clientemp.sma
@@ -475,17 +475,7 @@ stock get_user_profile(id)
             ///UN-Lock the socket here so other clients can be checked.
             if(!task_exists(id))
                 set_task(3.5, "@client_mark_socket", id);
-            ///UN-Lock other script I made if used in tandom to prevent socket making game unplayable
-            if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
-            {
-                if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
-                {
-                    new work[MAX_PLAYERS]
-                    format(work,charsmax(work),PLUGIN,"")
-                    callfunc_push_str(work)
-                    callfunc_end()
-                }
-            }
+
         }
         else if(is_user_connected(id) || is_user_connecting(id) && !g_has_been_checked[id] && g_processing[id])
             set_task(3.5, "@read_web",id+USERREAD);
@@ -493,7 +483,9 @@ stock get_user_profile(id)
         {
             if(task_exists(id+USERREAD))
                 remove_task(id+USERREAD)
+
             socket_close(g_proxy_socket);
+            @client_mark_socket(id)
         }
     }
     return PLUGIN_HANDLED
@@ -501,8 +493,21 @@ stock get_user_profile(id)
 @client_mark_socket(id)
 {
     IS_SOCKET_IN_USE = false;
+    ///UN-Lock other script I made if used in tandom to prevent socket making game unplayable
+    if(find_plugin_byfile(WEATHER_SCRIPT) != charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
+    {
+        if(callfunc_begin("@mark_socket",WEATHER_SCRIPT))
+        {
+            new work[MAX_PLAYERS]
+            format(work,charsmax(work),PLUGIN,"")
+            callfunc_push_str(work)
+            callfunc_end()
+        }
+    }
     if(is_user_connected(id))
+    {
         server_print "%s | %s unlocking socket!", PLUGIN, name
+    }
 }
 @mark_socket(work[MAX_PLAYERS])
 {
