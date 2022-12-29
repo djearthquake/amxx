@@ -132,12 +132,13 @@ public plugin_init()
 
     if ( bOF_run )
     {
+        new info_detect = find_ent(charsmin,"info_ctfdetect")
 
-        B_op4c_map = find_ent(charsmin,"info_ctfdetect") > 0 ? true : false
+        B_op4c_map = info_detect ? true : false
 
         if(B_op4c_map)
         {
-            fm_set_kvd(B_op4c_map, "map_score_max", "0")
+            fm_set_kvd(info_detect, "map_score_max", "0")
             ///(b_set_caps) ? g_counter : set_cvar_num("mp_captures", 6) &g_counter
             set_cvar_num("mp_captures", 6)&g_counter
             log_amx "CAPTURE POINT MAP DETECTED!"
