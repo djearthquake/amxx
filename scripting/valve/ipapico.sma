@@ -95,7 +95,7 @@ public client_putinserver(id)
     new id = goldsrc - COORD
     if(is_user_connected(id))
     {
-        new constring[MAX_CMD_LENGTH]
+        new constring[256]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
         formatex(constring, charsmax (constring), "GET http://%s/json/%s HTTP/1.0^nHost: %s^n^n", api, ClientIP[id], api)
         server_print "%s",constring
@@ -107,7 +107,7 @@ public client_putinserver(id)
             set_task(1.0, "@read_api", id+READ)
     }
 }
-@write_api(text[MAX_CMD_LENGTH], Task)
+@write_api(text[256], Task)
 {
 
     new id = Task - WRITE
@@ -126,13 +126,13 @@ public client_putinserver(id)
     new id = Tsk - READ
     if(is_user_connected(id))
     {
-        new msg[MAX_MOTD_LENGTH]
+        new msg[2048]
         server_print "%s:reading %s coords",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
         if (socket_is_readable(ip_api_socket, 100000))
         #endif
         socket_recv(ip_api_socket,buffer,charsmax(buffer) )
-        if (!equal(buffer, "") && containi(buffer,"completed_requests") > charsmin)
+        if (!equal(buffer, "") /*&& containi(buffer,"completed_requests") > charsmin*/)
         {
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
