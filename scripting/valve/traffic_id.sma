@@ -52,46 +52,51 @@ public client_connectex(id, const name[], const ip[], reason[128])
 {
     copyc(ClientIP[id], charsmax(ClientIP[]), ip, ':')
     reason = (containi(ip, local) > charsmin) ? "IP address misread!" : "Bad STEAMID!"
-
+/*
     if(containi(ip, local) != charsmin)
     {
         log_amx("Localhost blocked...%s, %s, %s",name, ip)
         return PLUGIN_HANDLED_MAIN
     }
+*/
+    copy(ClientName[id],charsmax(ClientName[]), name)
 
     track(id)
+
     return PLUGIN_CONTINUE
 }
 
 public track(id)
 {
     if (is_user_bot(id) || is_user_hltv(id)) return;
-
-    #if AMXX_VERSION_NUM == 182
-        geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
-    #else
-        geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), 2 );
-    #endif
-    get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
-
-    geoip_city(ClientIP[id], ClientCity[id], charsmax(ClientCity[]), 1)
-    geoip_region_name(ClientIP[id], ClientRegion[id], charsmax(ClientRegion[]), 2)
-
-    geoip_code3_ex(ClientIP[id], ClientCountry_code[id])
-
-    #if AMXX_VERSION_NUM != 182
-    if ( cstrike_running() )
+    if(!equal(ClientIP[id], ""))
     {
-        client_print_color 0,id, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", id, ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
+        #if AMXX_VERSION_NUM == 182
+            geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
+        #else
+            geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), 2 );
+        #endif
+        get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
+    
+        geoip_city(ClientIP[id], ClientCity[id], charsmax(ClientCity[]), 1)
+        geoip_region_name(ClientIP[id], ClientRegion[id], charsmax(ClientRegion[]), 2)
+    
+        geoip_code3_ex(ClientIP[id], ClientCountry_code[id])
+    
+        #if AMXX_VERSION_NUM != 182
+        if ( cstrike_running() )
+        {
+            client_print_color 0,id, "^x03%n^x01 ^x04%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", id, ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
+        }
+        #else
+        else
+        {
+            client_print 0, print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
+        }
+        #endif
+    
+        log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
     }
-    #else
-    else
-    {
-        client_print 0, print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
-    }
-    #endif
-
-    log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
 }
 
 public client_infochanged(id)
