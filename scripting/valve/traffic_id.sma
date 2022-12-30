@@ -21,16 +21,17 @@
 #define local                  "127.0.0.1"
 #define charsmin           -1
 
-new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
-new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH+1]
+new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
+new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH]
 
-new ClientCountry[MAX_PLAYERS+1][MAX_NAME_LENGTH+1]
-new ClientCity[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH+1]
+new ClientCountry[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+new ClientCity[MAX_PLAYERS+1][MAX_RESOURCE_PATH_LENGTH]
 new ClientCountry_code[MAX_PLAYERS+1][4]
-new ClientRegion[MAX_PLAYERS+1][MAX_NAME_LENGTH+1]
-new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH + 1]
+new ClientRegion[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+new ClientIP[MAX_PLAYERS+1][MAX_IP_LENGTH]
 
 static const SzBotTag[]="BOT"
+static const szSearch[]="[s]"
 
 public plugin_init()
 {
@@ -77,12 +78,12 @@ public track(id)
             geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), 2 );
         #endif
         get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
-    
+
         geoip_city(ClientIP[id], ClientCity[id], charsmax(ClientCity[]), 1)
         geoip_region_name(ClientIP[id], ClientRegion[id], charsmax(ClientRegion[]), 2)
-    
+
         geoip_code3_ex(ClientIP[id], ClientCountry_code[id])
-    
+
         #if AMXX_VERSION_NUM != 182
         if ( cstrike_running() )
         {
@@ -94,16 +95,21 @@ public track(id)
             client_print 0, print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
         }
         #endif
-    
+
         log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
     }
 }
 
 public client_infochanged(id)
 {
+
     if(is_user_connected(id))
     {
-        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+        new szBuffer[MAX_NAME_LENGTH]
+        get_user_name(id, szBuffer, charsmax(szBuffer))
+
+        if(contain(szBuffer, szSearch) == charsmin)
+            copy(ClientName[id], charsmax(ClientName[]), szBuffer)
     }
 }
 
