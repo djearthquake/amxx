@@ -28,7 +28,8 @@
 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
 
 #define OK if(is_user_connected(id)
-new bool:g_spectating[MAX_PLAYERS+1]
+new bool:g_spectating[MAX_PLAYERS + 1]
+new bool:bDemo[MAX_PLAYERS +1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
 new bool:bListening[MAX_PLAYERS + 1]
 new bool:bFirstPerson[MAX_PLAYERS + 1]
@@ -247,9 +248,9 @@ stock loss()
 
 @play(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && !is_user_bot(id))
     {
-        console_print 0,"%n spectator mode is resetting.", id
+        //server_print "%n spectator mode is resetting.", id
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
 
         if(g_startaspec)
@@ -590,7 +591,10 @@ public random_view(id)
         if(!task_exists(id+TOGGLE))
         {
             set_task(0.1,"@random_view",id+TOGGLE,.flags = "b")
-            client_cmd id, "spk holo/tr_ba_use.wav"
+            if(!bDemo[id])
+            {
+                client_cmd id, "spk holo/tr_ba_use.wav"
+            }
         }
         else
         {
@@ -621,7 +625,11 @@ public random_view(id)
             {
                 set_view(id, CAMERA_3RDPERSON)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
-                client_cmd(id,"spk fvox/targetting_system.wav")
+                if(!bDemo[id])
+                {
+                    bDemo[id] = true
+                    client_cmd(id,"spk fvox/targetting_system.wav")
+                }
                 client_print(id, print_chat, "Say !spec_switch to change perspectives.")
                 //otherwise switches players randomly
                 g_random_view[id] = iViewPlayer
