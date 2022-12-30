@@ -490,9 +490,11 @@ public client_infochanged(id)
                     {
                         if(!g_bSpecNam[id])
                         {
-                            get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
-                            format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
-                            set_user_info(id, "name", SzSpecName)
+                            if(containi(SzClientName[id], "[s]") == charsmin)
+                            {
+                                format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
+                                set_user_info(id, "name", SzSpecName)
+                            }
                             g_bSpecNam[id] = true
                         }
 
@@ -523,7 +525,10 @@ public client_infochanged(id)
                 }
                 else
                 {
-                    set_user_info(id, "name", SzClientName[id])
+                    if(containi(SzSpecName[id], "[s]") != charsmin)
+                    {
+                        set_user_info(id, "name", SzClientName[id])
+                    }
                     server_print "EXITING SPEC"
                     dllfunc(DLLFunc_ClientPutInServer, id)
                     dllfunc(DLLFunc_SpectatorDisconnect, id)
