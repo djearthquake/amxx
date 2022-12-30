@@ -494,10 +494,9 @@ public client_infochanged(id)
                             {
                                 format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
                                 set_user_info(id, "name", SzSpecName)
+                                g_bSpecNam[id] = true
                             }
-                            g_bSpecNam[id] = true
                         }
-
                         g_spectating[id] = true
                         dllfunc(DLLFunc_SpectatorConnect, id)
                         server_print "GOING TO SPEC"
