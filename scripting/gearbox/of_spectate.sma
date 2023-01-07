@@ -318,6 +318,12 @@ OK && !is_user_bot(id))
         {
             set_task(g_startaspec*1.0,"@go_check",id)
         }
+        get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+        if(containi(SzClientName[id], "[s]") > charsmin)
+        {
+            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+            set_user_info(id, "name", SzClientName[id])
+        }
     }
 }
 
