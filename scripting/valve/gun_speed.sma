@@ -7,6 +7,8 @@
 #include <xs>
 
 #define charsmin                  -1
+#define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG //ADMIN_LEVEL_A
+#define VOTE_ACCESS     ADMIN_ALL
 
 #define NO_RECOIL_WEAPONS_BITSUM  (1<<1 | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_PENGUIN )
 
@@ -30,14 +32,18 @@ const LINUX_DIFF = 5;
 #define	MAG_BOX	255
 #define	MAG_ARSEN	1000
 
-
+#define PLUGIN  "Gun Speed"
+#define VERSION "1.0.2"
+#define AUTHOR "SPiNX"
 /* VARIABLES */
+
 new
     gbCS ,
     gbDod ,
     gbSven ,
     gOldClip[ MAX_PLAYERS + 1 char ],
     gOldSpecialReload[ MAX_PLAYERS + 1 char ],
+    g_counter[2],
     m_pPlayer ,
     //m_flPumptime ,
     m_fInSpecialReload ,
@@ -53,9 +59,57 @@ new const SzAmmo[][]={"ammo_9mmclip", "ammo_9mmbox", "ammo_gaussclip", "ammo_357
 
 new HamHook:XhookReloadPre, HamHook:XhookReloadPost, HamHook:XhookPrimaryAPre, HamHook:XhookPrimaryAPos;
 
+new bool:bAccess[MAX_PLAYERS + 1]
+
+
+public cmdVote(player,level,cid) 
+{
+    if(!cmd_access(player,level,cid,1) || task_exists(7845)) return PLUGIN_HANDLED
+
+    new keys = MENU_KEY_1|MENU_KEY_2
+    for(new i = 0; i < 2; i++)
+        g_counter[i] = 0
+
+    new menu[MAX_USER_INFO_LENGTH]
+
+    new len = format(menu,charsmax(menu),"[AMX] %s Gunspeed?^n", g_Speed ? "Disable" : "Enable")
+
+    len += format(menu[len],charsmax(menu),"^n1. Yes")
+    len += format(menu[len],charsmax(menu),"^n2. No")
+
+    show_menu(0,keys,menu,10)
+    set_task(10.0,"vote_results",7845)
+    return PLUGIN_HANDLED
+}
+
+public voteGunspeed(player, key)
+    g_counter[key]++
+
+public vote_results()
+{
+    if(g_counter[0] > g_counter[1])
+    {
+        g_Speed = 0.01185
+        client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (no ^"%d^") %s is now %s", PLUGIN, VERSION, g_counter[0], g_counter[1], PLUGIN, g_Speed ? "disabled" : "enabled")
+    }else if(g_counter[1] > g_counter[0]){
+        g_Speed = 0.0
+        client_print(0,print_chat,"[%s %s] Voting failed (yes ^"%d^") (no ^"%d^")", PLUGIN, VERSION, g_counter[0], g_counter[1])
+    }
+    else
+    {
+        client_print(0,print_chat,"[%s %s] No votes counted.", PLUGIN, VERSION)
+    }
+}
+
+public client_infochanged(player)
+{
+    bAccess[player] = get_user_flags(player) & ACCESS_LEVEL ? true : false
+}
+
 public plugin_init()
 {
-    register_plugin( "Gun Speed", "1.0.2", "SPiNX" ); //Credit "Weapon Reload/Fire Rate", "1.0.0", "Arkshine". That kicked me off.
+    register_plugin( PLUGIN, VERSION, AUTHOR );
+    register_concmd("vote_gunspeed","cmdVote",VOTE_ACCESS,": Vote for gun speed!")
 
     for (new i=HLW_GLOCK;i<=HLW_SNIPER;i++)
     {
@@ -124,7 +178,7 @@ public plugin_init()
     {
         remove_entity_name(SzAmmo[map])
     }
-
+    register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
 }
 
 @death(victim,killer)
@@ -134,7 +188,7 @@ public plugin_init()
 
 @spawn(player)
 {
-    if(is_user_connected(player) && g_Speed > 0.0)
+    if(is_user_connected(player) && g_Speed > 0.0 && bAccess[player])
     {
         if(XhookPrimaryAPre)
             EnableHamForward(XhookPrimaryAPre)
@@ -147,7 +201,7 @@ public plugin_init()
 
         if(XhookReloadPost)
             EnableHamForward(XhookReloadPost)
-
+    
         server_print "%n spawned gunspeed ammo", player
         set_pdata_int( player, CART_PARABELUM, MAG_BOX )
         set_pdata_int( player, SHOTGUN_SHELLS, MAG_BOX )
@@ -170,6 +224,10 @@ public Weapon_PrimaryAttack_Pre ( const weapon )
         //player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         gOldClip{ player } = get_pdata_int( weapon, m_iClip, LINUX_OFFSET_WEAPONS );
 
+        if ( gOldClip{ player } <= 0 ||!bAccess[player])
+        {
+            return;
+        }
         //if recoil
         new Float:cl_pushangle[MAX_PLAYERS + 1][3]
         pev(player,pev_punchangle,cl_pushangle[player])
@@ -197,7 +255,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
         new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
 
-        if ( gOldClip{ player } <= 0 )
+        if ( gOldClip{ player } <= 0 ||!bAccess[player])
         {
             return;
         }
@@ -245,7 +303,7 @@ public Weapon_SecondaryAttack_Post ( const weapon )
     {
         new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
-        if ( gOldClip{ player } <= 1 )
+        if ( gOldClip{ player } <= 1 ||!bAccess[player])
         {
             return;
         }
@@ -280,6 +338,9 @@ public Weapon_Reload_Post ( const weapon )
     {
         new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
+        if(gOldSpecialReload{ player } <= 0  || !bAccess[ player ])
+            return
+
         switch ( gOldSpecialReload{ player } )
         {
             case 0 :
@@ -308,7 +369,6 @@ public Weapon_Reload_Post ( const weapon )
 
 public plugin_end()
 {
-    //set_pcvar_float(g_Speed, 0.0)
     g_Speed = 0.0
 
     if(XhookPrimaryAPre)
