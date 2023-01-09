@@ -308,6 +308,9 @@ public Weapon_Reload_Post ( const weapon )
 
 public plugin_end()
 {
+    //set_pcvar_float(g_Speed, 0.0)
+    g_Speed = 0.0
+
     if(XhookPrimaryAPre)
         DisableHamForward(XhookPrimaryAPre)
 
