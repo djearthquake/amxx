@@ -231,18 +231,15 @@ public Weapon_PrimaryAttack_Post ( const weapon )
             {
                 if(get_pcvar_float(pcvars[cl_weapon[player]]))
                     goto CHAOS
-                    return HAM_IGNORED
             }
             case 2:
             {
                 if(get_pcvar_float(pcvars[9]))
                     goto CHAOS
-                    return HAM_IGNORED
             }
             default:
             {
                 goto END
-                return HAM_IGNORED
             }
         }
         CHAOS:
