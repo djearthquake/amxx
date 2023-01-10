@@ -38,6 +38,7 @@ const LINUX_DIFF = 5;
 /* VARIABLES */
 
 new
+    cl_weapon[MAX_PLAYERS + 1],
     gbCS ,
     gbDod ,
     gbSven ,
@@ -53,58 +54,14 @@ new
     m_iClip,
     m_flNextAttack,
     Float:g_Speed,
-    gWeaponClassname[MAX_PLAYERS];
+    gWeaponClassname[MAX_PLAYERS],
+    pcvars[HLW_SNIPER + 1];
 
 new const SzAmmo[][]={"ammo_9mmclip", "ammo_9mmbox", "ammo_gaussclip", "ammo_357", "ammo_crossbow", "ammo_buckshot", "ammo_556", "ammo_762"}
 
 new HamHook:XhookReloadPre, HamHook:XhookReloadPost, HamHook:XhookPrimaryAPre, HamHook:XhookPrimaryAPos;
 
 new bool:bAccess[MAX_PLAYERS + 1]
-
-
-public cmdVote(player,level,cid) 
-{
-    if(!cmd_access(player,level,cid,1) || task_exists(7845)) return PLUGIN_HANDLED
-
-    new keys = MENU_KEY_1|MENU_KEY_2
-    for(new i = 0; i < 2; i++)
-        g_counter[i] = 0
-
-    new menu[MAX_USER_INFO_LENGTH]
-
-    new len = format(menu,charsmax(menu),"[AMX] %s Gunspeed?^n", g_Speed ? "Disable" : "Enable")
-
-    len += format(menu[len],charsmax(menu),"^n1. Yes")
-    len += format(menu[len],charsmax(menu),"^n2. No")
-
-    show_menu(0,keys,menu,10)
-    set_task(10.0,"vote_results",7845)
-    return PLUGIN_HANDLED
-}
-
-public voteGunspeed(player, key)
-    g_counter[key]++
-
-public vote_results()
-{
-    if(g_counter[0] > g_counter[1])
-    {
-        g_Speed = 0.01185
-        client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (no ^"%d^") %s is now %s", PLUGIN, VERSION, g_counter[0], g_counter[1], PLUGIN, g_Speed ? "disabled" : "enabled")
-    }else if(g_counter[1] > g_counter[0]){
-        g_Speed = 0.0
-        client_print(0,print_chat,"[%s %s] Voting failed (yes ^"%d^") (no ^"%d^")", PLUGIN, VERSION, g_counter[0], g_counter[1])
-    }
-    else
-    {
-        client_print(0,print_chat,"[%s %s] No votes counted.", PLUGIN, VERSION)
-    }
-}
-
-public client_infochanged(player)
-{
-    bAccess[player] = get_user_flags(player) & ACCESS_LEVEL ? true : false
-}
 
 public plugin_init()
 {
@@ -115,6 +72,13 @@ public plugin_init()
     {
         if(!(NO_RECOIL_WEAPONS_BITSUM & (1<<i)) && get_weaponname(i, gWeaponClassname, charsmax(gWeaponClassname)))
         {
+            new cvar_name[MAX_PLAYERS + 1];
+            formatex(cvar_name, charsmax(cvar_name), "gunspeed_%s", gWeaponClassname)
+            replace(cvar_name, charsmax(cvar_name), "weapon_", "")
+            pcvars[i] = register_cvar(cvar_name,"0.0")
+            pcvars[0] = register_cvar("gunspeed_mode","1")
+            pcvars[9] = register_cvar("gunspeed_all","1.0")
+
             new mod_name[MAX_NAME_LENGTH]
             get_modname(mod_name, charsmax(mod_name))
             server_print mod_name
@@ -173,12 +137,19 @@ public plugin_init()
     bind_pcvar_float(get_cvar_pointer("mp_gunspeed") ? get_cvar_pointer("mp_gunspeed") : register_cvar("mp_gunspeed", "0.0"), g_Speed)
     //RegisterHam(Ham_Spawn, "player", "@spawn", 1);
     register_event_ex ( "ResetHUD" , "@spawn" , .flags=RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
+    register_event("CurWeapon", "event_active_weapon", "b")
     RegisterHam(Ham_Killed, "player", "@death", 1);
     for( new map;map < sizeof SzAmmo;++map)
     {
         remove_entity_name(SzAmmo[map])
     }
     register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
+}
+
+public event_active_weapon(player)
+{
+    cl_weapon[player] = read_data(2)
+    return PLUGIN_CONTINUE
 }
 
 @death(victim,killer)
@@ -254,21 +225,41 @@ public Weapon_PrimaryAttack_Post ( const weapon )
         //new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
-
+        switch(get_pcvar_num(pcvars[0]))
+        {
+            case 1:
+            {
+                if(get_pcvar_float(pcvars[cl_weapon[player]]))
+                    goto CHAOS
+                    return HAM_IGNORED
+            }
+            case 2:
+            {
+                if(get_pcvar_float(pcvars[9]))
+                    goto CHAOS
+                    return HAM_IGNORED
+            }
+            default:
+            {
+                goto END
+                return HAM_IGNORED
+            }
+        }
+        CHAOS:
         if ( gOldClip{ player } <= 0 ||!bAccess[player])
         {
             return;
         }
 
-        set_pdata_float( weapon, m_flNextPrimaryAttack,  /*0.05*/ g_Speed*5, LINUX_OFFSET_WEAPONS );
+        set_pdata_float( weapon, m_flNextPrimaryAttack,  g_Speed*5, LINUX_OFFSET_WEAPONS );
 
         if ( get_pdata_int( weapon, m_iClip, LINUX_OFFSET_WEAPONS ) != 0 )
         {
-            set_pdata_float( weapon, m_flTimeWeaponIdle,  /*0.03*/ g_Speed*3, LINUX_OFFSET_WEAPONS );
+            set_pdata_float( weapon, m_flTimeWeaponIdle,  g_Speed*3, LINUX_OFFSET_WEAPONS );
         }
         else
         {
-            set_pdata_float( weapon, m_flTimeWeaponIdle,  /*0.01*/g_Speed, LINUX_OFFSET_WEAPONS );
+            set_pdata_float( weapon, m_flTimeWeaponIdle,  g_Speed, LINUX_OFFSET_WEAPONS );
         }
 
         if(gbCS)
@@ -288,7 +279,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
     {
         plugin_end()
     }
-
+    END:
 }
 
 public Weapon_SecondaryAttack_Pre ( const weapon )
@@ -365,6 +356,55 @@ public Weapon_Reload_Post ( const weapon )
     }
     else
         plugin_end()
+}
+
+public cmdVote(player,level,cid) 
+{
+    if(!cmd_access(player,level,cid,1) || task_exists(7845)) return PLUGIN_HANDLED
+
+    new keys = MENU_KEY_1|MENU_KEY_2
+    for(new i = 0; i < 2; i++)
+        g_counter[i] = 0
+
+    new menu[MAX_USER_INFO_LENGTH]
+
+    //new len = format(menu,charsmax(menu),"[AMX] %s Gunspeed?^n", g_Speed ? "Disable" : "Enable")
+    new len = format(menu,charsmax(menu),"[AMX] Gunspeed?^n")
+
+    len += format(menu[len],charsmax(menu),"^n1. Yes")
+    len += format(menu[len],charsmax(menu),"^n2. No")
+
+    show_menu(0,keys,menu,10)
+    set_task(10.0,"vote_results",7845)
+    return PLUGIN_HANDLED
+}
+
+public voteGunspeed(player, key)
+    g_counter[key]++
+
+public vote_results()
+{
+    if(g_counter[0] > g_counter[1])
+    {
+        g_Speed =  0.01185
+        set_cvar_float("mp_gunspeed", 0.01185)
+        client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (no ^"%d^") %s is now %s", PLUGIN, VERSION, g_counter[0], g_counter[1], PLUGIN, g_Speed ? "enabled" : "disabled")
+    }
+    else if(g_counter[1] > g_counter[0])
+    {
+        g_Speed = 0.0 
+        set_cvar_float("mp_gunspeed",  0.0 )
+        client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (no ^"%d^") %s is now %s", PLUGIN, VERSION, g_counter[0], g_counter[1], PLUGIN, g_Speed ? "enabled" : "disabled")
+    }
+    else
+    {
+        client_print(0,print_chat,"[%s %s] Voting failed. No votes counted.", PLUGIN, VERSION)
+    }
+}
+
+public client_infochanged(player)
+{
+    bAccess[player] = get_user_flags(player) & ACCESS_LEVEL ? true : false
 }
 
 public plugin_end()
