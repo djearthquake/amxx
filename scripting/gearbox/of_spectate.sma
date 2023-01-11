@@ -37,7 +37,7 @@ new bool:bFirstPerson[MAX_PLAYERS + 1]
 new bool:g_bRenderApplied[MAX_PLAYERS + 1]
 new bool:g_bFlagMap
 new g_random_view[MAX_PLAYERS+1]
-new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ]
+new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ], g_cvar_nametag
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
 new Float:g_user_origin[MAX_PLAYERS + 1][3]
@@ -86,6 +86,7 @@ public plugin_init()
     //g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
 
     bind_pcvar_num( create_cvar("sv_spectate_spawn", "0", FCVAR_NONE, "OF SPEC",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 60.0),  g_startaspec )
+    bind_pcvar_num( create_cvar("mp_spectag", "1", FCVAR_NONE, "SPEC TAG",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar_nametag )
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
 
     register_forward(FM_PlayerPreThink, "client_prethink", 0);
@@ -107,12 +108,17 @@ public plugin_end()
         {
             set_user_info(id, "name", SzClientName[id])
         }
+        else
+        {
+            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+            set_user_info(id, "name", SzClientName[id])
+        }
     }
 }
 
 public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && g_cvar_nametag)
     {
         new reblah[MAX_RESOURCE_PATH_LENGTH]
         read_args(blah,charsmax(blah))
@@ -120,7 +126,7 @@ public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
     
         if(g_spectating[id])
         {
-            format(reblah, charsmax(reblah), "[Spectator]%s:%s", ClientName[id], blah)
+            format(reblah, charsmax(reblah), "[Spectator]%n: %s", id, blah)
             client_print 0, print_chat, "%s", reblah
             return PLUGIN_HANDLED
         }
@@ -527,7 +533,7 @@ public client_infochanged(id)
                 {
                     if(!g_bGunGameRunning)
                     {
-                        if(!g_bSpecNam[id])
+                        if(!g_bSpecNam[id] && g_cvar_nametag > 1)
                         {
                             if(containi(SzClientName[id], "[s]") == charsmin)
                             {
@@ -567,6 +573,11 @@ public client_infochanged(id)
                     {
                         if(containi(SzClientName[id], "[s]") == charsmin)
                         {
+                            set_user_info(id, "name", SzClientName[id])
+                        }
+                        else
+                        {
+                            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
                             set_user_info(id, "name", SzClientName[id])
                         }
                     }
