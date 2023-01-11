@@ -112,12 +112,14 @@ public plugin_end()
 
 public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
 {
-    read_args(blah,charsmax(blah))
     new reblah[MAX_RESOURCE_PATH_LENGTH]
+    read_args(blah,charsmax(blah))
+    remove_quotes(blah)
+
     if(g_spectating[id])
     {
         format(reblah, charsmax(reblah), "[spectator]:%s", blah)
-        client_print 0, print_chat, "%s", remove_quotes(reblah)
+        client_print 0, print_chat, "%s", reblah
         return PLUGIN_HANDLED
     }
     return PLUGIN_CONTINUE
