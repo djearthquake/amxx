@@ -28,6 +28,7 @@
 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
 
 #define OK if(is_user_connected(id)
+new maxplayers
 new bool:g_spectating[MAX_PLAYERS + 1]
 new bool:bDemo[MAX_PLAYERS +1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
@@ -46,6 +47,7 @@ new g_iViewtype[MAX_PLAYERS + 1]
 new g_startaspec
 new bool:g_bGunGameRunning
 new bool:g_bSpecNam[MAX_PLAYERS + 1]
+new SzSpecName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
 new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
 new Float:g_Velocity[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
@@ -91,6 +93,34 @@ public plugin_init()
     register_event("WeapPickup", "@strip_spec", "bef")
 
     RegisterHam(Ham_Spawn, "player", "@play", 1);
+    register_clcmd("say", "handle_say")
+    set_task_ex(11.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
+    maxplayers = get_maxplayers()
+}
+
+public plugin_end()
+{
+    for(new id = 1 ; id <= maxplayers ; ++id)
+    if(containi(SzSpecName[id], "[s]") != charsmin)
+    {
+        if(containi(SzClientName[id], "[s]") == charsmin)
+        {
+            set_user_info(id, "name", SzClientName[id])
+        }
+    }
+}
+
+public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
+{
+    read_args(blah,charsmax(blah))
+    new reblah[MAX_RESOURCE_PATH_LENGTH]
+    if(g_spectating[id])
+    {
+        format(reblah, charsmax(reblah), "[spectator]:%s", blah)
+        client_print 0, print_chat, "%s", remove_quotes(reblah)
+        return PLUGIN_HANDLED
+    }
+    return PLUGIN_CONTINUE
 }
 
 @strip_spec(id)
@@ -291,15 +321,8 @@ stock loss()
         new effects = pev(id, pev_effects)
         set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
         pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
-/*
-        if(g_bGunGameRunning)
-        {
-            fm_strip_user_weapons(id)
-        }
-*/
     }
 }
-
 
 public client_putinserver(id)
 OK && !is_user_bot(id))
@@ -318,13 +341,18 @@ OK && !is_user_bot(id))
         {
             set_task(g_startaspec*1.0,"@go_check",id)
         }
-        get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
-        if(containi(SzClientName[id], "[s]") > charsmin)
-        {
-            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
-            set_user_info(id, "name", SzClientName[id])
-        }
     }
+}
+
+public client_connectex(id, const name[], const ip[], reason[128])
+{
+    copy(SzClientName[id],charsmax(SzClientName[]), name)
+    if(containi(name, "[s]") > charsmin)
+    {
+        replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+        set_user_info(id, "name", SzClientName[id])
+    }
+    return PLUGIN_CONTINUE
 }
 
 @go_check(id)
@@ -482,7 +510,6 @@ public client_infochanged(id)
 
 @go_spec(id)
 {
-    new SzSpecName[MAX_NAME_LENGTH]
     OK)
     {
         if(!is_user_bot(id) || !is_user_hltv(id))
@@ -498,14 +525,14 @@ public client_infochanged(id)
                         {
                             if(containi(SzClientName[id], "[s]") == charsmin)
                             {
-                                format(SzSpecName, charsmax(SzSpecName), "[S]%s",SzClientName[id]);
-                                set_user_info(id, "name", SzSpecName)
+                                format(SzSpecName[id], charsmax(SzSpecName[]), "[S]%s",SzClientName[id]);
+                                set_user_info(id, "name", SzSpecName[id])
                                 g_bSpecNam[id] = true
                             }
                         }
                         g_spectating[id] = true
                         dllfunc(DLLFunc_SpectatorConnect, id)
-                        server_print "GOING TO SPEC"
+                        server_print "%s GOING TO SPEC", SzClientName[id]
 
                         if(!bAlready_shown_menu[id])
                             @menu(id)
@@ -532,9 +559,12 @@ public client_infochanged(id)
                 {
                     if(containi(SzSpecName[id], "[s]") != charsmin)
                     {
-                        set_user_info(id, "name", SzClientName[id])
+                        if(containi(SzClientName[id], "[s]") == charsmin)
+                        {
+                            set_user_info(id, "name", SzClientName[id])
+                        }
                     }
-                    server_print "EXITING SPEC"
+                    server_print "%s EXITING SPEC", SzClientName[id]
                     dllfunc(DLLFunc_ClientPutInServer, id)
                     dllfunc(DLLFunc_SpectatorDisconnect, id)
                     g_iViewtype[id]  = 0
