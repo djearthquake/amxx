@@ -17,7 +17,7 @@ new buffer[MAX_RESOURCE_PATH_LENGTH];
 public plugin_init()
 {
     register_plugin( "Glock Scope!", "1.0", "SPiNX" );
-    RegisterHam(Ham_Weapon_SendWeaponAnim, "weapon_9mmhandgun", "BlockAnimation")
+    ///RegisterHam(Ham_Weapon_SendWeaponAnim, "weapon_9mmhandgun", "BlockAnimation")
     register_forward(FM_PlayerPreThink, "client_prethink");
     register_clcmd ( "buy_scope", "buy_scope", 0, " - Glock scope." );
     RegisterHam(Ham_Killed, "player", "no_scope");
