@@ -9,6 +9,7 @@
 
 new bool:scope_owner[ MAX_PLAYERS + 1 ], bool:scoped[ MAX_PLAYERS + 1 ], bool:bZooming_in[ MAX_PLAYERS + 1 ], bool:bZooming_out[ MAX_PLAYERS + 1 ];
 new Float: gfFov[MAX_PLAYERS+1];
+new const SzBuyMsg[] = "Need to buy_scope!"
 new g_scope_zoomsound;
 new g_fscope_autotime;
 new g_Client
@@ -19,7 +20,7 @@ public plugin_init()
     register_plugin( "Glock Scope!", "1.0", "SPiNX" );
     ///RegisterHam(Ham_Weapon_SendWeaponAnim, "weapon_9mmhandgun", "BlockAnimation")
     register_forward(FM_PlayerPreThink, "client_prethink");
-    register_clcmd ( "buy_scope", "buy_scope", 0, " - Glock scope." );
+    register_clcmd ( "buy_scope", "buy_scope", 0, " - Glock scope. (right-click replace)" );
     RegisterHam(Ham_Killed, "player", "no_scope");
     RegisterHam(Ham_TakeDamage, "player", "@PostTakeDamage", 1);
     RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_glock", "_SecondaryAttack_Pre" , 0 );
@@ -43,33 +44,35 @@ public buy_scope(Client)
 
 public client_prethink( Client )
 {
-    if(is_user_connected(Client) && is_user_alive(Client) && scope_owner[Client])
-
-    if( scoped[ Client ])
+    if(is_user_connected(Client) && is_user_alive(Client))
+    if(scope_owner[Client])
     {
-        if( get_user_weapon( Client ) == HLW_GLOCK)
+        if( scoped[ Client ])
         {
-            gfFov[Client] = entity_get_float(Client, EV_FL_fov)
-
-            if(gfFov[Client] > 100.0)
+            if( get_user_weapon( Client ) == HLW_GLOCK)
             {
-                entity_set_float(Client, EV_FL_fov, gfFov[Client] - 0.1)
-            }
+                gfFov[Client] = entity_get_float(Client, EV_FL_fov)
 
-            if( pev(Client,pev_button) & IN_JUMP ||  pev(Client,pev_button) & IN_FORWARD )
+                if(gfFov[Client] > 100.0)
+                {
+                    entity_set_float(Client, EV_FL_fov, gfFov[Client] - 0.1)
+                }
+
+                if( pev(Client,pev_button) & IN_JUMP ||  pev(Client,pev_button) & IN_FORWARD )
+                {
+                    set_task(0.2,"@running", Client )
+                }
+
+                if (pev(Client,pev_button) & IN_RELOAD)
+                {
+                    set_task(0.3,"@regular", Client )
+                }
+
+            }
+            else
             {
-                set_task(0.2,"@running", Client )
+                @regular(Client)
             }
-
-            if (pev(Client,pev_button) & IN_RELOAD)
-            {
-                set_task(0.3,"@regular", Client )
-            }
-
-        }
-        else
-        {
-            @regular(Client)
         }
     }
 }
@@ -87,6 +90,10 @@ public _SecondaryAttack_Post(const gun)
     {
         @zoom(Client)
         return HAM_SUPERCEDE
+    }
+    else
+    {
+        client_print Client, print_center, SzBuyMsg
     }
     return HAM_SUPERCEDE
 }
@@ -112,7 +119,7 @@ public impulse_handler(Client)
             remove_task( Client );
             return HAM_SUPERCEDE
         }
-            
+
 
         gfFov[Client] = entity_get_float(Client, EV_FL_fov)
 
@@ -183,7 +190,7 @@ public impulse_handler(Client)
 @PostTakeDamage( Client )
 if( scoped[Client] )
     @running( Client )
-    
+
 public BlockAnimation(this, iAnim, skiplocal, body)
      return HAM_SUPERCEDE
 
