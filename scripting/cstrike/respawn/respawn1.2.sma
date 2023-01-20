@@ -98,7 +98,7 @@ g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1],
 
 //Floats
 Float:vec[3], Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3],
-Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3], 
+Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1];
@@ -123,7 +123,7 @@ public plugin_init()
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1");
-    g_keep = register_cvar("respawn_keep", "2")
+    g_keep = register_cvar("respawn_keep", "0")
     g_sound_reminder = register_cvar("respawn_sound", "1")
     g_stuck = register_cvar("respawn_unstick", "0.3");
     //Ham
