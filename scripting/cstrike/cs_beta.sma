@@ -42,7 +42,7 @@ new bool:movespeed
 public plugin_init(){
     register_message(get_user_msgid("HudText"),"hook_hudtext")
 /// register_event("CurWeapon","hook_curweapon","be","1=1","3>0")
-    register_event("CurWeapon","hook_curweapon","be","1=1")
+    register_event("CurWeapon","hook_curweapon","bef","1=1","1=3","1=5", "1=7","1=8","1=10","1=11","1=12", "1=13", "1=14", "1=15", "1=16", "1=17", "1=18", "1=19", "1=20", "1=21","1=22", "1=23", "1=24", "1=26", "1=27","1=28", "1=30" )
     register_plugin("Counter-Strike Beta","1,3","spinx") //continuation from cs13 by ts2do
     register_event("ResetHUD","ResetHUD","bc")
 
@@ -125,15 +125,14 @@ public hook_hudtext()
 public hook_curweapon(id) {
     if(get_cvar_num("no_punch"))
     {
-        entity_set_vector (id,EV_VEC_punchangle,Float:{0.0,0.0,0.0})
+        new Float:fPunch[3];
+        fPunch[0] = random_float(-0.1,0.1);
+        fPunch[1] = random_float(-0.1,0.1);
+        fPunch[2] = random_float(-0.1,0.1);
+        entity_set_vector (id,EV_VEC_punchangle,fPunch);
     }
-    //CurentWeapon(id);
 }
 
-public CurentWeapon(id)
-{
-
-}
 
 public ResetHUD()
 {
