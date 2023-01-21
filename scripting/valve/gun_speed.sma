@@ -16,21 +16,21 @@
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
 
-#define	CART_PARABELUM	356
-#define	SHOTGUN_SHELLS	355
-#define	CART_RIFLE	370
-#define	CART_MAG	358
-#define	CART_U	359
-#define	CART_BOLT	361
-#define	CART_SUB	367
+#define CART_PARABELUM  356
+#define SHOTGUN_SHELLS  355
+#define CART_RIFLE  370
+#define CART_MAG    358
+#define CART_U  359
+#define CART_BOLT   361
+#define CART_SUB    367
 
-#define	MAG_CONTENDER	1
-#define	MAG_CALIFORNIA	5
-#define	MAG_POKER	10
-#define	MAG_COP	16
-#define	MAG_DRUM	100
-#define	MAG_BOX	255
-#define	MAG_ARSEN	1000
+#define MAG_CONTENDER   1
+#define MAG_CALIFORNIA  5
+#define MAG_POKER   10
+#define MAG_COP 16
+#define MAG_DRUM    100
+#define MAG_BOX 255
+#define MAG_ARSEN   1000
 
 #define PLUGIN  "Gun Speed"
 #define VERSION "1.0.2"
@@ -136,8 +136,8 @@ public plugin_init()
 
     bind_pcvar_float(get_cvar_pointer("mp_gunspeed") ? get_cvar_pointer("mp_gunspeed") : register_cvar("mp_gunspeed", "0.0"), g_Speed)
     //RegisterHam(Ham_Spawn, "player", "@spawn", 1);
-    register_event_ex ( "ResetHUD" , "@spawn" , .flags=RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
-    register_event("CurWeapon", "event_active_weapon", "b")
+    register_event_ex ( "ResetHUD" , "@spawn", RegisterEvent_Single|RegisterEvent_OnlyAlive) //, RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
+    register_event("CurWeapon", "event_active_weapon", "be")
     RegisterHam(Ham_Killed, "player", "@death", 1);
     for( new map;map < sizeof SzAmmo;++map)
     {
@@ -148,8 +148,12 @@ public plugin_init()
 
 public event_active_weapon(player)
 {
-    cl_weapon[player] = read_data(2)
-    return PLUGIN_CONTINUE
+    if(is_user_connected(player))
+    {
+        cl_weapon[player] = read_data(2)
+        return PLUGIN_CONTINUE
+    }
+    return PLUGIN_HANDLED
 }
 
 @death(victim,killer)
@@ -159,7 +163,7 @@ public event_active_weapon(player)
 
 @spawn(player)
 {
-    if(is_user_connected(player) && g_Speed > 0.0 && bAccess[player])
+    if(is_user_connected(player) && g_Speed > 0.0 && bAccess[player] && !is_user_bot(player))
     {
         if(XhookPrimaryAPre)
             EnableHamForward(XhookPrimaryAPre)
@@ -172,7 +176,7 @@ public event_active_weapon(player)
 
         if(XhookReloadPost)
             EnableHamForward(XhookReloadPost)
-    
+
         server_print "%n spawned gunspeed ammo", player
         set_pdata_int( player, CART_PARABELUM, MAG_BOX )
         set_pdata_int( player, SHOTGUN_SHELLS, MAG_BOX )
@@ -199,17 +203,6 @@ public Weapon_PrimaryAttack_Pre ( const weapon )
         {
             return;
         }
-        //if recoil
-        new Float:cl_pushangle[MAX_PLAYERS + 1][3]
-        pev(player,pev_punchangle,cl_pushangle[player])
-
-        new Float:push[3]
-        pev(player,pev_punchangle,push)
-        xs_vec_sub(push,cl_pushangle[player],push)
-
-        xs_vec_mul_scalar(push,0.0,push)
-        xs_vec_add(push,cl_pushangle[player],push)
-        set_pev(player,pev_punchangle,push)
     }
     else
     {
@@ -225,12 +218,17 @@ public Weapon_PrimaryAttack_Post ( const weapon )
         //new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
-        switch(get_pcvar_num(pcvars[0]))
+        switch(get_pcvar_num(pcvars[0]) && is_user_connected(player) && is_user_alive(player) && !is_user_bot(player))
         {
             case 1:
             {
-                if(get_pcvar_float(pcvars[cl_weapon[player]]))
+                if(pcvars[cl_weapon[player]] && get_pcvar_float(pcvars[cl_weapon[player]]))
+                {
+                    server_print "%n | %i %f %s", player, cl_weapon[player], pcvars[cl_weapon[player]], PLUGIN
                     goto CHAOS
+                }
+                else
+                    return
             }
             case 2:
             {
@@ -355,7 +353,7 @@ public Weapon_Reload_Post ( const weapon )
         plugin_end()
 }
 
-public cmdVote(player,level,cid) 
+public cmdVote(player,level,cid)
 {
     if(!cmd_access(player,level,cid,1) || task_exists(7845)) return PLUGIN_HANDLED
 
@@ -389,7 +387,7 @@ public vote_results()
     }
     else if(g_counter[1] > g_counter[0])
     {
-        g_Speed = 0.0 
+        g_Speed = 0.0
         set_cvar_float("mp_gunspeed",  0.0 )
         client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (no ^"%d^") %s is now %s", PLUGIN, VERSION, g_counter[0], g_counter[1], PLUGIN, g_Speed ? "enabled" : "disabled")
     }
