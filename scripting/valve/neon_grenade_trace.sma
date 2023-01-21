@@ -118,8 +118,9 @@
     new g_cvar_bsod_iDelay;
     new g_iLoss,g_iPing;
     new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, g_tank_think, g_rocket_think;
-        
-public pligin_end()
+    new bool: bRADead[MAX_PLAYERS + 1], g_proximity
+
+public plugin_end()
 {
     unregister_think(g_bolt_think);
     unregister_think(g_hornet_think);
@@ -145,7 +146,8 @@ public plugin_init()
     register_touch(g_pickerton,"player","Other_Attack_Touch");
 
     g_debug = register_cvar("neon_debug", "0")
-
+    RegisterHam(Ham_Spawn, "weaponbox", "@NaN_weaponbox", 1)
+    RegisterHam(Ham_Spawn, "player", "@spawn", 1)
     ///register_touch("grenade","player","HandGrenade_Attack2_Touch") //engine method
     g_cvar_neon_all    = register_cvar("sv_neon_all",  "1");
     g_cvar_neon_hull   = register_cvar("sv_neon_hull", "1");
@@ -153,6 +155,7 @@ public plugin_init()
     g_cvar_neon_rad    = register_cvar("sv_neon_rad",  "1");
     g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
     g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
+    g_proximity             = register_cvar("sv_neon_range",  "500"); //max range
     g_teams            = !cstrike_running() ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
     clamp(g_cvar_neon_wid,1,150);
 
@@ -309,7 +312,7 @@ public CurentWeapon(id)
 
         new temp_ent1, temp_ent2, temp_ent3, temp_ent4, temp_ent5, temp_ent6, temp_ent7, temp_ent8;
         //Standard
-        temp_ent1 = find_ent(charsmin,"grenade"); 
+        temp_ent1 = find_ent(charsmin,"grenade");
         temp_ent2 = find_ent(charsmin,"ARgrenade");
 
         //Make hivehand into vorpal weapon.
@@ -387,7 +390,7 @@ public plugin_save(g_model)
 
 #if AMXX_VERSION_NUM == 110
 #endif
-#if AMXX_VERSION_NUM < 190
+#if AMXX_VERSION_NUM == 182
 stock set_ent_rendering(index, fx=kRenderFxNone, r=0, g=0, b=0, render=kRenderNormal, amount=16)
 {
     set_pev(index, pev_renderfx, fx);
@@ -418,7 +421,7 @@ public FnRainbowPG()
     g_model2 = find_ent_by_class(charsmin,g_pickerton);
     if(pev_valid(g_model2))
     {
-    set_task(random_float(0.1,0.4), "Trail_mePG", g_model2, "a", 50);
+    set_task(random_float(0.1,0.3), "Trail_mePG", g_model2, "a", 50);
     //set_task_ex(random_float(0.2,0.7), "Trail_mePG", g_model2, .flags = SetTask_RepeatTimes, .repeat = 3);
     }
 }
@@ -426,7 +429,7 @@ public FnRainbowPG()
 public glow(g_model)
     if(pev_valid(g_model))
 
-        set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
+        set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
 
 public Trail_mePG(g_model2)
 {
@@ -456,6 +459,7 @@ public HandGrenade_Attack2_Touch(ent, id)
         }
 
         new Float:End_Position[3];
+        g_model = ent
         if(pev_valid(g_model))
         {
             entity_get_vector(g_model,EV_VEC_origin,End_Position);
@@ -510,19 +514,19 @@ public HandGrenade_Attack2_Touch(ent, id)
             new playercount
 
             get_players(players,playercount,"h")
-            for (new m=0; m<playercount; m++)
+            //for (new m=0; m<playercount; m++)//was stable
+            for (new m=1; m <= playercount; ++m)//tst
             {
                 new hp = get_user_health(players[m])
                 new playerlocation[3]
                 if(is_user_alive(players[m]))
-                if(is_user_bot(players[m]) ||  !is_user_bot(players[m])) // && m > 0 && m < 32)
-
+                if(is_user_bot(players[m]) ||  !is_user_bot(players[m]) && m != nade_owner)
                 {
 
                     get_user_origin(players[m], playerlocation)
                     new resultdance = get_entity_distance(g_model, players[m]);
 
-                    if (resultdance < 175)
+                    if (resultdance < get_pcvar_num(g_proximity))
                     {
 
                         emessage_begin( CPU, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
@@ -606,6 +610,7 @@ public HandGrenade_Attack2_Touch(ent, id)
 
                             //if(killer > 0 && killer != players[m])
                             log_kill(killer,players[m],"Grenade Radiation",1);
+                            ///bRADead[players[m]] = true
                         }
                     }
                 }
@@ -617,86 +622,69 @@ public HandGrenade_Attack2_Touch(ent, id)
 
 public Other_Attack_Touch(ent, id)
 {
-    if(is_user_alive(id) && id > 0)
-    if(is_user_bot(id) || !is_user_bot(id)) // && m > 0 && m < 32)
-
+    new Float:Axis[3], Float:End_Position[3];
+    if(is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
     {
 
-        g_model = ent; new Float:Axis[3];
-        //Fn_etwork(id);
-        //if (g_iLoss > 1)
-        //    unregister_think(g_hornet_think);
         if(get_pcvar_num(g_cvar_neon_all))
-            //return PLUGIN_HANDLED_MAIN;
-        //else
         {
 
             ///Sound FX
             if(get_pcvar_num(g_cvar_neon_snd))
-                //if(pev_valid(ent) && is_user_alive(id))
             {
-                //if ( get_user_health(id) > 1.0 && get_user_health(id) < 9.0) //Save CPU/network graph turbulence
                 switch(random_num(0,5))
                 {
-                    case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0,        PITCH);
-                    case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0,        PITCH);
+                    case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0,PITCH);
+                    case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
                     case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                    case 3:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, 0,        PITCH);
+                    case 3:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, 0,PITCH);
                     case 4:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
                     case 5:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
                 }
             }
+            g_model = ent;
 
-            new Float:End_Position[3];
-            if(pev_valid(g_model))
+            entity_get_vector(g_model,EV_VEC_origin,End_Position);
+            entity_get_vector(g_model,EV_VEC_angles,Axis);
+
+
+            /*///explode models on explode or touch.
+            emessage_begin( CPU, SVC_TEMPENTITY, { 0, 0, 0}, 0); //players_who_see_effects() );
+            ewrite_byte(TE_EXPLODEMODEL);
+            ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)));      // XYZ (start)
+            ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)));
+            ewrite_coord(floatround(End_Position[2]+random_float(1.0,75.0)));
+            ewrite_coord(random_num(-350,400));       // velocity
+            switch(random_num(0,2))
             {
-                entity_get_vector(g_model,EV_VEC_origin,End_Position);
-                entity_get_vector(g_model,EV_VEC_angles,Axis);
+                case 0: ewrite_short(gibs_models0);
+                case 1: ewrite_short(gibs_models1);
+                case 2: ewrite_short(gibs_models2);
             }
-    /*
-            ///explode models on explode or touch.
-            if(pev_valid(g_model))
-            {
-                emessage_begin( CPU, SVC_TEMPENTITY, { 0, 0, 0}, 0); //players_who_see_effects() );
-                ewrite_byte(TE_EXPLODEMODEL);
-                ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)));      // XYZ (start)
-                ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)));
-                ewrite_coord(floatround(End_Position[2]+random_float(1.0,75.0)));
-                ewrite_coord(random_num(-350,400));       // velocity
-                switch(random_num(0,2))
-                {
-                    case 0: ewrite_short(gibs_models0);
-                    case 1: ewrite_short(gibs_models1);
-                    case 2: ewrite_short(gibs_models2);
-                }
-                ewrite_short(random_num(1,5));               //(count)
-                ewrite_byte(random_num(1,8));              //(life in 0.1's)
-                emessage_end();
-            }
-    */
-            //if(pev_valid(g_model))
-            {
-                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0}, 0); //players_who_see_effects() );
-                ewrite_byte(random_num(19,21));
-                ewrite_coord(floatround(End_Position[0]));
-                ewrite_coord(floatround(End_Position[1]));
-                ewrite_coord(floatround(End_Position[2]));
-                ewrite_coord(floatround(Axis[0]));
-                ewrite_coord(floatround(Axis[1]));
-                ewrite_coord(floatround(Axis[2]));
-                ewrite_short(g_ring);
-                ewrite_byte(100); //fr
-                ewrite_byte(255); // fr rate
-                ewrite_byte(random_num(1,3));  //life
-                ewrite_byte(random_num(8,80));  //width
-                ewrite_byte(random_num(0,50));   //amp
-                ewrite_byte(random_num(30,255));  //r
-                ewrite_byte(random_num(0,200));  //g
-                ewrite_byte(random_num(40,190)); //b
-                ewrite_byte(random_num(100,500)); //bright
-                ewrite_byte(0);
-                emessage_end();
-            }
+            ewrite_short(random_num(1,5));               //(count)
+            ewrite_byte(random_num(1,8));              //(life in 0.1's)
+            emessage_end();*/
+
+            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0}, 0); //players_who_see_effects() );
+            ewrite_byte(random_num(19,21));
+            ewrite_coord(floatround(End_Position[0]));
+            ewrite_coord(floatround(End_Position[1]));
+            ewrite_coord(floatround(End_Position[2]));
+            ewrite_coord(floatround(Axis[0]));
+            ewrite_coord(floatround(Axis[1]));
+            ewrite_coord(floatround(Axis[2]));
+            ewrite_short(g_ring);
+            ewrite_byte(100); //fr
+            ewrite_byte(255); // fr rate
+            ewrite_byte(random_num(1,3));  //life
+            ewrite_byte(random_num(8,80));  //width
+            ewrite_byte(random_num(0,50));   //amp
+            ewrite_byte(random_num(30,255));  //r
+            ewrite_byte(random_num(0,200));  //g
+            ewrite_byte(random_num(40,190)); //b
+            ewrite_byte(random_num(100,500)); //bright
+            ewrite_byte(0);
+            emessage_end();
 
             ///Actual damage
             new location[3];
@@ -709,33 +697,34 @@ public Other_Attack_Touch(ent, id)
             new playercount, resultdance;
 
             get_players(players,playercount,"h")
-
-            for (new m=0; m<playercount; ++m)
+            for (new m=1; m <= playercount; ++m)
+            //for (new m=0; m<playercount; m++)
             {
                 new playerlocation[3];
-                if(is_user_alive(players[m])) //uncomment for run-times. Multi kills in 1 sec happen on busy servers
-                get_user_origin(players[m], playerlocation);
-
-                if(pev_valid(g_model) && is_user_connected(players[m]) && is_user_bot(players[m]) || is_user_alive(players[m]) && !is_user_bot(players[m])) //is_user_connected(players[m]))
-                resultdance = get_entity_distance(g_model, players[m]);
-
-                if(resultdance < 150)
+                if(is_user_connected(players[m]) && is_user_alive(players[m]))
                 {
-                    fakedamage(players[m],"Sonic Radiation",1.0,DMG_SONIC);
-                    if(pev_valid(g_model))
+                    get_user_origin(players[m], playerlocation);
+                    resultdance = get_entity_distance(g_model, players[m]);
+
+                    if(resultdance < get_pcvar_num(g_proximity))
                     {
-                        emessage_begin( CPU, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() )
-                        ewrite_byte( TE_PLAYERSPRITES);
-                        ewrite_short(players[m])  //(playernum)
-                        switch(random_num(0,2))
+                        fakedamage(players[m],"Sonic Radiation",1.0,DMG_SONIC);
                         {
-                            case 0: ewrite_short(g_energy0);
-                            case 1: ewrite_short(g_energy1);
-                            case 2: ewrite_short(g_energy2);
+                            emessage_begin( CPU, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() )
+                            ewrite_byte( TE_PLAYERSPRITES);
+                            ewrite_short(players[m])  //(playernum)
+                            switch(random_num(0,2))
+                            {
+                                case 0: ewrite_short(g_energy0);
+                                case 1: ewrite_short(g_energy1);
+                                case 2: ewrite_short(g_energy2);
+                            }
+                            ewrite_byte(random_num(1,5));     //(count)
+                            ewrite_byte(random_num(5,15)); // (variance) (0 = no variance in size) (10 = 10% variance in size)
+                            emessage_end();
                         }
-                        ewrite_byte(random_num(1,5));     //(count)
-                        ewrite_byte(random_num(5,15)); // (variance) (0 = no variance in size) (10 = 10% variance in size)
-                        emessage_end();
+                        entity_explosion_knockback(players[m], End_Position);
+
                     }
 
                 }
@@ -745,9 +734,7 @@ public Other_Attack_Touch(ent, id)
         }
 
     }
-
     return PLUGIN_CONTINUE;
-
 }
 
 stock Fn_etwork(id) {get_user_ping(id, g_iPing, g_iLoss);return g_iLoss,g_iPing;}
@@ -842,6 +829,22 @@ public pin_scoreboard(killer)
     }
 
 }
+@NaN_weaponbox(rad_death)
+{
+    // per <dalek_black>" committed suicide with "Grenade Radiation" (world) Got a NaN velocity on weaponbox PM  Got a NaN velocity 0 1 2
+    new player = pev(rad_death, pev_owner)
+    if(bRADead[player] && pev_valid(rad_death))
+    {
+        //remove_entity(rad_death)
+        set_pev(rad_death, pev_avelocity, {0,0,0})
+    }
+
+}
+
+@spawn(id)
+{
+    bRADead[id] = false
+}
 
 stock players_who_see_effects()
 {
@@ -858,9 +861,9 @@ stock players_who_see_effects()
 
 #include <xs>
 public entity_explosion_knockback(victim, Float:fExpOrigin[3])
-//Natsheh was here!
+//Natsheh knockback stock. Something about never worked until I fed it floats.
 {
-    new Float:fExpShockwaveRadius=100.0, Float:fExpShockwavePower=20.0;
+    new Float:fExpShockwaveRadius=300.0, Float:fExpShockwavePower=75.0;
     new Float:fOrigin[3], Float:fDistVec[3];
     pev(victim, pev_origin, fOrigin);
 
@@ -871,11 +874,18 @@ public entity_explosion_knockback(victim, Float:fExpOrigin[3])
     if((g_fTemp=xs_vec_len(fDistVec)) <= fExpShockwaveRadius)
     {
         new Float:fPower = fExpShockwavePower * ( 1.0 - ( g_fTemp / floatmin(fExpShockwaveRadius, 1.0) ) ), Float:fVelo[3], Float:fKnockBackVelo[3];
-
         pev(victim, pev_velocity, fVelo);
         xs_vec_normalize(fDistVec, fKnockBackVelo);
         xs_vec_mul_scalar(fKnockBackVelo, fPower, fKnockBackVelo);
         xs_vec_add(fVelo, fKnockBackVelo, fVelo);
-        set_pev(victim, pev_velocity, fVelo);
+        //if(fVelo[0] && fVelo[1] && fVelo[2] )
+        {
+            set_pev(victim, pev_velocity, fVelo);
+            server_print "%n | %f %f %f | neon_push", victim, fVelo[0], fVelo[1], fVelo[2]
+        }
+        //else
+        {
+             //bRADead[victim] = true
+        }
     }
 }
