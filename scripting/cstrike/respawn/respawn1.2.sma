@@ -424,7 +424,10 @@ stock weapon_details(alive_bot)
 @give_weapons(dead_spec, alive_bot)
 {
     weapon_details(alive_bot)
-    cs_set_user_bpammo(dead_spec, wpnid, ammo)
+    if(wpnid != CSW_KNIFE)
+    {
+        cs_set_user_bpammo(dead_spec, wpnid, ammo)
+    }
     arm = get_user_armor(alive_bot);
     set_user_armor(dead_spec, arm);
 
