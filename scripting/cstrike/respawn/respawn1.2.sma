@@ -175,7 +175,7 @@ public CS_OnBuy(id, item)
 @PlayerSpawn(id)
 {
     if(is_user_connected(id) && !g_JustTook[id])
-        set_task(0.4,"@ReSpawn", id)
+        set_task(0.1,"@ReSpawn", id)
 }
 
 @ReSpawn(id)
