@@ -428,8 +428,6 @@ stock weapon_details(alive_bot)
     {
         cs_set_user_bpammo(dead_spec, wpnid, ammo)
     }
-    arm = get_user_armor(alive_bot);
-    set_user_armor(dead_spec, arm);
 
     client_print(dead_spec, print_chat, "%n took control of %n's %s. %i in mag, %i bullets total and %i armor.", dead_spec, alive_bot, SzWeaponClassname, magazine, ammo, arm);
 
@@ -484,6 +482,8 @@ stock weapon_details(alive_bot)
             client_print dead_spec, print_chat,  SzWeaponClassname
         }
     }
+    arm = get_user_armor(alive_bot);
+    set_user_armor(dead_spec, arm);
 }
 
 public stuck_timer(dead_spec)
