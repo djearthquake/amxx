@@ -38,7 +38,10 @@ enum _:Safe_Mode
     SzPlugin6[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin7[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin8[ MAX_RESOURCE_PATH_LENGTH ],
-    SzPlugin9[ MAX_RESOURCE_PATH_LENGTH ]
+    SzPlugin9[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin10[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin11[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin12[ MAX_RESOURCE_PATH_LENGTH ]
 }
 new Data[ Safe_Mode ]
 
@@ -246,12 +249,16 @@ public ReadSafeModeFromFile( )
             Data[ SzPlugin6 ], charsmax( Data[SzPlugin6] ),
             Data[ SzPlugin7 ], charsmax( Data[SzPlugin7] ),
             Data[ SzPlugin8 ], charsmax( Data[SzPlugin8] ),
-            Data[ SzPlugin9 ], charsmax( Data[SzPlugin9] )
+            Data[ SzPlugin9 ], charsmax( Data[SzPlugin9] ),
+            Data[ SzPlugin10 ], charsmax( Data[SzPlugin10] ),
+            Data[ SzPlugin11 ], charsmax( Data[SzPlugin11] ),
+            Data[ SzPlugin12 ], charsmax( Data[SzPlugin12] )
         )
 
         if(debugger)
-            server_print "Read %s^n%s^n%s^n%s^n%s^n%s^n%s,%i^n^nfrom file",Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ], Data[ SzPlugin5 ], Data[ SzPlugin6 ], Data[ SzPlugin7 ]
+            server_print "Read %s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s,%i^n^nfrom file",Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ], Data[ SzPlugin5 ], Data[ SzPlugin6 ], Data[ SzPlugin7 ], Data[ SzPlugin8 ], Data[ SzPlugin9 ], Data[ SzPlugin10 ], Data[ SzPlugin11 ], Data[ SzPlugin12 ]
         Data[ SzPlugin0 ] = PLUGIN
+
         TrieSetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data )
 
     }
@@ -342,9 +349,12 @@ public ReadSafeModeFromFile( )
         write_file(g_szFilePath, Data[ SzPlugin7 ])
         write_file(g_szFilePath, Data[ SzPlugin8 ])
         write_file(g_szFilePath, Data[ SzPlugin9 ])
+        write_file(g_szFilePath, Data[ SzPlugin10])
+        write_file(g_szFilePath, Data[ SzPlugin11])
+        write_file(g_szFilePath, Data[ SzPlugin12])
 
 
-        client_print 0,print_chat, "reloading %s", Data[ SzMaps ]
+        client_print 0, print_chat, "reloading %s^nplugins:^n%s", Data[ SzMaps ], Data[ SzPlugin1 ]
         server_print"reloading %s", Data[ SzMaps ]
 
         set_task(20.0,"@reload_map",2021,mname,charsmax(mname))
