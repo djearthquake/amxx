@@ -12,14 +12,13 @@
 #define iCOLOR random_num(1,255)
 #define JEEP 7594
 
-new const prefix[] = { "!g[!tShop!g]!n" }
+new const prefix[] = { "!g[!tGarage!g]!n" }
 
-new iArmor[MAX_PLAYERS +1], g_mod_car[MAX_PLAYERS + 1], 
-g_owned_car[MAX_PLAYERS][4], iMaxplayers,
-bool:bSet[MAX_PLAYERS + 1], bool:bRegisteredCar[MAX_PLAYERS + 1]
+new iArmor[MAX_PLAYERS +1], g_mod_car[MAX_PLAYERS + 1],
+g_owned_car[MAX_PLAYERS][4], iMaxplayers, g_price_fuel,
+bool:bSet[MAX_PLAYERS + 1], bool:bRegisteredCar[MAX_PLAYERS + 1], iVehicular[MAX_PLAYERS + 1]
 
 new const CARS[]= "func_vehicle"
-
 new m_acceleration, m_speed,m_flVolume;
 
 //Stages
@@ -33,28 +32,30 @@ new m_acceleration, m_speed,m_flVolume;
 #define BLOWER1 9
 #define BLOWER2 11
 #define BLOWER3 15
-new g_hotroded, g_iNitrous, g_sprite
+new g_hotroded, g_kills, g_iNitrous, g_sprite
 
 const LINUX_DIFF = 5;
 const LINUX_OFFSET_WEAPONS = 4;
 public plugin_precache(){g_sprite = precache_model("sprites/smoke.spr");}
 public plugin_init()
 {
-    register_plugin("Jeep Nitrous", "1.5", ".sρiηX҉.");
+    register_plugin("Jeep Nitrous", "1.6", ".sρiηX҉.");
 
     if(!find_ent(charsmin, CARS))
     {
         pause "d"
     }
-    
+
     register_touch("player","func_vehicle","fn_shield_proximity2")
 
-    register_clcmd("say /nos", "@nos", 0, "- say /nos for Car Mods!" , 0) 
+    register_clcmd("say /nos", "@nos", 0, "- say /nos for Car Mods!" , 0)
     register_clcmd("say_team /nos", "@nos")
 
     iMaxplayers = get_maxplayers()
+    register_event("ScoreInfo", "plugin_log", "bc", "1=committed suicide with", "2=vehicle");
     register_logevent("round_start", 2, "1=Round_Start")
-    g_iNitrous = register_cvar("jeep_nitrous", "7")
+    g_iNitrous = register_cvar("jeep_nitrous", "1")
+    bind_pcvar_num(get_cvar_pointer("jeep_fuel") ? get_cvar_pointer("jeep_fuel") : register_cvar("jeep_fuel", "15"), g_price_fuel)
     m_acceleration = (find_ent_data_info("CFuncVehicle", "m_acceleration")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
     m_flVolume = (find_ent_data_info("CFuncVehicle", "m_flVolume") /LINUX_OFFSET_WEAPONS) - LINUX_DIFF
@@ -69,11 +70,45 @@ public pfn_touch(ptr, ptd)
             new iPlayer = ptr
             if(is_driving(iPlayer))
             {
-                g_mod_car[iPlayer] = ptd 
+                g_mod_car[iPlayer] = ptd
+                set_pev(g_mod_car[iPlayer], pev_owner, iPlayer + 50)
                 bSet[iPlayer] = true
             }
         }
     }
+}
+
+public plugin_log()
+{
+    new victim = get_loguser_index()
+    new szDummy[ 32 ];
+
+    read_logargv(2,szDummy, charsmax(szDummy))
+    if(containi(szDummy, "vehicle") != -1)
+    {
+        new iOwner = pev(iVehicular[victim], pev_owner) - 50
+        if(is_user_connected(iOwner))
+        {
+            client_print iOwner, print_chat, "%n ran down %n!", iOwner, victim
+            if(get_user_team(iOwner) != get_user_team(victim))
+            {
+                set_user_frags(iOwner, get_user_frags(iOwner) +1)
+                cs_set_user_money(iOwner, cs_get_user_money(iOwner)  + 1500)
+            }
+            else
+            {   
+                set_user_frags(iOwner, get_user_frags(iOwner) -2)
+                cs_set_user_money(iOwner, cs_get_user_money(iOwner)  -  2500)
+            }
+        }
+        g_kills++
+    }
+}
+stock get_loguser_index() {
+new loguser[80], name[32]
+read_logargv(0, loguser, 79)
+parse_loguser(loguser, name, 31)
+return get_user_index(name);
 }
 
 public round_start()
@@ -107,16 +142,21 @@ public round_start()
         client_print 0, print_chat, "%i car mods made!", g_hotroded
         g_hotroded = 0
     }
+    if(g_kills)
+    {
+        client_print 0, print_chat, "%i car kills last round...", g_kills
+        g_kills = 0
+    }
 }
 
 public driving_think()
-{ 
+{
     new iCar = get_pcvar_num(g_iNitrous)
     if(g_iNitrous && !iCar && task_exists(JEEP))
     {
         remove_task(JEEP)
     }
-    
+
     for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
     {
         ///if(bRegisteredCar[iPlayer])
@@ -124,28 +164,41 @@ public driving_think()
             if(is_user_connected(iPlayer) && g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
             {
                 new iRColor1 = random(255), iRColor2 = random(255), iRColor3 = random(255)
-    
+
                 iArmor[iPlayer] = get_user_armor(iPlayer);
-    
-                if(is_driving(iPlayer) && iArmor[iPlayer] < 200.0)
+                if(is_driving(iPlayer))
                 {
-                    //set_pev(iPlayer, pev_armortype, 2)
-                    entity_set_float(iPlayer, EV_FL_armorvalue, float(iArmor[iPlayer])+1.0);
-                    if(is_user_alive(iPlayer))
+                    new tmp_money = cs_get_user_money(iPlayer)
+                    if(tmp_money > g_price_fuel)
                     {
-                        set_ent_rendering(iPlayer, kRenderFxGlowShell, iRColor1, iRColor2, iRColor3, kRenderGlow, 5);
-                        if(g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
+                        if(iArmor[iPlayer] < 200.0)
                         {
-                            set_ent_rendering(g_mod_car[iPlayer], kRenderFxNone, iRColor1, iRColor2, iRColor3, kRenderTransColor, 75);
-                            if(is_user_admin(iPlayer))
+                            //set_pev(iPlayer, pev_armortype, 2)
+                            entity_set_float(iPlayer, EV_FL_armorvalue, float(iArmor[iPlayer])+1.0);
+                            if(is_user_alive(iPlayer))
                             {
-                                new Accel = get_pdata_int(g_mod_car[iPlayer], m_acceleration, LINUX_DIFF);
-                                new fSpeed = get_pdata_int(g_mod_car[iPlayer], m_speed, LINUX_DIFF);
-                                new Float:fVol = get_pdata_float(g_mod_car[iPlayer], m_flVolume, LINUX_DIFF);
+                                set_ent_rendering(iPlayer, kRenderFxGlowShell, iRColor1, iRColor2, iRColor3, kRenderGlow, 5);
+                                if(g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
+                                {
+                                    set_ent_rendering(g_mod_car[iPlayer], kRenderFxNone, iRColor1, iRColor2, iRColor3, kRenderTransColor, 75);
+                                    if(is_user_admin(iPlayer))
+                                    {
+                                        new Accel = get_pdata_int(g_mod_car[iPlayer], m_acceleration, LINUX_DIFF);
+                                        new fSpeed = get_pdata_int(g_mod_car[iPlayer], m_speed, LINUX_DIFF);
+                                        new Float:fVol = get_pdata_float(g_mod_car[iPlayer], m_flVolume, LINUX_DIFF);
         
-                                client_print iPlayer, print_center, "%f|%i|%f", fSpeed, Accel, fVol //max
+                                        client_print iPlayer, print_center, "%f|%i|%f", fSpeed, Accel, fVol //max
+                                    }
+                                }
                             }
                         }
+                        cs_set_user_money(iPlayer, tmp_money - g_price_fuel)
+                    }
+                    else
+                    {
+                        set_pdata_float(g_mod_car[iPlayer], m_speed, IDLE_SPEED, LINUX_DIFF);
+                        //client_printc(iPlayer, "%s You !gare !n!tlow !non !gfuel!n!", prefix);
+                        client_print iPlayer, print_center, "LOW ON FUEL!"
                     }
                 }
                 else if(!is_driving(iPlayer) && iArmor[iPlayer] > 100.0)
@@ -175,19 +228,18 @@ stock is_driving(iPlayer)
 @Nitrous(id)
 {
     if(is_user_connecting(id) ||  is_user_bot(id))return;
-    if( is_user_connected(id))
+    if(is_user_connected(id))
     {
-        new Float:xTex 
+        new Float:xTex
         xTex = -1.0
-        new Float:yTex 
+        new Float:yTex
         yTex = -1.0
         new Float:fadeInTime = 0.5;
         new Float:fadeOutTime = 1.5;
         new Float:holdTime = 1.5;
         new Float:scanTime = 1.7;
         new effect = 2;
-    
-        ///message_begin(MSG_BROADCAST,SVC_TEMPENTITY);
+
         message_begin ( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, id )
         write_byte(TE_TEXTMESSAGE);
         write_byte(0);      //(channel)
@@ -205,7 +257,7 @@ stock is_driving(iPlayer)
         write_short(FixedUnsigned16(fadeInTime,1<<8));
         write_short(FixedUnsigned16(fadeOutTime,1<<8));
         write_short(FixedUnsigned16(holdTime,1<<8));
-        if (effect == 2) 
+        if (effect == 2)
             write_short(FixedUnsigned16(scanTime,1<<8));
         //[optional] write_short(fxtime) time the highlight lags behing the leading text in effect 2
         write_string("Nitrous  ☄☄☄  shot..."); //(text message) 512 chars max string size
@@ -215,10 +267,9 @@ stock is_driving(iPlayer)
 
 public fn_shield_proximity2(iPlayer,iCar)
 {
-    //car1 = find_ent(-1, CARS);
-    //car2 = find_ent(car1, CARS);
     if(is_user_connected(iPlayer) && is_user_bot(iPlayer))
     {
+        iVehicular[iPlayer] = iCar
         message_begin(0,23);
         write_byte(TE_BEAMRING)
         write_short(iPlayer)
@@ -226,13 +277,13 @@ public fn_shield_proximity2(iPlayer,iCar)
         write_short(g_sprite)
         write_byte(10)  //starting frame
         write_byte(1) //rate
-        write_byte(random_num(1,60)) //life
-        write_byte(random_num(5,500)) //width
-        write_byte(random_num(1,10000)) //amp
+        write_byte(random_num(1,6)) //life
+        write_byte(random_num(5,50)) //width
+        write_byte(random_num(1,100)) //amp
         write_byte(iCOLOR)  //Red
         write_byte(iCOLOR) //Green
         write_byte(iCOLOR) //blue
-        write_byte(random_num(5,15)) //bright
+        write_byte(random_num(1,5)) //bright
         write_byte(1) //speed
         message_end();
     }
@@ -266,156 +317,156 @@ stock FixedUnsigned16( Float:value, scale )
     return  Output;
 }
 
-public @nos(id) 
-{ 
-    if(!is_user_alive(id)) 
-    { 
-        client_printc(id, "%s You !gmust !nbe !talive !nto !topen !nthe !gGarage!n!", prefix); 
-        return PLUGIN_HANDLED 
-    } 
-    @The_garage(id); 
-    return PLUGIN_HANDLED; 
-} 
-
-@The_garage(id) 
+public @nos(id)
 {
-    if(!is_user_alive(id)) 
-    { 
-        client_printc(id, "%s You !gmust !nbe !talive !nto !topen !nthe !gGarage!n!", prefix); 
-        return PLUGIN_HANDLED 
+    if(!is_user_alive(id))
+    {
+        client_printc(id, "%s You !gmust !nbe !talive !nto !topen !nthe !gGarage!n!", prefix);
+        return PLUGIN_HANDLED
+    }
+    @The_garage(id);
+    return PLUGIN_HANDLED;
+}
+
+@The_garage(id)
+{
+    if(!is_user_alive(id))
+    {
+        client_printc(id, "%s You !gmust !nbe !talive !nto !topen !nthe !gGarage!n!", prefix);
+        return PLUGIN_HANDLED
     }
     if(!is_driving(id) || !g_mod_car[id])
     {
         client_printc(id, "%s You !gmust !n !town !ncar !tor !nbe !gdriving!n!", prefix);
         return PLUGIN_HANDLED
     }
-    new menu = menu_create("The Car Garage", "shop_cars"); 
-    
-    menu_additem(menu, "Blower   [$500] ", "1", 0); 
-    menu_additem(menu, "Gears     [$500] ", "2", 0); 
-    menu_additem(menu, "Muffler  [$500] ", "3", 0); 
-    menu_additem(menu, "Nitrous  [$500] ", "4", 0); 
-    menu_additem(menu, "Turbo     [$500] ", "5", 0); 
-    
-    menu_setprop(menu, MPROP_EXIT, MEXIT_ALL); 
-    menu_display(id, menu, 0); 
-    
-    return PLUGIN_HANDLED 
-} 
+    new menu = menu_create("The Car Garage", "shop_cars");
 
-public shop_cars(id, menu, item) 
-{ 
-    if(!is_user_alive(id)) 
-    { 
-        client_printc(id, "%s You !gmust !nbe !talive !nto !topen !nthe !gShop!n!", prefix); 
-        return PLUGIN_HANDLED 
-    } 
-    
-    if(item == MENU_EXIT) 
-    { 
-        menu_destroy(menu); 
-        return PLUGIN_HANDLED; 
-    } 
-    
-    new data[6], iName[64]; 
-    new access, callback; 
-    menu_item_getinfo(menu, item, access, data,5, iName, 63, callback); 
-    
-    new key = str_to_num(data); 
+    menu_additem(menu, "Blower   [$1000] ", "1", 0);
+    menu_additem(menu, "Gears     [$2500] ", "2", 0);
+    menu_additem(menu, "Muffler  [$1500] ", "3", 0);
+    menu_additem(menu, "Nitrous  [$1500] ", "4", 0);
+    menu_additem(menu, "Turbo     [$500] ", "5", 0);
+
+    menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
+    menu_display(id, menu, 0);
+
+    return PLUGIN_HANDLED
+}
+
+public shop_cars(id, menu, item)
+{
+    if(!is_user_alive(id))
+    {
+        client_printc(id, "%s You !gmust !nbe !talive !nto !topen !nthe !gGarage!n!", prefix);
+        return PLUGIN_HANDLED
+    }
+
+    if(item == MENU_EXIT)
+    {
+        menu_destroy(menu);
+        return PLUGIN_HANDLED;
+    }
+
+    new data[6], iName[64];
+    new access, callback;
+    menu_item_getinfo(menu, item, access, data,5, iName, 63, callback);
+
+    new key = str_to_num(data);
     new tmp_money = cs_get_user_money(id)
-    
-    switch(key) 
-    { 
-        case 1: 
-        { 
-            if(tmp_money < 500)
+
+    switch(key)
+    {
+        case 1:
+        {
+            if(tmp_money < 1000)
             {
-                client_printc(id, "%s You dont have enough !gMoney!", prefix); 
+                client_printc(id, "%s You dont have enough !gMoney!", prefix);
                 return PLUGIN_HANDLED;
             }
-            cs_set_user_money(id, tmp_money - 500) 
+            cs_set_user_money(id, tmp_money - 1000)
             set_pdata_int(g_mod_car[id], m_acceleration, BLOWER2, LINUX_DIFF);
+            set_pdata_float(g_mod_car[id], m_speed, FAST_SPEED, LINUX_DIFF);
             client_printc(id, "%s You bought !gBlower", prefix);
             g_hotroded++
-        } 
-        case 2: 
-        { 
-            if(tmp_money < 500)
+        }
+        case 2:
+        {
+            if(tmp_money < 2500)
             {
-                client_printc(id, "%s You dont have enough !gMoney!", prefix); 
+                client_printc(id, "%s You dont have enough !gMoney!", prefix);
                 return PLUGIN_HANDLED;
             }
-            cs_set_user_money(id, tmp_money - 500) 
+            cs_set_user_money(id, tmp_money - 2500)
             set_pdata_float(g_mod_car[id], m_speed, DRAG_SPEED, LINUX_DIFF);
             client_printc(id, "%s You bought !gGears!", prefix);
             g_hotroded++
-        } 
-        case 3: 
-        { 
-            if(tmp_money < 500)
+        }
+        case 3:
+        {
+            if(tmp_money < 1500)
             {
-                client_printc(id, "%s You dont have enough !gMoney!", prefix); 
+                client_printc(id, "%s You dont have enough !gMoney!", prefix);
                 return PLUGIN_HANDLED;
             }
             set_pdata_float(g_mod_car[id], m_flVolume, 0.0, LINUX_DIFF);
-            cs_set_user_money(id, tmp_money - 500) 
+            cs_set_user_money(id, tmp_money - 1500)
             client_printc(id, "%s You bought !gMuffler!", prefix);
             g_hotroded++
-        } 
-        case 4: 
-        { 
-            
-            if(tmp_money < 500)
+        }
+        case 4:
+        {
+            if(tmp_money < 1500)
             {
-                client_printc(id, "%s You dont have enough !gMoney!", prefix); 
+                client_printc(id, "%s You dont have enough !gMoney!", prefix);
                 return PLUGIN_HANDLED;
             }
-
-            cs_set_user_money(id, tmp_money - 500)
+            cs_set_user_money(id, tmp_money - 1500)
             set_pdata_int(g_mod_car[id], m_acceleration, BLOWER3, LINUX_DIFF); //make temp
+            set_pdata_float(g_mod_car[id], m_speed, REALFAST_SPEED, LINUX_DIFF);
             client_printc(id, "%s You bought !gNitrous!", prefix);
             g_hotroded++
-        } 
-        case 5: 
-        {  
+        }
+        case 5:
+        {
             if(tmp_money < 500)
             {
-                client_printc(id, "%s You dont have enough !gMoney!", prefix); 
+                client_printc(id, "%s You dont have enough !gMoney!", prefix);
                 return PLUGIN_HANDLED;
             }
             set_pdata_int(g_mod_car[id], m_acceleration, BLOWER1, LINUX_DIFF);
-            cs_set_user_money(id, tmp_money - 500) 
+            cs_set_user_money(id, tmp_money - 500)
             client_printc(id, "%s You bought !gTurbo!", prefix);
             g_hotroded++
-        }     
-    } 
-    
-    menu_destroy(menu); 
-    return PLUGIN_HANDLED; 
-} 
+        }
+    }
 
-stock client_printc(const id, const input[], any:...) 
-{ 
-    new count = 1, players[32]; 
-    static msg[191]; 
-    vformat(msg, 190, input, 3); 
-    
-    replace_all(msg, 190, "!g", "^x04"); // Green Color 
-    replace_all(msg, 190, "!n", "^x01"); // Default Color 
-    replace_all(msg, 190, "!t", "^x03"); // Team Color 
-    
-    if(id) 
-        players[0] = id; 
-    else 
-        get_players(players, count, "ch"); 
-    
-    for (new i = 0; i < count; i++) 
-    { 
-        message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("SayText"), _, players[i]); 
-        write_byte(players[i]); 
-        write_string(msg); 
-        message_end(); 
-    } 
+    menu_destroy(menu);
+    return PLUGIN_HANDLED;
+}
+
+stock client_printc(const id, const input[], any:...)
+{
+    new count = 1, players[32];
+    static msg[191];
+    vformat(msg, 190, input, 3);
+
+    replace_all(msg, 190, "!g", "^x04"); // Green Color
+    replace_all(msg, 190, "!n", "^x01"); // Default Color
+    replace_all(msg, 190, "!t", "^x03"); // Team Color
+
+    if(id)
+        players[0] = id;
+    else
+        get_players(players, count, "ch");
+
+    for (new i = 0; i < count; i++)
+    {
+        message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("SayText"), _, players[i]);
+        write_byte(players[i]);
+        write_string(msg);
+        message_end();
+    }
 }
 
 /*
