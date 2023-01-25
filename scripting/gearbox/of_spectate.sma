@@ -214,7 +214,7 @@ public client_prethink( id )
                     new iTarget = g_random_view[id]
                     if(is_user_connected(iTarget)) //needs checked here as index was made up!
                     {
-                        attach_view(id, iTarget);
+                        //attach_view(id, iTarget); 
                         set_view(id, CAMERA_NONE)
                         entity_set_float(id, EV_FL_fov, 100.0)
 
@@ -309,6 +309,7 @@ stock loss()
             set_user_info(id, "name", SzClientName[id])
             g_bSpecNam[id] = false
         }
+        set_view(id, CAMERA_NONE)
     }
 }
 
