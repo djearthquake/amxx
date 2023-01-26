@@ -28,9 +28,9 @@
 #define HURT            // Uses the OUTCOMES section, if defined.
 #define MODEL           // make entity appear in middle of map to entertain
 
-new g_oldangles[33][3]
-new g_arktime[33]
-new bool:g_spawned[33] = {true, ...}
+new g_oldangles[MAX_PLAYERS + 1][3]
+new g_arktime[MAX_PLAYERS + 1]
+new bool:g_spawned[MAX_PLAYERS + 1] = {true, ...}
 new g_Money, g_Funny
 
 #if defined(MODEL)
@@ -65,7 +65,7 @@ public plugin_init() {
 
 public checkPlayers() {
     for (new i = 1; i <= get_maxplayers(); i++) {
-            if (is_user_connected(i) && is_user_connected(i) && g_spawned[i]) {
+            if (is_user_connected(i) && is_user_alive(i) && g_spawned[i]) {
 
             new newangle[3]
             get_user_origin(i, newangle)
@@ -118,13 +118,13 @@ check_arktime(id)
             //AFK OUTCOMES//
             ///////////////
             //get name and ID of player
-            new name[32]
+            new name[MAX_PLAYERS]
             get_user_name(id, name, 31)
-            new Authid[32]
+            new Authid[MAX_PLAYERS]
             get_user_authid( id, Authid, 31)
         
             #if defined(HURT)
-            switch(random_num(0,24))
+            switch(random(25))
             {
                 case 0: user_slap(id, 5, 0)
                 case 1: user_slap(id, 2, 1)
@@ -154,18 +154,16 @@ check_arktime(id)
             #endif
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////makes a sign around campers head///////////////////////////////////////////////////////////////
-            // message_begin(2,23) //works fine       message_begin( MSG_ONE, SVC_TEMPENTITY, { 0, 0, 0 }, id )
-            message_begin(2,23, { 500, 0, 255 }, id ) // 0 0 255 going for blue background to make better use of my sprites in amxx
-            write_byte(121)
+            message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0 }, id )
+            write_byte(TE_PLAYERSPRITES)
             write_short(id)  //(playernum)
             write_short(g_Money)  //(sprite modelindex)
             write_byte(7)     //(count)
             write_byte(75) // (variance) (0 = no variance in size) (10 = 10% variance in size)
-            //#define TE_PLAYERSPRITES            121
             message_end()
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
-            message_begin(0,23)
+            message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0 }, 0)
             write_byte(19)  //(TE_BEAMTORUS)
             write_coord(floatround(bOrigin[0]+random_num(-11,11)));  //pos x
             write_coord(floatround(bOrigin[1]-random_num(-11,11)));
@@ -191,8 +189,8 @@ check_arktime(id)
             *
             */
             #if defined(MODEL)
-            message_begin(0,23)
-            write_byte(106)
+            message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0 }, 0)
+            write_byte(TE_MODEL)
             write_coord(floatround(sOrigin[0]/150))                      // XYZ (start)
             write_coord(floatround(sOrigin[1]*3))  //was flat no pluses anything  100 75 300
             write_coord(floatround(sOrigin[2]*15))
