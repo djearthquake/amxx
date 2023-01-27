@@ -94,8 +94,10 @@
     #pragma dynamic 32768
 
     #define charsmin                  -1
-
-    ///MSG_PVS is 4 ...0med 2hi 4lo (PVS EFFECTS BOTS, BLINDS THEM; USE IT)
+    
+    #if !defined set_ent_rendering
+    #define set_ent_rendering set_rendering
+    #endif 
 
     new g_teams;
 
@@ -387,22 +389,6 @@ public plugin_save(g_model)
         }
     return PLUGIN_CONTINUE;
 }
-
-#if AMXX_VERSION_NUM == 110
-#endif
-#if AMXX_VERSION_NUM == 182
-stock set_ent_rendering(index, fx=kRenderFxNone, r=0, g=0, b=0, render=kRenderNormal, amount=16)
-{
-    set_pev(index, pev_renderfx, fx);
-    new Float:RenderColor[3];
-    RenderColor[0] = float(r);
-    RenderColor[1] = float(g);
-    RenderColor[2] = float(b);
-    set_pev(index, pev_rendercolor, RenderColor);
-    set_pev(index, pev_rendermode, render);
-    set_pev(index, pev_renderamt, float(amount));
-}
-#endif
 
 public FnRainbows()
 {
