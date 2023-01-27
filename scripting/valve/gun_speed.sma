@@ -10,7 +10,7 @@
 #define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG //ADMIN_LEVEL_A
 #define VOTE_ACCESS     ADMIN_ALL
 
-#define NO_RECOIL_WEAPONS_BITSUM  (1<<1 | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_PENGUIN )
+#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE| 1<<HLW_CROWBAR| 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_PENGUIN )
 
 
 const LINUX_OFFSET_WEAPONS = 4;
@@ -150,8 +150,9 @@ public event_active_weapon(player)
 {
     if(is_user_connected(player))
     {
-        cl_weapon[player] = read_data(2)
-        return PLUGIN_CONTINUE
+        cl_weapon[player] = read_data(2);
+        if(cl_weapon[player] > 0)
+            return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
 }
@@ -177,7 +178,7 @@ public event_active_weapon(player)
         if(XhookReloadPost)
             EnableHamForward(XhookReloadPost)
 
-        server_print "%n spawned gunspeed ammo", player
+        ///server_print "%n spawned gunspeed ammo", player
         set_pdata_int( player, CART_PARABELUM, MAG_BOX )
         set_pdata_int( player, SHOTGUN_SHELLS, MAG_BOX )
         set_pdata_int( player, CART_RIFLE, MAG_DRUM )
@@ -224,7 +225,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
             {
                 if(pcvars[cl_weapon[player]] && get_pcvar_float(pcvars[cl_weapon[player]]))
                 {
-                    server_print "%n | %i %f %s", player, cl_weapon[player], pcvars[cl_weapon[player]], PLUGIN
+                    ///server_print "%n | %i %f %s", player, cl_weapon[player], pcvars[cl_weapon[player]], PLUGIN //debug there was a 0 or something being thrown on line 226
                     goto CHAOS
                 }
                 else
