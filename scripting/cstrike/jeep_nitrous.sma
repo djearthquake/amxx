@@ -80,12 +80,11 @@ public pfn_touch(ptr, ptd)
 
 public plugin_log()
 {
-    new victim = get_loguser_index()
     new szDummy[ 32 ];
-
     read_logargv(2,szDummy, charsmax(szDummy))
     if(containi(szDummy, "vehicle") != -1)
     {
+        new victim = get_loguser_index()
         new iOwner = pev(iVehicular[victim], pev_owner) - 50
         if(is_user_connected(iOwner))
         {
