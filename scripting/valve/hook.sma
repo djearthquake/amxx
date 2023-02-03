@@ -151,9 +151,9 @@ public plugin_init()
 
     // Register cvars
     register_cvar("sv_spinxhookmod",  "V1.7", FCVAR_SERVER) // yay public cvar
-    bind_pcvar_num(register_cvar("sv_hook", "1"),pHook)
+    //bind_pcvar_num(register_cvar("sv_hook", "1"),pHook)
 
-    //pHook           =  register_cvar("sv_hook", "1")
+    pHook           =  register_cvar("sv_hook", "1")
     pThrowSpeed     =  register_cvar("sv_hookthrowspeed", "2000")
     pSpeed          =  register_cvar("sv_hookspeed", "300")
     pWidth          =  register_cvar("sv_hookwidth", "32")
@@ -392,7 +392,7 @@ public plugin_precache()
 
 public make_hook(id)
 {
-    if (pHook && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
+    if (pHook && get_pcvar_num(pHook) && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
         if (get_pcvar_num(pAdmin))
         {
             if (!(get_user_flags(id) & ADMINLEVEL) && !g_bHookAllowed[id])
@@ -446,7 +446,7 @@ public del_hook(id)
         if(get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) <= 9) //tested works can detach hook from monsters 'unleashed'
         {
             // Remove players hook
-            if(pev_valid(Hook[id]) && !canThrowHook[id])
+            if(pev_valid(Hook[id] > 1) && !canThrowHook[id])
             //if (!canThrowHook[id])
                 remove_hook(id)
             if(is_user_connected(id))
@@ -1138,12 +1138,12 @@ public throw_hook(id)
 
 public remove_hook(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && pHook && get_pcvar_num(pHook) )
     {
         if(get_pcvar_num(Xdebug))
             server_print "remove %n's Hook", id
         new szClass[MAX_NAME_LENGTH]
-        if (pev_valid(Hook[id]) )
+        if (pev_valid(Hook[id]) >1)
         {
             //Player can now throw hooks
             canThrowHook[id] = true
