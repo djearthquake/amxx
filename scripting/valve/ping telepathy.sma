@@ -1,7 +1,9 @@
 /*
-2021-08-26  SPiNX <Point 1> 
+2021-AUG-26  SPiNX <Point 1>
  Filing bad commands.
  ping_debug -1 disables.
+2021-SEPT-20 SPiNX <Point 2>
+ Backwards compatibility.
 */
 #include amxmodx
 #include amxmisc
@@ -10,15 +12,32 @@
 #define MAX_IP_LENGTH 16
 #define WITHOUT_PORT 1
 
+
+#define MAX_PLAYERS                32
+
+#define MAX_RESOURCE_PATH_LENGTH   64
+
+#define MAX_MENU_LENGTH            512
+
+#define MAX_NAME_LENGTH            32
+
+#define MAX_AUTHID_LENGTH          64
+
+#define MAX_IP_LENGTH              16
+
+#define MAX_USER_INFO_LENGTH       256
+
+#define charsmin                  -1
+
 #define client_disconnect client_disconnected
-#define charsmin -1
+
 new  g_iPing, g_iLoss, g_iPingTolerance, g_iPingT, g_iPingAdm, g_iPingDebug;
 new bool:g_bEntry[MAX_PLAYERS + 1]
 new const StrTreatmentMsg[] = "Your ping or loss is out of bounds!"
 
 public plugin_init()
 {
-    register_plugin("Ping telepathy", "2020.182.1", "SPiNX")
+    register_plugin("Ping telepathy", "2020.182.2", "SPiNX")
     g_iPingTolerance = register_cvar("ping_limit", "500");
     g_iPingAdm       = register_cvar("ping_admin", "0");
     g_iPingDebug     = register_cvar("ping_debug", "0");
@@ -63,38 +82,48 @@ public client_infochanged(id)
 
 public client_command(id)
 {
-    if(g_bEntry[id] == false && id > 0)
-    if(!is_user_admin(id) || is_user_admin(id) && (get_pcvar_num(g_iPingAdm) != 0 ) )
+    if(is_user_connected(id))
     {
-
-        Fn_etwork(id)
-
-        g_iPingT = get_pcvar_num(g_iPingTolerance);
-
-        if(get_pcvar_num(g_iPingDebug))
-
-           server_print "ping[%i]|loss[%i]",g_iPing,g_iLoss
-
-        if(g_iPing > g_iPingT || g_iLoss > (sqroot(g_iPingT)) )
-            Fn_Outcome(id,g_iLoss,g_iPing);
-
-        else if(g_iLoss >= 3)
+        if(g_bEntry[id] == false && id > 0)
+        if(!is_user_admin(id) || is_user_admin(id) && (get_pcvar_num(g_iPingAdm) != 0 ) )
         {
+            Fn_etwork(id)
 
-            if(get_pcvar_num(g_iPingDebug) > charsmin)
+            g_iPingT = get_pcvar_num(g_iPingTolerance);
+
+            if(get_pcvar_num(g_iPingDebug))
             {
-                new szArg[MAX_USER_INFO_LENGTH];
-                new szArgCmd[MAX_RESOURCE_PATH_LENGTH + MAX_RESOURCE_PATH_LENGTH], szArgCmd1[MAX_RESOURCE_PATH_LENGTH + MAX_RESOURCE_PATH_LENGTH];
-
-                read_args(szArg, charsmax(szArg));
-                read_argv(0,szArgCmd, charsmax(szArgCmd));
-                read_argv(1,szArgCmd1, charsmax(szArgCmd1));
-                if(is_user_connected(id))
-                    log_amx "%n lagged server ping[%i]|loss[%i] with %s %s",id,g_iPing,g_iLoss,szArgCmd,szArgCmd1
+               server_print "ping[%i]|loss[%i]",g_iPing,g_iLoss
             }
-            return PLUGIN_HANDLED_MAIN; //attempting prevent lag spike.
+
+            if( g_iPing > g_iPingT || g_iLoss > (sqroot(g_iPingT)) )
+            {
+                Fn_Outcome(id,g_iLoss,g_iPing);
+            }
+            else if(g_iLoss >= 3)
+            {
+
+                if(get_pcvar_num(g_iPingDebug) > charsmin)
+                {
+                    new szArg[MAX_USER_INFO_LENGTH];
+                    new szArgCmd[MAX_RESOURCE_PATH_LENGTH + MAX_RESOURCE_PATH_LENGTH], szArgCmd1[MAX_RESOURCE_PATH_LENGTH + MAX_RESOURCE_PATH_LENGTH];
+
+                    read_args(szArg, charsmax(szArg));
+                    read_argv(0,szArgCmd, charsmax(szArgCmd));
+                    read_argv(1,szArgCmd1, charsmax(szArgCmd1));
+                    if(is_user_connected(id))
+                    {
+                        new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
+                        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+                        log_amx "%s lagged server ping[%i]|loss[%i] with %s %s",ClientName[id],g_iPing,g_iLoss,szArgCmd,szArgCmd1
+                    }
+
+                }
+                return PLUGIN_HANDLED_MAIN; //attempting prevent lag spike.
+            }
+
         }
 
     }
-    return PLUGIN_CONTINUE
+    return PLUGIN_CONTINUE;
 }
