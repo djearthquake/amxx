@@ -19,7 +19,7 @@
 *   sv_hookopendoors - If set 1 you can open doors with the hook (default: 1)
 *   sv_hookbuttons - If set 1 you can use buttons with the hook (default: 0)
 *   sv_hookpickweapons - If set 1 you can pickup weapons with the hook (default: 1)
-*   sv_hookhostflollow - If set 1 you can make hostages follow you (default 1)
+*   sv_hookhostfollow - If set 1 you can make hostages follow you (default 1)
 *   sv_hookinstant - Hook doesnt throw (default: 0)
 *   sv_hooknoise - adds some noise to the hook line (default: 0)
 *   sv_hookmax - Maximun numbers of hooks a player can use in 1 round
@@ -111,20 +111,27 @@ new const battery[]  = "models/w_battery.mdl"
 new const grabable_goodies[][]={"ammo","armoury_entity","item","weapon", "power", "tank", "train"}
 
 new Xdebug
+new g_Client
+new bool:biHookFix[MAX_PLAYERS+1]
 
 public plugin_init()
 {
     register_plugin("Hook", "1.8", "SPINX") //1.5 and under was developed by P34nut for CS
     //This is more for OF the first mod. Env_rope is exclusivley in OF.
-    
+
     Xdebug = register_cvar("hook_debug", "0")
 
     // Hook commands
     register_clcmd("+hook", "make_hook")
     register_clcmd("-hook", "del_hook")
+    register_concmd("rope", "@rope_control", ADMINLEVEL, "- Re-Enable limp ropes.")
 
     register_concmd("amx_givehook", "give_hook", ADMINLEVEL, "<Username> - Give somebody access to the hook")
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
+    //assign to glock attack2
+
+    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_glock", "_SecondaryAttack_Pre" , 0 );
+    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_glock", "_SecondaryAttack_Post", 1 );
 
     if(cstrike_running())
     {
@@ -144,7 +151,9 @@ public plugin_init()
 
     // Register cvars
     register_cvar("sv_spinxhookmod",  "V1.7", FCVAR_SERVER) // yay public cvar
-    pHook           =  register_cvar("sv_hook", "1")
+    bind_pcvar_num(register_cvar("sv_hook", "1"),pHook)
+
+    //pHook           =  register_cvar("sv_hook", "1")
     pThrowSpeed     =  register_cvar("sv_hookthrowspeed", "2000")
     pSpeed          =  register_cvar("sv_hookspeed", "300")
     pWidth          =  register_cvar("sv_hookwidth", "32")
@@ -156,7 +165,7 @@ public plugin_init()
     pHookSky        =  register_cvar("sv_hooksky", "1")
     pOpenDoors      =  register_cvar("sv_hookopendoors", "1")
     pUseButtons     =  register_cvar("sv_hookusebuttons", "1")
-    pHostage        =  register_cvar("sv_hookhostflollow", "1")
+    pHostage        =  register_cvar("sv_hookhostfollow", "1")
     pWeapons        =  register_cvar("sv_hookpickweapons", "1")
     pInstant        =  register_cvar("sv_hookinstant", "1")
     pHookNoise      =  register_cvar("sv_hooknoise", "0")
@@ -176,6 +185,56 @@ public plugin_init()
 
     if(equali(g_mapname,"beach_head"))bsatch_crash_fix=true
 
+}
+
+
+public _SecondaryAttack_Pre(const gun)
+{
+    g_Client = pev(gun, pev_owner)
+    //canThrowHook[g_Client] = true
+    return HAM_SUPERCEDE
+}
+
+public _SecondaryAttack_Post(const gun)
+{
+    new Client = g_Client
+    if(is_user_connected(Client) && is_user_admin(Client))
+    {
+        if(biHookFix[Client])
+        {
+            del_hook(Client)
+            biHookFix[Client] = false
+            return HAM_SUPERCEDE
+        }
+        else
+        {
+            make_hook(Client)
+            biHookFix[Client] = true
+            return HAM_SUPERCEDE
+        }
+
+    }
+    return HAM_SUPERCEDE
+}
+
+
+@rope_control(id)
+{
+    new iRope = find_ent(charsmin, "env_rope") > charsmin
+    new iWire = find_ent(charsmin, "env_electricified_wire") > charsmin
+    if(iRope|iWire)
+    {
+        if(iRope)
+        {
+            client_print id, print_chat, "Rope found!"
+            fm_set_kvd(iRope, "disable", "0")
+        }
+        else
+        {
+            client_print id, print_chat, "Wire found!"
+            fm_set_kvd(iWire, "disable", "0")
+        }
+    }
 }
 
 public plugin_precache()
@@ -198,7 +257,6 @@ public plugin_precache()
     //precache_generic("models/headcrab.mdl")
 
     precache_model("models/headcrabt.mdl")
-    //precache_generic("models/headcrabt.mdl")
 
     precache_sound("headcrab/hc_alert1.wav")
     precache_sound("headcrab/hc_alert2.wav")
@@ -216,25 +274,6 @@ public plugin_precache()
     precache_sound("headcrab/hc_pain1.wav")
     precache_sound("headcrab/hc_pain2.wav")
     precache_sound("headcrab/hc_pain3.wav")
-/*
-    precache_generic("sound/headcrab/hc_alert1.wav")
-    precache_generic("sound/headcrab/hc_alert2.wav")
-    precache_generic("sound/headcrab/hc_attack1.wav")
-    precache_generic("sound/headcrab/hc_attack2.wav")
-    precache_generic("sound/headcrab/hc_attack3.wav")
-    precache_generic("sound/headcrab/hc_die1.wav")
-    precache_generic("sound/headcrab/hc_die2.wav")
-    precache_generic("sound/headcrab/hc_headbite.wav")
-    precache_generic("sound/headcrab/hc_idle1.wav")
-    precache_generic("sound/headcrab/hc_idle2.wav")
-    precache_generic("sound/headcrab/hc_idle3.wav")
-    precache_generic("sound/headcrab/hc_idle4.wav")
-    precache_generic("sound/headcrab/hc_idle5.wav")
-    precache_generic("sound/headcrab/hc_pain1.wav")
-    precache_generic("sound/headcrab/hc_pain2.wav")
-    precache_generic("sound/headcrab/hc_pain3.wav")
-*/
-
 
     // Hook Beam
     sprBeam = precache_model(HOOK_MODEL)
@@ -353,7 +392,7 @@ public plugin_precache()
 
 public make_hook(id)
 {
-    if (get_pcvar_num(pHook) && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
+    if (pHook && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
         if (get_pcvar_num(pAdmin))
         {
             if (!(get_user_flags(id) & ADMINLEVEL) && !g_bHookAllowed[id])
@@ -401,10 +440,10 @@ public plugin_cfg()
 }
 public del_hook(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && pHead)
     {
         //need keep trigger_push, barnacle, env_rope intact for now
-        if (get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) <= 9) //tested works can detach hook from monsters 'unleashed'
+        if(get_pcvar_num(pHead) > 2 && get_pcvar_num(pHead) <= 9) //tested works can detach hook from monsters 'unleashed'
         {
             // Remove players hook
             if(pev_valid(Hook[id]) && !canThrowHook[id])
@@ -412,7 +451,7 @@ public del_hook(id)
                 remove_hook(id)
             if(is_user_connected(id))
             {
-                message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
+                message_begin(MSG_ONE, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
                 write_byte(99) // TE_KILLBEAM
                 write_short(id) // entity
                 message_end()
@@ -422,11 +461,11 @@ public del_hook(id)
         }
         //else if (get_pcvar_num(pHead) <=2/* || get_pcvar_num(pHead) == 6*/)
         else if (get_pcvar_num(pHead) <=4 || get_pcvar_num(pHead) == 9)
-    
+
         {
             if(!canThrowHook[id])
                 canThrowHook[id] = true
-    
+
             if(is_user_connected(id))
             {
                 message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, id)
@@ -478,7 +517,7 @@ public rndStartDelay()
 
 public Restart()
 {
-    for (new id = 0; id < gMaxPlayers; id++)
+    for (new id = 1; id <= gMaxPlayers; id++)
     {
         if (is_user_connected(id))
             gRestart[id] = true
@@ -625,7 +664,7 @@ public fwTouch(ptr, ptd)
                             case 3:set_pev(ptd, pev_rendercolor, Float:{0.0, 0.0, 255.0});
                             case 4:set_pev(ptd, pev_rendercolor, Float:{255.0, 0.0, 0.0});
                         }
-
+                        set_task(15.0, "@fix_color_ent", ptd)
                     }
                     else
                     {
@@ -717,6 +756,15 @@ public fwTouch(ptr, ptd)
     }
     return FMRES_HANDLED
 }
+
+@fix_color_ent(hook_painted_ent)
+{
+    if(pev_valid(hook_painted_ent)>1)
+    {
+        set_pev(hook_painted_ent, pev_rendermode, kRenderNormal);
+    }
+}
+
 
 public hookthink(param[])
 {
@@ -858,7 +906,7 @@ public throw_hook(id)
     }
 
 
-    if (Hook[id])
+    if(Hook[id])
     {
         // Player cant throw hook now
         canThrowHook[id] = false
@@ -934,7 +982,7 @@ public throw_hook(id)
         fm_set_kvd(Hook[id], "height", "9000");
 
         //trigger_hurt
-        
+
 
         if(get_pcvar_num(pHead) == 10)
         {
@@ -942,7 +990,7 @@ public throw_hook(id)
             fm_set_kvd(Hook[id], "Targetname", "HookBall");
             fm_set_kvd(Hook[id], "Target", "blk_apache_way_point");
             fm_set_kvd(Hook[id], "Warp_Target", "apache_way_point");
-            fm_set_kvd(Hook[id], "spawnflags", "3"); 
+            fm_set_kvd(Hook[id], "spawnflags", "3");
 
         }
         if(get_pcvar_num(pHead) == 11)
