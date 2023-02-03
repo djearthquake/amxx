@@ -4,7 +4,7 @@
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
- * 
+ *
  * * Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
  * * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
  * * Neither the name of the  nor the names of its
  *   contributors may be used to endorse or promote products derived from
  *   this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -40,59 +40,87 @@
 #define client_disconnected client_disconnect
 #endif
 
+#define PLUGIN "Variable sys_ticrate"
 new const SzRope_msg[]="Plugin paused due to env_rope would be invisible."
+new const SzRopeBadEnts[][]={"env_rope", "env_electrified_wire"}
+//Single env_rope ent can disappear over 50 tic
+//Water under 50 tic is choppy.
+
 new g_timing, g_iTic_quota, g_iTic_sleep, g_iTic;
 
 public plugin_init()
 {
-    register_plugin("Variable sys_ticrate", "C", ".sρiηX҉.");
-    g_timing     = register_cvar("sys_timing",  "1"); //0|1 disables|enables plugin.
+    register_plugin(PLUGIN, "D", ".sρiηX҉."); //D figuring in water
+
+    g_timing       = register_cvar("sys_timing",  "1"); //0|1 disables|enables plugin.
     g_iTic_sleep = register_cvar("sys_sleep",  "32"); //Tic hibernation rate.
     g_iTic_quota = register_cvar("sys_quota", "32"); //Tic rate quota.
-    g_iTic       = get_cvar_pointer("sys_ticrate"); //Base tic rate. Only used to launch server with.
-    set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
+    g_iTic            = get_cvar_pointer("sys_ticrate"); //Base tic rate. Only used to launch server with.
 
+    if(find_ent(-1, "func_water"))
+    {
+        server_print "[%s]Water ent found", PLUGIN
+        set_pcvar_num g_iTic_quota, 60
+    }
     if ( is_running("gearbox") == 1 )
         set_task(3.5, "@check_map", 2022)
 }
 
 @check_map()
 {
+    /*
     new mname[MAX_NAME_LENGTH];
     server_print "Found Gearbox running."
     get_mapname(mname,charsmax(mname));
-
+    //https://github.com/djearthquake/amxx/blob/main/scripting/valve/stop_hpb_overclock.sma
     if(containi(mname, "op4c") > -1 )
     {
-        set_pcvar_num(g_iTic,35) //per HPB bots will speedhack otherwise 
+        set_pcvar_num(g_iTic,35) //per HPB bots will speedhack otherwise
         pause("a")
     }
-}
-
-public client_putinserver(id)
-if (get_pcvar_num(g_timing) == 1)
-{
-    remove_task(1541)
-    if( find_ent(-1,"env_rope") || find_ent(-1,"env_electrified_wire") ) //Rope can disappear over 70fps. My hook mod can shoot various lengths of it.
+    */
+    for(new list;list < sizeof(SzRopeBadEnts);++list)
+    if( find_ent(-1,SzRopeBadEnts[list]) )
     {
-        set_pcvar_num(g_iTic,70)
+        set_pcvar_num(g_iTic,50)
         log_amx SzRope_msg
         server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
         pause("a")
     }
 
-    else if(is_user_connected(id) && !is_user_bot(id))
+}
+public plugin_cfg()
+    set_task(25.0, "@Cpu_saver", 1541,_,_,"b")
+
+public client_putinserver(id)
+    @Set_tic(id)
+@Set_tic(id)
+if (get_pcvar_num(g_timing) == 1)
+{
+    remove_task(1541)
+    for(new list;list < sizeof(SzRopeBadEnts);++list)
+    if( find_ent(-1,SzRopeBadEnts[list]) )
+    {
+        set_pcvar_num(g_iTic,50)
+        log_amx SzRope_msg
+        server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
+        pause("a")
+    }
+
+    else if((is_user_connected(id) || is_user_connecting(id)) && !is_user_bot(id))
     {
         @set_tic()
     }
-    else server_print "bot detected!"
-    set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
+    else server_print "[%s]bot detected!", PLUGIN
+
+    if(!task_exists(1541))
+        set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
 
 }
 
 public client_remove(id)
 {
-    (get_pcvar_num(g_timing) && iPlayers() < 2) ? set_pcvar_num(g_iTic,get_pcvar_num(g_iTic_sleep)) : @set_tic()
+    (get_pcvar_num(g_timing) && iPlayers() < 1) ? set_pcvar_num(g_iTic,get_pcvar_num(g_iTic_sleep)) : @set_tic()
     server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
 }
 
