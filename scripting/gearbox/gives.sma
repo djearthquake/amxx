@@ -91,7 +91,7 @@ public plugin_init()
 
     if (containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer))
     {
-        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)*/
+        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)
         pause("a")
     }
     //RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
