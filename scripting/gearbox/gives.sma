@@ -80,22 +80,22 @@ new const GIVES[][]=
 }
 
 new const REPLACE[][] = {"ammo_", "weapon_", "item_"}
-new const tracer[]= "ammo_buckshot"
+new const tracer[]= "func_recharge" //armour
+
+new g_event
 
 public plugin_init()
 {
     register_plugin("Gives random weapon(s) on spawn.", "A", ".sρiηX҉.");
+    //RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
+    g_event = register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEvent_Single|RegisterEvent_OnlyAlive)
+}
 
+public plugin_cfg()
+{
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
-
-    if (containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer))
-    {
-        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)
-        pause("a")
-    }
-    //RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
-    register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEvent_Single|RegisterEvent_OnlyAlive)
+    containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer) ?  disable_event(g_event) : enable_event(g_event)
 }
 
 public client_getfreestuff(id)
