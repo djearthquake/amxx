@@ -996,7 +996,7 @@ public read_web(feeding)
                     server_print "%s finished %s reading",PLUGIN, ClientName[id]
                     set_task(5.0, "@mark_socket_client", id);
 
-                    if(g_proxy_version && callfunc_begin("@mark_socket",PROXY_SCRIPT))
+                    if(g_proxy_version && find_plugin_byfile(PROXY_SCRIPT) != charsmin  && callfunc_begin("@mark_socket", PROXY_SCRIPT))
                     {
                         new work[MAX_PLAYERS]
                         format(work,charsmax(work),PLUGIN,"")
