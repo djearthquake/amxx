@@ -4,7 +4,7 @@
 #include <engine_stocks>
 #include <fakemeta>
 #include <fun>
-#include <hamsandwich>
+//#include <hamsandwich>
 
 #define MAX_NAME_LENGTH 32
 #define MAX_CMD_LENGTH 128
@@ -89,9 +89,9 @@ public plugin_init()
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
 
-    if (containi(mname,"op4c") > charsmin /*|| find_ent(charsmin,tracer)*/)
+    if (containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer))
     {
-/*        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)*/
+        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)*/
         pause("a")
     }
     //RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
