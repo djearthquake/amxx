@@ -89,12 +89,13 @@ public plugin_init()
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
 
-    if (containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer))
+    if (containi(mname,"op4c") > charsmin /*|| find_ent(charsmin,tracer)*/)
     {
-        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)
+/*        find_ent(charsmin,tracer) ? server_print("Found %s^n^npausing", tracer) : server_print("Found %s^n^npausing", mname)*/
         pause("a")
     }
-    RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
+    //RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
+    register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEvent_Single|RegisterEvent_OnlyAlive)
 }
 
 public client_getfreestuff(id)
@@ -115,7 +116,7 @@ public client_getfreestuff(id)
             #else
             set_task_ex(10.0, "reward", id, .flags = SetTask_RepeatTimes, .repeat = 2);
             #endif
-    
+
         if(!is_user_bot(id))
             client_print id, print_chat, "Free random items on spawn!"
     }
@@ -175,7 +176,7 @@ public reward(needy)
             give_item(needy, charity);
             for ( new MENT; MENT < sizeof REPLACE; ++MENT )
                 replace(charity, charsmax(charity), REPLACE[MENT], " ");
-    
+
             if(!is_user_bot(needy))
                 client_print(needy, print_chat,"^n Free%s!", charity);
         }
