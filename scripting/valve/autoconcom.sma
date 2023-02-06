@@ -1,9 +1,9 @@
-//updated JUL 04 2021
+//updated FEB 06 2023
 #include <amxmodx>
 #include <amxmisc>
 
 #define PLUGIN "Autoconcom"
-#define VERSION "G" // Optimized with Cvars.
+#define VERSION "H" // Bugfix Optimizations! =P
 #define AUTHOR "SPINX"
 
 #define NUKE "amx_leave *"
@@ -42,8 +42,6 @@ public plugin_init()
     g_bot_control = register_cvar("sv_autocon_autobot", "1");
 }
 
-
-
 public plugin_natives()
 {
     register_native("autocon_botmin", "@bots_native_min")
@@ -56,8 +54,6 @@ public plugin_natives()
 @bots_native_max(iMax)
     server_cmd "jk_botti max_bots %i;", iMax;
 
-
-
 public plugin_cfg()
 
 {
@@ -66,7 +62,6 @@ public plugin_cfg()
     //set_task_ex(2.5, "mop_bot", 186, .flags = SetTask_RepeatTimes, .repeat = 1 );
     set_task(2.5,"mop_bot", 186)
 }
-
 
 public client_putinserver(id)
 {
@@ -96,11 +91,11 @@ public client_disconnected(id)
 
     if (get_pcvar_num(g_bot_control))
     {
-    
+
         new mname[MAX_PLAYERS];
         new numplayers = iPlayers();
         get_mapname(mname,charsmax(mname));
-    
+
         if ( (containi(mname,SzFlagCapMap) > -1) && (numplayers == 0) )
         {
             //set_task_ex(1.0, "on_join", 34, .flags = SetTask_RepeatTimes, .repeat = 1 );
@@ -109,7 +104,6 @@ public client_disconnected(id)
             set_task(5.0, "on_exit", 56)
         }
         else
-    
         if (numplayers < 3)
             if(!task_exists(340043))
                 //set_task_ex(10.0, "on_join", 340043, .flags = SetTask_RepeatTimes, .repeat = 1 );
@@ -117,12 +111,16 @@ public client_disconnected(id)
     }
 }
 
-
 public bots_()
 {
-    new min = get_pcvar_num(g_bot_min);
-    new max = get_pcvar_num(g_bot_max);
-    server_cmd("jk_botti min_bots %i; jk_botti max_bots %i;", min, max);
+    if(iPlayers())
+    {
+        new min = get_pcvar_num(g_bot_min);
+        new max = get_pcvar_num(g_bot_max);
+        server_cmd("jk_botti min_bots %i; jk_botti max_bots %i;", min, max);
+        return;
+    }
+    ZERO_BOTS;
 }
 
 public bots_flag()
@@ -143,7 +141,7 @@ public bots_flag()
         new g_Bots_Min = (adjmsize * 2) + 1;
         new g_Bots_Max = (adjmsize * 4) + 2;
         server_cmd("HPB_Bot min_bots %i; HPB_Bot max_bots %i", g_Bots_Min, g_Bots_Max);
-        server_print ("%s",SzAdvert) 
+        server_print ("%s",SzAdvert)
     }
 
     else
@@ -158,7 +156,7 @@ public on_exit(id)
 
         if ( (numplayers != 0) ||  (cstrike_running()) )
             return;
-        
+
         if (numplayers == 0)
         {
             ZERO_BOTS
@@ -170,10 +168,8 @@ public on_exit(id)
 }
 
 public mop_bot()
-
     //set_task_ex(15.0, "on_join", 186, .flags = SetTask_RepeatTimes, .repeat = 0 );
     set_task(15.0, "on_join", 186)
-
 
 public on_join()
 {
@@ -183,21 +179,18 @@ public on_join()
     if (get_pcvar_num(g_bot_control))
     {
         get_mapname(mname,charsmax(mname));
-    
-    
+
         if (containi(mname, SzFlagCapMap) > -1)
         {
-    
-            if ( numplayers > 0 && numplayers < 7)
+
+            if ( numplayers > 1 && numplayers < 7)
                 bots_flag();
-    
+
             if( numplayers > 6 )
             {
                 ZERO_BOTS
                 server_print "Autoconcom bot adjustment."
             }
-
-
             if ( numplayers == 0 )
             {
                 ZERO_BOTS
@@ -206,23 +199,18 @@ public on_join()
             }
 
         }
-
         else
         {
             if(!task_exists(14785))
             {
                 //set_task_ex(random_float(5.0,35.0),"bots_",14785, .flags = SetTask_Once);
                 set_task(random_float(5.0,35.0),"bots_",14785)
-                
             }
-
         }
-
     }
 }
 
 stock iPlayers()
-
 {
     #if AMXX_VERSION_NUM == 182;
         new players[ MAX_PLAYERS ],pNum
@@ -234,8 +222,8 @@ stock iPlayers()
         g_iHeadcount = get_playersnum_ex(GetPlayersFlags:GetPlayers_ExcludeBots|GetPlayers_IncludeConnecting)
 
     #endif
-
-    return g_iHeadcount
+    server_print "Detected %i players", g_iHeadcount;
+    return g_iHeadcount;
 }
 
 
