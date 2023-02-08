@@ -52,7 +52,7 @@ new g_coloredMenus
 new bool:g_selected = false
 new bool:g_rtv = false
 new bool:bOF_run
-new g_mp_chattime, g_auto_pick, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
+new g_mp_chattime, g_auto_pick, g_hlds_logging, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
 new Float:checktime
 
 public plugin_init()
@@ -102,6 +102,7 @@ public plugin_init()
     g_frags_remaining   = get_cvar_pointer("mp_fragleft")
     g_timelim                 = get_cvar_pointer("mp_timelimit")
     g_votetime               = get_cvar_pointer("amx_vote_time")
+    g_hlds_logging         = get_cvar_pointer("log")
 #else
     g_coloredMenus = colored_menus()
     g_counter = get_pcvar_num(Pcvar_captures)
@@ -125,7 +126,8 @@ public plugin_init()
 
     if(get_cvar_num("amx_vote_time"))
         bind_pcvar_num(get_cvar_pointer("amx_vote_time"),g_votetime)
-
+    if(get_cvar_pointer("log"))
+        bind_pcvar_num(get_cvar_pointer("log"),g_hlds_logging)
     if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
         register_event("TeamScore", "team_score", "a")
 #endif
@@ -138,6 +140,11 @@ public plugin_init()
 
         if(B_op4c_map)
         {
+            if(!g_hlds_logging)
+            {
+                server_cmd "log on"
+                log_amx "Logging is required for Capture the Flag!"
+            }
             fm_set_kvd(info_detect, "map_score_max", "0")
             ///(b_set_caps) ? g_counter : set_cvar_num("mp_captures", 6) &g_counter
             set_cvar_num("mp_captures", 6)&g_counter
@@ -293,7 +300,7 @@ bool:isInMenu(id)
 }
 
 @auto_map_pick()
-{   
+{
     log_amx "auto-picking maps"
     new players[MAX_PLAYERS]
     new playercount
@@ -329,7 +336,7 @@ stock random_map_pick()
     custom = random_num(1,5)
     new formated[MAX_NAME_LENGTH]
     formatex(formated,charsmax(formated),"menuselect %i", custom) //humans
-    //formatex(formated,charsmax(formated),"slot%i", custom) 
+    //formatex(formated,charsmax(formated),"slot%i", custom)
     return formated;
 }
 
@@ -357,7 +364,7 @@ public voteNextmap()
             set_cvar_num("mp_fraglimit", 0)
             return
         }
-            
+
         log_amx"HL server frag limit map change"
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
         remove_task(987456)
