@@ -157,7 +157,7 @@ stock iPlayers()
                 new iFakeSleep = sqroot(iTic*2)*2+12
                 new iSofterLag = floatround(iTic * 0.7)
                 new iSleepTime = get_pcvar_num(g_iTic_sleep)
-                set_pcvar_num( g_iTic,  iSofterLag ? iSofterLag : iFakeSleep ? iFakeSleep : iSleepTime)
+                set_pcvar_num( g_iTic, iSofterLag ? iSofterLag : iFakeSleep ? iFakeSleep : iSleepTime)
                 server_print "Tic_setting:%i", get_pcvar_num(g_iTic)
                 server_print "Adjusting tic based on turbulence."
             }
