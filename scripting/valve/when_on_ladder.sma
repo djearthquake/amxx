@@ -9,7 +9,7 @@ public plugin_init()
     register_plugin("Ladder!","1.0.0","SPiNX")
 }
 
-public client_connect(iPlayer)
+public client_putinserver(iPlayer)
 {
     if(is_user_connected(iPlayer))
     {
