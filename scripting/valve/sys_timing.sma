@@ -26,18 +26,32 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * Changelog November 25th 2021: SPINX
+ *
+ * Changelog::
+ *
+ * November 25th 2021: SPINX
  * Version A to B: env_electrified_wire and env_rope consideration.
  * -Only OF has rope or wire, not CS/CZ/DOD/HL/TFC.
+ *
+ * Febuary 6th 2023: SPiNX
+ * Version B to C: Remove hbp reference. Update lag handler. Reinstate sleep.
+ *
+ *
  */
 
 #include amxmodx
 #include amxmisc
 #include engine_stocks
 #define MAX_PLAYERS 32
+#define MINUTE 60.0
+#define TIMING_TASK 1541
 
 #if !defined client_disconnect
 #define client_disconnected client_disconnect
+#endif
+
+#if !defined get_pcvar_float
+#define get_pcvar_num get_pcvar_float
 #endif
 
 #define PLUGIN "Variable sys_ticrate"
@@ -50,7 +64,7 @@ new g_timing, g_iTic_quota, g_iTic_sleep, g_iTic;
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, "D", ".sρiηX҉."); //D figuring in water
+    register_plugin(PLUGIN, "D", ".sρiηX҉."); //D figuring in softer changes when loss is detected on the line.
 
     g_timing       = register_cvar("sys_timing",  "1"); //0|1 disables|enables plugin.
     g_iTic_sleep = register_cvar("sys_sleep",  "32"); //Tic hibernation rate.
@@ -68,36 +82,26 @@ public plugin_init()
 
 @check_map()
 {
-    /*
-    new mname[MAX_NAME_LENGTH];
-    server_print "Found Gearbox running."
-    get_mapname(mname,charsmax(mname));
-    //https://github.com/djearthquake/amxx/blob/main/scripting/valve/stop_hpb_overclock.sma
-    if(containi(mname, "op4c") > -1 )
-    {
-        set_pcvar_num(g_iTic,35) //per HPB bots will speedhack otherwise
-        pause("a")
-    }
-    */
     for(new list;list < sizeof(SzRopeBadEnts);++list)
     if( find_ent(-1,SzRopeBadEnts[list]) )
     {
-        set_pcvar_num(g_iTic,50)
+        set_pcvar_num(g_iTic, 70)
         log_amx SzRope_msg
         server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
         pause("a")
     }
 
 }
+
 public plugin_cfg()
-    set_task(25.0, "@Cpu_saver", 1541,_,_,"b")
+    set_task(25.0, "@Cpu_saver", TIMING_TASK,_,_,"b")
 
 public client_putinserver(id)
     @Set_tic(id)
-@Set_tic(id)
-if (get_pcvar_num(g_timing) == 1)
+
+@Set_tic(id)if(get_pcvar_num(g_timing))
 {
-    remove_task(1541)
+    remove_task(TIMING_TASK)
     for(new list;list < sizeof(SzRopeBadEnts);++list)
     if( find_ent(-1,SzRopeBadEnts[list]) )
     {
@@ -107,20 +111,19 @@ if (get_pcvar_num(g_timing) == 1)
         pause("a")
     }
 
-    else if((is_user_connected(id) || is_user_connecting(id)) && !is_user_bot(id))
+    else if(is_user_connected(id) || is_user_connecting(id) && !is_user_bot(id))
     {
         @set_tic()
     }
-    else server_print "[%s]bot detected!", PLUGIN
 
-    if(!task_exists(1541))
-        set_task(7.5, "@Cpu_saver", 1541,_,_,"b")
+    if(!task_exists(TIMING_TASK))
+        set_task(7.5, "@Cpu_saver", TIMING_TASK,_,_,"b")
 
 }
 
 public client_remove(id)
 {
-    (get_pcvar_num(g_timing) && iPlayers() < 1) ? set_pcvar_num(g_iTic,get_pcvar_num(g_iTic_sleep)) : @set_tic()
+    get_pcvar_num(g_timing) && !iPlayers() ? set_pcvar_num(g_iTic,get_pcvar_num(g_iTic_sleep)) : @set_tic()
     server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
 }
 
@@ -133,26 +136,31 @@ stock iPlayers()
 @set_tic()
 {
     new iAlloted_Tic = iPlayers() ? get_pcvar_num(g_iTic_quota)*iPlayers() : get_pcvar_num(g_iTic_sleep)
-    set_pcvar_num(g_iTic, iAlloted_Tic ? iAlloted_Tic : g_iTic_sleep)
-    server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
+    set_pcvar_num(g_iTic, iAlloted_Tic)
+    server_print "Tic_setting:%i", get_pcvar_num(g_iTic)
 }
 
 @Cpu_saver()
 {
-    new iPing,iLoss
-    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"i")
+    if(!iPlayers()) set_pcvar_num(g_iTic, get_pcvar_num(g_iTic_sleep)) & change_task(TIMING_TASK, MINUTE);
+    new iPing,iLoss, players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"i")
 
-    for(new lot;lot < sizeof players;lot++)
-        get_user_ping(players[lot],iPing,iLoss)
-
+    for(new lot;lot < sizeof players;lot++)get_user_ping(players[lot],iPing,iLoss)
     if(iLoss)
-    if(iLoss > 2)
     {
-        server_print "%i|%i",iPing,iLoss
-        set_pcvar_num g_iTic,iLoss > 1 ? 35 : 70
-        server_print "Tic_setting:%i",get_pcvar_num(g_iTic)
-        log_amx "Adjusting tic based on turbulence."
+        if(iLoss > 1)
+        {
+            server_print "%i|%i", iPing, iLoss
+            new iTic = get_pcvar_num(g_iTic)
+            if(iTic > 35.0)
+            {
+                new iFakeSleep = sqroot(iTic*2)*2+12
+                new iSofterLag = floatround(iTic * 0.7)
+                new iSleepTime = get_pcvar_num(g_iTic_sleep)
+                set_pcvar_num( g_iTic,  iSofterLag ? iSofterLag : iFakeSleep ? iFakeSleep : iSleepTime)
+                server_print "Tic_setting:%i", get_pcvar_num(g_iTic)
+                server_print "Adjusting tic based on turbulence."
+            }
+        }  else @set_tic()
     }
-    else
-    @set_tic()
 }
