@@ -356,6 +356,11 @@ public voteNextmap()
     #endif
     new smap[MAX_NAME_LENGTH]
     new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
+    if(g_rtv)
+    {
+        change_task(987456,30.0)
+        goto AHEAD_LINE
+    }
 
     if(g_frags > 0 && g_frags_remaining == 1)
     {
@@ -428,12 +433,12 @@ public voteNextmap()
     #if AMXX_VERSION_NUM == 182
     else if(g_frags && get_pcvar_num(g_frags_remaining))
     {
-        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
+        if ( get_pcvar_num(g_frags_remaining) > 5 && timeleft > (vote_menu_display + chatime + (votetime*2)) )
 
     #else
-    else if (g_frags && g_frags_remaining)
+    else if (g_frags && g_frags_remaining )
     {
-        if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv )
+        if ( g_frags_remaining > 5 && timeleft > (vote_menu_display + chatime + (votetime*2)) )
     #endif
         {
             g_selected = false
@@ -442,14 +447,14 @@ public voteNextmap()
     }
     else
     {
-        if (timeleft < 1 || timeleft > (vote_menu_display + chatime + (votetime*2) ) && !g_rtv)
+        if ( timeleft < 1 || timeleft > (vote_menu_display + chatime + (votetime*2)) )
         {
             g_selected = false
             return
         }
     }
 
-
+    AHEAD_LINE:
     if (g_selected)
         return
 
