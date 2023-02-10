@@ -68,6 +68,7 @@
 */
 
 #include amxmodx
+#include amxmisc
 #include cstrike
 #include engine
 #include fakemeta
@@ -76,6 +77,9 @@
 #include hamsandwich
 
 #include unstick
+//define CZ per Conditon-Zero bots need accomidations.
+#define CZ
+#tryinclude cs_ham_bots_api
 
 #define FRICTION_NOT    1.0
 #define FRICTION_MUD    1.8
@@ -83,6 +87,7 @@
 
 #define charsmin -1
 #define MAX_NAME_LENGTH 32
+
 
 new
 //Cvars
@@ -140,6 +145,15 @@ public plugin_init()
     iMaxplayers = get_maxplayers()
     g_cor = get_user_msgid( "ClCorpse" )
     bIsCtrl[0] = true
+
+    #if defined CZ
+    if(is_running("czero"))
+    {
+        RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
+        RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
+        RegisterHamBots(Ham_Killed, "@died")
+    }
+    #endif
 }
 
 @died(id)
