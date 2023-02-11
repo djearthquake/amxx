@@ -10,7 +10,7 @@
 #define PLUGIN "Ghost Door Walker"
 #define VERSION "1.1"
 #define AUTHOR "SPiNX"
-#define is_entity_valid is_valid_ent
+
 #define g_fbox 100.0 //security key hitbox
 #define g_packHP                   15
 #define MAX_IP_LENGTH              16
@@ -78,7 +78,7 @@ public Color(entity, iPlayers_index)
 }
 public light_up(entity, iPlayers_index)
 {
-    if(is_entity_valid(entity))
+    if(pev_valid(entity)>1)
     {
         set_pev(entity, pev_rendercolor, Float:{255.0, 207.0, 148.0});
         /*
@@ -90,7 +90,7 @@ public light_up(entity, iPlayers_index)
 }
 public Restore_door(entity, iPlayers_index)
 {
-   if(is_entity_valid(entity))
+   if(pev_valid(entity)>1)
     {
         new Float:f_trans_amt;
         f_trans_amt = random_float(75.0, 200.0)
@@ -106,7 +106,7 @@ public Restore_door(entity, iPlayers_index)
 }
 public Restore_door2(entity, iPlayers_index)
 {
-   if(is_entity_valid(entity))
+   if(pev_valid(entity)>1)
     {
         set_pev(entity, pev_rendermode, kRenderFxStrobeFaster);
         set_pev(entity, pev_rendermode, kRenderGlow);
@@ -140,6 +140,8 @@ public Restore_door2(entity, iPlayers_index)
             fm_set_kvd(ent, "spawnobject", SzDrop)
             */
 
+
+/*
             new rNum = random(211)
             switch(rNum)
             {
@@ -165,6 +167,7 @@ public Restore_door2(entity, iPlayers_index)
                 case 191..200: fm_set_kvd(ent, "spawnobject", "20")//Snark
                 case 201..210: fm_set_kvd(ent, "spawnobject", "21")//Hornet Gun
             }
+*/
             fm_set_kvd(ent, "material", "2");
             fm_set_kvd(ent, "explosion", "1"); //0- random 1- rel attack
             fm_set_kvd(ent, "gibmodel", "models/hair.mdl");
@@ -401,7 +404,7 @@ public drop(iPlayers_index)
     ewrite_short(160 ) //life * 10
     emessage_end();
     g_bHasKey[iPlayers_index] = false;
-    if(is_entity_valid(g_key))
+    if(pev_valid(g_key) > 1)
         remove_entity(g_key)
 }
 
