@@ -23,6 +23,7 @@ new sleepy[MAX_PLAYERS + 1], g_spec
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new DownloaderName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
 new g_mname[MAX_NAME_LENGTH]
+new bool:b_Walled[MAX_PLAYERS + 1] //dont spam cmds to wall
 new bool:b_Op4c
 new bool:g_bFlagMap
 new afk_sync_msg, download_sync_msg, g_spawn_wait
@@ -132,8 +133,9 @@ public new_users()
 
                 #endif
             }
-            else
+            else if(!b_Walled[players[downloader]])
             {
+                b_Walled[players[downloader]] = true; //stop console thrash
                 //Update server's built-in AMXX scrolling message.
                 new SzScrolling[256], SzNewScroller[256]
                 new iPlayers = players[downloader]
@@ -253,7 +255,7 @@ public screensaver(id, uptime,{Float,_}:...)
 if (is_user_connected(id) && !is_user_bot(id))
 {
     client_print id,print_center, "Screen saver active for:%i seconds", uptime
-    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id); 
+    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id);
     write_short(1<<12); // fade lasts this long duration
     write_short(1<<8); // fade lasts this long hold time
     write_short(FADE_HOLD); // fade type
