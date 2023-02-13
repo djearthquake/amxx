@@ -149,7 +149,7 @@ public plugin_init()
 
                 if(equali(g_SzMonster_class, "player") && is_user_connected(victim))
                 {
-                    if(is_user_connected(killer) || pev_valid(killer))
+                    if(is_user_connected(killer) && is_user_connected(victim))
                     {
                         #if AMXX_VERSION_NUM == 182;
 
@@ -441,19 +441,26 @@ public pfn_keyvalue( ent )
 
                 if(TrieKeyExists(g_mnames,The_Value_Copy))
                 {
-                    log_amx "%s is already in the table", The_Value_Copy
+                    log_amx "%s is already in the table.", The_Value_Copy
                     return
                 }
                 else if(!TrieKeyExists(g_mnames,The_Value_Copy))
                 {
                     TrieSetCell(g_mnames,The_Value_Copy,1)
-                    log_amx "Found %s", The_Value_Copy
+                    log_amx "Found %s.", The_Value_Copy
                 }
                 new iTemp = 1
                 if(TrieGetCell(g_mnames,The_Value_Copy, iTemp) == true)
                 {
                     TrieSetCell(g_mnames,The_Value_Copy,2)
                     XhookDamage = RegisterHam(Ham_TakeDamage,The_Value_Copy,"Ham_TakeDamage_player", 1)
+
+                    if(equali(The_Value_Copy,"monster_bigmomma"))
+                    {
+                        TrieSetCell(g_mnames, "monster_babycrab",2)
+                        XhookDamage = RegisterHam(Ham_TakeDamage,"monster_babycrab","Ham_TakeDamage_player", 1)
+                        log_amx "Added babycrab!"
+                    }
                 }
             }
        }
