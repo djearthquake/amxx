@@ -130,8 +130,8 @@ public plugin_init()
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
     //assign to glock attack2
 
-    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_glock", "_SecondaryAttack_Pre" , 0 );
-    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_glock", "_SecondaryAttack_Post", 1 );
+    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
+    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
 
     if(cstrike_running())
     {
@@ -392,7 +392,7 @@ public plugin_precache()
 
 public make_hook(id)
 {
-    if (pHook && get_pcvar_num(pHook) && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
+    if (pHook && get_pcvar_num(pHook) && is_user_connected(id) && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
         if (get_pcvar_num(pAdmin))
         {
             if (!(get_user_flags(id) & ADMINLEVEL) && !g_bHookAllowed[id])
