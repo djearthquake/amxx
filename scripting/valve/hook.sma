@@ -142,6 +142,7 @@ public plugin_init()
         // Player spawn stuff
         register_event("TextMsg", "Restart", "a", "2=#Game_will_restart_in")
         RegisterHam(Ham_Spawn, "player", "ResetHUD", 1)
+        //register_event("ResetHUD", "ResetHUD", "b")
     }
     else
     {
@@ -581,176 +582,178 @@ public ResetHUD(id)
 public fwTouch(ptr, ptd)
 {
     //if (!pev_valid(ptr) || !pev_valid(ptd) ) //nerfs
-    if (!pev_valid(ptr) )
+    if (!pev_valid(ptr))
         return FMRES_IGNORED
 
     new id = pev(ptr, pev_owner)
-
-    // Get classname
-    new szPtrClass[MAX_NAME_LENGTH]
-    pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
-    if (equali(szPtrClass, "Hook"))
+    if(is_user_connected(id) && is_user_alive(id) && !is_user_bot(id) && ptd > charsmin)
     {
-        set_pev(ptr,pev_solid, SOLID_BBOX)
-        //hook going through 1 layer of windows, hitting second pane on other side of house to break
-
-        if (equali(szPtrClass, "Hook") || get_pcvar_num(pPlayers) > 2 && containi(szPtrClass, "grapple") > charsmin )
+        // Get classname
+        new szPtrClass[MAX_NAME_LENGTH]
+        pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
+        if (equali(szPtrClass, "Hook"))
         {
+            set_pev(ptr,pev_solid, SOLID_BBOX)
+            //hook going through 1 layer of windows, hitting second pane on other side of house to break
 
-            static Float:fOrigin[3]
-            pev(ptr, pev_origin, fOrigin)
-            new szPtdClass[MAX_NAME_LENGTH]
-
-            if(pev_valid(ptd))
+            if (equali(szPtrClass, "Hook") || get_pcvar_num(pPlayers) > 2 && containi(szPtrClass, "grapple") > charsmin )
             {
-                pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
-                if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
+                static Float:fOrigin[3]
+                pev(ptr, pev_origin, fOrigin)
+                new szPtdClass[MAX_NAME_LENGTH]
+
+                if(pev_valid(ptd)>1)
                 {
-                    // Hit a player
-                    if (get_pcvar_num(pSound))
-                        emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-                    remove_hook(id)
+                    pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
+                    if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
+                    {
+                        // Hit a player
+                        if (get_pcvar_num(pSound))
+                            emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+                        remove_hook(id)
+
+                        return FMRES_HANDLED
+                    }
+                    else if (get_pcvar_num(pPlayers) && equali(szPtdClass, "player"))  goto damage
+
+                    else if (get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin)
+                    {
+                        if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin ||  equali(szPtdClass, "monster_barney")
+                        ||  equali(szPtdClass, "monster_otis") || containi(szPtdClass, "nuke") >  charsmin || containi(szPtdClass,"scientist") > charsmin )
+                        {
+                            // Makes an hostage follow
+                            if (get_pcvar_num(pHostage))
+                            {
+                                dllfunc(DLLFunc_Use, ptd, id)
+                            }
+
+                        }
+                        else
+                        goto damage
+                    }
+                    //else if (equali(szPtdClass, "func_breakable") || equali(szPtdClass, "func_pushable"))
+                    else if (containi(szPtdClass, "able") > charsmin)
+                    {
+        damage:
+                        is_user_alive(ptd) && !is_user_bot(ptd) ?
+                        ExecuteHam(Ham_TakeDamage,ptd,ptr,id,random_num(60,100)*1.0,DMG_PARALYZE) //bot or human
+                        :
+                        ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CRUSH|DMG_ALWAYSGIB) //Box or pushable ... monster
+                        //ExecuteHam(Ham_TakeDamage,ptd,ptr,id,2.0,DMG_POISON|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
+
+                        remove_hook(id)
+                        return FMRES_HANDLED
+                    }
+
+                    else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin ||
+                    containi(szPtdClass,"illusionary") > charsmin || containi(szPtdClass,"wall") > charsmin || containi(szPtdClass,"moment") > charsmin )
+                    {
+                        if(!get_pcvar_num(pHook_break))
+                        {
+                            //dllfunc(DLLFunc_Use, ptd, id) //ok for grap
+                            //dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
+
+                            dllfunc(DLLFunc_Use, ptd, ptr) //ok for grap
+                            dllfunc(DLLFunc_Touch, ptd, ptr) //ok for grap
+                            set_pev(ptd, pev_rendermode, kRenderTransColor);
+                            set_pev(ptd, pev_renderamt, random_float(15.0,200.0))
+                            switch(random(5))
+                            {
+                                case 1:set_pev(ptd, pev_rendercolor, Float:{255.0, 207.0, 0.0});
+                                case 2:set_pev(ptd, pev_rendercolor, Float:{0.0, 255.0, 0.0});
+                                case 3:set_pev(ptd, pev_rendercolor, Float:{0.0, 0.0, 255.0});
+                                case 4:set_pev(ptd, pev_rendercolor, Float:{255.0, 0.0, 0.0});
+                            }
+                            set_task(15.0, "@fix_color_ent", ptd)
+                        }
+                        else
+                        {
+                            if(get_pcvar_num(pHook_break)>1)
+                                ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
+
+                        }
+                        /*
+                        switch(random(3))
+                        {
+                            case 1: entity_set_string(ptd,EV_SZ_classname,"func_healthcharger")
+                            case 2: entity_set_string(ptd,EV_SZ_classname,"func_recharge")
+                        }
+                        dllfunc( DLLFunc_Spawn, ptd )
+                        */
+                    }
+
+                    else if (containi(szPtdClass, "train") > charsmin )
+                        dllfunc(DLLFunc_Use, ptd, id)
+                    else if (containi(szPtdClass, "tank") > charsmin )
+                    {
+                        dllfunc(DLLFunc_Use, ptd, id)
+                    }
+
+                    else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
+                    //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
+                    {
+
+                        dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
+                        dllfunc(DLLFunc_Touch, ptd, id) // Use Buttons
+                    }
+                }
+
+                // If cvar sv_hooksky is 0 and hook is in the sky remove it!
+                new iContents = engfunc(EngFunc_PointContents, fOrigin)
+                if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
+                {
+                    if(get_pcvar_num(pSound))
+                        emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit2.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+                    remove_hook(id)
                     return FMRES_HANDLED
                 }
-                else if (get_pcvar_num(pPlayers) && equali(szPtdClass, "player"))  goto damage
 
-                else if (get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin)
+                // Pick up weapons..
+                if (get_pcvar_num(pWeapons))
                 {
-                    if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin ||  equali(szPtdClass, "monster_barney")
-                    ||  equali(szPtdClass, "monster_otis") || containi(szPtdClass, "nuke") >  charsmin || containi(szPtdClass,"scientist") > charsmin )
+                    static ent
+                    while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 125.0)) > 0 && pev_valid(ent))
                     {
-                        // Makes an hostage follow
-                        if (get_pcvar_num(pHostage))
-                        {
-                            dllfunc(DLLFunc_Use, ptd, id)
-                        }
+                        static szentClass[MAX_NAME_LENGTH]
+                        pev(ent, pev_classname, szentClass, charsmax(szentClass))
 
+                        for (new toget; toget < sizeof grabable_goodies;toget++)
+
+                        if (containi(szentClass, grabable_goodies[toget]) != charsmin && containi(szentClass, "satchel") == charsmin)
+                        dllfunc(DLLFunc_Touch, ent, id)
                     }
-                    else
-                    goto damage
                 }
-                //else if (equali(szPtdClass, "func_breakable") || equali(szPtdClass, "func_pushable"))
-                else if (containi(szPtdClass, "able") > charsmin)
+
+                // Player is now hooked
+                gHooked[id] = true
+                // Play sound
+                if (get_pcvar_num(pSound))
+                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+
+                // Make some sparks :D
+                message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, fOrigin, 0)
+                write_byte(9) // TE_SPARKS
+                write_coord_f(fOrigin[0]) // Origin
+                write_coord_f(fOrigin[1])
+                write_coord_f(fOrigin[2])
+                message_end()
+
+                // Stop the hook from moving
+                set_pev(ptr, pev_velocity, Float:{0.0, 0.0, 0.0})
+                set_pev(ptr, pev_movetype, MOVETYPE_NONE)
+
+                //Task
+                if (!task_exists(id + 856))
                 {
-    damage:
-                    is_user_alive(ptd) && !is_user_bot(ptd) ?
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,random_num(60,100)*1.0,DMG_PARALYZE) //bot or human
-                    :
-                    ExecuteHam(Ham_TakeDamage,ptd,ptr,id,500.0,DMG_CRUSH|DMG_ALWAYSGIB) //Box or pushable ... monster
-                    //ExecuteHam(Ham_TakeDamage,ptd,ptr,id,2.0,DMG_POISON|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
+                    static TaskData[2]
+                    TaskData[0] = id
+                    TaskData[1] = ptr
+                    gotohook(TaskData)
 
-                    remove_hook(id)
-                    return FMRES_HANDLED
+                    set_task(0.1, "gotohook", id + 856, TaskData, 2, "b")
                 }
-
-                else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin ||
-                containi(szPtdClass,"illusionary") > charsmin || containi(szPtdClass,"wall") > charsmin || containi(szPtdClass,"moment") > charsmin )
-                {
-                    if(!get_pcvar_num(pHook_break))
-                    {
-                        //dllfunc(DLLFunc_Use, ptd, id) //ok for grap
-                        //dllfunc(DLLFunc_Touch, ptd, id) //ok for grap
-
-                        dllfunc(DLLFunc_Use, ptd, ptr) //ok for grap
-                        dllfunc(DLLFunc_Touch, ptd, ptr) //ok for grap
-                        set_pev(ptd, pev_rendermode, kRenderTransColor);
-                        set_pev(ptd, pev_renderamt, random_float(15.0,200.0))
-                        switch(random(5))
-                        {
-                            case 1:set_pev(ptd, pev_rendercolor, Float:{255.0, 207.0, 0.0});
-                            case 2:set_pev(ptd, pev_rendercolor, Float:{0.0, 255.0, 0.0});
-                            case 3:set_pev(ptd, pev_rendercolor, Float:{0.0, 0.0, 255.0});
-                            case 4:set_pev(ptd, pev_rendercolor, Float:{255.0, 0.0, 0.0});
-                        }
-                        set_task(15.0, "@fix_color_ent", ptd)
-                    }
-                    else
-                    {
-                        if(get_pcvar_num(pHook_break)>1)
-                            ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
-
-                    }
-                    /*
-                    switch(random(3))
-                    {
-                        case 1: entity_set_string(ptd,EV_SZ_classname,"func_healthcharger")
-                        case 2: entity_set_string(ptd,EV_SZ_classname,"func_recharge")
-                    }
-                    dllfunc( DLLFunc_Spawn, ptd )
-                    */
-                }
-
-                else if (containi(szPtdClass, "train") > charsmin )
-                    dllfunc(DLLFunc_Use, ptd, id)
-                else if (containi(szPtdClass, "tank") > charsmin )
-                {
-                    dllfunc(DLLFunc_Use, ptd, id)
-                }
-
-                else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
-                //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
-                {
-
-                    dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
-                    dllfunc(DLLFunc_Touch, ptd, id) // Use Buttons
-                }
-            }
-
-            // If cvar sv_hooksky is 0 and hook is in the sky remove it!
-            new iContents = engfunc(EngFunc_PointContents, fOrigin)
-            if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
-            {
-                if(get_pcvar_num(pSound))
-                    emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit2.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-                remove_hook(id)
-                return FMRES_HANDLED
-            }
-
-            // Pick up weapons..
-            if (get_pcvar_num(pWeapons))
-            {
-                static ent
-                while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 125.0)) > 0 && pev_valid(ent))
-                {
-                    static szentClass[MAX_NAME_LENGTH]
-                    pev(ent, pev_classname, szentClass, charsmax(szentClass))
-
-                    for (new toget; toget < sizeof grabable_goodies;toget++)
-
-                    if (containi(szentClass, grabable_goodies[toget]) != charsmin && containi(szentClass, "satchel") == charsmin)
-                    dllfunc(DLLFunc_Touch, ent, id)
-                }
-            }
-
-            // Player is now hooked
-            gHooked[id] = true
-            // Play sound
-            if (get_pcvar_num(pSound))
-                emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-
-            // Make some sparks :D
-            message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, fOrigin, 0)
-            write_byte(9) // TE_SPARKS
-            write_coord_f(fOrigin[0]) // Origin
-            write_coord_f(fOrigin[1])
-            write_coord_f(fOrigin[2])
-            message_end()
-
-            // Stop the hook from moving
-            set_pev(ptr, pev_velocity, Float:{0.0, 0.0, 0.0})
-            set_pev(ptr, pev_movetype, MOVETYPE_NONE)
-
-            //Task
-            if (!task_exists(id + 856))
-            {
-                static TaskData[2]
-                TaskData[0] = id
-                TaskData[1] = ptr
-                gotohook(TaskData)
-
-                set_task(0.1, "gotohook", id + 856, TaskData, 2, "b")
             }
         }
     }
@@ -771,7 +774,7 @@ public hookthink(param[])
     new id = param[0]
     new HookEnt = param[1]
 
-    if (!is_user_alive(id) || !pev_valid(HookEnt) || !pev_valid(id))
+    if (!is_user_connected(id) || !is_user_alive(id) || !pev_valid(HookEnt) || !pev_valid(id) || is_user_bot(id))
     {
         remove_task(id + 890)
         return PLUGIN_HANDLED
@@ -815,7 +818,7 @@ public gotohook(param[])
     new id = param[0]
     new HookEnt = param[1]
 
-    if (!is_user_alive(id) || !pev_valid(HookEnt) || !pev_valid(id))
+    if (is_user_bot(id) || !is_user_connected(id) || !is_user_alive(id) || !pev_valid(HookEnt) || !pev_valid(id))
     {
         remove_task(id + 856)
         return PLUGIN_HANDLED
@@ -852,258 +855,267 @@ public gotohook(param[])
 
 public throw_hook(id)
 {
-    // Get origin and angle for the hook
-    static Float:fOrigin[3], Float:fAngle[3],Float:fvAngle[3]
-    static Float:fStart[3]
-    pev(id, pev_origin, fOrigin)
-
-    pev(id, pev_angles, fAngle)
-    pev(id, pev_v_angle, fvAngle)
-
-    if (get_pcvar_num(pInstant))
+    if(is_user_connected(id) && is_user_alive(id))
     {
-        get_user_hitpoint(id, fStart)
+        // Get origin and angle for the hook
+        static Float:fOrigin[3], Float:fAngle[3],Float:fvAngle[3]
+        static Float:fStart[3]
+        pev(id, pev_origin, fOrigin)
 
-        if (engfunc(EngFunc_PointContents, fStart) != CONTENTS_SKY)
-        {
-            static Float:fSize[3]
-            pev(id, pev_size, fSize)
+        pev(id, pev_angles, fAngle)
+        pev(id, pev_v_angle, fvAngle)
 
-            fOrigin[0] = fStart[0] + floatcos(fvAngle[1], degrees) * (-10.0 + fSize[0])
-            fOrigin[1] = fStart[1] + floatsin(fvAngle[1], degrees) * (-10.0 + fSize[1])
-            fOrigin[2] = fStart[2]
-        }
-        else
-            xs_vec_copy(fStart, fOrigin)
-    }
-
-
-    // Make the hook!
-    //Hook[id] = create_entity("env_smoker")
-    //////////////////////////HOOKHEADS/////////////////////////////////////////////////////////////////////
-    switch(get_pcvar_num(pHead))
-    {
-        case  0: Hook[id] = create_entity("env_rope")
-        case  1: Hook[id] = create_entity("env_electrified_wire")
-        case  2: Hook[id] = create_entity("monster_barnacle")
-        case  3: Hook[id] = create_entity("trigger_push")
-        case  4: Hook[id] = create_entity("monster_tripmine")
-        case  5: Hook[id] = create_entity("monster_penguin")
-        case  6: Hook[id] = create_entity("monster_leech")
-        case  7: Hook[id] = create_entity("monster_headcrab")
-        case  8: Hook[id] = create_entity("monster_snark")
-        case  9: Hook[id] = create_entity("light") ///"light" "cycler_prdroid"
-        case 10: Hook[id] = create_entity("displacer_ball")
-    }
-    //if using certain hooks they need set up just so to work as expected
-    if(get_pcvar_num(pHead) <= 5)
-    {
-        if(!get_pcvar_num(pInstant))
-            set_pcvar_num(pInstant, 1)
-        //only admins should be making ropes at this time. Hard on the network resources.
-        !get_pcvar_num(pAdmin) ?
-        set_pcvar_num(pAdmin, 1) & set_pcvar_num(pInstant, 1) : set_pcvar_num(pAdmin, 0)
-    }
-
-
-    if(Hook[id])
-    {
-        // Player cant throw hook now
-        canThrowHook[id] = false
-
-        static const Float:fMins[3] = {-2.840000, -14.180000, -2.840000}
-        static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
-
-        //Set some Data
-        /*
-        switch(get_pcvar_num(pHead))
-        {
-            case 0: set_pev(Hook[id], pev_classname, "Hook_rope")
-            case 1: set_pev(Hook[id], pev_classname, "Hook_rope_barnacle")
-            case 2: set_pev(Hook[id], pev_classname, "Hook_rope_push")
-            case 3: set_pev(Hook[id], pev_classname, "Hook_rope_snark")
-            case 4: set_pev(Hook[id], pev_classname, "Hook_rope_guin")
-            case 5: set_pev(Hook[id], pev_classname, "Hook_rope_leech")
-            case 6: set_pev(Hook[id], pev_classname, "Hook_illuminati")
-        }*/
-
-        if (get_pcvar_num(pUseButtons) > 1)
-            get_pcvar_num(pHead) <= 4 ? set_pev(Hook[id], pev_classname, "Hook") : set_pev(Hook[id], pev_classname, "Hook_rope") //nice monster maker bot hook for player
-            //////////////////////////////////////////////////Need regular hook and spec feat hook seperated classes.
-        else
-            get_pcvar_num(pHead) <= 4 ? set_pev(Hook[id], pev_classname, "Hook_rope") : set_pev(Hook[id], pev_classname, "Hook") //normal except 5 good hook otherwise 'normal'
-
-        ////VARIOUS ENT PARAMETERS
-
-        /*
-        env_electrified_wire spawnflags 1
-        env_electrified_wire angles 0 0 0
-        env_electrified_wire targetname pc_wire
-        env_electrified_wire segments 3
-        env_electrified_wire sparkfrequency 7
-        env_electrified_wire bodysparkfrequency 3
-        env_electrified_wire lightningfrequency 3
-        env_electrified_wire xforce 40000
-        env_electrified_wire yforce 30000
-        env_electrified_wire zforce 10000
-        env_electrified_wire disable 1
-        env_electrified_wire bodymodel models/wire_copper32.mdl
-        env_electrified_wire endingmodel models/wire_red32.mdl
-        */
-        ///classname env_electrified_wire
-        if(get_pcvar_num(pHead) == 1)
-        {
-            fm_set_kvd(Hook[id], "sparkfrequency", "7");
-            fm_set_kvd(Hook[id], "bodysparkfrequency", "3");
-            fm_set_kvd(Hook[id], "lightningfrequency", "3");
-            fm_set_kvd(Hook[id], "spawnflags", "1");
-            fm_set_kvd(Hook[id], "xforce", "40000");
-            fm_set_kvd(Hook[id], "yforce", "30000");
-            fm_set_kvd(Hook[id], "zforce", "10000");
-            fm_set_kvd(Hook[id], "disable", "1");
-        }
-
-        engfunc(EngFunc_SetModel, Hook[id], RPG)
-        engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
-        engfunc(EngFunc_SetSize, Hook[id], fMins, fMaxs)
-        //env_explosion/breakable
-        set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need this to break things with hook later
-        //env_smoker
-        fm_set_kvd(Hook[id], "scale" , "1000"); //smoker
-        //fm_set_kvd(Hook[id], "explodemagnitude", "350") //like the C4 on CS. Exactly
-
-        fm_set_kvd(Hook[id], "angles", "0 0 0");
-        fm_set_kvd(Hook[id], "spawnflags", "0");
-        fm_set_kvd(Hook[id], "speed", "1000");
-        fm_set_kvd(Hook[id], "sounds", "1");
-        //fm_set_kvd(Hook[id], "style", "32");
-        //fm_set_kvd(Hook[id], "model", "*228"); // Host_Error: no precache: 32
-
-        fm_set_kvd(Hook[id], "height", "9000");
-
-        //trigger_hurt
-
-
-        if(get_pcvar_num(pHead) == 10)
-        {
-            fm_set_kvd(Hook[id], "Radius", "128");
-            fm_set_kvd(Hook[id], "Targetname", "HookBall");
-            fm_set_kvd(Hook[id], "Target", "blk_apache_way_point");
-            fm_set_kvd(Hook[id], "Warp_Target", "apache_way_point");
-            fm_set_kvd(Hook[id], "spawnflags", "3");
-
-        }
-        if(get_pcvar_num(pHead) == 11)
-        {
-            fm_set_kvd(Hook[id], "dmg ", "-20");
-            fm_set_kvd(Hook[id], "delay", "0");
-            fm_set_kvd(Hook[id], "damagetype", "0");
-        }
-        //end hurt spec
-
-        //env_rope
-        if(!get_pcvar_num(pHead))
-        {
-            fm_set_kvd(Hook[id], "bodymodel", "models/rope32.mdl")
-            fm_set_kvd(Hook[id], "endingmodel", "models/rope16.mdl")
-        }
-        else
-        {
-            fm_set_kvd(Hook[id], "bodymodel", "models/wire_copper32.mdl")
-            fm_set_kvd(Hook[id], "endingmodel", "models/wire_red32.mdl")
-        }
-
-        //give env_rope spec target name so penguins don't explode and disable the ropes. use that later to cancel out ropes we do not need/want.
-        //long segmented ropes are hard on the processor.
-        !get_pcvar_num(pHead) ? fm_set_kvd(Hook[id], "targetname", "hooks_rope") : fm_set_kvd(Hook[id], "targetname", "hooks_head")
-
-        switch(get_pcvar_num(pSegments))
-        {
-            case   1..2: fm_set_kvd(Hook[id], "segments", "2")
-            case   3..6: fm_set_kvd(Hook[id], "segments", "6")
-            case  7..16: fm_set_kvd(Hook[id], "segments", "14")
-            case 17..36: fm_set_kvd(Hook[id], "segments", "24")
-            case 37..50: fm_set_kvd(Hook[id], "segments", "36")
-        }
-        //end rope
-
-        //set_pev(Hook[id], pev_mins, fMins)
-        //set_pev(Hook[id], pev_maxs, fMaxs)
-
-        set_pev(Hook[id], pev_angles, fAngle)
-
-        set_pev(Hook[id], pev_solid, 2)
-        set_pev(Hook[id], pev_movetype, 5)
-        //get_pcvar_num(pHead) == 5 ? set_pev(Hook[id], pev_owner, 0) : set_pev(Hook[id], pev_owner, id) //jk_botti crash when penguin explodes
-
-        //detach pengin other unstable when they explode
-        get_pcvar_num(pHead) == 5 && get_pcvar_num(pUseButtons) < 2 ? set_pcvar_num(pUseButtons, 2) : set_pcvar_num(pUseButtons, 1)
-
-        set_pev(Hook[id], pev_owner, id)
-      //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
-      //  set_pev(Hook[id], pev_health, 100.0) //for smoker
-
-        //Set hook velocity
-        static Float:fForward[3], Float:Velocity[3]
-        new Float:fSpeed = get_pcvar_float(pThrowSpeed)
-
-        engfunc(EngFunc_MakeVectors, fvAngle)
-        global_get(glb_v_forward, fForward)
-
-        Velocity[0] = fForward[0] * fSpeed
-        Velocity[1] = fForward[1] * fSpeed
-        Velocity[2] = fForward[2] * fSpeed
-
-        set_pev(Hook[id], pev_velocity, Velocity)
-
-
-
-        dllfunc( DLLFunc_Spawn, Hook[id] )
-
-        // Make the line between Hook and Player
-        message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, Float:{0.0, 0.0, 0.0}, 0)
         if (get_pcvar_num(pInstant))
         {
-            write_byte(1) // TE_BEAMPOINT
-            write_short(id) // Startent
-            write_coord_f(fStart[0]) // End pos
-            write_coord_f(fStart[1])
-            write_coord_f(fStart[2])
-        }
-        else
-        {
-            write_byte(8) // TE_BEAMENTS
-            write_short(id) // Start Ent
-            write_short(Hook[id]) // End Ent
-        }
-        write_short(sprBeam) // Sprite
-        write_byte(1) // StartFrame
-        write_byte(1) // FrameRate
-        write_byte(600) // Life
-        write_byte(get_pcvar_num(pWidth)) // Width
-        write_byte(get_pcvar_num(pHookNoise)) // Noise
-        // Colors now
-        if (get_pcvar_num(pColor) && cstrike_running())
-        {
-            if (get_user_team(id) == 1) // Terrorist
+            get_user_hitpoint(id, fStart)
+
+            if (engfunc(EngFunc_PointContents, fStart) != CONTENTS_SKY)
             {
-                write_byte(255) // R
-                write_byte(0)   // G
-                write_byte(0)   // B
+                static Float:fSize[3]
+                pev(id, pev_size, fSize)
+
+                fOrigin[0] = fStart[0] + floatcos(fvAngle[1], degrees) * (-10.0 + fSize[0])
+                fOrigin[1] = fStart[1] + floatsin(fvAngle[1], degrees) * (-10.0 + fSize[1])
+                fOrigin[2] = fStart[2]
             }
-            #if defined _cstrike_included
-            else if(cs_get_user_vip(id)) // vip for cstrike
+            else
+                xs_vec_copy(fStart, fOrigin)
+        }
+
+
+        // Make the hook!
+        //Hook[id] = create_entity("env_smoker")
+        //////////////////////////HOOKHEADS/////////////////////////////////////////////////////////////////////
+        switch(get_pcvar_num(pHead))
+        {
+            case  0: Hook[id] = create_entity("env_rope")
+            case  1: Hook[id] = create_entity("env_electrified_wire")
+            case  2: Hook[id] = create_entity("monster_barnacle")
+            case  3: Hook[id] = create_entity("trigger_push")
+            case  4: Hook[id] = create_entity("monster_tripmine")
+            case  5: Hook[id] = create_entity("monster_penguin")
+            case  6: Hook[id] = create_entity("monster_leech")
+            case  7: Hook[id] = create_entity("monster_headcrab")
+            case  8: Hook[id] = create_entity("monster_snark")
+            case  9: Hook[id] = create_entity("light") ///"light" "cycler_prdroid"
+            case 10: Hook[id] = create_entity("displacer_ball")
+        }
+        //if using certain hooks they need set up just so to work as expected
+        if(get_pcvar_num(pHead) <= 5)
+        {
+            if(!get_pcvar_num(pInstant))
+                set_pcvar_num(pInstant, 1)
+            //only admins should be making ropes at this time. Hard on the network resources.
+            !get_pcvar_num(pAdmin) ?
+            set_pcvar_num(pAdmin, 1) & set_pcvar_num(pInstant, 1) : set_pcvar_num(pAdmin, 0)
+        }
+
+
+        if(Hook[id])
+        {
+            // Player cant throw hook now
+            canThrowHook[id] = false
+
+            static const Float:fMins[3] = {-2.840000, -14.180000, -2.840000}
+            static const Float:fMaxs[3] = {2.840000, 0.020000, 2.840000}
+
+            //Set some Data
+            /*
+            switch(get_pcvar_num(pHead))
             {
-                write_byte(0)   // R
-                write_byte(255) // G
-                write_byte(0)   // B
+                case 0: set_pev(Hook[id], pev_classname, "Hook_rope")
+                case 1: set_pev(Hook[id], pev_classname, "Hook_rope_barnacle")
+                case 2: set_pev(Hook[id], pev_classname, "Hook_rope_push")
+                case 3: set_pev(Hook[id], pev_classname, "Hook_rope_snark")
+                case 4: set_pev(Hook[id], pev_classname, "Hook_rope_guin")
+                case 5: set_pev(Hook[id], pev_classname, "Hook_rope_leech")
+                case 6: set_pev(Hook[id], pev_classname, "Hook_illuminati")
+            }*/
+
+            if (get_pcvar_num(pUseButtons) > 1)
+                get_pcvar_num(pHead) <= 4 ? set_pev(Hook[id], pev_classname, "Hook") : set_pev(Hook[id], pev_classname, "Hook_rope") //nice monster maker bot hook for player
+                //////////////////////////////////////////////////Need regular hook and spec feat hook seperated classes.
+            else
+                get_pcvar_num(pHead) <= 4 ? set_pev(Hook[id], pev_classname, "Hook_rope") : set_pev(Hook[id], pev_classname, "Hook") //normal except 5 good hook otherwise 'normal'
+
+            ////VARIOUS ENT PARAMETERS
+
+            /*
+            env_electrified_wire spawnflags 1
+            env_electrified_wire angles 0 0 0
+            env_electrified_wire targetname pc_wire
+            env_electrified_wire segments 3
+            env_electrified_wire sparkfrequency 7
+            env_electrified_wire bodysparkfrequency 3
+            env_electrified_wire lightningfrequency 3
+            env_electrified_wire xforce 40000
+            env_electrified_wire yforce 30000
+            env_electrified_wire zforce 10000
+            env_electrified_wire disable 1
+            env_electrified_wire bodymodel models/wire_copper32.mdl
+            env_electrified_wire endingmodel models/wire_red32.mdl
+            */
+            ///classname env_electrified_wire
+            if(get_pcvar_num(pHead) == 1)
+            {
+                fm_set_kvd(Hook[id], "sparkfrequency", "7");
+                fm_set_kvd(Hook[id], "bodysparkfrequency", "3");
+                fm_set_kvd(Hook[id], "lightningfrequency", "3");
+                fm_set_kvd(Hook[id], "spawnflags", "1");
+                fm_set_kvd(Hook[id], "xforce", "40000");
+                fm_set_kvd(Hook[id], "yforce", "30000");
+                fm_set_kvd(Hook[id], "zforce", "10000");
+                fm_set_kvd(Hook[id], "disable", "1");
             }
-            #endif // _cstrike_included
-            else if(get_user_team(id) == 2) // CT
+
+            engfunc(EngFunc_SetModel, Hook[id], RPG)
+            engfunc(EngFunc_SetOrigin, Hook[id], fOrigin)
+            engfunc(EngFunc_SetSize, Hook[id], fMins, fMaxs)
+            //env_explosion/breakable
+            set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need this to break things with hook later
+            //env_smoker
+            fm_set_kvd(Hook[id], "scale" , "1000"); //smoker
+            //fm_set_kvd(Hook[id], "explodemagnitude", "350") //like the C4 on CS. Exactly
+
+            fm_set_kvd(Hook[id], "angles", "0 0 0");
+            fm_set_kvd(Hook[id], "spawnflags", "0");
+            fm_set_kvd(Hook[id], "speed", "1000");
+            fm_set_kvd(Hook[id], "sounds", "1");
+            //fm_set_kvd(Hook[id], "style", "32");
+            //fm_set_kvd(Hook[id], "model", "*228"); // Host_Error: no precache: 32
+
+            fm_set_kvd(Hook[id], "height", "9000");
+
+            //trigger_hurt
+
+
+            if(get_pcvar_num(pHead) == 10)
             {
-                write_byte(0)   // R
-                write_byte(0)   // G
-                write_byte(255) // B
+                fm_set_kvd(Hook[id], "Radius", "128");
+                fm_set_kvd(Hook[id], "Targetname", "HookBall");
+                fm_set_kvd(Hook[id], "Target", "blk_apache_way_point");
+                fm_set_kvd(Hook[id], "Warp_Target", "apache_way_point");
+                fm_set_kvd(Hook[id], "spawnflags", "3");
+
+            }
+            if(get_pcvar_num(pHead) == 11)
+            {
+                fm_set_kvd(Hook[id], "dmg ", "-20");
+                fm_set_kvd(Hook[id], "delay", "0");
+                fm_set_kvd(Hook[id], "damagetype", "0");
+            }
+            //end hurt spec
+
+            //env_rope
+            if(!get_pcvar_num(pHead))
+            {
+                fm_set_kvd(Hook[id], "bodymodel", "models/rope32.mdl")
+                fm_set_kvd(Hook[id], "endingmodel", "models/rope16.mdl")
+            }
+            else
+            {
+                fm_set_kvd(Hook[id], "bodymodel", "models/wire_copper32.mdl")
+                fm_set_kvd(Hook[id], "endingmodel", "models/wire_red32.mdl")
+            }
+
+            //give env_rope spec target name so penguins don't explode and disable the ropes. use that later to cancel out ropes we do not need/want.
+            //long segmented ropes are hard on the processor.
+            !get_pcvar_num(pHead) ? fm_set_kvd(Hook[id], "targetname", "hooks_rope") : fm_set_kvd(Hook[id], "targetname", "hooks_head")
+
+            switch(get_pcvar_num(pSegments))
+            {
+                case   1..2: fm_set_kvd(Hook[id], "segments", "2")
+                case   3..6: fm_set_kvd(Hook[id], "segments", "6")
+                case  7..16: fm_set_kvd(Hook[id], "segments", "14")
+                case 17..36: fm_set_kvd(Hook[id], "segments", "24")
+                case 37..50: fm_set_kvd(Hook[id], "segments", "36")
+            }
+            //end rope
+
+            //set_pev(Hook[id], pev_mins, fMins)
+            //set_pev(Hook[id], pev_maxs, fMaxs)
+
+            set_pev(Hook[id], pev_angles, fAngle)
+
+            set_pev(Hook[id], pev_solid, 2)
+            set_pev(Hook[id], pev_movetype, 5)
+            //get_pcvar_num(pHead) == 5 ? set_pev(Hook[id], pev_owner, 0) : set_pev(Hook[id], pev_owner, id) //jk_botti crash when penguin explodes
+
+            //detach pengin other unstable when they explode
+            get_pcvar_num(pHead) == 5 && get_pcvar_num(pUseButtons) < 2 ? set_pcvar_num(pUseButtons, 2) : set_pcvar_num(pUseButtons, 1)
+
+            set_pev(Hook[id], pev_owner, id)
+          //  set_pev(Hook[id], pev_flags, SF_BREAK_TOUCH) //need to make it useful
+          //  set_pev(Hook[id], pev_health, 100.0) //for smoker
+
+            //Set hook velocity
+            static Float:fForward[3], Float:Velocity[3]
+            new Float:fSpeed = get_pcvar_float(pThrowSpeed)
+
+            engfunc(EngFunc_MakeVectors, fvAngle)
+            global_get(glb_v_forward, fForward)
+
+            Velocity[0] = fForward[0] * fSpeed
+            Velocity[1] = fForward[1] * fSpeed
+            Velocity[2] = fForward[2] * fSpeed
+
+            set_pev(Hook[id], pev_velocity, Velocity)
+
+
+
+            dllfunc( DLLFunc_Spawn, Hook[id] )
+
+            // Make the line between Hook and Player
+            message_begin_f(MSG_BROADCAST, SVC_TEMPENTITY, Float:{0.0, 0.0, 0.0}, 0)
+            if (get_pcvar_num(pInstant))
+            {
+                write_byte(1) // TE_BEAMPOINT
+                write_short(id) // Startent
+                write_coord_f(fStart[0]) // End pos
+                write_coord_f(fStart[1])
+                write_coord_f(fStart[2])
+            }
+            else
+            {
+                write_byte(8) // TE_BEAMENTS
+                write_short(id) // Start Ent
+                write_short(Hook[id]) // End Ent
+            }
+            write_short(sprBeam) // Sprite
+            write_byte(1) // StartFrame
+            write_byte(1) // FrameRate
+            write_byte(600) // Life
+            write_byte(get_pcvar_num(pWidth)) // Width
+            write_byte(get_pcvar_num(pHookNoise)) // Noise
+            // Colors now
+            if (get_pcvar_num(pColor) && cstrike_running())
+            {
+                if (get_user_team(id) == 1) // Terrorist
+                {
+                    write_byte(255) // R
+                    write_byte(0)   // G
+                    write_byte(0)   // B
+                }
+                #if defined _cstrike_included
+                else if(cs_get_user_vip(id)) // vip for cstrike
+                {
+                    write_byte(0)   // R
+                    write_byte(255) // G
+                    write_byte(0)   // B
+                }
+                #endif // _cstrike_included
+                else if(get_user_team(id) == 2) // CT
+                {
+                    write_byte(0)   // R
+                    write_byte(0)   // G
+                    write_byte(255) // B
+                }
+                else
+                {
+                    write_byte(255) // R
+                    write_byte(255) // G
+                    write_byte(255) // B
+                }
             }
             else
             {
@@ -1111,28 +1123,23 @@ public throw_hook(id)
                 write_byte(255) // G
                 write_byte(255) // B
             }
+            write_byte(192) // Brightness
+            write_byte(0) // Scroll speed
+            message_end()
+
+            if (get_pcvar_num(pSound) && !get_pcvar_num(pInstant))
+                emit_sound(id, CHAN_BODY, "weapons/xbow_fire1.wav", VOL_NORM, ATTN_NORM, 0, PITCH_HIGH)
+
+            static TaskData[2]
+            TaskData[0] = id
+            TaskData[1] = Hook[id]
+
+            set_task(0.2, "hookthink", id + 890, TaskData, 2, "b")
         }
         else
-        {
-            write_byte(255) // R
-            write_byte(255) // G
-            write_byte(255) // B
-        }
-        write_byte(192) // Brightness
-        write_byte(0) // Scroll speed
-        message_end()
-
-        if (get_pcvar_num(pSound) && !get_pcvar_num(pInstant))
-            emit_sound(id, CHAN_BODY, "weapons/xbow_fire1.wav", VOL_NORM, ATTN_NORM, 0, PITCH_HIGH)
-
-        static TaskData[2]
-        TaskData[0] = id
-        TaskData[1] = Hook[id]
-
-        set_task(0.2, "hookthink", id + 890, TaskData, 2, "b")
+            client_print(id, print_chat, "Can't create hook")
     }
-    else
-        client_print(id, print_chat, "Can't create hook")
+
 }
 
 
@@ -1268,7 +1275,7 @@ public take_hook(id, level, cid)
 // Stock by Chaosphere
 stock get_user_hitpoint(id, Float:hOrigin[3])
 {
-    if (!is_user_alive(id))
+    if (!is_user_connected(id) || !is_user_alive(id))
         return 0
 
     static Float:fOrigin[3], Float:fvAngle[3], Float:fvOffset[3], Float:fvOrigin[3], Float:feOrigin[3]
@@ -1295,27 +1302,31 @@ stock get_user_hitpoint(id, Float:hOrigin[3])
 
 stock statusMsg(id, szMsg[], {Float,_}:...)
 {
-    static iStatusText
-    iStatusText = cstrike_running() ? get_user_msgid("StatusText") : get_user_msgid("HudText")
-
-    static szBuffer[MAX_MENU_LENGTH]
-    vformat(szBuffer, charsmax(szBuffer), szMsg, 3)
-
-    if(id == 0)
-        emessage_begin(MSG_BROADCAST, iStatusText, _, 0)
-    else if(id != 0)
-        emessage_begin(MSG_ONE_UNRELIABLE, iStatusText, _, id)
-    if(cstrike_running() )
+    if(is_user_connected(id) && is_user_alive(id))
     {
-        ewrite_byte(0) //InitHUDstyle
-        ewrite_string(szBuffer) // Message
-    }
-    else
-    {
-        ewrite_string(szBuffer) // Message
-        ewrite_byte(1) //InitHUDstyle
-    }
-    emessage_end()
+        static iStatusText
+        iStatusText = cstrike_running() ? get_user_msgid("StatusText") : get_user_msgid("HudText")
 
-    return 1
+        static szBuffer[MAX_MENU_LENGTH]
+        vformat(szBuffer, charsmax(szBuffer), szMsg, 3)
+
+        if(id == 0)
+            emessage_begin(MSG_BROADCAST, iStatusText, _, 0)
+        else if(id != 0)
+            emessage_begin(MSG_ONE_UNRELIABLE, iStatusText, _, id)
+        if(cstrike_running() )
+        {
+            ewrite_byte(0) //InitHUDstyle
+            ewrite_string(szBuffer) // Message
+        }
+        else
+        {
+            ewrite_string(szBuffer) // Message
+            ewrite_byte(1) //InitHUDstyle
+        }
+        emessage_end()
+
+        return 1
+    }
+    return PLUGIN_HANDLED
 }
