@@ -264,13 +264,15 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
                 if(!is_user_bot(this_ent))
                     SetHamParamInteger(5, DMG_ALWAYSGIB) //otherwise multi kills on corpse!
                 temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
-                if(temp_npc > 0)
+                if(pev_valid(temp_npc)>1)
                 {
                     static szRejectReason[128]
                     new effects = pev(temp_npc, pev_effects)
                     dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"127.0.0.1",szRejectReason)
-                    set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
-
+                    if(is_user_connected(temp_npc)
+                    {
+                        set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
+                    }
                     victim = temp_npc
                     log_kill(killer, victim, weapon, 1)
                     @fake_death(victim,idattacker)
