@@ -93,7 +93,8 @@ public plugin_init()
     register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
     register_event("WeapPickup", "@strip_spec", "bef")
 
-    RegisterHam(Ham_Spawn, "player", "@play", 1);
+    //RegisterHam(Ham_Spawn, "player", "@play", 1); //ents can disappear on map start.
+    register_event("ResetHUD", "@play", "b")
     register_clcmd("say", "handle_say")
     set_task_ex(11.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
     maxplayers = get_maxplayers()
@@ -123,7 +124,7 @@ public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
         new reblah[MAX_RESOURCE_PATH_LENGTH]
         read_args(blah,charsmax(blah))
         remove_quotes(blah)
-    
+
         if(g_spectating[id])
         {
             format(reblah, charsmax(reblah), "[Spectator]%n: %s", id, blah)
@@ -214,7 +215,7 @@ public client_prethink( id )
                     new iTarget = g_random_view[id]
                     if(is_user_connected(iTarget)) //needs checked here as index was made up!
                     {
-                        //attach_view(id, iTarget); 
+                        //attach_view(id, iTarget);
                         set_view(id, CAMERA_NONE)
                         entity_set_float(id, EV_FL_fov, 100.0)
 
@@ -332,14 +333,14 @@ stock loss()
         entity_set_float(id, EV_FL_fov, 100.0)
 
         new effects = pev(id, pev_effects)
-        set_pev(id, pev_effects, (!effects | !EF_NODRAW | !FL_SPECTATOR | !FL_NOTARGET));
-        pev(id, pev_flags) & FL_CLIENT | FL_GRAPHED
+        set_pev(id, pev_effects, (effects | ~EF_NODRAW | ~FL_SPECTATOR | ~FL_NOTARGET));
     }
 }
 
 public client_putinserver(id)
 OK && !is_user_bot(id))
 {
+    g_random_view[id] = 0
     if(!g_bFlagMap)
     {
         if(!g_startaspec)
@@ -675,7 +676,7 @@ public random_view(id)
         new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
         get_players(players,playercount,"i");
 
-        for (viewable=1; viewable < playercount; ++viewable)
+        for (viewable=0; viewable < playercount; ++viewable)
         if(playercount > 1 && !g_random_view[id])
         {
             iViewPlayer = random_num(1,playercount+1)
@@ -715,18 +716,9 @@ public random_view(id)
 
 public client_disconnected(id)
 {
-    if(task_exists(id))
-        remove_task(id)
-    if(g_spectating[id] || g_bSpecNam[id])
-    {
-        g_spectating[id] = false
-        bAlready_shown_menu[id] = false
-        set_user_info(id, "name", SzClientName[id])
-    }
-
-    id > 0 && id < 33 ?
-        entity_set_float(id, EV_FL_fov, 100.0) : server_print("Invalid client")
-
+    g_spectating[id] = false
+    bAlready_shown_menu[id] = false
+    g_random_view[id] = 0
     @clear_menu(id)
 }
 
