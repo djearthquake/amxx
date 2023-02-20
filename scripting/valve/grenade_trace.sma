@@ -1,33 +1,27 @@
 #include <amxmodx>
-#include <amxmisc>
-#include <hamsandwich>
 #include <engine>
 #include <fakemeta>
-#include <fun>
+
 #define iRandomColor random(256)
-new g_model,sprite;
+new g_model, sprite, g_ar_think, g_gren_think;
 
 public plugin_init()
 {
     register_plugin("HL Grenade Trail","A1","SPiNX");
-    register_think("grenade","CurentWeapon");
-    register_think("ARgrenade","CurentWeapon");
-    RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_handgrenade", "CurentWeapon", 0);
-    RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_9mmAR", "CurentWeapon", 0);
+
+    g_gren_think = register_think("grenade","CurentWeapon");
+    g_ar_think = register_think("ARgrenade","CurentWeapon");
+}
+
+public plugin_end()
+{
+    unregister_think(g_ar_think)
+    unregister_think(g_gren_think)
 }
 
 public plugin_precache()
 {
     sprite = precache_model("sprites/smoke.spr");
-}
-
-public grenade_attack2(id)
-{
-    if(task_exists(g_model))
-        remove_task(g_model);
-
-    set_task_ex(0.2, "hull_glow", g_model, .flags = SetTask_Once);
-
 }
 
 public hull_glow(model)
@@ -58,8 +52,8 @@ public CurentWeapon(id)
     {
         switch(random_num(0,1))
         {
-            case 0: set_ent_rendering(g_model, kRenderFxExplode, iRandomColor, iRandomColor, iRandomColor, kRenderGlow, power(g_model,10));
-            case 1: set_ent_rendering(g_model, kRenderFxGlowShell, iRandomColor, iRandomColor, iRandomColor, kRenderNormal, random_num(8,100));
+            case 0: set_rendering(g_model, kRenderFxExplode, iRandomColor, iRandomColor, iRandomColor, kRenderGlow, power(g_model,10));
+            case 1: set_rendering(g_model, kRenderFxGlowShell, iRandomColor, iRandomColor, iRandomColor, kRenderNormal, random_num(8,100));
         }
         Trail_me(g_model)
     }
