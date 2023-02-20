@@ -4,7 +4,6 @@
 #include <engine_stocks>
 #include <fakemeta>
 #include <fun>
-//#include <hamsandwich>
 
 #define MAX_NAME_LENGTH 32
 #define MAX_CMD_LENGTH 128
@@ -47,7 +46,7 @@ new const GIVES[][]=
     "item_ctfportablehev",
     "item_ctflongjump",
     "item_ctfaccelerator",
-    "item_airtank",
+    /*"item_airtank",*/
     "weapon_pipewrench",
     "weapon_penguin",
     "weapon_knife",
@@ -59,19 +58,23 @@ new const GIVES[][]=
     "weapon_sniperrifle",
     "weapon_displacer",
     #endif
+    "weapon_rpg",
     "ammo_9mmbox",
+    "ammo_9mmAR",
     "ammo_ARgrenades",
+    "ammo_crossbow",
+    "ammo_gaussclip",
+    "ammo_rpgclip",
     "ammo_buckshot",
     "item_longjump",
     "weapon_357",
     "weapon_9mmAR",
-    "weapon_crossbow",
-    /*"weapon_crowbar",*/
+    /*"weapon_crossbow",*/
+    "weapon_crowbar",
     "weapon_egon",
     "weapon_gauss",
     "weapon_handgrenade",
     "weapon_hornetgun",
-    "weapon_rpg",
     "weapon_satchel",
     "weapon_shotgun",
     "weapon_snark",
@@ -87,7 +90,6 @@ new g_event
 public plugin_init()
 {
     register_plugin("Gives random weapon(s) on spawn.", "A", ".sρiηX҉.");
-    //RegisterHam(Ham_Spawn, "player", "client_getfreestuff", 1);
     g_event = register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEvent_Single|RegisterEvent_OnlyAlive)
 }
 
