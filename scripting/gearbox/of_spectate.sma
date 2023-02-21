@@ -45,12 +45,12 @@ new Float:g_user_origin[MAX_PLAYERS + 1][3]
 new g_iViewtype[MAX_PLAYERS + 1]
 
 new g_startaspec
-new bool:g_bGunGameRunning
+new bool:g_bGunGameRunning, bool:g_bGrenadesOnlyRunning
 new bool:g_bSpecNam[MAX_PLAYERS + 1]
 new SzSpecName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
 new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
-new Float:g_Velocity[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
+new /*Float:g_Velocity[MAX_PLAYERS + 1][3],*/ g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
 
 new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
@@ -73,6 +73,10 @@ public plugin_init()
     {
         g_bGunGameRunning = true
         //pause "a";
+    }
+    if(is_plugin_loaded("grenades_only.amxx",true)!=charsmin)
+    {
+        g_bGrenadesOnlyRunning = true
     }
     new mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
@@ -567,6 +571,15 @@ public client_infochanged(id)
                         #endif
                         set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
                         show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
+
+                        if(g_bGrenadesOnlyRunning)
+                        {
+                            if(g_spectating[id])
+                            {
+                                fm_strip_user_weapons(id)
+                                set_view(id, CAMERA_NONE)
+                            }
+                        }
                     }
                 }
                 else
