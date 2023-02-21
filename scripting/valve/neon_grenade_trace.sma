@@ -117,7 +117,7 @@
     new g_pickerton[MAX_PLAYERS];
     new g_cvar_bsod_iDelay;
     new g_iLoss,g_iPing;
-    new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, g_tank_think, g_rocket_think;
+    new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, /*g_tank_think,*/ g_rocket_think;
     new bool: bRADead[MAX_PLAYERS + 1];
     new bool: bStrike;
 
@@ -128,7 +128,7 @@ public plugin_end()
     unregister_think(g_mortar_think);
     unregister_think(g_rocket_think);
     unregister_think(g_rpg_think);
-    unregister_think(g_tank_think);
+//    unregister_think(g_tank_think);
 }
 public plugin_init()
 {
@@ -159,53 +159,56 @@ public plugin_init()
     g_cvar_bsod_iDelay = register_cvar("neon_flashbang_time", "2");
 
 
-    //GRENADES
-
-    register_think("grenade","@tracer");
-    register_think("ARgrenade","@tracer");
-
+    //HAND GRENADES
+    if(has_map_ent_class("weapon_handgrenade"))
+    {
+        register_think("grenade","@tracer");
+    }
+    //AR GRENADES
+    if(has_map_ent_class("weapon_9mmAR"))
+    {
+        register_think("ARgrenade","@tracer");
+    }
     //HORNET
     if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
     {
-        register_touch("hornet", "*", "Other_Attack_Touch");
+        if(has_map_ent_class("weapon_hivehand"))
+            register_touch("hornet", "*", "Other_Attack_Touch");
     }
-
     //BOW
     if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
     {
-        g_bolt_think = register_think("bolt","@tracer");
+        if(has_map_ent_class("weapon_crossbow"))
+        {
+            g_bolt_think = register_think("bolt","@tracer");
 
-        register_touch("bolt", "*", "HandGrenade_Attack2_Touch");
+            register_touch("bolt", "*", "HandGrenade_Attack2_Touch");
+        }
     }
-
     if(get_pcvar_num(g_cvar_neon_all) > 9 )
     {
         //RPG
-
-        g_rpg_think = register_think("rpg_rocket","@tracer");
-
-        register_touch("rpg_rocket", "*", "HandGrenade_Attack2_Touch");
-
-
+        if(has_map_ent_class("weapon_rpg"))
+        {
+            register_touch("rpg_rocket", "*", "HandGrenade_Attack2_Touch");
+        }
         //MORTAR
-
-        g_mortar_think = register_think("mortar_shell", "@tracer");
-
-        register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
-
-        //TANK
-
-        g_tank_think = register_think("func_tank", "@tracer");
-        register_touch("func_tank", "*", "HandGrenade_Attack2_Touch");
-
-        //MISSILES
-
-        g_rocket_think = register_think("func_rocket", "@tracer");
-        register_touch("func_rocket", "*", "HandGrenade_Attack2_Touch");
+        if(has_map_ent_class("op4ctf_mortar"))
+        {
+            g_mortar_think = register_think("mortar_shell", "@tracer");
+            register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
+        }
+        //MISSILES //affecting spec mode
+        if(has_map_ent_class("func_rocket"))
+        {
+            g_rocket_think = register_think("func_rocket", "@tracer");
+            register_touch("func_rocket", "*", "HandGrenade_Attack2_Touch");
+        }
     }
-
-    if(cstrike_running() )
+    if(cstrike_running())
+    {
         register_logevent("plugin_save", 3, "2=Planted_The_Bomb")
+    }
 }
 
 public plugin_precache()
@@ -228,7 +231,7 @@ public plugin_precache()
     precache_generic(SOUND_MAN);
     precache_generic(SOUND_SHIT);
 }
-
+ /*
 public hull_glow(model)
 {
     if(get_pcvar_num(g_cvar_neon_hull) !=1 && pev_valid(model) > 1)
@@ -241,6 +244,7 @@ public hull_glow(model)
     }
     return PLUGIN_CONTINUE;
 }
+ */
 
 @tracer(s)
 {
@@ -261,7 +265,7 @@ public CurentWeapon(id)
 {
     if(is_user_connected(id) && is_user_alive(id))
     {
-        new temp_ent1, temp_ent2, temp_ent3, temp_ent4, temp_ent5, temp_ent6, temp_ent7, temp_ent8;
+        new temp_ent1, temp_ent2, temp_ent3, temp_ent4,/*temp_ent5,*/ temp_ent6, /*temp_ent7,*/ temp_ent8;
         //Standard
         temp_ent1 = find_ent(charsmin,"grenade");
         temp_ent2 = find_ent(charsmin,"ARgrenade");
@@ -275,9 +279,9 @@ public CurentWeapon(id)
         //Baby nuke tipped RPG and alike.
         if(get_pcvar_num(g_cvar_neon_all) > 9)
         {
-            temp_ent5 = find_ent(charsmin,"rpg_rocket");
+//            temp_ent5 = find_ent(charsmin,"gib"); //rpg_rocket
             temp_ent6 = find_ent(charsmin,"mortar_shell");
-            temp_ent7 = find_ent(charsmin,"func_tank");
+//            temp_ent7 = find_ent(charsmin,"func_tank");
             temp_ent8 = find_ent(charsmin,"func_rocket"); //spinx_missile fork of lud's
         }
 
@@ -293,14 +297,14 @@ public CurentWeapon(id)
         if(pev_valid(temp_ent4) )
             g_model = temp_ent4;
 
-        if(pev_valid(temp_ent5) )
-            g_model = temp_ent5;
+ //       if(pev_valid(temp_ent5) )
+ //           g_model = temp_ent5;
 
         if(pev_valid(temp_ent6) )
             g_model = temp_ent6;
 
-        if(pev_valid(temp_ent7) )
-            g_model = temp_ent7;
+ //       if(pev_valid(temp_ent7) )
+ //           g_model = temp_ent7;
 
         if(pev_valid(temp_ent8) )
             g_model = temp_ent8;
