@@ -1,3 +1,5 @@
+/*https://the303.org/tutorials/gold_sprite.htm*/
+
 #include <amxmodx>
 #include <amxmisc>
 #include <fakemeta>
@@ -5,8 +7,12 @@
 #include <fun>
 
 #define PLUGIN "Vote Map"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define AUTHOR "Emp`SPiNX"
+#if AMXX_VERSION_NUM == 11
+    new const URL[]=  "https://github.com/djearthquake/"
+    new const DESC[]= "Graphical map picker invented by Emp' and bug fixed by SPiNX."
+#endif
 #define FORCE_CHANGE_TARGETNAME "changelevel"
 #define FORCE_ROCKTHEVOTE "rockthevote"
 #define RANDOM "@random"
@@ -17,6 +23,7 @@
 #define MAX_RESOURCE_PATH_LENGTH   64
 #define MAX_CMD_LENGTH             128
 #define MAX_USER_INFO_LENGTH       256
+#define SCALE 0.5
 
 #if AMXX_VERSION_NUM != 182
 #define strbreak argbreak
@@ -27,11 +34,18 @@ new bool:changed = false
 new count = 0, loaded = 0, random_count = 0
 new mapname[MAX_RESOURCE_PATH_LENGTH]
 new configDir[MAX_CMD_LENGTH], fileDir[MAX_CMD_LENGTH], file[MAX_CMD_LENGTH], random_file[MAX_CMD_LENGTH]
-new map_limit;
+new map_limit, cvar_debug;
+
+new const SzNullSprite[] ="sprites/sprite.spr"
+
 
 public plugin_init()
 {
-    register_plugin(PLUGIN,VERSION,AUTHOR)
+    #if AMXX_VERSION_NUM == 110
+    register_plugin(PLUGIN, VERSION, AUTHOR, URL, DESC)
+    #else
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+    #endif
     register_cvar("Vote_Map_Plugin",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
     map_limit = register_cvar("vote_map_limit", "5")
     set_cvar_string("Vote_Map_Plugin",VERSION)
@@ -41,6 +55,10 @@ public plugin_init()
 }
 public plugin_precache()
 {
+    cvar_debug = register_cvar("vote_map_debug", "1")
+    new mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name));
+
     get_mapname(mapname,charsmax(mapname))
     get_configsdir(configDir,charsmax(configDir))
     format(fileDir,charsmax(fileDir),"%s/vote_map/",configDir)
@@ -49,7 +67,10 @@ public plugin_precache()
     if(containi(mapname,"vote_")!=charsmin)
         VoteMap = true
     else
-        VoteMap = false
+    {
+        log_amx "Pausing plugin due not running a vote_map prefix."
+        pause "c"
+    }
     if(!dir_exists(fileDir))
     {
         mkdir(fileDir)
@@ -64,6 +85,24 @@ public plugin_precache()
         write_file(random_file, "cs_assault",charsmin)
         write_file(random_file, "cs_militia",charsmin)
         write_file(random_file, "de_aztec",charsmin)
+    }
+    else if(!file_exists(random_file) && equali(mod_name,"valve") )
+    {
+        format(line, charsmax(line), "// List maps here that you want to replace %s in the other map files",RANDOM)
+        write_file(random_file, line, charsmin)
+        write_file(random_file, "crossfire", charsmin)
+        write_file(random_file, "snark_pit", charsmin)
+        write_file(random_file, "undertow", charsmin)
+    }
+    else if(!file_exists(random_file) && equali(mod_name,"gearbox") )
+    {
+        format(line, charsmax(line), "// List maps here that you want to replace %s in the other map files",RANDOM)
+        write_file(random_file, line, charsmin)
+        write_file(random_file, "crossfire", charsmin)
+        write_file(random_file, "op4_meanie", charsmin)
+        write_file(random_file, "op4ctf_dam", charsmin)
+        write_file(random_file, "snark_pit", charsmin)
+        write_file(random_file, "undertow", charsmin)
     }
     else
     {
@@ -92,7 +131,19 @@ public plugin_precache()
             if(ValidMap(Left)>0)
             {
                 format(sprite_precache,charsmax(sprite_precache),"sprites/vote_map/%s.spr",Left)
-                precache_model(sprite_precache)
+                if(file_exists(sprite_precache))
+                {
+                    precache_generic(sprite_precache)
+                }
+                else if(file_exists(SzNullSprite))
+                {
+                    precache_generic(SzNullSprite)
+                    log_amx "Missing %s!", sprite_precache
+                }
+                else
+                {
+                    log_amx "FATAL ERROR. MISSING PRECACHE SPRITES."
+                }
             }
         }
         for(new i=0; i<=file_size(random_file, 1); i++)
@@ -111,8 +162,16 @@ public plugin_precache()
             if(ValidMap(Left)>0)
             {
                 format(sprite_precache,charsmax(sprite_precache),"sprites/vote_map/%s.spr",Left)
-                precache_model(sprite_precache)
-                precache_generic(sprite_precache)
+                if(file_exists(sprite_precache))
+                {
+                    //precache_model(sprite_precache)
+                    precache_generic(sprite_precache)
+                }
+                else
+                {
+                    precache_generic(SzNullSprite)
+                    log_amx "Missing %s!", sprite_precache
+                }
             }
         }
     }
@@ -213,6 +272,7 @@ public entity_touch(ent1, ent2)
 }
 public check_map()
 {
+    new DeBugLvl = get_pcvar_num(cvar_debug)
     if(VoteMap)
     {
         //lets load some maps
@@ -243,6 +303,15 @@ public check_map()
                 }
                 strbreak(line, Left, 50, Right, 1500)
             }
+            format(sprite, charsmax(sprite), "sprites/vote_map/%s.spr",Left)
+            if(!file_exists(sprite))
+            {
+                static SzSpeech[] = "Please reinstall plugin with matching sprite."
+                if(file_exists(SzNullSprite))
+                copy(sprite, charsmax(sprite),SzNullSprite)
+                log_amx("Missing %s - used null.^n%s", sprite, SzSpeech)
+                break
+            }
             //ok, we should have a valid map by now, but lets make sure the server has it
             switch(ValidMap(Left))
             {
@@ -261,10 +330,10 @@ public check_map()
                             set_pev(vote_ent, pev_targetname, FORCE_ROCKTHEVOTE)
                         else
                             set_pev(vote_ent, pev_target, Left)
+
                         sprite_ent = fm_create_entity("info_target")
                         fm_get_brush_entity_origin(vote_ent, origin)
                         fm_entity_set_origin(sprite_ent, origin)
-                        format(sprite, charsmax(sprite), "sprites/vote_map/%s.spr",Left)
                         fm_entity_set_model(sprite_ent,sprite)
                         set_pev(sprite_ent, pev_scale, SCALE)
                         if(random_map)
@@ -277,15 +346,19 @@ public check_map()
                 {
                     vote_ent = charsmin
                     log_amx("Invalid Map : %s : Sprite File not found",Left);
-//                  break
-                    pause("a");
+                    if(DeBugLvl)
+                    pause("a")
+                    else
+                    break
                 }
                 default:
                 {
                     vote_ent = charsmin
                     log_amx("Invalid Map : %s : Map File not found",Left)
-//                  break
-                    pause("a");
+                    if(DeBugLvl)
+                    pause("a")
+                    else
+                    break
                 }
 
             }
@@ -318,17 +391,8 @@ CheckDups(const MapName[])
 
 ValidMap(const MapName[])
 {
-    if(equali(MapName,FORCE_ROCKTHEVOTE))
-        return 2
     new sprite_file[MAX_CMD_LENGTH]
+    if(equali(MapName,FORCE_ROCKTHEVOTE))return 2
     format(sprite_file,charsmax(sprite_file),"sprites/vote_map/%s.spr",MapName)
-
-    if(is_map_valid(MapName))
-    {
-        if(file_exists(sprite_file))
-            return 1
-        else
-            return charsmin
-    }
-    return 0
+    return is_map_valid(MapName) ? file_exists(sprite_file) ? 1 : charsmin : 0
 }
