@@ -172,7 +172,7 @@ public plugin_init()
     //HORNET
     if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
     {
-        if(has_map_ent_class("weapon_hivehand"))
+        if(has_map_ent_class("weapon_hornetgun"))
             register_touch("hornet", "*", "Other_Attack_Touch");
     }
     //BOW
