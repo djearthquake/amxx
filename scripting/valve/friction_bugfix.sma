@@ -4,10 +4,16 @@
 new bMultiplayer
 new bool:bReadble[MAX_PLAYERS + 1];
 #define FRICTION_NOT 1.0
+new const szEnt[] = "func_friction"
 
 public plugin_init()
 {
-    register_plugin("Friction Bugfix","1.0.0","SPiNX")
+    register_plugin("Friction Bugfix","1.0.1","SPiNX")
+    if(!has_map_ent_class(szEnt))
+    {
+        server_print "Map does not have %s..pausing...", szEnt
+        pause "a"
+    }
 }
 
 public client_putinserver(iPlayer)
@@ -22,24 +28,33 @@ public client_putinserver(iPlayer)
 public client_disconnected(iPlayer)
 {
     bReadble[iPlayer] = false
-    bMultiplayer = get_playersnum();
 }
 
 public client_PreThink(iPlayer)
 {
-    if(bReadble[iPlayer] && is_user_alive(iPlayer))
+    if(bMultiplayer)
     {
-        new Float:get_friction = entity_get_float(iPlayer, EV_FL_friction)
-        if(get_friction != FRICTION_NOT)
+        if(bReadble[iPlayer] && is_user_alive(iPlayer))
         {
-            bMultiplayer ? client_print(0, print_center, "%n,^nis on ICE!", iPlayer) : client_print(iPlayer, print_center, "Ice!")
-            entity_set_float(iPlayer, EV_FL_friction, get_friction + 0.001)
-            if(get_friction > 1.0)
+            new Float:get_friction = entity_get_float(iPlayer, EV_FL_friction)
+            if(get_friction != FRICTION_NOT)
             {
-                entity_set_float(iPlayer, EV_FL_friction, FRICTION_NOT)
+                entity_set_float(iPlayer, EV_FL_friction, get_friction + 0.001)
+                if(get_friction > 1.0)
+                {
+                    entity_set_float(iPlayer, EV_FL_friction, FRICTION_NOT)
+                }
+                if(!task_exists(iPlayer))
+                {
+                    set_task(3.0, "@feedback", iPlayer)
+                }
             }
         }
     }
     return PLUGIN_HANDLED;
 }
 
+@feedback(iPlayer)
+{
+    client_print(0, print_center, "%n,^nis on ICE!", iPlayer)
+}
