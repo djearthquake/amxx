@@ -12,16 +12,28 @@ new IsDodRun
 
 public plugin_precache()
 {
+    new mod_name[MAX_NAME_LENGTH];
+    get_modname(mod_name, charsmax(mod_name));
+
+    if(equal(mod_name,"gearbox"))
+    {
+        precache_model("models/w_accelerator.mdl")
+        precache_model("models/w_backpack.mdl")
+        precache_model("models/w_porthev.mdl")
+        for(new szSounds;szSounds < sizeof g_szPowerup_sounds;++szSounds)
+            precache_sound(g_szPowerup_sounds[szSounds]);
+    }
+    else if(equal(mod_name,"tfc"))
+    {
+        precache_model("models/v_crowbar.mdl")
+        precache_model("models/w_crowbar.mdl")
+        precache_model("models/p_crowbar.mdl")
+    }
     precache_model("models/can.mdl")
-    precache_model("models/w_accelerator.mdl")
-    precache_model("models/w_backpack.mdl")
-    precache_model("models/w_porthev.mdl")
     precache_model("models/w_jumppack.mdl")
     precache_model("models/w_health.mdl")
-    precache_sound("doors/aliendoor3.wav");
-    precache_model("models/w_oxygen.mdl");
-    for(new szSounds;szSounds < sizeof g_szPowerup_sounds;++szSounds)
-        precache_sound(g_szPowerup_sounds[szSounds]);
+    precache_sound("doors/aliendoor3.wav")
+    precache_model("models/w_oxygen.mdl")
 }
 public plugin_init()
 {
@@ -30,7 +42,7 @@ public plugin_init()
 }
 
 public client_command(id)
-if(is_user_connected(id))
+if(is_user_connected(id) && is_user_admin(id))
 {
     new said[MAX_RESOURCE_PATH_LENGTH]
     read_args(said,charsmax(said))
@@ -51,7 +63,7 @@ if(is_user_connected(id))
                 give_item(id,"weapon_stickgrenade")
 
             }
-            give_item(id,said) ? client_cmd(id,"spk buttons/bell1.wav") : client_cmd(id,"spk buttons/latchlocked2.wav")
+            client_cmd id, give_item(id,said) ? "spk buttons/bell1.wav" : "spk buttons/latchlocked2.wav"
 
         }
 
