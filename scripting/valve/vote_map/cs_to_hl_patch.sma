@@ -8,7 +8,7 @@ new mod_name[MAX_NAME_LENGTH]
 
 public plugin_init()
 {
-    register_plugin("Fix:CS-HL map guns", "1.2", "SPiNX");
+    register_plugin("Fix:CS-HL map guns", "1.2", "SPiNX")
 }
 
 public plugin_precache()
@@ -39,17 +39,33 @@ public plugin_precache()
     }
     else if(equal(mod_name,"gearbox"))
     {
-        DispatchKeyValue( ent, "weapon_knife", "1" );
-        DispatchKeyValue( ent, "weapon_m249", "1" );
-        DispatchKeyValue( ent, "weapon_pipewrench", "1" );
-        DispatchKeyValue( ent, "weapon_sniperrifle", "1" );
+        DispatchKeyValue( ent, "weapon_knife", "1" )
+        DispatchKeyValue( ent, "weapon_m249", "1" )
+        DispatchKeyValue( ent, "weapon_pipewrench", "1" )
+        DispatchKeyValue( ent, "weapon_sniperrifle", "1" )
     }
     else if(equal(mod_name,"valve"))
     {
-        DispatchKeyValue( ent, "weapon_crowbar", "1" );
+        DispatchKeyValue( ent, "weapon_crowbar", "1" )
+    }
+    else if(equal(mod_name,"tfc"))
+    {
+        precache_model("models/v_crowbar.mdl")
+        precache_model("models/w_crowbar.mdl")
+        precache_model("models/p_crowbar.mdl")
+        
+        DispatchKeyValue( ent, "weapon_crowbar", "1" 
+        DispatchKeyValue( ent, "tf_weapon_knife", "1" )
+        DispatchKeyValue( ent, "tf_weapon_spanner", "1" )
+    }
+    else
+    {
+        log_amx "Update script for %s please.", mod_name
+        server_print "Post in URL::github.com/djearthquake"
+        pause("a")
     }
 
-    DispatchKeyValue( ent, "targetname", "game_playerspawn");
+    DispatchKeyValue( ent, "targetname", "game_playerspawn")
     DispatchSpawn(ent);
 }
 
