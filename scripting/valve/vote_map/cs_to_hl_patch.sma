@@ -53,8 +53,8 @@ public plugin_precache()
         precache_model("models/v_crowbar.mdl")
         precache_model("models/w_crowbar.mdl")
         precache_model("models/p_crowbar.mdl")
-        
-        DispatchKeyValue( ent, "weapon_crowbar", "1" 
+
+        DispatchKeyValue( ent, "weapon_crowbar", "1" )
         DispatchKeyValue( ent, "tf_weapon_knife", "1" )
         DispatchKeyValue( ent, "tf_weapon_spanner", "1" )
     }
