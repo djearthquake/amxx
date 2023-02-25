@@ -7,11 +7,10 @@
 #include <xs>
 
 #define charsmin                  -1
-#define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG //ADMIN_LEVEL_A
-#define VOTE_ACCESS     ADMIN_ALL
+#define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG
+#define VOTE_ACCESS     ADMIN_USER|ADMIN_CFG
 
 #define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE| 1<<HLW_CROWBAR| 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_PENGUIN )
-
 
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
@@ -68,6 +67,21 @@ public plugin_init()
     register_plugin( PLUGIN, VERSION, AUTHOR );
     register_concmd("vote_gunspeed","cmdVote",VOTE_ACCESS,": Vote for gun speed!")
 
+    new mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name))
+    server_print mod_name
+    if(equal(mod_name, "cstrike") || equal(mod_name, "czero") )
+    {
+        gbCS = true
+    }
+    else if(equal(mod_name, "dod"))
+    {
+        gbDod = true
+    }
+    else if(containi(mod_name, "sven") > charsmin)
+    {
+        gbSven = true
+    }
     for (new i=HLW_GLOCK;i<=HLW_SNIPER;i++)
     {
         if(!(NO_RECOIL_WEAPONS_BITSUM & (1<<i)) && get_weaponname(i, gWeaponClassname, charsmax(gWeaponClassname)))
@@ -79,21 +93,6 @@ public plugin_init()
             pcvars[0] = register_cvar("gunspeed_mode","1")
             pcvars[9] = register_cvar("gunspeed_all","1.0")
 
-            new mod_name[MAX_NAME_LENGTH]
-            get_modname(mod_name, charsmax(mod_name))
-            server_print mod_name
-            if(equal(mod_name, "cstrike") || equal(mod_name, "czero") )
-            {
-                gbCS = true
-            }
-            else if(equal(mod_name, "dod"))
-            {
-                gbDod = true
-            }
-            else if(containi(mod_name, "sven") > charsmin)
-            {
-                gbSven = true
-            }
             if(gbSven)
             {
                 //m_fInSpecialReload = (find_ent_data_info("CBasePlayerWeapon", "SpecialReload") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
@@ -141,6 +140,7 @@ public plugin_init()
     RegisterHam(Ham_Killed, "player", "@death", 1);
     for( new map;map < sizeof SzAmmo;++map)
     {
+        if(has_map_ent_class(SzAmmo[map]))
         remove_entity_name(SzAmmo[map])
     }
     register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
@@ -400,7 +400,7 @@ public vote_results()
 
 public client_infochanged(player)
 {
-    bAccess[player] = get_user_flags(player) & ACCESS_LEVEL ? true : false
+    bAccess[player] = get_user_flags(player) & VOTE_ACCESS ? true : false
 }
 
 public plugin_end()
