@@ -8,7 +8,7 @@
 #define BOOT_MIN    25
 #define BOOT_SEC    40
 
-#define MAP    "bounce"
+#define MAP    "vote_map_final"
 
 new g_cvar_bootimes
 
@@ -18,7 +18,7 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
     set_task( 15.0, "@check_time", 120422, .flags= "b")
-    g_cvar_bootimes = register_cvar("reboot_times", "3 9 15 21")
+    g_cvar_bootimes = register_cvar("reboot_times", "3, 9, 13, 23")
 }
 
 @check_time()
@@ -29,17 +29,16 @@ public plugin_init()
     num_to_str(hour, SzHour,charsmax(SzHour))
     get_pcvar_string(g_cvar_bootimes, SzString, charsmax(SzString))
 
-    if(containi(SzString, SzHour)>-1 && g_players > 1)
+    if(containi(SzString, SzHour) == -1)
     {
-        change_task(120422, 2700.0)
-        server_print "Retiming task to check in another hour.^nThe time is %i:%i%i.", hour, min, sec
-        ///server_print "Reboot  times are: %i,%i,%i",  BOOT_HOUR1,BOOT_HOUR2,BOOT_HOUR3,BOOT_HOUR4
+        change_task(120422, 1200.0)
+        server_print "Retiming task to check in 20 minutes.^nThe time is %i:%i:%i.", hour, min, sec
     }
     else
     {
-        server_print "This hour there should be a reboot."
-        if(min == BOOT_MIN)
-        {
+        server_print min < BOOT_MIN ? "This hour there should be a reboot." :  "This hour there was a reboot."
+        if(min == BOOT_MIN && g_players<2)
+                                                                                    {
             server_print "Anticipating reload this minute..."
             change_task(120422, 1.0)
             if( sec == BOOT_SEC )
@@ -49,7 +48,7 @@ public plugin_init()
             else if( sec < BOOT_SEC )
             {
                 server_cmd "say Daily reboot in %i seconds",(BOOT_SEC-sec)
-                client_cmd 0, "spk ../../valve/sound/UI/buttonrollover.wav"
+                client_cmd 0, "spk UI/buttonrollover.wav"
             }
             else
             {
@@ -60,8 +59,14 @@ public plugin_init()
         }
         else if (min > BOOT_MIN || (BOOT_MIN - min) > 20)
         {
-            change_task(120422, 900.0)
-            server_print "Retiming task to check in 15 min."
+            new tasktime = min - BOOT_MIN
+            if(tasktime<0)
+            tasktime *=-1
+
+            tasktime *=60
+            tasktime -=5
+            change_task(120422, tasktime*1.0)
+            server_print "Retiming task to check in %i min.", tasktime/60
         }
         else
         {
