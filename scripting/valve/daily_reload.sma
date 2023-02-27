@@ -27,6 +27,7 @@ public plugin_init()
     time(hour,min,sec)
     new SzString[MAX_PLAYERS], SzHour[3];
     num_to_str(hour, SzHour,charsmax(SzHour))
+    formatex(SzHour,charsmax(SzHour), "%s,", SzHour)
     get_pcvar_string(g_cvar_bootimes, SzString, charsmax(SzString))
 
     if(containi(SzString, SzHour) == -1)
@@ -38,7 +39,7 @@ public plugin_init()
     {
         server_print min < BOOT_MIN ? "This hour there should be a reboot." :  "This hour there was a reboot."
         if(min == BOOT_MIN && g_players<2)
-                                                                                    {
+        {
             server_print "Anticipating reload this minute..."
             change_task(120422, 1.0)
             if( sec == BOOT_SEC )
