@@ -1,6 +1,7 @@
 /*vote_map_orange CS map revised for GoldSRC*/
 #include amxmodx
 #include engine
+#define charsmin                  -1
 
 new bool:bPatched, bool:bHL
 new const ent_type[]="game_player_equip"
@@ -21,6 +22,7 @@ public plugin_precache()
     if(bPatched)
     {
         remove_entity_name(ent_type)
+        remove_entity_name("player_weaponstrip")
         remove_entity_name("ambient_generic")
         remove_entity_name("armoury_entity")
         remove_entity_name("cycler_sprite")
@@ -28,7 +30,6 @@ public plugin_precache()
         remove_entity_name("env_shooter")
         remove_entity_name("func_button")
         remove_entity_name("multi_manager")
-        remove_entity_name("player_weaponstrip")
     }
     if(equal(mod_name,"dod"))
     {
@@ -39,9 +40,8 @@ public plugin_precache()
     }
     else if(equal(mod_name,"gearbox"))
     {
-        DispatchKeyValue( ent, "weapon_knife", "1" )
+        remove_entity_name("player_weaponstrip")
         DispatchKeyValue( ent, "weapon_m249", "1" )
-        DispatchKeyValue( ent, "weapon_pipewrench", "1" )
         DispatchKeyValue( ent, "weapon_sniperrifle", "1" )
     }
     else if(equal(mod_name,"valve"))
@@ -78,8 +78,10 @@ public pfn_keyvalue(ent)
         new szMap[MAX_NAME_LENGTH]
         get_mapname(szMap, charsmax(szMap))
 
-        if(equal(szMap, "vote_map_final"))
+        //if(equal(szMap, "vote_map_final"))
+        if(containi(szMap, "vote_map")>charsmin)
         {
+            server_print szMap
             bPatched = true
         }
     }
