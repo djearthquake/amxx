@@ -165,7 +165,7 @@ public plugin_init()
         register_think("grenade","@tracer");
     }
     //AR GRENADES
-    if(has_map_ent_class("ammo_9mmAR"))
+    if(has_map_ent_class("ammo_ARgrenades"))
     {
         register_think("ARgrenade","@tracer");
         register_touch("ARgrenade", "*", "HandGrenade_Attack2_Touch");
