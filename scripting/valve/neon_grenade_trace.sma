@@ -132,7 +132,7 @@ public plugin_end()
 }
 public plugin_init()
 {
-    register_event("CurWeapon", "CurentWeapon", "bce", "1=1");
+    //register_event("CurWeapon", "CurentWeapon", "bce", "1=1");
     register_plugin("Neon Grenade Trace","A","SPiNX");
     bStrike = cstrike_running() == 1 ? true : false
     g_pickable = register_cvar("neon_pick", "func_button")
