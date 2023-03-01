@@ -9,9 +9,25 @@ new mod_name[MAX_NAME_LENGTH]
 
 public plugin_init()
 {
-    register_plugin("Fix:CS-HL map guns", "1.2", "SPiNX")
-}
+    register_plugin("Fix:CS-HL map guns", "1.3", "SPiNX")
+    if(bPatched)
+    {
+        new ent = find_ent_by_class(charsmin, "ambient_generic")
 
+        if(ent)
+        {
+             DispatchKeyValue( ent, "message", "0")
+        }
+
+        remove_entity_name("armoury_entity")
+        remove_entity_name("cycler_sprite")
+        remove_entity_name("env_render")
+        remove_entity_name("env_shooter")
+        remove_entity_name("func_button")
+        remove_entity_name("multi_manager")
+    }
+
+}
 public plugin_precache()
 {
     get_modname(mod_name, charsmax(mod_name));
@@ -21,15 +37,8 @@ public plugin_precache()
 
     if(bPatched)
     {
-        remove_entity_name(ent_type)
-        remove_entity_name("player_weaponstrip")
         remove_entity_name("ambient_generic")
-        remove_entity_name("armoury_entity")
-        remove_entity_name("cycler_sprite")
-        remove_entity_name("env_render")
-        remove_entity_name("env_shooter")
-        remove_entity_name("func_button")
-        remove_entity_name("multi_manager")
+        remove_entity_name(ent_type)
     }
     if(equal(mod_name,"dod"))
     {
@@ -78,8 +87,8 @@ public pfn_keyvalue(ent)
         new szMap[MAX_NAME_LENGTH]
         get_mapname(szMap, charsmax(szMap))
 
-        //if(equal(szMap, "vote_map_final"))
-        if(containi(szMap, "vote_map")>charsmin)
+        if(equal(szMap, "vote_map_final"))
+        //if(containi(szMap, "vote_map")>charsmin)
         {
             server_print szMap
             bPatched = true
