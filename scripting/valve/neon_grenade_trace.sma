@@ -165,9 +165,10 @@ public plugin_init()
         register_think("grenade","@tracer");
     }
     //AR GRENADES
-    if(has_map_ent_class("weapon_9mmAR"))
+    if(has_map_ent_class("ammo_9mmAR"))
     {
         register_think("ARgrenade","@tracer");
+        register_touch("ARgrenade", "*", "HandGrenade_Attack2_Touch");
     }
     //HORNET
     if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
