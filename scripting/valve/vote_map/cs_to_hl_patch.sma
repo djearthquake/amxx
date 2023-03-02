@@ -2,6 +2,7 @@
 #include amxmodx
 #include engine
 #define charsmin                  -1
+#define MAX_CMD_LENGTH  128
 
 new bool:bPatched, bool:bHL
 new const ent_type[]="game_player_equip"
@@ -12,13 +13,6 @@ public plugin_init()
     register_plugin("Fix:CS-HL map guns", "1.3", "SPiNX")
     if(bPatched)
     {
-        new ent = find_ent_by_class(charsmin, "ambient_generic")
-
-        if(ent)
-        {
-             DispatchKeyValue( ent, "message", "0")
-        }
-
         remove_entity_name("armoury_entity")
         remove_entity_name("cycler_sprite")
         remove_entity_name("env_render")
@@ -81,6 +75,12 @@ public plugin_precache()
 
 public pfn_keyvalue(ent)
 {
+    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+
+    if(equali(Classname,"ambient_generic"))
+        DispatchKeyValue("message", "0")
+
     if(!bHL)
     {
         bHL = true
@@ -88,7 +88,6 @@ public pfn_keyvalue(ent)
         get_mapname(szMap, charsmax(szMap))
 
         if(equal(szMap, "vote_map_final"))
-        //if(containi(szMap, "vote_map")>charsmin)
         {
             server_print szMap
             bPatched = true
