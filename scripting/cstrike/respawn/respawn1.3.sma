@@ -43,7 +43,7 @@
 *.__)|   || \|/  \
 *
 *    Respawn from bots.
-*    Copyleft (C) Nov 2020 .sρiηX҉.
+*    Copyleft (C) Nov 2020-2023 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -63,6 +63,7 @@
 *    V1.0 to 1.1 -better unsticking code when bots are crouched against wall.
 *                -take the place of AFK humans for round.
 *    V1.1 to 1.2 -focus on correct side-arms and unsticking. Switch to "impulse 206" instead of prethink.
+*    V1.2 to 1.3 -Pause and log plugin if dependecy is not found.
 *
 *
 */
@@ -77,9 +78,12 @@
 #include hamsandwich
 
 #include unstick
-//define CZ per Conditon-Zero bots need accomidations.
-#define CZ
-#tryinclude cs_ham_bots_api
+//CZ install instructions. Per Ham install this plugin first.
+#define SPEC_PRG    "cs_ham_bots_api.amxx"
+#define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/czero/AI"
+
+#include cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
+//#tryinclude cs_ham_bots_api
 
 #define FRICTION_NOT    1.0
 #define FRICTION_MUD    1.8
@@ -122,9 +126,29 @@ new const SzCsAmmo[][]=
 new const SzAdvert[]="Bind impulse 206 to control bot."
 new const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human."
 
+public plugin_precache()
+{
+    //fail-safe although plugin is expected to stop before hand like this.
+    /////[AMXX] Plugin "respawn.amxx" failed to load: Module/Library "cs_ham_bots_api" required for plugin.  Check modules.ini.
+    if (is_running("czero"))
+    {
+        if(is_plugin_loaded(SPEC_PRG,true) == charsmin)
+        {
+            log_amx("%s must be installed! %s", SPEC_PRG, URL)
+            pause("c")
+        }
+        else
+        {
+            RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
+            RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
+            RegisterHamBots(Ham_Killed, "@died")
+        }
+    }
+}
+
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.2", "SPiNX");
+    register_plugin("Repawn from bots", "1.3", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1");
@@ -145,15 +169,6 @@ public plugin_init()
     iMaxplayers = get_maxplayers()
     g_cor = get_user_msgid( "ClCorpse" )
     bIsCtrl[0] = true
-
-    #if defined CZ
-    if(is_running("czero"))
-    {
-        RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
-        RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
-        RegisterHamBots(Ham_Killed, "@died")
-    }
-    #endif
 }
 
 @died(id)
