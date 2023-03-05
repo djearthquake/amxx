@@ -5,10 +5,15 @@
 #define AUTHOR    "SPiNX"
 new const URL[]=  "https://github.com/djearthquake/"
 new const DESC[]= "Cvar how to with FOV."
-new szVersion[MAX_NAME_LENGTH];
+
 
 public plugin_init()
-get_amxx_verstring(szVersion, charsmax(szVersion))&containi(szVersion, "1.10.") != -1 ? register_plugin(PLUGIN, VERSION, AUTHOR, URL, DESC) : register_plugin(PLUGIN, VERSION, AUTHOR);
+#if AMXX_VERSION_NUM == 182
+register_plugin(PLUGIN, VERSION, AUTHOR);
+#else
+register_plugin(PLUGIN, VERSION, AUTHOR, URL, DESC)
+#endif
+
 
 public client_putinserver(id)
 if(!is_user_bot(id))
