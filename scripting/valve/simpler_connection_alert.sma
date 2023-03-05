@@ -26,7 +26,7 @@ new g_mname[MAX_NAME_LENGTH]
 new bool:b_Walled[MAX_PLAYERS + 1] //dont spam cmds to wall
 new bool:b_Op4c
 new bool:g_bFlagMap
-new afk_sync_msg, download_sync_msg, g_spawn_wait
+new afk_sync_msg, download_sync_msg//, g_spawn_wait
 new g_SzMapName[MAX_NAME_LENGTH]
 
 #define ALRT 84641
@@ -39,15 +39,13 @@ public plugin_init()
     g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin?true:false
     set_task(1.0, "new_users",alert,"",0,"b");
 
+    //g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
+
     #if AMXX_VERSION_NUM == 182
         g_afk_spec_player = register_cvar("mp_autospec", "75")
-        g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 0.5
     #else
         bind_pcvar_num(get_cvar_pointer("mp_autospec") ? get_cvar_pointer("mp_autospec") : create_cvar("mp_autospec", "90", FCVAR_NONE, CvarAFKTimeDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 300.0),g_afk_spec_player)
-        get_cvar_pointer("sv_sptime") ? bind_pcvar_num(get_cvar_pointer("sv_sptime"), g_spawn_wait ) : 1
     #endif
-
-    g_afk_spec_player = register_cvar("mp_autospec", "75")
 
     g_spec = get_cvar_pointer("sv_spectate_spawn")
     RegisterHam(Ham_Spawn, "player", "screensaver_stop", 1);
