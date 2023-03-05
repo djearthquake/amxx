@@ -84,11 +84,11 @@ public client_authorized(id) //auth was messing up names on download
 
 public new_users()
 {
-    new players[MAX_PLAYERS], playercount, downloader;
+    new players[MAX_PLAYERS], playercount;
     get_players(players,playercount,"i");
 
 
-    for (downloader=0; downloader<playercount; ++downloader)
+    for (new downloader; downloader<playercount; ++downloader)
     {
 
         if(is_user_connecting(players[downloader]))
@@ -160,7 +160,11 @@ public new_users()
         if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
         {
             new uptime = sleepy[players[downloader]]++
+            #if AMXX_VERSION_NUM == 182
             new spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
+            #else
+            new spec_screensaver_engage = g_afk_spec_player
+            #endif
 
             if(spec_screensaver_engage < 0)
                 return PLUGIN_HANDLED_MAIN
@@ -184,13 +188,6 @@ public new_users()
                             callfunc_end()
 
                             sleepy[Group_of_players] = 1
-/*
-                            #if AMXX_VERSION_NUM == 182
-                            set_task(get_pcvar_float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
-                            #else
-                            set_task(float(g_spawn_wait)+2.0, "@make_spec", Group_of_players)
-                            #endif
-*/
                         }
 
                     }
