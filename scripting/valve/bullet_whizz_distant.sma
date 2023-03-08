@@ -53,6 +53,7 @@ new gs_enabled, gs_measure, gs_whizdist, gs_snapdist, gs_thuddist;
 new bool: b_CS
 new bool: b_HL
 new bool: b_OF
+new bool: b_Bot[MAX_PLAYERS+1]
 
 public plugin_init()
 {
@@ -72,6 +73,14 @@ public plugin_init()
         b_HL = true
     else if (equal(SzModName, "gearbox"))
         b_OF = true
+}
+
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        b_Bot[id] = is_user_bot(id) ? true : false
+    }
 }
 
 public plugin_precache()
@@ -167,7 +176,7 @@ public Event_CurWeapon(id)
             {
                 target = Players[iNum];
 
-                if (id == target)
+                if (id == target && !b_Bot[target])
                 {
                     continue;
                 }
