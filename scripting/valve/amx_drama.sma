@@ -25,6 +25,8 @@
 
 #define charsmin                  -1
 
+new bool: b_Bot[MAX_PLAYERS+1]
+
 static sModel[MAX_PLAYERS];
 
 new const SOUND_BOTDEATH1[] = "pitworm/pit_worm_alert.wav"
@@ -40,11 +42,11 @@ new G_FielD, g_Zunny, g_Drama, g_suicide;
 new bStrike
 
 public plugin_init() {
-    register_plugin("Drama death sounds","1.2","SPiNX");
-    register_event("ScoreInfo", "plugin_log", "bcf", "1=committed suicide with", "2=trigger_hurt" );
+    register_plugin("Drama death sounds","1.21","SPiNX");
+    register_event("ScoreInfo", "plugin_log", "bcf", "1=committed suicide with", "2=trigger_hurt");
     RegisterHam(Ham_TraceAttack, "player", "SnDamage");
-    RegisterHam(Ham_Killed, "player", "client_death");
-    RegisterHam(Ham_Killed, "player", "model_sniffer");
+    RegisterHam(Ham_Killed, "player", "client_death", 0);
+    RegisterHam(Ham_Killed, "player", "model_sniffer", 1);
     bStrike = cstrike_running()
     g_suicide = engfunc(EngFunc_PrecacheEvent, 1, "events/displacer.sc")
 }
@@ -121,7 +123,7 @@ public client_death(victim, killer)
     {
         if(get_user_weapon(killer) != HLW_KNIFE|HLW_CROWBAR)
 
-        if(is_user_bot(victim))
+        if(b_Bot[victim])
         switch(random_num(0,3))
         {
             case 0: emit_sound(victim, CHAN_AUTO, SOUND_BOTDEATH1, VOL_NORM, ATTN_IDLE, 0, PITCH);
@@ -130,7 +132,7 @@ public client_death(victim, killer)
             case 3: emit_sound(victim, CHAN_AUTO, SOUND_BOTDEATH4, VOL_NORM, ATTN_IDLE, 0, PITCH);
         }
 
-        if(!is_user_bot(victim) && !bStrike )
+        if(!b_Bot[victim] && !bStrike )
         switch(random_num(0,2))
         {
             case 0: emit_sound(victim, CHAN_AUTO, SOUND_HUMANDIE1, VOL_NORM, ATTN_IDLE, 0, PITCH);
@@ -143,12 +145,12 @@ public client_death(victim, killer)
 
 public port(victim, killer)
 {
-    if(is_user_connected(victim) && is_user_connected(killer) && !is_user_bot(killer))
+    if(is_user_connected(victim) && is_user_connected(killer) && !b_Bot[killer])
     {
         new Float:Wector[3];
         pev(victim,pev_origin,Wector);
 
-        if(!is_user_bot(victim))
+        if(!b_Bot[victim])
             model_sniffer(victim, killer);
 
         emessage_begin(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, killer )
@@ -165,13 +167,21 @@ public port(victim, killer)
     }
 }
 
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        b_Bot[id] = is_user_bot(id) ? true : false
+    }
+}
+
 public model_sniffer(victim, killer)
 {
-    new name[MAX_PLAYERS];
     if(killer != victim)
     if(is_user_connected(killer) && is_user_connected(victim))
     {
         #if AMXX_VERSION_NUM == 182
+        new name[MAX_PLAYERS];
         get_user_name( killer, name, charsmax( name ) );
         #endif
 
