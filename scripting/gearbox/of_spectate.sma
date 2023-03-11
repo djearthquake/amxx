@@ -158,7 +158,7 @@ public client_impulse(id)
 
 public client_prethink( id )
 {
-    if(is_user_connected(id) && is_user_alive(id))
+    if(is_user_connected(id) && is_user_alive(id) && pev_valid(id)>1)
     {
         if(g_spectating[id] && !is_user_bot(id))
         {
@@ -171,13 +171,16 @@ public client_prethink( id )
             #define OBS_MAP_FREE                    5           // Free Overview
             #define OBS_MAP_CHASE                   6           // Chase Overview
 
-            ///if(get_user_time(id) < 30)
             if(pev(id, pev_button) & IN_SCORE)
             {
-                entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
-                client_print id, print_center, "%f|%f|%f^n^n%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2], g_Vangle[id][0], g_Vangle[id][1]
+                new iTOS = get_user_time(id)
+                if(iTOS > 30 && iTOS < 120 )
+                {
+                    entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
+                    client_print id, print_center, "%f|%f|%f^n^n%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2], g_Vangle[id][0], g_Vangle[id][1]
+                }
             }
-
+/*
             if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
             {
                 //helps unsticking
@@ -194,7 +197,7 @@ public client_prethink( id )
                     }
                 }
             }
-
+*/
             if(g_bGunGameRunning)
             {
                 if(g_spectating[id])
@@ -394,7 +397,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
 
 @menu(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && pev_valid(id)>1)
     {
         new menu = menu_create ("Spectate", "@spec_menu");
         menu_additem(menu, "PLAY/WATCH^n", "1");
@@ -413,7 +416,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
 
 @spec_menu(id, menu, item)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && pev_valid(id)>1)
     {
         if(g_bGunGameRunning)
         {
