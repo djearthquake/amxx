@@ -132,7 +132,7 @@ public Event_CurWeapon(id)
 {
     if(get_pcvar_num(gs_enabled) || is_user_connected(id))
     {
-        if(is_user_connecting(id))
+        if(!is_user_connected(id))
             return
 
         new WeaponID = read_data(2);
@@ -176,7 +176,7 @@ public Event_CurWeapon(id)
             {
                 target = Players[iNum];
 
-                if (id == target && !b_Bot[target])
+                if (id == target)
                 {
                     continue;
                 }
@@ -188,12 +188,14 @@ public Event_CurWeapon(id)
 
                 if (get_pcvar_float(gs_measure))
                 {
-                    client_print(target, print_chat, "Distance (You & Shooter): %f Meters", origDist);
+                    if(!b_Bot[target])
+                        client_print(target, print_chat, "Distance (You & Shooter): %f Meters", origDist);
                 }
 
                 if (origDist >= get_pcvar_float(gs_whizdist) && flAngle > 0.0 && fm_is_ent_visible(id, target))
                 {
-                    client_cmd(target, "spk %s", g_WhizSounds[random(sizeof(g_WhizSounds))]);
+                    if(!b_Bot[target])
+                        client_cmd(target, "spk %s", g_WhizSounds[random(sizeof(g_WhizSounds))]);
                 }
 
                 if (origDist < get_pcvar_float(gs_snapdist))
@@ -203,13 +205,15 @@ public Event_CurWeapon(id)
 
                 if (origDist >= get_pcvar_float(gs_snapdist) && flAngle > 0.0)
                 {
-                    client_cmd(target, "spk %s", g_SnapSounds[random(sizeof(g_SnapSounds))]);
+                    if(!b_Bot[target])
+                        client_cmd(target, "spk %s", g_SnapSounds[random(sizeof(g_SnapSounds))]);
                     continue;
                 }
 
                 if (origDist >= get_pcvar_float(gs_thuddist))
                 {
-                    client_cmd(target, "spk %s", g_ThudSounds[random(sizeof(g_ThudSounds))]);
+                    if(!b_Bot[target])
+                        client_cmd(target, "spk %s", g_ThudSounds[random(sizeof(g_ThudSounds))]);
                     continue;
                 }
             }
