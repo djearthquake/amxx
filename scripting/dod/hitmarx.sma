@@ -202,8 +202,7 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR);
     register_clcmd("hitmark_demo","@demo",ADMIN_KICK,"|Hitmarker Demo");
     register_clcmd("nodemo","@demo_end",ADMIN_KICK,"|End Hitmarker Demo");
-    //register_event("CurWeapon", "CurWeapon", "bcef", "1=1")
-    //register_event("CurWeapon", "CurWeapon", "b", "1=1")
+
     RegisterHam(Ham_TakeDamage, "player", "@PostTakeDamage", 1);
 
     //Reused a few of Napolean's cvars to make the 2 plugins more interchangeable.
@@ -284,7 +283,8 @@ public OnMoneyChange(iMsgId, iDest, id)
 public CS_OnBuy( id, anything )
 #endif
 {
-    @delayed_end(id)
+    if(is_user_connected(id))
+        @delayed_end(id)
 }
 
 @PostTakeDamage(iVictim, iInflictor, iAttacker, Float:iDamage, iDamagebits)
@@ -460,52 +460,35 @@ public CS_OnBuy( id, anything )
 
 @demo_end(id)
 {
-    if(task_exists(id))
-        remove_task(id)
-    return PLUGIN_HANDLED_MAIN;
-}
-
-/*
-public CurWeapon(id)
-{
-    //if(get_pcvar_num(g_cvar_iHitSym) == 5 )
-    @delayed_end(id);
+    if(is_user_connected(id))
+    {
+        if(task_exists(id))
+            remove_task(id)
+    }
     return PLUGIN_HANDLED;
 }
- */
 
 @Demo(id)
 {
-    HUDSUP
-    SPEED
-    if (get_pcvar_num(g_cvar_iHitSym) == 2 )
+    if(is_user_connected(id))
     {
-        DEMO test_spinner1[random(sizeof(test_spinner1))]);
-    }
-    if (get_pcvar_num(g_cvar_iHitSym) == 3 )
-    {
-        DEMO test_spinner2[random(sizeof(test_spinner2))]);
-    }
-    if (get_pcvar_num(g_cvar_iHitSym) == 4 )
-    {
-        DEMO test_spinner0[random(sizeof(test_spinner0))]);
-    }
-    if (get_pcvar_num(g_cvar_iHitSym) == 6 )
-    {
-        DEMO TICKER[random(sizeof(TICKER))]);
-    }
-    if (get_pcvar_num(g_cvar_iHitSym) == 7 )
-    {
+        HUDSUP
+        SPEED
+        new iHit = get_pcvar_num(g_cvar_iHitSym)
+        switch(iHit)
+        {
+            case 2: DEMO test_spinner1[random(sizeof(test_spinner1))]);
+            case 3: DEMO test_spinner2[random(sizeof(test_spinner2))]);
+            case 4: DEMO test_spinner0[random(sizeof(test_spinner0))]);
+            case 5: @long_demo(id);
+            case 6: DEMO TICKER[random(sizeof(TICKER))]);
+            case 7: goto END
+            case 8: DEMO TestArray[random_num(0,3)][random_num(0,5)]);
+        }
+        END:
         SLOW
         DEMO beta_symbols[random_num(0,9)][random_num(0,2)]);
     }
-    if (get_pcvar_num(g_cvar_iHitSym) == 8 )
-    {
-        DEMO TestArray[random_num(0,3)][random_num(0,5)]);
-    }
-
-    if (get_pcvar_num(g_cvar_iHitSym) == 5 )
-    {@long_demo(id);}
     return PLUGIN_HANDLED;
 }
 
@@ -520,7 +503,7 @@ public CurWeapon(id)
     new Float:holdTime = 1.5;
     new Float:scanTime = 1.1;
     new effect = 2;
-
+    if(get_playersnum())
     message_begin(MSG_BROADCAST,SVC_TEMPENTITY);
     write_byte(TE_TEXTMESSAGE);
     write_byte(0);      //(channel)
@@ -605,104 +588,123 @@ public CurWeapon(id)
 }
 
 @cell01(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[0][random_num(0,2)]);
     client_print(id, print_center, "P90");
 }
 @cell001(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.8), "@cell02", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell002", id, .flags = SetTask_Once);
 }
 @cell02(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO two_spinners[0][random_num(0,1)]);
     client_print(id, print_center, "COLT");
 }
 @cell002(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.8), "@cell03", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell003", id, .flags = SetTask_Once);
 }
 @cell03(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[2][random_num(0,2)]);
     client_print(id, print_center, "ALL SHOTGUNS");
 }
 @cell003(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.5), "@cell04", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell004", id, .flags = SetTask_Once);
 }
 @cell04(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[3][random_num(0,2)]);
     client_print(id, print_center, "UMP45");
 }
 @cell004(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.8), "@cell05", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell005", id, .flags = SetTask_Once);
 }
 @cell05(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[4][random_num(0,2)]);
     client_print(id, print_center, "Kalashnikov");
 }
 @cell005(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.7), "@cell06", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell006", id, .flags = SetTask_Once);
 }
 @cell06(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[5][random_num(0,2)]);
     client_print(id, print_center, "MP5");
 }
 @cell006(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.7), "@cell07", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell007", id, .flags = SetTask_Once);
 }
 @cell07(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[6][random_num(0,2)]);
     client_print(id, print_center, "ALL SNIPERS");
 }
 @cell007(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.3,0.7), "@cell08", id, .flags = SetTask_RepeatTimes, .repeat = 20);
     set_task_ex(12.0, "@cell008", id, .flags = SetTask_Once);
 }
 @cell08(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[7][random_num(0,2)]);
     client_print(id, print_center, "KNIFE");
 }
 @cell008(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.09,0.1), "@cell09", id, .flags = SetTask_RepeatTimes, .repeat = 150)
     set_task_ex(18.0, "@cell009", id, .flags = SetTask_Once);
 }
 @cell09(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[8][random_num(0,2)]);
     client_print(id, print_center, "PARA or TMP");
 }
 @cell009(id)
+if(is_user_connected(id))
 {
     set_task_ex(random_float(0.1,0.3), "@cell10", id, .flags = SetTask_RepeatTimes, .repeat = 150);
 }
 @cell10(id)
+if(is_user_connected(id))
 {
     HUDSUP
     DEMO beta_symbols[9][random_num(0,2)]);
@@ -711,13 +713,18 @@ public CurWeapon(id)
 
 @FnWow(iAttacker, Float:iDamage, iVictim)
 {
-    client_print(0,print_chat,"%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
-    set_hudmessage(iRainbow,iRainbow,iRainbow, -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);
-    show_hudmessage(0, "%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
+    if(is_user_connected(iAttacker) && is_user_connected(iVictim))
+    {
+        client_print(0,print_chat,"%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
 
-    FnKiller(iAttacker);
-    if(!is_user_alive(iVictim))
-        FnFade(iVictim);
+        set_hudmessage(iRainbow,iRainbow,iRainbow, -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);
+        show_hudmessage(0, "%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
+        client_cmd iAttacker, "spk exterminate"
+
+        FnKiller(iAttacker);
+        if(!is_user_alive(iVictim))
+            FnFade(iVictim);
+    }
 }
 
 public FnKiller(iAttacker)
