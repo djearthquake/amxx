@@ -1,7 +1,26 @@
+/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ */
+
 #include amxmodx
 #include amxmisc
 #include hamsandwich
-#include cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
 
 #define  charsmin -1
 
@@ -83,10 +102,10 @@ enum {
 
 #define PLUGIN "HitMarx"
 //Works on DOD, CS, CZ, OP4, and plain HL. Missing your mod? PM me.
-#define VERSION "A"
+#define VERSION "A1"
 //Demo of selected style 1-8
 #define AUTHOR "SPiNX"
-//NapoleoN# taught us Hitmarkers isn't reserved for spinning damage amounts, fades and sound effects.
+//This is better than NapoleoN# script as it as a copy of Bugsy's work, mine and Call of Duty. This is 100% original idea.
 //This is a mult-mod Hitmark demo which I intend to evolve over time even further.
 //Please see my jail break of ABD on that thread. If works outside of Counter-strike now.
 
@@ -183,7 +202,7 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR);
     register_clcmd("hitmark_demo","@demo",ADMIN_KICK,"|Hitmarker Demo");
     register_clcmd("nodemo","@demo_end",ADMIN_KICK,"|End Hitmarker Demo");
-    register_event("CurWeapon", "CurWeapon", "bcef", "1=1")
+    //register_event("CurWeapon", "CurWeapon", "bcef", "1=1")
     //register_event("CurWeapon", "CurWeapon", "b", "1=1")
     RegisterHam(Ham_TakeDamage, "player", "@PostTakeDamage", 1);
 
@@ -201,7 +220,7 @@ public plugin_init()
     g_cvar_bsod_iDelay          = register_cvar("bsod_delay", "5");
     g_cvar_iHitSym              = register_cvar("hitmarx", "2"); //compatibility mode works on everything.
     bDod = is_running("dod") == 1  ? true : false
-    bStrike = cstrike_running() == 1 ? true : false
+    bStrike = cstrike_running() ? true : false
     g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
     //hitmarx 1-8. 1 snipers-only (w/ legacy HL support).2 all (w/ legacy HL support) . 3 Dice. (Future organized DOD) 4. Crosses. 5. Organized just for Cstrike. 6. Dice again. 7.Random inventory 8.Random inventory 2.
     //Type hitmark_demo in console or nodemo to test without players or as a spec.
@@ -210,8 +229,13 @@ public plugin_init()
 
     //later larger array can depict from bots, to humans, friendlies, to objective mark (c4 carrier), to low hp or a skull for high.
     #define TICKER test_spinner2
+    #if AMXX_VERSION_NUM != 110;
+    register_message(get_user_msgid("Money"), "OnMoneyChange")
+    register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
+    #endif
 }
 
+#if defined CZERO
 public plugin_precache()
 {
     //fail-safe although plugin is expected to stop beforehand.
@@ -228,6 +252,7 @@ public plugin_precache()
         }
     }
 }
+#endif
 
 public client_putinserver(id)
 {
@@ -235,7 +260,7 @@ public client_putinserver(id)
     {
         bIsBot[id] = is_user_bot(id) ? true : false
         if(bIsBot[id])return;
-        if( bStrike || bDod)
+        if(bStrike || bDod)
             set_task_ex(random_float(7.0,8.0), "newlog", id, .flags = SetTask_Once);
     }
 }
@@ -253,11 +278,37 @@ public newlog(id)
     }
 }
 
+#if AMXX_VERSION_NUM != 110
+public OnMoneyChange(iMsgId, iDest, id)
+#else
+public CS_OnBuy( id, anything )
+#endif
+{
+    @delayed_end(id)
+}
+
 @PostTakeDamage(iVictim, iInflictor, iAttacker, Float:iDamage, iDamagebits)
 {
     static iRed, iGRN, iBLU;
-    if(is_user_connected(iAttacker) && get_pcvar_num(g_cvar_iHitSym) >= 1)
-    if(!is_user_bot(iAttacker))
+    if(get_pcvar_num(g_cvar_iHitSym) >= 1)
+    if(is_user_connected(iAttacker) && is_user_connected(iVictim))
+    if(!bIsBot[iAttacker])
+    if(get_pcvar_num(g_teams))
+    {
+        new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+        get_user_team(iAttacker, killers_team, charsmax(killers_team));
+        get_user_team(iVictim, victims_team, charsmax(victims_team));
+        if(equal(killers_team,victims_team))
+        {
+            FnFade(iAttacker)
+            //return PLUGIN_HANDLED
+        }
+    }
+    if( iDamage > 150.0)
+    {
+        @FnWow(iAttacker, iDamage, iVictim);
+    }
+    if(is_user_alive(iAttacker) && is_user_alive(iVictim))
     {
         if(get_pcvar_num(g_cvar_iHitSym) == 1)
         {
@@ -267,15 +318,7 @@ public newlog(id)
                     return PLUGIN_HANDLED
             }
         }
-        if(g_teams)
-        {
-            if(get_user_team(iVictim) == get_user_team(iAttacker))
-                return PLUGIN_HANDLED
-        }
-        else
-        {
-            return PLUGIN_CONTINUE
-        }
+
         if(get_pcvar_num(pRainbow))
         {
             iRed = iRainbow;
@@ -291,133 +334,145 @@ public newlog(id)
 
         set_hudmessage(iRed, iGRN, iBLU, get_pcvar_float(pHUDx), get_pcvar_float(pHUDy) , 0, 2.0, get_pcvar_float(pLinger) , 0.0, 0.0, -1);
 
-        if (get_pcvar_num(g_cvar_iHitSym) == 5 )
-        {
-            if (bStrike )
-            {
-                if (IS CSW_P90)
-                {
-                    DISPLAY beta_symbols[0][random_num(0,2)] : "╳" );
-                }
-                if (IS CSW_M4A1)
-                {
-                    DISPLAY two_spinners[0][random_num(0,1)] : "╳" );
-                }
-                if (CSW_ALL_SHOTGUNS & (1 << get_user_weapon(iAttacker)) )
-                {
-                    DISPLAY DIAMONDS : "╳" );
-                }
-                if (IS CSW_UMP45)
-                {
-                    DISPLAY beta_symbols[3][random_num(0,2)] : "╳" );
-                }
-                if (IS CSW_AK47)
-                {
-                    DISPLAY beta_symbols[4][random_num(0,2)] : "╳" );
-                }
-                if (IS CSW_MP5NAVY)
-                {
-                    DISPLAY beta_symbols[5][random_num(0,2)] : "╳" );
-                }
-                if (CSW_ALL_SNIPERRIFLES & (1 << get_user_weapon(iAttacker)) )
-                {
-                    DISPLAY two_spinners[1][random_num(0,1)] : "╳" );
-                }
-                if (IS CSW_KNIFE)
-                {
-                    DISPLAY beta_symbols[7][random_num(0,2)] : "╳" );
-                }
-                if (IS CSW_TMP || IS CSW_M249)
-                {
-                    DISPLAY beta_symbols[8][random_num(0,2)] : "╳" );
-                }
-                if (CSW_ALL_PISTOLS & (1 << get_user_weapon(iAttacker)) )
-                {
-                    DISPLAY two_spinners[2][random_num(0,1)] : "╳" );
-                }
-            }
-            if(bDod)
-            {
-                if (IS DODW_MG42 || IS DODW_MG34)
-                {
-                    DISPLAY GRATEFUL_DEAD : "╳" );
-                }
-                if (IS DODW_COLT || IS DODW_THOMPSON)
-                {
-                    DISPLAY COLT : "╳" );
-                }
-                if (IS DODW_FG42 || IS DODW_BREN || IS DODW_30_CAL)
-                {
-                    DISPLAY STAR : "╳" );
-                }
-                else
-                {
-                    DISPLAY VOLKS : "╳" );
-                }
-            }
-        }
-        if( bStrike || bDod)
-        {
-            if (get_pcvar_num(g_cvar_iHitSym) <= 2 )
-            {
-                DISPLAY test_spinner1[random(sizeof(test_spinner1))] : "╳");
-            }
-            if (get_pcvar_num(g_cvar_iHitSym) == 3 )
-            {
-                DISPLAY test_spinner2[random(sizeof(test_spinner2))] : "╳");
-            }
-            if (get_pcvar_num(g_cvar_iHitSym) == 4 )
-            {
-                DISPLAY test_spinner0[random(sizeof(test_spinner0))] : "╳");
-            }
-            if (get_pcvar_num(g_cvar_iHitSym) == 6 )
-            {
-                DISPLAY TICKER[random(sizeof(TICKER))] : "╳");
-            }
-            if (get_pcvar_num(g_cvar_iHitSym) == 7 )
-            {
-                DISPLAY beta_symbols[random_num(0,9)][random_num(0,2)] : "╳" );
-            }
+        if(get_pcvar_num(g_cvar_iHitSym) == 2 )
+            DISPLAY alpha_symbols[random(sizeof(alpha_symbols))] : "X");
 
-            if (get_pcvar_num(g_cvar_iHitSym) == 8 )
+        if(bStrike|bDod)
+        {
+            if(get_pcvar_num(g_cvar_iHitSym) == 5 )
             {
-                DISPLAY TestArray[random_num(0,3)][random_num(0,5)] : "╳");
+                if(bStrike )
+                {
+                    if (IS CSW_P90)
+                    {
+                        DISPLAY beta_symbols[0][random_num(0,2)] : "╳" );
+                    }
+                    if (IS CSW_M4A1)
+                    {
+                        DISPLAY two_spinners[0][random_num(0,1)] : "╳" );
+                    }
+                    if (CSW_ALL_SHOTGUNS & (1 << get_user_weapon(iAttacker)) )
+                    {
+                        DISPLAY DIAMONDS : "╳" );
+                    }
+                    if (IS CSW_UMP45)
+                    {
+                        DISPLAY beta_symbols[3][random_num(0,2)] : "╳" );
+                    }
+                    if (IS CSW_AK47)
+                    {
+                        DISPLAY beta_symbols[4][random_num(0,2)] : "╳" );
+                    }
+                    if (IS CSW_MP5NAVY)
+                    {
+                        DISPLAY beta_symbols[5][random_num(0,2)] : "╳" );
+                    }
+                    if (CSW_ALL_SNIPERRIFLES & (1 << get_user_weapon(iAttacker)) )
+                    {
+                        DISPLAY two_spinners[1][random_num(0,1)] : "╳" );
+                    }
+                    if (IS CSW_KNIFE)
+                    {
+                        DISPLAY beta_symbols[7][random_num(0,2)] : "╳" );
+                    }
+                    if (IS CSW_TMP || IS CSW_M249)
+                    {
+                        DISPLAY beta_symbols[8][random_num(0,2)] : "╳" );
+                    }
+                    if (CSW_ALL_PISTOLS & (1 << get_user_weapon(iAttacker)) )
+                    {
+                        DISPLAY two_spinners[2][random_num(0,1)] : "╳" );
+                    }
+                }
+                if(bDod)
+                {
+                    if (IS DODW_MG42 || IS DODW_MG34)
+                    {
+                        DISPLAY GRATEFUL_DEAD : "╳" );
+                    }
+                    if (IS DODW_COLT || IS DODW_THOMPSON)
+                    {
+                        DISPLAY COLT : "╳" );
+                    }
+                    if (IS DODW_FG42 || IS DODW_BREN || IS DODW_30_CAL)
+                    {
+                        DISPLAY STAR : "╳" );
+                    }
+                    else
+                    {
+                        DISPLAY VOLKS : "╳" );
+                    }
+                }
+            }
+            else
+            {
+                if (get_pcvar_num(g_cvar_iHitSym) <= 2 )
+                {
+                    DISPLAY test_spinner1[random(sizeof(test_spinner1))] : "╳");
+                }
+                if (get_pcvar_num(g_cvar_iHitSym) == 3 )
+                {
+                    DISPLAY test_spinner2[random(sizeof(test_spinner2))] : "╳");
+                }
+                if (get_pcvar_num(g_cvar_iHitSym) == 4 )
+                {
+                    DISPLAY test_spinner0[random(sizeof(test_spinner0))] : "╳");
+                }
+                if (get_pcvar_num(g_cvar_iHitSym) == 6 )
+                {
+                    DISPLAY TICKER[random(sizeof(TICKER))] : "╳");
+                }
+                if (get_pcvar_num(g_cvar_iHitSym) == 7 )
+                {
+                    DISPLAY beta_symbols[random_num(0,9)][random_num(0,2)] : "╳" );
+                }
+
+                if (get_pcvar_num(g_cvar_iHitSym) == 8 )
+                {
+                    DISPLAY TestArray[random_num(0,3)][random_num(0,5)] : "╳");
+                }
             }
         }
         else
         {
             DISPLAY alpha_symbols[random(sizeof(alpha_symbols))] : "X");
         }
-        if( iDamage > 150.0)
-        {
-            @FnWow(iAttacker, iDamage, iVictim);
-        }
     }
     return PLUGIN_HANDLED
 }
 
-@demo(id){
-    if(!bIsBot[id])
-    set_task_ex(random_float(0.1,0.3), "@Demo", id, .flags = SetTask_Repeat); //Times, .repeat = 75);
+@demo(id)
+{
+    if(is_user_connected(id) && !bIsBot[id])
+    {
+        set_task_ex(random_float(0.1,0.3), "@Demo", id, .flags = SetTask_Repeat); //Times, .repeat = 75);
+    }
     return PLUGIN_HANDLED;
 }
 
-@delayed_end(id){
-    set_task_ex(random_float(7.0,10.0), "@demo_end", id, .flags = SetTask_RepeatTimes, .repeat = 3);
+@delayed_end(id)
+{
+    if(is_user_connected(id) && !bIsBot[id])
+    {
+        set_task_ex(random_float(7.0,10.0), "@demo_end", id, .flags = SetTask_RepeatTimes, .repeat = 3);
+    }
 }
 
-@demo_end(id){
+@demo_end(id)
+{
     if(task_exists(id))
-    remove_task(id)
+        remove_task(id)
     return PLUGIN_HANDLED_MAIN;
 }
 
+/*
 public CurWeapon(id)
 {
     //if(get_pcvar_num(g_cvar_iHitSym) == 5 )
     @delayed_end(id);
     return PLUGIN_HANDLED;
 }
+ */
 
 @Demo(id)
 {
@@ -496,12 +551,14 @@ public CurWeapon(id)
     if(is_user_connected(id))
     {
         if(task_exists(id))
-        remove_task(id)
+            remove_task(id)
 
-        if(is_user_admin(id)) //too long for casual users
-        set_task_ex(random_float(0.1,0.2), "@cell01", id, .flags = SetTask_RepeatTimes, .repeat = 107)
-        set_task_ex(18.0, "@cell001", id, .flags = SetTask_Once);
-        @long_demo_motd(id)
+        if(is_user_admin(id)) //too long for casual user
+        {
+            set_task_ex(random_float(0.1,0.2), "@cell01", id, .flags = SetTask_RepeatTimes, .repeat = 107)
+            set_task_ex(18.0, "@cell001", id, .flags = SetTask_Once);
+            @long_demo_motd(id)
+        }
     }
 }
 
@@ -511,38 +568,38 @@ public CurWeapon(id)
     {
         if(is_user_admin(id))
         {
-        new Float:xTex
-        xTex = -1.0
-        new Float:yTex
-        yTex = -1.0
-        new Float:fadeInTime = 0.5;
-        new Float:fadeOutTime = 1.5;
-        new Float:holdTime = 1.5;
-        new Float:scanTime = 1.1;
-        new effect = 2;
+            new Float:xTex
+            xTex = -1.0
+            new Float:yTex
+            yTex = -1.0
+            new Float:fadeInTime = 0.5;
+            new Float:fadeOutTime = 1.5;
+            new Float:holdTime = 1.5;
+            new Float:scanTime = 1.1;
+            new effect = 2;
 
-        message_begin(MSG_BROADCAST,SVC_TEMPENTITY);
-        write_byte(TE_TEXTMESSAGE);
-        write_byte(0);      //(channel)
-        write_short(FixedSigned16(xTex,1<<13));  //(x) -1 = center)
-        write_short(FixedSigned16(yTex,1<<13));  //(y) -1 = center)
-        write_byte(effect);  //(effect) 0 = fade in/fade out, 1 is flickery credits, 2 is write out (training room)
-        write_byte(0);  //(red) - text color
-        write_byte(155);  //(GRN)
-        write_byte(111);  //(BLU)
-        write_byte(20);  //(alpha)
-        write_byte(180);  //(red) - effect color
-        write_byte(75);  //(GRN)
-        write_byte(200);  //(BLU)
-        write_byte(30);  //(alpha)
-        write_short(FixedUnsigned16(fadeInTime,1<<8));
-        write_short(FixedUnsigned16(fadeOutTime,1<<8));
-        write_short(FixedUnsigned16(holdTime,1<<8));
-        if (effect == 2)
-            write_short(FixedUnsigned16(scanTime,1<<8));
-        //[optional] write_short(fxtime) time the highlight lags behing the leading text in effect 2
-        write_string("Hitmarks to confirm your hits!"); //(text message) 512 chars max string size
-        message_end();
+            message_begin(MSG_BROADCAST,SVC_TEMPENTITY);
+            write_byte(TE_TEXTMESSAGE);
+            write_byte(0);      //(channel)
+            write_short(FixedSigned16(xTex,1<<13));  //(x) -1 = center)
+            write_short(FixedSigned16(yTex,1<<13));  //(y) -1 = center)
+            write_byte(effect);  //(effect) 0 = fade in/fade out, 1 is flickery credits, 2 is write out (training room)
+            write_byte(0);  //(red) - text color
+            write_byte(155);  //(GRN)
+            write_byte(111);  //(BLU)
+            write_byte(20);  //(alpha)
+            write_byte(180);  //(red) - effect color
+            write_byte(75);  //(GRN)
+            write_byte(200);  //(BLU)
+            write_byte(30);  //(alpha)
+            write_short(FixedUnsigned16(fadeInTime,1<<8));
+            write_short(FixedUnsigned16(fadeOutTime,1<<8));
+            write_short(FixedUnsigned16(holdTime,1<<8));
+            if (effect == 2)
+                write_short(FixedUnsigned16(scanTime,1<<8));
+            //[optional] write_short(fxtime) time the highlight lags behing the leading text in effect 2
+            write_string("Hitmarks to confirm your hits!"); //(text message) 512 chars max string size
+            message_end();
         }
     }
 }
@@ -652,9 +709,9 @@ public CurWeapon(id)
     client_print(id, print_center, "ALL PISTOLS");
 }
 
-@FnWow(iAttacker, Float:iDamage, iVictim) {
-
-    client_print(0,print_console,"%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
+@FnWow(iAttacker, Float:iDamage, iVictim)
+{
+    client_print(0,print_chat,"%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
     set_hudmessage(iRainbow,iRainbow,iRainbow, -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);
     show_hudmessage(0, "%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
 
@@ -663,7 +720,9 @@ public CurWeapon(id)
         FnFade(iVictim);
 }
 
-public FnKiller(iAttacker){
+public FnKiller(iAttacker)
+{
+    if(is_user_alive(iAttacker))
         set_task_ex(0.1, "FnStrobe", iAttacker, .flags = SetTask_RepeatTimes, .repeat = get_pcvar_num(g_cvar_bsod_iConfmkills));
 }
 
@@ -688,7 +747,7 @@ public FnStrobe(iAttacker)
 
 public FnFade(iVictim)
 {
-    if(is_user_connected(iVictim) && !is_user_bot(iVictim) )
+    if(is_user_connected(iVictim) && !bIsBot[iVictim])
     {
         message_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenFade"),{0,0,0},iVictim);
         DELAY;DELAY;FLAGS;BLU;ALPHA; //This is where one can change BLU to GRN.
