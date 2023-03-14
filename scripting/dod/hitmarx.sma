@@ -229,8 +229,11 @@ public plugin_init()
     //later larger array can depict from bots, to humans, friendlies, to objective mark (c4 carrier), to low hp or a skull for high.
     #define TICKER test_spinner2
     #if AMXX_VERSION_NUM != 110;
-    register_message(get_user_msgid("Money"), "OnMoneyChange")
-    register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
+    if(bStrike)
+    {
+        register_message(get_user_msgid("Money"), "OnMoneyChange")
+        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
+    }
     #endif
 }
 
@@ -304,7 +307,7 @@ public CS_OnBuy( id, anything )
             //return PLUGIN_HANDLED
         }
     }
-    if( iDamage > 150.0)
+    if(iDamage > 150.0)
     {
         @FnWow(iAttacker, iDamage, iVictim);
     }
