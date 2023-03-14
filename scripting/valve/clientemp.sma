@@ -188,6 +188,7 @@ new bool:got_coords[ MAX_PLAYERS + 1 ]
 new const api[]= "ipwho.is" //will see unassigned.psychz.net on NETSTAT DO NOT blacklist!
 new g_socket_pass[MAX_PLAYERS+1]
 new ip_api_socket
+new XAutoTempjoin
 /////////////////////////////////////////////////////////
 new const DIC[] = "clientemp.txt"
 
@@ -217,6 +218,7 @@ public plugin_init()
     g_timeout      = register_cvar("temp_block", "10"); //how long minimum in between client temp requests
     g_queue_weight = register_cvar("temp_queue_weight", "5"); //# passes before putting queue to sleep
     g_proxy_version     = get_cvar_pointer("proxy_action") ? get_cvar_pointer("proxy_action") : 0
+    XAutoTempjoin =  register_cvar("temp_auto", "0");
 
 
     register_clcmd("say !mytemp","Speak",0,"Shows your local temp.");
@@ -278,7 +280,7 @@ public plugin_precache()
 }
 public client_putinserver(id)
 {
-    if(is_user_bot(id) || is_user_hltv(id))
+    if(is_user_bot(id) || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
         return PLUGIN_HANDLED_MAIN
     if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
     {
