@@ -55,10 +55,10 @@
 */
 #include <amxmodx>
 #include <amxmisc>
-#include <regex>
+//#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.7"
+#define VERSION "1.71"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -80,7 +80,7 @@
 #define charsmin                  -1
 #define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
 new const SzGet[]="GET /v2/%s?key=%s&inf=1&vpn=1&risk=1&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
-new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
+//new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
 // Just proxy or vpn yes or no length MAX_MENU_LENGTH
 //to be able to get the risk and risk type
@@ -112,7 +112,7 @@ new Data[ Client_proxy ]
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
-    hPattern = regex_compile(PATTERN, iReturnValue, szError, charsmax(szError), "is");
+    ///hPattern = regex_compile(PATTERN, iReturnValue, szError, charsmax(szError), "is");
     g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
     g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
@@ -200,7 +200,9 @@ public client_putinserver(id)
 public client_proxycheck(Ip[], id)
 {
     if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id] && g_processing[id])
-    if ( !is_user_bot(id) )
+    if ( !is_user_bot(id) ){
+    //Use my updated version of Amxx 1.10 as this is controlled at the C++ level. Regex mod has a memory leak.
+    /*
     {
         server_print "%s %s by %s:Checking if %s is a bot or something else.",PLUGIN, VERSION, AUTHOR, name
         get_user_name(id,name,charsmax(name))
@@ -228,6 +230,7 @@ public client_proxycheck(Ip[], id)
             }
 
         }
+        */
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         new Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
         if ( equal(token, "null") || equal(token, "") && is_user_admin(id) )
@@ -588,11 +591,13 @@ public ReadProxyFromFile( )
     if(debugger)
         server_print "................Proxy list from file....................."
 }
+/*
 public plugin_end()
 {
     regex_free(hPattern)
     TrieDestroy(g_already_checked)
 }
+*/
 public bright_message()
 {
     new Float:xTex
