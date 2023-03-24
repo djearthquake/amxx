@@ -45,11 +45,11 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Tues 15th Mar 2022
+    *(__ [__)*|\ | >< Fri 24th Mar 2023
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
-    *    Copyleft (C) 2019 .sρiηX҉.
+    *    Copyleft (C) 2019-2023 .sρiηX҉.
     *
     *    This program is free software: you can redistribute it and/or modify
     *    it under the terms of the GNU Affero General Public License as
@@ -144,6 +144,11 @@
     }
     new Data[ Client_temp ]
 
+    new bool: b_Bot[MAX_PLAYERS+1]
+    new bool: b_Admin[MAX_PLAYERS+1]
+    new bool: b_CS
+    new bool: b_DoD
+
     new const faren_country[][]={
     //Bahamas
                 "BHS",
@@ -231,6 +236,13 @@ public plugin_init()
     g_q_weight     = 1
     g_client_temp = TrieCreate()
     ReadClientFromFile( )
+
+    new SzModName[MAX_NAME_LENGTH]
+    get_modname(SzModName, charsmax(SzModName));
+    if(equal(SzModName, "cstrike"))
+        b_CS = true
+    else if (equal(SzModName, "dod"))
+        b_DoD = true
 }
 
 public plugin_end()
@@ -253,20 +265,28 @@ public plugin_precache()
 
 @queue_test(id)
 {
-    change_task(iQUEUE, 10.0)
-    client_cmd(id,"spk buttons/bell1.wav");
-    server_print "Turning on queue per request by %s.",ClientName[id]
+    if(is_user_connected(id))
+    {
+        change_task(iQUEUE, 10.0)
+        client_cmd(id,"spk buttons/bell1.wav");
+        server_print "Turning on queue per request by %s.",ClientName[id]
+    }
     return PLUGIN_HANDLED;
 }
+
 @fixadmins(id)
 {
-    client_print id,print_chat,"Changed admin_temp 1 to allow admins to get temp."
-    set_pcvar_num(g_admins, 1)
-    gotatemp[id] = false
-    client_cmd id, "spk ^"computer malfunction. system is on zero. system is on one now for temperature control^""
-    change_task(iQUEUE, 10.0)
-    client_temp_cmd(id)
+    if(is_user_connected(id))
+    {
+        client_print id,print_chat,"Changed admin_temp 1 to allow admins to get temp."
+        set_pcvar_num(g_admins, 1)
+        gotatemp[id] = false
+        ///client_cmd id, "spk ^"computer malfunction. system is on zero. system is on one now for temperature control^""
+        change_task(iQUEUE, 10.0)
+        client_temp_cmd(id)
+    }
 }
+
 @queue_test2(id)
 {
     if(is_user_connected(id))
@@ -278,24 +298,32 @@ public plugin_precache()
     }
     return PLUGIN_HANDLED;
 }
+
 public client_putinserver(id)
 {
-    if(is_user_bot(id) || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
-        return PLUGIN_HANDLED_MAIN
-    if( is_user_connected(id) && !is_user_bot(id) && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
+    if(is_user_connected(id))
     {
-        get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
-        if (equali(ClientIP[id], "127.0.0.1"))
+        b_Bot[id] = is_user_bot(id) ? true : false
+        b_Admin[id] = is_user_admin(id) ? true : false
+        if(b_Bot[id] || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
+            return PLUGIN_HANDLED_MAIN
+        if( is_user_connected(id) && !b_Bot[id] && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
         {
-            server_print "%s IP shows as 127.0.0.1, stopping %s script!", ClientName[id], PLUGIN
-            server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
-            return PLUGIN_HANDLED;
+            get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
+            if (equali(ClientIP[id], "127.0.0.1"))
+            {
+                server_print "%s IP shows as 127.0.0.1, stopping %s script!", ClientName[id], PLUGIN
+                server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
+                return PLUGIN_HANDLED;
+            }
+            else
+                client_putinserver_now(id)
         }
-        else
-            client_putinserver_now(id)
+        return PLUGIN_CONTINUE
     }
-    return PLUGIN_CONTINUE
+    return PLUGIN_HANDLED
 }
+
 @country_finder(Tsk)
 {
     mask = Tsk - WEATHER
@@ -387,49 +415,56 @@ public client_putinserver(id)
 
     }
 }
+
 @speakit(id)
 {
     new new_temp
+    if(is_user_connected(id))
+    {
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
+            new_temp = Data[iTemp]
+        else
+            new_temp = str_to_num(g_ClientTemp[id])
 
-    if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
-        new_temp = Data[iTemp]
-    else
-        new_temp = str_to_num(g_ClientTemp[id])
+        //Speak the temperature.
+        num_to_word(new_temp, word_buffer, charsmax(word_buffer))
+        if(new_temp < 0)
+            client_cmd(id, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
 
-    //Speak the temperature.
-    num_to_word(new_temp, word_buffer, charsmax(word_buffer))
-    if(new_temp < 0)
-        client_cmd(id, "spk ^"temperature right now is %s degrees sub zero^"", word_buffer );
+        else
+            client_cmd(id, "spk ^"temperature right now is %s degrees^"", word_buffer );
 
-    else
-        client_cmd(id, "spk ^"temperature right now is %s degrees^"", word_buffer );
-
-    server_print "Spoke temp for^n^n%s",ClientName[id]
+        server_print "Spoke temp for^n^n%s",ClientName[id]
+    }
 }
 
 public Speak(id)
 {
-    if(gotatemp[id]) //remind them otherwise fetch it
+    if(is_user_connected(id))
     {
-        if(is_user_admin(id))
-            (get_pcvar_num(g_admins) ? @speakit(id) : @fixadmins(id))
-        else
+        if(!get_pcvar_num(XAutoTempjoin))
+            client_putinserver_now(id)
+
+        if(b_Admin[id])
+            get_pcvar_num(g_admins) ? @speakit(id) : @fixadmins(id)
+
+        if(gotatemp[id]) //remind them otherwise fetch it
+        {
             @speakit(id)
-
+        }
+        else
+        {
+            client_temp_cmd(id) //fetch
+            client_cmd id, "spk ^"temperature is going through now^""
+        }
     }
-    else
-    {
-        client_cmd id, "spk ^"temperature is going through now^""
-        client_temp_cmd(id) //fetch
-    }
-
 }
 
 public client_temp_cmd(id)
 {
-    server_print "client_temp_cmd for slot:%d|%s", id, ClientName[id]
     if(is_user_connected(id))
     {
+        server_print "client_temp_cmd for slot:%d|%s", id, ClientName[id]
         set_task(random_num(8,16)*1.0,"client_temp_filter",id)
         server_print "Making a filter task for %s", ClientName[id]
     }
@@ -443,12 +478,12 @@ public client_temp_cmd(id)
         change_task(m,20.0)
         server_print "Rescheduling %n until they connect.",m
     }
-    else
+    else if(is_user_connected(m))
     {
         server_print "%s is still connected at moment.", ClientName[m]
 
         if(is_user_admin(m) && get_pcvar_num(g_admins) == 0)
-        gotatemp[m] = true;
+            gotatemp[m] = true;
 
         else if(!gotatemp[m] && m > 0)
         {
@@ -476,7 +511,7 @@ public client_temp_cmd(id)
 public client_remove(id)
 {
     iPlayers()
-    if( g_iHeadcount == 0)
+    if(g_iHeadcount == 0)
     {
         server_print "NOBODY IS ONLINE HIBERNATING THE QUEUE CYCLE"
         change_task(iQUEUE, 1800.0)
@@ -486,41 +521,40 @@ public client_remove(id)
 
 public client_temp_filter(id)
 {
-    server_print "CLIENT TEMP FILTER FUNCTION"
     if(is_user_connected(id) && id > 0)
     {
-
-        if (is_user_bot(id) || is_user_admin(id) && !get_pcvar_num(g_admins) )
+        server_print "CLIENT TEMP FILTER FUNCTION"
+        if (b_Bot[id] || b_Admin[id] && !get_pcvar_num(g_admins) )
             return PLUGIN_HANDLED_MAIN;
         server_print "Temp task will be accessed soon"
-        if(!IS_SOCKET_IN_USE  && !gotatemp[id])
+        if(!gotatemp[id])
         {
-            if(equali(ClientIP[id], ""))
-                get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
-
-            client_temp(id)
-        }
-
-        if(IS_SOCKET_IN_USE && !gotatemp[id])
-
-        {
-            server_print "Socket shows in use."
-            if(!task_exists(id))
+            if(!IS_SOCKET_IN_USE)
             {
-                set_task(random_num(10,20)*1.0,"client_temp",id);
-                server_print "Setting task."
+                if(equali(ClientIP[id], ""))
+                    get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
+
+                client_temp(id)
             }
             else
-                change_task(id,random_num(7,11)*1.0)
+            {
+                server_print "Socket shows in use."
+                if(!task_exists(id))
+                {
+                    set_task(random_num(10,20)*1.0,"client_temp",id);
+                    server_print "Setting task."
+                }
+                else
+                    change_task(id,random_num(7,11)*1.0)
+                if(task_exists(id+WEATHER))
+                {
+                    change_task(id+WEATHER,random_num(20,30)*1.0);
+                    server_print "Queuing %s's weather socket for %f to prevent lag", ClientName[id], get_pcvar_num(g_timeout)*3.0/1.5
+                }
+
+            }
 
         }
-
-        if(task_exists(id+WEATHER))
-        {
-            change_task(id+WEATHER,random_num(20,30)*1.0);
-            server_print "Queuing %s's weather socket for %f to prevent lag", ClientName[id], get_pcvar_num(g_timeout)*3.0/1.5
-        }
-
 
     }
 
@@ -529,10 +563,10 @@ public client_temp_filter(id)
 
 public client_temp(id)
 {
-    server_print "client_temp function"
+
     if(is_user_connected(id) && !gotatemp[id]  && !is_user_hltv(id))
     {
-
+        server_print "client_temp function"
         Data[ SzAddress ] = ClientIP[id]
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
@@ -615,7 +649,7 @@ public client_temp(id)
             log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion], str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]) // g_lat[id], g_lon[id]);
             #endif
 
-            if(get_pcvar_num(g_debug) && is_user_admin(id) )
+            if(get_pcvar_num(g_debug) && b_Admin[id] )
                 set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
         }
         else
@@ -629,23 +663,27 @@ public needan(keymissing)
 {
     new id = keymissing - ADMIN;
     get_pcvar_string(g_cvar_token, token, charsmax (token));
-
-    if (equal(token, "null") || equal(token, "") )
+    if(is_user_connected(id))
     {
-        if ( cstrike_running() || (is_running("dod") == 1)  )
 
+        if (equal(token, "null") || equal(token, "") )
         {
-            new motd[128];
-            format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-keydetected.</center></html>");
-            show_motd(id, motd, "Invalid 32-bit API key!");
-        }
+            if ( b_CS || b_DoD  )
 
-        else
+            {
+                new motd[128];
+                format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://openweathermap.org/appid'><body BGCOLOR='#FFFFFF'><br><center>Null sv_openweather-keydetected.</center></html>");
+                show_motd(id, motd, "Invalid 32-bit API key!");
+            }
 
-        {
-            client_print(id,print_chat,"Check your API key validity!");
-            client_print(id,print_center,"Null sv_openweather-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION);
-            client_print(id,print_console,"Get key from openweathermap.org/appid.");
+            else
+
+            {
+                client_print(id,print_chat,"Check your API key validity!");
+                client_print(id,print_center,"Null sv_openweather-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION);
+                client_print(id,print_console,"Get key from openweathermap.org/appid.");
+            }
+
         }
 
     }
@@ -658,7 +696,7 @@ public needan(keymissing)
 public client_disconnected(id)
 {
     new iHeadcount
-    if( is_user_bot(id)) return
+    if(b_Bot[id]) return
 
     Data[ SzAddress ] = ClientIP[id]
 
@@ -675,7 +713,7 @@ public client_disconnected(id)
         {
             if (!is_user_admin(admin))
             {
-                if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
+                if ( AMXX_VERSION_NUM == 182 || !b_CS && AMXX_VERSION_NUM != 182 )
                 client_print admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
                 #if AMXX_VERSION_NUM != 182
                 client_print_color admin,0, "^x03%n^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", id, Data[SzCountry], Data[SzCity], Data[SzRegion]
@@ -684,7 +722,7 @@ public client_disconnected(id)
 
             else
             {
-                if ( AMXX_VERSION_NUM == 182 || !cstrike_running() && AMXX_VERSION_NUM != 182 )
+                if ( AMXX_VERSION_NUM == 182 || !b_CS && AMXX_VERSION_NUM != 182 )
                 client_print admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
 
                 #if AMXX_VERSION_NUM != 182
@@ -793,38 +831,44 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 public write_web(text[MAX_USER_INFO_LENGTH], Task)
 {
     new id = Task - WEATHER
-
-    server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
-    #if AMXX_VERSION_NUM != 182
-    if (socket_is_writable(g_Weather_Feed, 100000))
-    #endif
+    if(is_user_connected(id))
     {
-        IS_SOCKET_IN_USE = true;
-        socket_send(g_Weather_Feed,text,charsmax (text));
-        server_print "Yes! %s:writing the web for ^n%s",PLUGIN, ClientName[id]
-        @latch(id)
+        server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
+        #if AMXX_VERSION_NUM != 182
+        if (socket_is_writable(g_Weather_Feed, 100000))
+        #endif
+        {
+            IS_SOCKET_IN_USE = true;
+            socket_send(g_Weather_Feed,text,charsmax (text));
+            server_print "Yes! %s:writing the web for ^n%s",PLUGIN, ClientName[id]
+            @latch(id)
+        }
+
     }
 
 }
 
 @latch(id)
 {
-    if(is_plugin_loaded(PROXY_SCRIPT,true)!=charsmin)
+    if(is_user_connected(id))
     {
-        if( g_proxy_version )
+        if(is_plugin_loaded(PROXY_SCRIPT,true)!=charsmin)
         {
-            callfunc_begin("@lock_socket",PROXY_SCRIPT)
-            callfunc_end()
+            if( g_proxy_version )
+            {
+                callfunc_begin("@lock_socket",PROXY_SCRIPT)
+                callfunc_end()
+            }
+            else
+                log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
         }
-        else
-            log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
     }
 }
 
 public read_web(feeding)
 {
     new id = feeding - WEATHER
-    if (!is_user_bot(id) && id > 0)
+    if(!b_Bot[id] && id > 0)
     {
         Data[SzAddress] = ClientIP[id]
         /////////////////////////////////////////////////////
@@ -941,7 +985,7 @@ public read_web(feeding)
                 }
 
 
-                if ( cstrike_running() || (is_running("dod") == 1)  )
+                if ( b_CS || b_DoD  )
                 {
                     #if AMXX_VERSION_NUM != 182
                     client_print_color 0,0,"%L", LANG_PLAYER,"CS_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp
@@ -1010,10 +1054,9 @@ public read_web(feeding)
                 }
                 IS_SOCKET_IN_USE = false
                 return PLUGIN_CONTINUE;
-
             }
         }
-        else if(is_user_connected(id) && !gotatemp[id] &&  g_socket_pass[id] <15)
+        else if(is_user_connected(id) && !gotatemp[id] &&  g_socket_pass[id] <7)
         {
             g_socket_pass[id]++
             server_print "No buffer checking again"
@@ -1059,7 +1102,6 @@ public read_web(feeding)
 
 @the_queue(player)
 {
-
     //Assure admins queue is really running
     server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
     //How many runs before task is put to sleep given diminished returns
@@ -1171,7 +1213,7 @@ stock iPlayers()
 public client_putinserver_now(id)
 {
     server_print("ID:%d entered!",id)
-    if(is_user_connected(id) && !is_user_bot(id) && id > 0)
+    if(is_user_connected(id) && !b_Bot[id] && id > 0)
     {
         if(!task_exists(id))
         {
@@ -1179,6 +1221,7 @@ public client_putinserver_now(id)
         }
     }
 }
+
 @get_user_data(id)
 {
     get_user_name(id, ClientName[id],charsmax(ClientName[]))
@@ -1243,7 +1286,6 @@ public client_putinserver_now(id)
 
 }
 
-
 stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter )
 {///https://forums.alliedmods.net/showpost.php?p=63298&postcount=14 //xeroblood
     new nIdx = 0, l = strlen(p_szInput)
@@ -1252,7 +1294,6 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
         nLen += (1 + copyc( p_szOutput[nIdx], p_nSize, p_szInput[nLen], p_szDelimiter ))
     return PLUGIN_CONTINUE
 }
-
 
 @read_api(Tsk)
 {
@@ -1351,6 +1392,7 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
     }
     return PLUGIN_CONTINUE
 }
+
 public ReadClientFromFile( )
 {
     new szDataFromFile[ MAX_CMD_LENGTH ]
