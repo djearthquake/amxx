@@ -62,11 +62,16 @@ new HamHook:XhookReloadPre, HamHook:XhookReloadPost, HamHook:XhookPrimaryAPre, H
 
 new bool:bAccess[MAX_PLAYERS + 1]
 
+@dim(iMsgId, iDest, id)
+{
+    return PLUGIN_HANDLED
+}
+
 public plugin_init()
 {
     register_plugin( PLUGIN, VERSION, AUTHOR );
     register_concmd("vote_gunspeed","cmdVote",VOTE_ACCESS,": Vote for gun speed!")
-
+    register_message(TE_ELIGHT, "@dim")
     new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
     server_print mod_name
@@ -214,16 +219,17 @@ public Weapon_PrimaryAttack_Pre ( const weapon )
 
 public Weapon_PrimaryAttack_Post ( const weapon )
 {
-    if(g_Speed > 0.0)
+    if(g_Speed > 0.0 /*&& get_pcvar_num(pcvars[0])>0*/)
     {
-        //new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-        new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-
-        switch(get_pcvar_num(pcvars[0]) && is_user_connected(player) && is_user_alive(player) && !is_user_bot(player))
+        new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        ////new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        if(is_user_connected(player) && is_user_alive(player))
+        switch(get_pcvar_num(pcvars[0]) /*&& is_user_connected(player) && is_user_alive(player) && !is_user_bot(player)*/)
         {
             case 1:
             {
-                if(pcvars[cl_weapon[player]] && get_pcvar_float(pcvars[cl_weapon[player]]))
+                if(pcvars[cl_weapon[player]]>0)
+                if(get_pcvar_float(pcvars[cl_weapon[player]]))
                 {
                     ///server_print "%n | %i %f %s", player, cl_weapon[player], pcvars[cl_weapon[player]], PLUGIN //debug there was a 0 or something being thrown on line 226
                     goto CHAOS
@@ -334,7 +340,7 @@ public Weapon_Reload_Post ( const weapon )
             {
                 if ( get_pdata_int( weapon, m_fInSpecialReload, LINUX_OFFSET_WEAPONS ) == 1 )
                 {
-                    set_pdata_float( player , m_flNextAttack, 0.3 );
+                    set_pdata_float( player, m_flNextAttack, 0.3 );
 
                     set_pdata_float( weapon, m_flTimeWeaponIdle     , 0.1, LINUX_OFFSET_WEAPONS );
                     set_pdata_float( weapon, m_flNextPrimaryAttack  ,  0.05, LINUX_OFFSET_WEAPONS );
