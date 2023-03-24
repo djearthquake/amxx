@@ -1,4 +1,3 @@
-
 ///C4 time is adjusted based on experience (frags).
 
 #include amxmodx
@@ -90,11 +89,23 @@ public FnPlant()
                 }
             }
         }
-        set_ent_rendering(g_weapon_c4_index, kRenderFxGlowShell, 192, 192, 192, kRenderGlow, 50);
+        set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 192, 192, 192, kRenderGlow, 50);
         if(g_weapon_c4_index < 1)
         {
-            g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
-            set_ent_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50);
+            new iC4
+            {
+                while ((iC4= find_ent(charsmin,"grenade")))
+                {
+                    if(pev_valid(iC4))
+                    {
+                        if(get_pdata_bool(iC4, m_bIsC4))
+                            g_weapon_c4_index = iC4
+                        break;
+                    }
+                }
+            }
+            ///g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
+            set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50);
         }
 
         new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
