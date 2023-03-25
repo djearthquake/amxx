@@ -14,7 +14,9 @@
 #define FLAGS FL_FAKECLIENT
 
 #define V6 "::1"
-
+#if !defined client_disconnected
+#define client_disconnect client_disconnected
+#endif
 new g_ifakesMn, g_ifakesMx, g_cvar_debugger, g_fake_count
 new new_bot_spec
 new SzSave[MAX_CMD_LENGTH]
@@ -27,10 +29,18 @@ enum _:Fake_client
     bool:SzFakeNameInUse[ MAX_PLAYERS ]
 }
 new Data[ Fake_client ]
+new bool: b_Bot[MAX_PLAYERS+1]
+
+public client_authorized(id, const authid[])
+{
+    new ClientAuth[8]
+    copy(ClientAuth, charsmax(ClientAuth), authid)
+    b_Bot[id] = equali(authid, "BOT") ? true : false
+}
 
 public client_putinserver(id)
 {
-    if(is_user_connected(id) && !is_user_bot(id))
+    if(is_user_connected(id) && !b_Bot[id])
     {
         new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"d") //filter only bots
         new keystore[MAX_IP_LENGTH]
@@ -47,9 +57,9 @@ public client_putinserver(id)
     }
 }
 
-public client_disconnect(id)
+public client_disconnected(id)
 {
-    if(!is_user_bot(id))
+    if(!b_Bot[id])
     if(g_fake_count+1 < get_pcvar_num(g_ifakesMx) && g_fake_count+1 > get_pcvar_num(g_ifakesMn)-1)
         @make_fake(id)
 }
@@ -79,7 +89,9 @@ public plugin_init()
 }
 @file_data(SzSave[MAX_CMD_LENGTH])
 {
-    server_print "%s|trying save", PLUGIN
+    new debugger = get_pcvar_num(g_cvar_debugger)
+    if(debugger > 1)
+        server_print "%s|trying save", PLUGIN
     new szFilePath[ MAX_CMD_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), "/fake_clients.ini" )
@@ -124,13 +136,14 @@ public ReadFakeFromFile( )
             g_fake_name_pick++
         }
 
-        if(debugger)
+        if(debugger > 1)
             server_print "Read %s from file",Data[ SzFakeName ]
 
         if(g_fake_name_pick < sizeof(SzMasterNameList)-1)
         {
             copy( SzMasterNameList[g_fake_name_pick], charsmax(SzMasterNameList[]), Data[ SzFakeName ] )
-            server_print "Fake slot:%d",g_fake_name_pick
+            if(debugger > 1)
+                server_print "Fake slot:%d",g_fake_name_pick
         }
         else
         {
@@ -141,7 +154,7 @@ public ReadFakeFromFile( )
     }
     END:
     fclose( f )
-    if(debugger)
+    if(debugger > 1)
         server_print "................Fake name list file....................."
 }
 
@@ -164,21 +177,21 @@ public plugin_end()
     {
         g_fake_count++
         engfunc(EngFunc_FreeEntPrivateData,new_bot_spec)
-        if(debugger)
+        if(debugger > 1)
             server_print "[%s]Freed data on %s fake %d",PLUGIN, SzBotName, g_fake_count
         bot_settings(new_bot_spec)
         static szRejectReason[MAX_CMD_LENGTH]
         {
 
             dllfunc( DLLFunc_ClientConnect,new_bot_spec, SzBotName,"127.0.0.1",szRejectReason)
-            if(debugger)
+            if(debugger > 1)
                 server_print "[%s]Connecting %s fake %d",PLUGIN, SzBotName, g_fake_count
 
             set_pev(new_bot_spec, pev_takedamage, DAMAGE_AIM)
             set_pev(new_bot_spec, pev_solid, SOLID_SLIDEBOX)
 
             dllfunc(DLLFunc_ClientPutInServer,new_bot_spec)
-            if(debugger)
+            if(debugger > 1)
                 server_print "[%s]Put fake %d in as %s",PLUGIN, g_fake_count, SzBotName
 
             set_pev(new_bot_spec,pev_spawnflags, pev(new_bot_spec,pev_spawnflags) | FLAGS)
@@ -204,7 +217,6 @@ bot_settings(new_bot_spec)
     set_user_info(new_bot_spec, "friends",          "0")
     set_user_info(new_bot_spec, "dm",               "1")
     set_user_info(new_bot_spec, "ah",               "1")
-
     set_user_info(new_bot_spec, "*bot",             "1")
     set_user_info(new_bot_spec, "_cl_autowepswitch","1")
     set_user_info(new_bot_spec, "_vgui_menu",       "0")        //disable vgui so we dont have to
