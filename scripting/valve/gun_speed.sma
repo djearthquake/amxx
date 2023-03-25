@@ -10,7 +10,7 @@
 #define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG
 #define VOTE_ACCESS     ADMIN_USER|ADMIN_CFG
 
-#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE| 1<<HLW_CROWBAR| 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_PENGUIN )
+#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE| 1<<HLW_CROWBAR| 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_PENGUIN )
 
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
@@ -223,7 +223,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
     {
         new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         ////new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-        if(is_user_connected(player) && is_user_alive(player))
+        ///if(is_user_connected(player) && is_user_alive(player))
         switch(get_pcvar_num(pcvars[0]) /*&& is_user_connected(player) && is_user_alive(player) && !is_user_bot(player)*/)
         {
             case 1:
