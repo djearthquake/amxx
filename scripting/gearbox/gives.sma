@@ -19,6 +19,8 @@ new bool:bBackpack,
     bool:bLongjump,
     bool:bAccelerator
 
+new g_cvar
+
 new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav","ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
 
 public plugin_precache()
@@ -82,6 +84,54 @@ new const GIVES[][]=
     "weapon_9mmhandgun"
 }
 
+new const szWeapons[][]=
+{
+    "item_ctfbackpack",
+    "item_ctfregeneration",
+    "item_ctfportablehev",
+    "item_ctflongjump",
+    "item_ctfaccelerator",
+    "item_airtank",
+    "item_longjump",
+    "weapon_pipewrench",
+    "weapon_penguin",
+    "weapon_knife",
+    "weapon_shockrifle",
+    "weapon_sporelauncher",
+    "weapon_m249",
+    "weapon_grapple",
+    "weapon_eagle",
+    "weapon_sniperrifle",
+    "weapon_displacer",
+    "weapon_rpg",
+    "ammo_556",
+    "ammo_762",
+    "ammo_357",
+    "ammo_9mmclip",
+    "ammo_9mmbox",
+    "ammo_9mmAR",
+    "ammo_ARgrenades",
+    "ammo_crossbow",
+    "ammo_gaussclip",
+    "ammo_rpgclip",
+    "ammo_buckshot",
+    "ammo_spore",
+    "item_longjump",
+    "weapon_357",
+    "weapon_9mmAR",
+    "weapon_crossbow",
+    "weapon_crowbar",
+    "weapon_egon",
+    "weapon_gauss",
+    "weapon_handgrenade",
+    "weapon_hornetgun",
+    "weapon_satchel",
+    "weapon_shotgun",
+    "weapon_snark",
+    "weapon_tripmine",
+    "weapon_9mmhandgun"
+}
+
 new const REPLACE[][] = {"ammo_", "weapon_", "item_"}
 new const tracer[]= "func_recharge" //armour
 
@@ -89,8 +139,9 @@ new g_event
 
 public plugin_init()
 {
-    register_plugin("Gives random weapon(s) on spawn.", "A", ".sρiηX҉.");
-    g_event = register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEvent_Single|RegisterEvent_OnlyAlive)
+    register_plugin("Gives random weapon(s) on spawn.", "B", ".sρiηX҉.");
+    g_event = register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEventFlags: RegisterEvent_Single|RegisterEvent_OnlyAlive)
+    g_cvar = register_cvar("gives_mapclean", "1")
 }
 
 public plugin_cfg()
@@ -98,6 +149,8 @@ public plugin_cfg()
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
     containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer) ?  disable_event(g_event) : enable_event(g_event)
+    if(g_cvar)
+        set_task(0.1,"@remove")
 }
 
 public client_getfreestuff(id)
@@ -185,4 +238,15 @@ public reward(needy)
         END:
     }
     return PLUGIN_HANDLED;
+}
+
+@remove()
+{
+    server_print "Scanning new map to remove weapons..."
+    for(new ent; ent < sizeof szWeapons;++ent)
+    if(has_map_ent_class(szWeapons[ent]))
+    {
+        server_print "Attempting to remove: %s.", szWeapons[ent]
+        remove_entity_name(szWeapons[ent])
+    }
 }
