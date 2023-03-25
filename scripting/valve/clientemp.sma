@@ -482,7 +482,7 @@ public client_temp_cmd(id)
     {
         server_print "%s is still connected at moment.", ClientName[m]
 
-        if(is_user_admin(m) && get_pcvar_num(g_admins) == 0)
+        if(b_Admin[m] && get_pcvar_num(g_admins) == 0)
             gotatemp[m] = true;
 
         else if(!gotatemp[m] && m > 0)
@@ -709,9 +709,9 @@ public client_disconnected(id)
     {
         for (new admin=1; admin<=iHeadcount; admin++)
 
-        if(is_user_connected(admin) && !is_user_bot(admin))
+        if(is_user_connected(admin) && !b_Bot[admin])
         {
-            if (!is_user_admin(admin))
+            if (!b_Admin[admin])
             {
                 if ( AMXX_VERSION_NUM == 182 || !b_CS && AMXX_VERSION_NUM != 182 )
                 client_print admin,print_chat,"%s from %s disappeared on %s, %s radar.", ClientName[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
@@ -1111,7 +1111,7 @@ public read_web(feeding)
 
     for(new player;player < sizeof g_players; ++player)
 
-    if(is_user_connected(g_players[player]) && !is_user_bot(g_players[player]))
+    if(is_user_connected(g_players[player]) && !b_Bot[g_players[player]])
     {
         new client = g_players[player]
         //Make array of non-bot connected players who need their temp still.
