@@ -1,6 +1,7 @@
 /*Randomize connection times module:: https://github.com/Arkshine/BotPlayedTimeFaker/releases/tag/1.2*/
 #include <amxmodx>
 #include <amxmisc>
+#include <engine>
 #include <fakemeta>
 #define charsmin                    -1
 #define MAX_IP_LENGTH               16
@@ -11,7 +12,7 @@
 #define PLUGIN "Fake Full"
 #define VERSION "1.0"
 
-#define FLAGS FL_FAKECLIENT
+#define FLAGS FL_PROXY|FL_FAKECLIENT|FL_NOTARGET|FL_SPECTATOR|FL_DORMANT
 
 #define V6 "::1"
 #if !defined client_disconnected
@@ -22,7 +23,7 @@ new new_bot_spec
 new SzSave[MAX_CMD_LENGTH]
 new SzMasterNameList[MAX_RESOURCE_PATH_LENGTH][MAX_NAME_LENGTH]
 new g_fake_name_pick
-new Trie:g_fakeclients
+new Trie:g_fakeclients, g_maxplayers
 enum _:Fake_client
 {
     SzFakeName[ MAX_NAME_LENGTH ],
@@ -33,9 +34,11 @@ new bool: b_Bot[MAX_PLAYERS+1]
 
 public client_authorized(id, const authid[])
 {
-    new ClientAuth[8]
-    copy(ClientAuth, charsmax(ClientAuth), authid)
-    b_Bot[id] = equali(authid, "BOT") ? true : false
+    if(is_user_connected(id))
+    {
+        //b_Bot[id] = equali(authid, "BOT") ? true : false
+        b_Bot[id] = is_user_bot(id) ? true : false
+    }
 }
 
 public client_putinserver(id)
@@ -75,6 +78,7 @@ public plugin_init()
     g_fakeclients   = TrieCreate()
     g_fake_name_pick = charsmin
     ReadFakeFromFile( )
+    g_maxplayers = get_maxplayers()
 }
 @init_fake_file()
 {
@@ -173,7 +177,7 @@ public plugin_end()
     //TrieetArray( g_fakeclients, Data[ SzFakeName ], Data, sizeof Data )
     copy(SzBotName,charsmax(SzBotName),SzMasterNameList[random(g_fake_name_pick+1)])
     new_bot_spec = engfunc( EngFunc_CreateFakeClient, SzBotName )
-    if(new_bot_spec > 0 && new_bot_spec < 32 )
+    if(new_bot_spec > 0 && new_bot_spec < g_maxplayers )
     {
         g_fake_count++
         engfunc(EngFunc_FreeEntPrivateData,new_bot_spec)
@@ -182,22 +186,27 @@ public plugin_end()
         bot_settings(new_bot_spec)
         static szRejectReason[MAX_CMD_LENGTH]
         {
+            set_pev(new_bot_spec,pev_spawnflags, pev(new_bot_spec,pev_spawnflags) | FLAGS)
 
             dllfunc( DLLFunc_ClientConnect,new_bot_spec, SzBotName,"127.0.0.1",szRejectReason)
             if(debugger > 1)
                 server_print "[%s]Connecting %s fake %d",PLUGIN, SzBotName, g_fake_count
 
-            set_pev(new_bot_spec, pev_takedamage, DAMAGE_AIM)
-            set_pev(new_bot_spec, pev_solid, SOLID_SLIDEBOX)
-
             dllfunc(DLLFunc_ClientPutInServer,new_bot_spec)
             if(debugger > 1)
                 server_print "[%s]Put fake %d in as %s",PLUGIN, g_fake_count, SzBotName
 
-            set_pev(new_bot_spec,pev_spawnflags, pev(new_bot_spec,pev_spawnflags) | FLAGS)
-            set_pev(new_bot_spec,pev_flags, pev(new_bot_spec,pev_flags) | FLAGS)
+            //pev(new_bot_spec, pev_flags) & FLAGS
+            //set_pev(new_bot_spec,pev_flags, pev(new_bot_spec,pev_flags) & FLAGS)
+            new effects = pev(new_bot_spec, pev_effects)
+            //set_pev(new_bot_spec, pev_effects, (effects | EF_BRIGHTLIGHT|EF_NODRAW))
+            set_pev(new_bot_spec, pev_effects, (effects | EF_LIGHT))
 
-            pev(new_bot_spec, pev_flags) & FLAGS
+            set_pev(new_bot_spec, pev_takedamage, DAMAGE_YES)
+            entity_set_float(new_bot_spec, EV_FL_health, 101.0)
+            set_pev(new_bot_spec, pev_solid, SOLID_SLIDEBOX)
+            //set_pev(new_bot_spec, pev_solid, SOLID_SLIDEBOX)
+            set_pev(new_bot_spec, pev_movetype, MOVETYPE_WALK)
         }
 
     }
@@ -206,13 +215,14 @@ public plugin_end()
 
 bot_settings(new_bot_spec)
 {
-    set_user_info(new_bot_spec, "model",    "budcanman")
+    set_user_info(new_bot_spec, "model",    "ctf_gina")
+    set_user_info(new_bot_spec, "team",             "BlackMesa")
     set_user_info(new_bot_spec, "rate",          "3500")
-    set_user_info(new_bot_spec, "cl_updaterate",  "102")
+    set_user_info(new_bot_spec, "cl_updaterate",  "40")
     set_user_info(new_bot_spec, "cl_lw",            "0")
     set_user_info(new_bot_spec, "cl_lc",            "0")
     set_user_info(new_bot_spec, "tracker",          "0")
-    set_user_info(new_bot_spec, "cl_dlmax",       "128")
+    set_user_info(new_bot_spec, "cl_dlmax",       "0")
     set_user_info(new_bot_spec, "lefthand",         "1")
     set_user_info(new_bot_spec, "friends",          "0")
     set_user_info(new_bot_spec, "dm",               "1")
