@@ -45,14 +45,18 @@ public plugin_init()
         b_CS = true
 }
 
-public client_authorized(id, const authid[])
+public client_putinserver(id)
 {
-    copy(ClientAuth[id], charsmax(ClientAuth[]), authid)
-    b_Bot[id] = equali(authid, "BOT") ? true : false
-    if(b_Bot[id])
+    if(is_user_connected(id))
     {
-        copy(ClientAuth[id], charsmax(ClientAuth[]),  SzBotTag )
-        copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), SzBotTag)
+        //b_Bot[id] = equali(authid, "BOT") ? true : false
+        b_Bot[id] = is_user_bot(id) ? true : false
+
+        if(b_Bot[id])
+        {
+            copy(ClientAuth[id], charsmax(ClientAuth[]),  SzBotTag )
+            copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), SzBotTag)
+        }
     }
 }
 
