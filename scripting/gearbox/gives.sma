@@ -13,7 +13,8 @@
 #define OP4
 #if defined OP4
 
-new bool:bBackpack,
+new
+    bool:bBackpack,
     bool:bRegeneration,
     bool:bPortablehev,
     bool:bLongjump,
@@ -148,9 +149,11 @@ public plugin_cfg()
 {
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
-    containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer) ?  disable_event(g_event) : enable_event(g_event)
+
     if(g_cvar)
         set_task(0.1,"@remove")
+    else
+        containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer) ?  disable_event(g_event) : enable_event(g_event)
 }
 
 public client_getfreestuff(id)
@@ -242,6 +245,7 @@ public reward(needy)
 
 @remove()
 {
+    enable_event(g_event) //weapons given instead on spawn as trade-off.
     server_print "Scanning new map to remove weapons..."
     for(new ent; ent < sizeof szWeapons;++ent)
     if(has_map_ent_class(szWeapons[ent]))
