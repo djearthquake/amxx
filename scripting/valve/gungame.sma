@@ -1191,7 +1191,7 @@ public load_cfg()
     TrieDestroy(hamHooks)*/
 }
 //#define âîçâðàùåíèå_îëîâà return
-#if AMXX_VERSION_NUM < 190
+#if AMXX_VERSION_NUM == 182
 #define ITEM_FLAG_SELECTONEMPTY       1
 #define ITEM_FLAG_NOAUTORELOAD        2
 #define ITEM_FLAG_NOAUTOSWITCHEMPTY   4
@@ -1308,319 +1308,388 @@ Map_LockItems(bool:lock)
         }
     }
 }
-Item_SetLock(classname[MAX_PLAYERS],ent,bool:lock = true,bool:special = false){
-if(!mapItems)
-mapItems = TrieCreate()
-new itemHooks[mapItemsHooks]
-if(lock){ // lock this entity
-if(!TrieGetArray(mapItems,classname,itemHooks,sizeof itemHooks) || itemHooks[HOOK_STATE] == 0){ // set block hooks
-itemHooks[HOOK_TOUCH] = _:RegisterHam(Ham_Touch,classname,"Item_BlockHook")
-itemHooks[HOOK_SPAWN] = _:RegisterHam(Ham_Spawn,classname,!special ? "Item_SpawnHook" : "HS_EntitySpawnBlock",true)
-itemHooks[HOOK_THINK] = _:RegisterHam(Ham_Think,classname,"Item_SpawnHook",true)
-itemHooks[HOOK_STATE] = 1
-TrieSetArray(mapItems,classname,itemHooks,sizeof itemHooks)
-}else if(itemHooks[HOOK_STATE] == 2){ // reenable exists hooks
-EnableHamForward(itemHooks[HOOK_TOUCH])
-EnableHamForward(itemHooks[HOOK_SPAWN])
-//EnableHamForward(itemHooks[HOOK_THINK])
-itemHooks[HOOK_STATE] = 1
-TrieSetArray(mapItems,classname,itemHooks,sizeof itemHooks)
-}
-// hide it
-if(is_valid_ent(ent)){
-if(entity_get_int(ent,EV_INT_movetype))
-entity_set_int(ent,EV_INT_effects,entity_get_int(ent,EV_INT_effects) | EF_NODRAW) //blanks out resources
-if(entity_get_float(ent,EV_FL_takedamage) != DAMAGE_NO){
-entity_set_float(ent,EV_FL_fuser1,entity_get_float(ent,EV_FL_takedamage))
-entity_set_float(ent,EV_FL_takedamage,DAMAGE_NO)
-}
-}else{
-new targetEnt
-while((targetEnt = find_ent_by_class(targetEnt,classname))){
-if(entity_get_int(targetEnt,EV_INT_movetype))
-entity_set_int(targetEnt,EV_INT_effects,entity_get_int(targetEnt,EV_INT_effects) | EF_NODRAW)
-entity_set_float(targetEnt,EV_FL_fuser1,entity_get_float(targetEnt,EV_FL_takedamage))
-entity_set_float(targetEnt,EV_FL_takedamage,DAMAGE_NO)
-}
-}
-}else{ // unlock this entity
-if(TrieGetArray(mapItems,classname,itemHooks,sizeof itemHooks) && itemHooks[HOOK_STATE] == 1){
-DisableHamForward(itemHooks[HOOK_TOUCH])
-DisableHamForward(itemHooks[HOOK_SPAWN])
-DisableHamForward(itemHooks[HOOK_THINK])
-itemHooks[HOOK_STATE] = 2
-TrieSetArray(mapItems,classname,itemHooks,sizeof itemHooks)
-}
-// show int
-if(is_valid_ent(ent)){
-if(entity_get_int(ent,EV_INT_movetype))
-entity_set_int(ent,EV_INT_effects,entity_get_int(ent,EV_INT_effects) & ~EF_NODRAW)
-if(entity_get_float(ent,EV_FL_fuser1))
-entity_set_float(ent,EV_FL_takedamage,entity_get_float(ent,EV_FL_fuser1))
-}else{ // pisal buhim, hz 4to za func
-new targetEnt
-while((targetEnt = find_ent_by_class(targetEnt,classname))){
-if(entity_get_int(targetEnt,EV_INT_movetype))
-entity_set_int(targetEnt,EV_INT_effects,entity_get_int(targetEnt,EV_INT_effects) & ~EF_NODRAW)
-if(entity_get_float(targetEnt,EV_FL_fuser1))
-entity_set_float(targetEnt,EV_FL_takedamage,entity_get_float(targetEnt,EV_FL_fuser1))
-}
-}
-}
+Item_SetLock(classname[MAX_PLAYERS],ent,bool:lock = true,bool:special = false)
+{
+    if(!mapItems)
+    mapItems = TrieCreate()
+    new itemHooks[mapItemsHooks]
+    if(lock)
+    {
+        // lock this entity
+        if(!TrieGetArray(mapItems,classname,itemHooks,sizeof itemHooks) || itemHooks[HOOK_STATE] == 0){ // set block hooks
+        itemHooks[HOOK_TOUCH] = _:RegisterHam(Ham_Touch,classname,"Item_BlockHook")
+        itemHooks[HOOK_SPAWN] = _:RegisterHam(Ham_Spawn,classname,!special ? "Item_SpawnHook" : "HS_EntitySpawnBlock",true)
+        itemHooks[HOOK_THINK] = _:RegisterHam(Ham_Think,classname,"Item_SpawnHook",true)
+        itemHooks[HOOK_STATE] = 1
+        TrieSetArray(mapItems,classname,itemHooks,sizeof itemHooks)
+        }
+        else if(itemHooks[HOOK_STATE] == 2)
+        {
+            // reenable exists hooks
+            EnableHamForward(itemHooks[HOOK_TOUCH])
+            EnableHamForward(itemHooks[HOOK_SPAWN])
+            //EnableHamForward(itemHooks[HOOK_THINK])
+            itemHooks[HOOK_STATE] = 1
+            TrieSetArray(mapItems,classname,itemHooks,sizeof itemHooks)
+        }
+        // hide it
+        if(is_valid_ent(ent))
+        {
+            if(entity_get_int(ent,EV_INT_movetype))
+                entity_set_int(ent,EV_INT_effects,entity_get_int(ent,EV_INT_effects) | EF_NODRAW) //blanks out resources
+            if(entity_get_float(ent,EV_FL_takedamage) != DAMAGE_NO)
+            {
+                entity_set_float(ent,EV_FL_fuser1,entity_get_float(ent,EV_FL_takedamage))
+                entity_set_float(ent,EV_FL_takedamage,DAMAGE_NO)
+            }
+        }
+        else
+        {
+            new targetEnt
+            while((targetEnt = find_ent_by_class(targetEnt,classname))){
+            if(entity_get_int(targetEnt,EV_INT_movetype))
+            entity_set_int(targetEnt,EV_INT_effects,entity_get_int(targetEnt,EV_INT_effects) | EF_NODRAW)
+            entity_set_float(targetEnt,EV_FL_fuser1,entity_get_float(targetEnt,EV_FL_takedamage))
+            entity_set_float(targetEnt,EV_FL_takedamage,DAMAGE_NO)
+            }
+        }
+    }
+    else
+    {
+         // unlock this entity
+        if(TrieGetArray(mapItems,classname,itemHooks,sizeof itemHooks) && itemHooks[HOOK_STATE] == 1)
+        {
+            DisableHamForward(itemHooks[HOOK_TOUCH])
+            DisableHamForward(itemHooks[HOOK_SPAWN])
+            DisableHamForward(itemHooks[HOOK_THINK])
+            itemHooks[HOOK_STATE] = 2
+            TrieSetArray(mapItems,classname,itemHooks,sizeof itemHooks)
+        }
+        // show int
+        if(is_valid_ent(ent))
+        {
+            if(entity_get_int(ent,EV_INT_movetype))
+                entity_set_int(ent,EV_INT_effects,entity_get_int(ent,EV_INT_effects) & ~EF_NODRAW)
+            if(entity_get_float(ent,EV_FL_fuser1))
+                entity_set_float(ent,EV_FL_takedamage,entity_get_float(ent,EV_FL_fuser1))
+        }
+        else
+        {
+            // pisal buhim, hz 4to za func
+            new targetEnt
+            while((targetEnt = find_ent_by_class(targetEnt,classname))){
+            if(entity_get_int(targetEnt,EV_INT_movetype))
+                entity_set_int(targetEnt,EV_INT_effects,entity_get_int(targetEnt,EV_INT_effects) & ~EF_NODRAW)
+            if(entity_get_float(targetEnt,EV_FL_fuser1))
+                entity_set_float(targetEnt,EV_FL_takedamage,entity_get_float(targetEnt,EV_FL_fuser1))
+            }
+        }
+    }
 }
 //
 // Block touch while gungame runing
 //
-public Item_BlockHook(ent){
-if(entity_get_int(ent,EV_INT_spawnflags) & SF_NORESPAWN)
-return HAM_IGNORED
-return HAM_SUPERCEDE
+public Item_BlockHook(ent)
+{
+    if(entity_get_int(ent,EV_INT_spawnflags) & SF_NORESPAWN)
+        return HAM_IGNORED
+    return HAM_SUPERCEDE
 }
 //
 // Hide entity on spawn while gungame runing
 //
-public Item_SpawnHook(ent){
-if(!is_valid_ent(ent))
-return HAM_IGNORED
-new classname[MAX_PLAYERS]
-entity_get_string(ent,EV_SZ_classname,classname,charsmax(classname))
-if(entity_get_int(ent,EV_INT_spawnflags) & SF_NORESPAWN)
-return HAM_IGNORED
-if(entity_get_int(ent,EV_INT_movetype))
-entity_set_int(ent,EV_INT_effects,entity_get_int(ent,EV_INT_effects) | EF_NODRAW)
-if(entity_get_float(ent,EV_FL_takedamage) != DAMAGE_NO){
-entity_set_float(ent,EV_FL_fuser1,entity_get_float(ent,EV_FL_takedamage))
-entity_set_float(ent,EV_FL_takedamage,DAMAGE_NO)
-}
-return HAM_IGNORED
-}
-Item_LockCheck(ent){
-if (!is_running("dod")){
-
-new classname[MAX_PLAYERS],checkClassName[MAX_PLAYERS]
-entity_get_string(ent,EV_SZ_classname,classname,charsmax(classname))
-
-for(new i,count =  ArraySize(ggblockedItems) ; i <  count ; ++i)
+public Item_SpawnHook(ent)
 {
-ArrayGetString(ggblockedItems,i,checkClassName,charsmax(checkClassName))
-if(strfind(checkClassName,"*") == -1)
-continue
-else
-checkClassName[strlen(checkClassName) - 1] = 0
-if(contain(classname,checkClassName) == 0)
-return true
+    if(!is_valid_ent(ent))
+        return HAM_IGNORED
+
+    new classname[MAX_PLAYERS]
+
+    entity_get_string(ent,EV_SZ_classname,classname,charsmax(classname))
+    if(entity_get_int(ent,EV_INT_spawnflags) & SF_NORESPAWN)
+        return HAM_IGNORED
+
+    if(entity_get_int(ent,EV_INT_movetype))
+        entity_set_int(ent,EV_INT_effects,entity_get_int(ent,EV_INT_effects) | EF_NODRAW)
+
+    if(entity_get_float(ent,EV_FL_takedamage) != DAMAGE_NO)
+    {
+        entity_set_float(ent,EV_FL_fuser1,entity_get_float(ent,EV_FL_takedamage))
+        entity_set_float(ent,EV_FL_takedamage,DAMAGE_NO)
+    }
+    return HAM_IGNORED
 }
-}
-return false
+
+Item_LockCheck(ent)
+{
+    if (!is_running("dod"))
+    {
+        new classname[MAX_PLAYERS],checkClassName[MAX_PLAYERS]
+        entity_get_string(ent,EV_SZ_classname,classname,charsmax(classname))
+
+        for(new i,count =  ArraySize(ggblockedItems) ; i <  count ; ++i)
+        {
+            ArrayGetString(ggblockedItems,i,checkClassName,charsmax(checkClassName))
+            if(strfind(checkClassName,"*") == -1)
+                continue
+            else
+            checkClassName[strlen(checkClassName) - 1] = 0
+            if(contain(classname,checkClassName) == 0)
+                return true
+        }
+    }
+    return false
 }
 //
 // Prevent entity from spawn
 //
-public HS_EntitySpawnBlock(ent){
-set_task(0.1,"ENT_DelayedRemove",task_EntRemove_Id + ent)
-//return HAM_SUPERCEDE
+public HS_EntitySpawnBlock(ent)
+{
+    set_task(0.1,"ENT_DelayedRemove",task_EntRemove_Id + ent)
+    //return HAM_SUPERCEDE
 }
 //
 // I realy no have idea why instant removing crashes linux server.
 // Just leave as is :D
 //
-public ENT_DelayedRemove(taskId){
-new ent = taskId - task_EntRemove_Id
-if(is_valid_ent(ent))
-remove_entity(ent)
+public ENT_DelayedRemove(taskId)
+{
+    new ent = taskId - task_EntRemove_Id
+    if(is_valid_ent(ent))
+        remove_entity(ent)
 }
 public HS_BlockUse(ent)
-return HAM_SUPERCEDE
-public HS_DisableAutoSwitch(ent){
-SetHamReturnInteger(true)
-return HAM_OVERRIDE
+    return HAM_SUPERCEDE
+
+public HS_DisableAutoSwitch(ent)
+{
+    SetHamReturnInteger(true)
+    return HAM_OVERRIDE
 }
-public block_drop(){
-if(ggActive)
-return PLUGIN_HANDLED
-return PLUGIN_CONTINUE
+
+public block_drop()
+{
+    if(ggActive)
+        return PLUGIN_HANDLED
+    return PLUGIN_CONTINUE
 }
-public Play_ProLevelMusic(){
-client_cmd(0,"mp3 play ^"%s^"",prolevel_music)
-if(proLevelLoop)
-set_task(proLevelLoop,"Play_ProLevelMusic",task_ProLevel_Id)
+
+public Play_ProLevelMusic()
+{
+    client_cmd(0,"mp3 play ^"%s^"",prolevel_music)
+    if(proLevelLoop)
+        set_task(proLevelLoop,"Play_ProLevelMusic",task_ProLevel_Id)
 }
 // check equipment for valid
-public Test_ValidEnt(classname[]){
-return true
-// TODO: figure out why create entity in precache cause DOD crash
-/*
-new testEnt = engfunc(EngFunc_CreateNamedEntity,engfunc(EngFunc_AllocString,classname))
-if(!is_valid_ent(testEnt))
-return false
-else
-remove_entity(testEnt)
-return true
-*/
+public Test_ValidEnt(classname[])
+{
+    return true
+    // TODO: figure out why create entity in precache cause DOD crash
+    /*
+    new testEnt = engfunc(EngFunc_CreateNamedEntity,engfunc(EngFunc_AllocString,classname))
+    if(!is_valid_ent(testEnt))
+    return false
+    else
+    remove_entity(testEnt)
+    return true
+    */
 }
 // parse level set
 // narkoman configurtaion file format
-public Parse_WeaponSets(buffer[],lineCount,Trie:keyTrie,&Trie:hamHooks,bool:warmUp){
-static weaponSet[weaponSetStruct],equipItem[equipStruct]
-static setBlockId
-switch(setBlockId){
-case CFG_LEVEL_NONE:{
-if(buffer[0] == '<'){
-if(strcmp(buffer,!warmUp ? "<level>" : "<warmup>") == 0){ // new level block
-arrayset(weaponSet,0,weaponSetStruct)
-setBlockId = CFG_LEVEL_MAIN
-}
-}
-}
-case CFG_LEVEL_MAIN:{ // parse level vars
-if(buffer[0] == '<'){
-if(strcmp(buffer,!warmUp ? "</level>" : "</warmup>") == 0){ // level block read finished
-setBlockId = CFG_LEVEL_NONE
-if(!weaponSet[WSET_EQUIP_ITEMS])
-return
-if(!weaponSet[WSET_SHOWNAME][0]){
-ArrayGetArray(weaponSet[WSET_EQUIP_ITEMS],0,equipItem)
-copy(weaponSet[WSET_SHOWNAME],
-charsmax(weaponSet[WSET_SHOWNAME]),
-equipItem[EQUIP_NAME]
-)
-replace(weaponSet[WSET_SHOWNAME],charsmax(weaponSet[WSET_SHOWNAME]),"weapon_","")
-ucfirst(weaponSet[WSET_SHOWNAME])
-}
-if(!weaponSets && !warmUp)
-weaponSets  = ArrayCreate(weaponSetStruct)
-else if(!warmUpSet && warmUp)
-warmUpSet = ArrayCreate(weaponSetStruct)
-if(!warmUp)
-ArrayPushArray(weaponSets ,weaponSet) // push the level data
-else
-ArrayPushArray(warmUpSet,weaponSet) // push the level data
-return
-}else if(strcmp(buffer,"<equip>") == 0){ // equip block start
-setBlockId = CFG_LEVEL_EQUIP
-return
-}else if(strcmp(buffer,"<inflictors>") == 0){ // inflictors calssname for this weapon
-setBlockId = CFG_LEVEL_INFLICTORS
-return
-}
-}
-// TODO: checkout new strtok2 native
-new keyName[20],keyValue[40]
-strtok(buffer,keyName,charsmax(keyName),keyValue,charsmax(keyValue),'=',1)
-replace(keyValue,charsmax(keyValue),"=","")
-trim(keyValue)
-new keyId
-if(!TrieGetCell(keyTrie,keyName,keyId))
-return
-switch(keyId){
-case KEYSET_SHOWNAME: copy(weaponSet[WSET_SHOWNAME],charsmax(weaponSet[WSET_SHOWNAME]),keyValue)
-case KEYSET_KILLS: weaponSet[WSET_KILLS] = str_to_num(keyValue)
-case KEYSET_SKIP: weaponSet[WSET_SKIP] = str_to_num(keyValue)
-case KEYSET_ICONSPRITE: copy(weaponSet[WSET_ICONSPRITE],charsmax(weaponSet[WSET_ICONSPRITE]),keyValue)
-case KEYSET_BOTCANT: weaponSet[WSET_BOTCANT] = str_to_num(keyValue) == 1
-default: log_amx("WARNING! Unknown key ^"%s^" on line %d",keyName,lineCount)
-}
-}
-case CFG_LEVEL_EQUIP:{
-if(buffer[0] == '<'){
-if(strcmp(buffer,"</equip>") == 0){
-setBlockId = CFG_LEVEL_MAIN
-return
-}
-}
-if(buffer[0] == '<' && buffer[strlen(buffer) - 1] == '>'){
-arrayset(equipItem,0,equipStruct)
-formatex(equipItem[EQUIP_NAME],strlen(buffer) - 2,"%s",buffer[1])
-equipItem[EQUIP_FULL_PRIMARY] = true
-equipItem[EQUIP_FULL_SECONDARY] = true
-equipItem[EQUIP_CLIP] = -1
-setBlockId = CFG_LEVEL_WEAPON
-}else{
-#if !defined HLWPNMOD
-if(!Test_ValidEnt(buffer)){
-log_amx("WARNING! Invalid equipment ^"%s^" on line %d",buffer,lineCount)
-return
-}
-#endif
-arrayset(equipItem,0,equipStruct)
-copy(equipItem[EQUIP_NAME],charsmax(equipItem[EQUIP_NAME]),buffer)
-equipItem[EQUIP_FULL_PRIMARY] = true
-equipItem[EQUIP_FULL_SECONDARY] = true
-equipItem[EQUIP_CLIP] = -1
-if(weaponSet[WSET_EQUIP_ITEMS] == Invalid_Array)
-weaponSet[WSET_EQUIP_ITEMS] = _:ArrayCreate(equipStruct)
-ArrayPushArray(weaponSet[WSET_EQUIP_ITEMS],equipItem)
-}
-}
-case CFG_LEVEL_WEAPON:{
-if(buffer[0] == '<'){
-new tmp[40]
-formatex(tmp,charsmax(tmp),"</%s>",equipItem[EQUIP_NAME])
-if(strcmp(buffer,tmp) == 0){
-if(weaponSet[WSET_EQUIP_ITEMS] == Invalid_Array)
-weaponSet[WSET_EQUIP_ITEMS] = _:ArrayCreate(equipStruct)
-ArrayPushArray(weaponSet[WSET_EQUIP_ITEMS],equipItem)
-setBlockId = CFG_LEVEL_EQUIP
-}
-return
-}
-new keyName[20],keyValue[40]
-strtok(buffer,keyName,charsmax(keyName),keyValue,charsmax(keyValue),'=',1)
-replace(keyValue,charsmax(keyValue),"=","")
-trim(keyValue)
-new keyId
-if(!TrieGetCell(keyTrie,keyName,keyId))
-return
-switch(keyId){
-case KEYSET_REFIL_TIME_1: equipItem[EQUIP_PRIMARY_REFIL_TIME] = _:(str_to_float(keyValue) ? str_to_float(keyValue) : -1.0)
-case KEYSET_REFIL_AMMOUNT_1: equipItem[EQUIP_PRIMARY_REFIL_AMMOUNT] = str_to_num(keyValue) ? str_to_num(keyValue) : 1
-case KEYSET_DISABLE_FULLAMO_1: equipItem[EQUIP_FULL_PRIMARY] = !str_to_num(keyValue)
-case KEYSET_REFIL_TIME_2: equipItem[EQUIP_SECONDARY_REFIL_TIME] = _:(str_to_float(keyValue) ? str_to_float(keyValue) : -1.0)
-case KEYSET_REFIL_AMMOUNT_2: equipItem[EQUIP_SECONDARY_REFIL_AMMOUNT] = str_to_num(keyValue) ? str_to_num(keyValue) : 1
-case KEYSET_DISABLE_FULLAMO_2: equipItem[EQUIP_FULL_SECONDARY] = !str_to_num(keyValue)
-case KEYSET_CLIP: equipItem[EQUIP_CLIP] = str_to_num(keyValue)
-default: log_amx("WARNING! Unknown key ^"%s^" on line %d",keyName,lineCount)
-}
-}
-case CFG_LEVEL_INFLICTORS:{
-if(buffer[0] == '<'){
-if(strcmp(buffer,"</inflictors>") == 0){
-setBlockId = CFG_LEVEL_MAIN
-return
-}
-}
-if(weaponSet[WSET_INFLICTORS_MAP] == Invalid_Trie)
-weaponSet[WSET_INFLICTORS_MAP] = _:TrieCreate()
-new parseInf[3][36]
-parse(buffer,parseInf[0],charsmax(parseInf[]),
-parseInf[1],charsmax(parseInf[]),
-parseInf[2],charsmax(parseInf[])
-)
-new inflictorData[4]
-inflictorData[0] = str_to_num(parseInf[1]) // limit
-inflictorData[1] = str_to_num(parseInf[2]) // allow damage from other players flag
-TrieSetArray(weaponSet[WSET_INFLICTORS_MAP],parseInf[0],inflictorData,sizeof inflictorData)
-if(inflictorData[0]){ // register limit handler
-if(!Test_ValidEnt(parseInf[0])){
-log_amx("WARNING! Invalid inflictor item ^"%s^" on line %d",parseInf[0],lineCount)
-return
-}
-if(!weaponSet[WSET_INFARRAY])
-weaponSet[WSET_INFARRAY] = _:ArrayCreate(32)
-ArrayPushString(weaponSet[WSET_INFARRAY],parseInf[0])
-if(!hamHooks)
-hamHooks = TrieCreate()
-if(TrieKeyExists(hamHooks,parseInf[0])) // already registred
-return
-else
-TrieSetCell(hamHooks,parseInf[0],true) // new hook
-RegisterHam(Ham_Spawn,parseInf[0],"Inflictors_SpawnHandler",true)
-RegisterHam(Ham_Killed,parseInf[0],"Inflictors_DestroyHandler",true)
-RegisterHam(Ham_Use,parseInf[0],"Inflictors_DestroyHandler",true)
-RegisterHam(Ham_TakeDamage,parseInf[0],"Inflictors_DamageHandler",false)
-}
-}
-}
+public Parse_WeaponSets(buffer[],lineCount,Trie:keyTrie,&Trie:hamHooks,bool:warmUp)
+{
+    static weaponSet[weaponSetStruct],equipItem[equipStruct]
+    static setBlockId
+    switch(setBlockId)
+    {
+        case CFG_LEVEL_NONE:
+        {
+            if(buffer[0] == '<')
+            {
+                if(strcmp(buffer,!warmUp ? "<level>" : "<warmup>") == 0)
+                {
+                    // new level block
+                    arrayset(weaponSet,0,weaponSetStruct)
+                    setBlockId = CFG_LEVEL_MAIN
+                }
+            }
+        }
+        case CFG_LEVEL_MAIN:
+        {
+            // parse level vars
+            if(buffer[0] == '<')
+            {
+                if(strcmp(buffer,!warmUp ? "</level>" : "</warmup>") == 0)
+                {
+                    // level block read finished
+                    setBlockId = CFG_LEVEL_NONE
+                    if(!weaponSet[WSET_EQUIP_ITEMS])
+                        return
+                    if(!weaponSet[WSET_SHOWNAME][0])
+                    {
+                        ArrayGetArray(weaponSet[WSET_EQUIP_ITEMS],0,equipItem)
+                        copy(weaponSet[WSET_SHOWNAME],
+                        charsmax(weaponSet[WSET_SHOWNAME]),
+                        equipItem[EQUIP_NAME])
+                        replace(weaponSet[WSET_SHOWNAME],charsmax(weaponSet[WSET_SHOWNAME]),"weapon_","")
+                        ucfirst(weaponSet[WSET_SHOWNAME])
+                    }
+                    if(!weaponSets && !warmUp)
+                        weaponSets  = ArrayCreate(weaponSetStruct)
+                    else if(!warmUpSet && warmUp)
+                        warmUpSet = ArrayCreate(weaponSetStruct)
+                    if(!warmUp)
+                        ArrayPushArray(weaponSets ,weaponSet) // push the level data
+                    else
+                        ArrayPushArray(warmUpSet,weaponSet) // push the level data
+                    return
+                }
+                else if(strcmp(buffer,"<equip>") == 0)
+                {
+                    // equip block start
+                    setBlockId = CFG_LEVEL_EQUIP
+                    return
+                }
+                else if(strcmp(buffer,"<inflictors>") == 0)
+                {
+                    // inflictors calssname for this weapon
+                    setBlockId = CFG_LEVEL_INFLICTORS
+                    return
+                }
+            }
+            // TODO: checkout new strtok2 native
+            new keyName[20],keyValue[40]
+            strtok(buffer,keyName,charsmax(keyName),keyValue,charsmax(keyValue),'=',1)
+            replace(keyValue,charsmax(keyValue),"=","")
+            trim(keyValue)
+            new keyId
+            if(!TrieGetCell(keyTrie,keyName,keyId))
+            return
+            switch(keyId)
+            {
+                case KEYSET_SHOWNAME: copy(weaponSet[WSET_SHOWNAME],charsmax(weaponSet[WSET_SHOWNAME]),keyValue)
+                case KEYSET_KILLS: weaponSet[WSET_KILLS] = str_to_num(keyValue)
+                case KEYSET_SKIP: weaponSet[WSET_SKIP] = str_to_num(keyValue)
+                case KEYSET_ICONSPRITE: copy(weaponSet[WSET_ICONSPRITE],charsmax(weaponSet[WSET_ICONSPRITE]),keyValue)
+                case KEYSET_BOTCANT: weaponSet[WSET_BOTCANT] = str_to_num(keyValue) == 1
+                default: log_amx("WARNING! Unknown key ^"%s^" on line %d",keyName,lineCount)
+            }
+        }
+        case CFG_LEVEL_EQUIP:
+        {
+            if(buffer[0] == '<')
+            {
+                if(strcmp(buffer,"</equip>") == 0)
+                {
+                    setBlockId = CFG_LEVEL_MAIN
+                    return
+                }
+            }
+            if(buffer[0] == '<' && buffer[strlen(buffer) - 1] == '>')
+            {
+                arrayset(equipItem,0,equipStruct)
+                formatex(equipItem[EQUIP_NAME],strlen(buffer) - 2,"%s",buffer[1])
+                equipItem[EQUIP_FULL_PRIMARY] = true
+                equipItem[EQUIP_FULL_SECONDARY] = true
+                equipItem[EQUIP_CLIP] = -1
+                setBlockId = CFG_LEVEL_WEAPON
+            }
+            else
+            {
+                #if !defined HLWPNMOD
+                if(!Test_ValidEnt(buffer))
+                {
+                    log_amx("WARNING! Invalid equipment ^"%s^" on line %d",buffer,lineCount)
+                    return
+                }
+                #endif
+                arrayset(equipItem,0,equipStruct)
+                copy(equipItem[EQUIP_NAME],charsmax(equipItem[EQUIP_NAME]),buffer)
+                equipItem[EQUIP_FULL_PRIMARY] = true
+                equipItem[EQUIP_FULL_SECONDARY] = true
+                equipItem[EQUIP_CLIP] = -1
+                if(weaponSet[WSET_EQUIP_ITEMS] == Invalid_Array)
+                weaponSet[WSET_EQUIP_ITEMS] = _:ArrayCreate(equipStruct)
+                ArrayPushArray(weaponSet[WSET_EQUIP_ITEMS],equipItem)
+            }
+        }
+        case CFG_LEVEL_WEAPON:
+        {
+            if(buffer[0] == '<')
+            {
+                new tmp[40]
+                formatex(tmp,charsmax(tmp),"</%s>",equipItem[EQUIP_NAME])
+                if(strcmp(buffer,tmp) == 0){
+                if(weaponSet[WSET_EQUIP_ITEMS] == Invalid_Array)
+                weaponSet[WSET_EQUIP_ITEMS] = _:ArrayCreate(equipStruct)
+                ArrayPushArray(weaponSet[WSET_EQUIP_ITEMS],equipItem)
+                setBlockId = CFG_LEVEL_EQUIP
+                }
+                return
+            }
+            new keyName[20],keyValue[40]
+            strtok(buffer,keyName,charsmax(keyName),keyValue,charsmax(keyValue),'=',1)
+            replace(keyValue,charsmax(keyValue),"=","")
+            trim(keyValue)
+            new keyId
+            if(!TrieGetCell(keyTrie,keyName,keyId))
+                return
+            switch(keyId)
+            {
+                case KEYSET_REFIL_TIME_1: equipItem[EQUIP_PRIMARY_REFIL_TIME] = _:(str_to_float(keyValue) ? str_to_float(keyValue) : -1.0)
+                case KEYSET_REFIL_AMMOUNT_1: equipItem[EQUIP_PRIMARY_REFIL_AMMOUNT] = str_to_num(keyValue) ? str_to_num(keyValue) : 1
+                case KEYSET_DISABLE_FULLAMO_1: equipItem[EQUIP_FULL_PRIMARY] = !str_to_num(keyValue)
+                case KEYSET_REFIL_TIME_2: equipItem[EQUIP_SECONDARY_REFIL_TIME] = _:(str_to_float(keyValue) ? str_to_float(keyValue) : -1.0)
+                case KEYSET_REFIL_AMMOUNT_2: equipItem[EQUIP_SECONDARY_REFIL_AMMOUNT] = str_to_num(keyValue) ? str_to_num(keyValue) : 1
+                case KEYSET_DISABLE_FULLAMO_2: equipItem[EQUIP_FULL_SECONDARY] = !str_to_num(keyValue)
+                case KEYSET_CLIP: equipItem[EQUIP_CLIP] = str_to_num(keyValue)
+                default: log_amx("WARNING! Unknown key ^"%s^" on line %d",keyName,lineCount)
+            }
+        }
+        case CFG_LEVEL_INFLICTORS:
+        {
+            if(buffer[0] == '<')
+            {
+                if(strcmp(buffer,"</inflictors>") == 0)
+                {
+                    setBlockId = CFG_LEVEL_MAIN
+                    return
+                }
+            }
+            if(weaponSet[WSET_INFLICTORS_MAP] == Invalid_Trie)
+                weaponSet[WSET_INFLICTORS_MAP] = _:TrieCreate()
+            new parseInf[3][36]
+            parse(buffer,parseInf[0],charsmax(parseInf[]),
+            parseInf[1],charsmax(parseInf[]),
+            parseInf[2],charsmax(parseInf[]))
+
+            new inflictorData[4]
+            inflictorData[0] = str_to_num(parseInf[1]) // limit
+            inflictorData[1] = str_to_num(parseInf[2]) // allow damage from other players flag
+
+            TrieSetArray(weaponSet[WSET_INFLICTORS_MAP],parseInf[0],inflictorData,sizeof inflictorData)
+            if(inflictorData[0]){ // register limit handler
+            if(!Test_ValidEnt(parseInf[0]))
+            {
+                log_amx("WARNING! Invalid inflictor item ^"%s^" on line %d",parseInf[0],lineCount)
+                return
+            }
+            if(!weaponSet[WSET_INFARRAY])
+            weaponSet[WSET_INFARRAY] = _:ArrayCreate(32)
+            ArrayPushString(weaponSet[WSET_INFARRAY],parseInf[0])
+            if(!hamHooks)
+                hamHooks = TrieCreate()
+            if(TrieKeyExists(hamHooks,parseInf[0])) // already registred
+                return
+            else
+            TrieSetCell(hamHooks,parseInf[0],true) // new hook
+            RegisterHam(Ham_Spawn,parseInf[0],"Inflictors_SpawnHandler",true)
+            RegisterHam(Ham_Killed,parseInf[0],"Inflictors_DestroyHandler",true)
+            RegisterHam(Ham_Use,parseInf[0],"Inflictors_DestroyHandler",true)
+            RegisterHam(Ham_TakeDamage,parseInf[0],"Inflictors_DamageHandler",false)
+            }
+        }
+    }
 }
 //
 // Player join server
@@ -1812,23 +1881,24 @@ public client_disconnected(id)
     return
     Reset_RefilTasks(id)
     if(task_Hud_Id && !playersData[id][PLAYER_BOT])
-    remove_task(id + task_Hud_Id)
+        remove_task(id + task_Hud_Id)
     #if defined AGHL_COLOR && !defined CSCOLOR
     if(task_RequestColor_Id &&  !playersData[id][PLAYER_BOT])
-    remove_task(id + task_RequestColor_Id)
+        remove_task(id + task_RequestColor_Id)
     #endif
     currentPlayers --
     Update_PlayersRanks()
-    if(autoSaveTime && !playersData[id][PLAYER_BOT]){
-    new aSave[autoSaveStruct]
-    aSave[ASAVE_LEVEL] = playersData[id][PLAYER_CURRENTLEVEL]
-    aSave[ASAVE_KILLS] = playersData[id][PLAYER_KILLS]
-    aSave[ASAVE_TIME] = _:get_gametime()
-    new authId[36]
-    get_user_authid(id,authId,charsmax(authId))
-    if(!autoSaveMap)
-    autoSaveMap = TrieCreate()
-    TrieSetArray(autoSaveMap,authId,aSave,autoSaveStruct)
+    if(autoSaveTime && !playersData[id][PLAYER_BOT])
+    {
+        new aSave[autoSaveStruct]
+        aSave[ASAVE_LEVEL] = playersData[id][PLAYER_CURRENTLEVEL]
+        aSave[ASAVE_KILLS] = playersData[id][PLAYER_KILLS]
+        aSave[ASAVE_TIME] = _:get_gametime()
+        new authId[36]
+        get_user_authid(id,authId,charsmax(authId))
+        if(!autoSaveMap)
+            autoSaveMap = TrieCreate()
+        TrieSetArray(autoSaveMap,authId,aSave,autoSaveStruct)
     }
     if(proLevelPlayed || isEndGame)
         client_cmd(id,"mp3 stop")
