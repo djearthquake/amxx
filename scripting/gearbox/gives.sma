@@ -188,6 +188,7 @@ public reward(needy)
         if(flags & FL_SPECTATOR)
         {
             server_print("Spec, %n does not need weaponry!", needy)
+            remove_task(needy)
             return
         }
         new charity[MAX_NAME_LENGTH];
