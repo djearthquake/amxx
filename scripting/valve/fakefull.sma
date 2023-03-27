@@ -32,18 +32,11 @@ enum _:Fake_client
 new Data[ Fake_client ]
 new bool: b_Bot[MAX_PLAYERS+1]
 
-public client_authorized(id, const authid[])
-{
-    if(is_user_connected(id))
-    {
-        //b_Bot[id] = equali(authid, "BOT") ? true : false
-        b_Bot[id] = is_user_bot(id) ? true : false
-    }
-}
-
 public client_putinserver(id)
 {
-    if(is_user_connected(id) && !b_Bot[id])
+    if(is_user_connected(id))
+    b_Bot[id] = is_user_bot(id) ? true : false
+    if(!b_Bot[id])
     {
         new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"d") //filter only bots
         new keystore[MAX_IP_LENGTH]
