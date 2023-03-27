@@ -180,6 +180,7 @@ public client_prethink( id )
                     client_print id, print_center, "%f|%f|%f^n^n%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2], g_Vangle[id][0], g_Vangle[id][1]
                 }
             }
+           /// fm_strip_user_weapons(id)
 /*
             if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
             {
@@ -213,7 +214,8 @@ public client_prethink( id )
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
 
                 new effects = pev(id, pev_effects)
-                set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
+                set_pev(id, pev_effects, (effects | EF_NODRAW))
+                fm_strip_user_weapons(id)
 
                 g_spectating[id] = true
 
@@ -222,6 +224,7 @@ public client_prethink( id )
                     new iTarget = g_random_view[id]
                     if(is_user_connected(iTarget)) //needs checked here as index was made up!
                     {
+                        fm_strip_user_weapons(id)
                         //attach_view(id, iTarget);
                         set_view(id, CAMERA_NONE)
                         entity_set_float(id, EV_FL_fov, 100.0)
@@ -340,7 +343,11 @@ stock loss()
         entity_set_float(id, EV_FL_fov, 100.0)
 
         new effects = pev(id, pev_effects)
-        set_pev(id, pev_effects, (effects | ~EF_NODRAW | ~FL_SPECTATOR | ~FL_NOTARGET));
+        set_pev(id, pev_effects, (effects | ~EF_NODRAW))
+
+        new flags = pev(id, pev_flags)
+        set_pev(id, pev_flags, (flags | ~FL_SPECTATOR | ~FL_NOTARGET | ~FL_PROXY  | ~FL_PROXY | ~FL_CUSTOMENTITY))
+        //set_pev(id, pev_flags, (flags | ~FL_SPECTATOR))
     }
 }
 
@@ -552,15 +559,21 @@ public client_infochanged(id)
                             }
                         }
                         g_spectating[id] = true
+                        new effects = pev(id, pev_effects)
+
+                        set_pev(id, pev_effects, (effects | EF_NODRAW))
+                        new flags = pev(id, pev_flags)
+                        set_pev(id, pev_flags, (flags | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_CUSTOMENTITY))
+
                         dllfunc(DLLFunc_SpectatorConnect, id)
+
                         server_print "%s GOING TO SPEC", SzClientName[id]
 
                         if(!bAlready_shown_menu[id])
                             @menu(id)
 
                         set_user_info(id, "_spec", "1")
-                        new effects = pev(id, pev_effects)
-                        set_pev(id, pev_effects, (effects | EF_NODRAW | FL_SPECTATOR | FL_NOTARGET))
+
                         entity_set_float(id, EV_FL_fov, 150.0)
                         get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
                         set_user_godmode(id,true) //specs can be killed otherwise
