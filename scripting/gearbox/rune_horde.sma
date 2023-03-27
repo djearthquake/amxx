@@ -4,7 +4,7 @@
 
 #define charsmin                  -1
 
-new const SzMakersMark[]="𝓼𝓹𝓲𝓷𝔁"
+///new const SzMakersMark[]="𝓼𝓹𝓲𝓷𝔁"
 
 new g_runefix, szPowerup[ MAX_PLAYERS ];
 
@@ -19,14 +19,18 @@ new const SzRune[][]=
 
 @CTFGameReset()
 {
-    server_print SzMakersMark
+    //server_print SzMakersMark
     return PLUGIN_HANDLED
 }
 
 public plugin_init()
 {
     register_plugin("powerup mgmt(rune_horde)","0.0.1","SPiNX")
-    g_runefix = register_event_ex("CustomIcon", "plugin_log", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnceForMultiple|RegisterEvent_OnlyAlive, "2=drop_Ammo_Powerup", "2=drop_Damage_Powerup", "2=drop_Jump_Powerup", "2=drop_Health_Powerup", "2=drop_Shield_Powerup");
+    g_runefix =
+    register_event_ex("CustomIcon", "plugin_log",
+    RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnceForMultiple|RegisterEvent_OnlyAlive,
+    "2=drop_Ammo_Powerup", "2=drop_Damage_Powerup", "2=drop_Jump_Powerup",
+    "2=drop_Health_Powerup", "2=drop_Shield_Powerup");
     register_event_ex ( "ResetHUD" , "@event_disable", RegisterEventFlags: RegisterEvent_Single)
     new iMsg = get_user_msgid("TextMsg")
     register_message(iMsg, "@CTFGameReset")
