@@ -160,13 +160,6 @@ public client_getfreestuff(id)
 {
     if(is_user_connected(id))
     {
-        new flags = pev(id, pev_flags)
-        if(flags | FL_SPECTATOR)
-        {
-            server_print("Spec, %n does not need weaponry!", id)
-            return
-        }
-
         if(is_user_admin(id))
         {
             #if !defined set_task_ex
@@ -191,6 +184,12 @@ public reward(needy)
 {
     if(is_user_connected(needy))
     {
+        new flags = pev(needy, pev_flags)
+        if(flags & FL_SPECTATOR)
+        {
+            server_print("Spec, %n does not need weaponry!", needy)
+            return
+        }
         new charity[MAX_NAME_LENGTH];
         formatex(charity, charsmax(charity), GIVES[random(sizeof(GIVES))]);
         {
@@ -246,7 +245,7 @@ public reward(needy)
         }
         END:
     }
-    return PLUGIN_HANDLED;
+
 }
 
 @remove()
