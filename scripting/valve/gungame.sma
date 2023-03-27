@@ -2561,35 +2561,43 @@ public Reset_RefilTasks(const id)
 //      2 - display with color2
 //      3 - hide status icon
 //
-public StatusIcon_Display(id,toShow){
-if(!StatusIcon || playersData[id][PLAYER_BOT] || !playersData[id][PLAYER_ICON])
-return
-if(!isValve){
-message_begin(MSG_ONE_UNRELIABLE,StatusIcon,{0.0,0.0,0.0},id)
-}else{
-engfunc(EngFunc_MessageBegin,MSG_ONE,StatusIcon,{0.0,0.0,0.0},id)
-}
-write_byte(toShow != 3 ? 1 : 0)
-write_string(playersData[id][PLAYER_ICON])
-// TODO: recode this shit
-switch(toShow){
-case 0:{
-write_byte(iconColors[0])
-write_byte(iconColors[1])
-write_byte(iconColors[2])
-}
-case 1:{
-write_byte(iconColors[3])
-write_byte(iconColors[4])
-write_byte(iconColors[5])
-}
-case 2:{
-write_byte(iconColors[6])
-write_byte(iconColors[7])
-write_byte(iconColors[8])
-}
-}
-message_end()
+public StatusIcon_Display(id,toShow)
+{
+    if(!StatusIcon || playersData[id][PLAYER_BOT] || !playersData[id][PLAYER_ICON])
+        return
+    if(!isValve)
+    {
+        message_begin(MSG_ONE_UNRELIABLE,StatusIcon,{0.0,0.0,0.0},id)
+    }
+    else
+    {
+        engfunc(EngFunc_MessageBegin,MSG_ONE,StatusIcon,{0.0,0.0,0.0},id)
+    }
+    write_byte(toShow != 3 ? 1 : 0)
+    write_string(playersData[id][PLAYER_ICON])
+    // TODO: recode this shit
+    switch(toShow)
+    {
+        case 0:
+        {
+            write_byte(iconColors[0])
+            write_byte(iconColors[1])
+            write_byte(iconColors[2])
+        }
+        case 1:
+        {
+            write_byte(iconColors[3])
+            write_byte(iconColors[4])
+            write_byte(iconColors[5])
+        }
+        case 2:
+        {
+            write_byte(iconColors[6])
+            write_byte(iconColors[7])
+            write_byte(iconColors[8])
+        }
+    }
+    message_end()
 }
 //
 // Blink status icon
@@ -2598,22 +2606,24 @@ message_end()
 //      1 - last state
 //      2 - end blink time
 //
-public StatusIcon_Blink(data[3]){
-new id = data[0]
-new theState = data[1]
-new lastBlink = data[2]
-if(!is_user_alive(id) || isEndGame)
-return
-if(lastBlink < floatround(get_gametime())){
-StatusIcon_Display(id,0)
-return
-}
-theState ++
-if(theState == 3)
-theState = 1
-data[1] = theState
-StatusIcon_Display(id,theState)
-set_task(0.3,"StatusIcon_Blink",task_Icon_Blink + id,data,sizeof data)
+public StatusIcon_Blink(data[3])
+{
+    new id = data[0]
+    new theState = data[1]
+    new lastBlink = data[2]
+    if(!is_user_alive(id) || isEndGame)
+        return
+    if(lastBlink < floatround(get_gametime()))
+    {
+        StatusIcon_Display(id,0)
+        return
+    }
+    theState ++
+    if(theState == 3)
+    theState = 1
+    data[1] = theState
+    StatusIcon_Display(id,theState)
+    set_task(0.3,"StatusIcon_Blink",task_Icon_Blink + id,data,sizeof data)
 }
 //
 // Infinity ammo
