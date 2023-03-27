@@ -2263,8 +2263,7 @@ public Equip_PlayerWithWeapon(const id)
             Inflictors_DestroyAll(id,lastSet[WSET_INFARRAY])
         }
         // draw 3 next levels in hud
-        ///if(!playersData[id][PLAYER_BOT])
-        if( (playersData[id][PLAYER_BOT]) == false)
+        if( (!playersData[id][PLAYER_BOT]))
         {
             if(is_user_admin(id))
             {
@@ -2500,51 +2499,58 @@ public Add_PlayerWeapon(id,equipItem[equipStruct],weaponSet[weaponSetStruct])
 //
 // Set ammo refil task
 //
-public Set_RefilTask(const id,const ammoId,const maxAmmo,const ammount,const Float:refilTime,const wId){
-new taskId = task_Refill_Id + (id * task_Refill_Max) // allocate task id
-// found new taks id
-while(task_exists(taskId)){
-if(-- taskId < (task_Refill_Id + (id * task_Refill_Max)) - task_Refill_Max) // no more tasks avaliable
-return false
-}
-new taskData[refilTaskStruct]
-taskData[REFIL_PLAYERID] = id
-taskData[REFIL_WEAPONID] = wId
-taskData[REFIL_AMMOID] = ammoId
-taskData[REFIL_AMMOUNT] = ammount
-taskData[REFIL_MAXAMMO] = maxAmmo
-taskData[REFIL_TASKID] = taskId
-set_task(refilTime,"Run_RefilTask",taskId,taskData,refilTaskStruct,"b") // run task
-return true
+public Set_RefilTask(const id,const ammoId,const maxAmmo,const ammount,const Float:refilTime,const wId)
+{
+    new taskId = task_Refill_Id + (id * task_Refill_Max) // allocate task id
+    // found new taks id
+    while(task_exists(taskId))
+    {
+        if(-- taskId < (task_Refill_Id + (id * task_Refill_Max)) - task_Refill_Max) // no more tasks avaliable
+            return false
+    }
+    new taskData[refilTaskStruct]
+    taskData[REFIL_PLAYERID] = id
+    taskData[REFIL_WEAPONID] = wId
+    taskData[REFIL_AMMOID] = ammoId
+    taskData[REFIL_AMMOUNT] = ammount
+    taskData[REFIL_MAXAMMO] = maxAmmo
+    taskData[REFIL_TASKID] = taskId
+    set_task(refilTime,"Run_RefilTask",taskId,taskData,refilTaskStruct,"b") // run task
+    return true
 }
 //
 // Process refil task
 //
-public Run_RefilTask(taskData[refilTaskStruct]){
-new currentAmmo = get_pdata_int(taskData[REFIL_PLAYERID],modOffsets[m_rgAmmo] + taskData[REFIL_AMMOID] - modOffsets[offsetAmmoDiff])
-if(currentAmmo >= taskData[REFIL_MAXAMMO])
-return PLUGIN_CONTINUE
-currentAmmo = clamp(currentAmmo + taskData[REFIL_AMMOUNT],0,taskData[REFIL_MAXAMMO])
-if(!user_has_weapon(taskData[REFIL_PLAYERID],taskData[REFIL_WEAPONID])){
-new weaponName[MAX_PLAYERS]
-get_weaponname(taskData[REFIL_WEAPONID],weaponName,charsmax(weaponName))
-give_item(taskData[REFIL_PLAYERID],weaponName)
-}else
-Ammo_PickUpMaster(taskData[REFIL_PLAYERID],taskData[REFIL_AMMOID],taskData[REFIL_AMMOUNT])
-set_pdata_int(taskData[REFIL_PLAYERID],modOffsets[m_rgAmmo] + taskData[REFIL_AMMOID] - modOffsets[offsetAmmoDiff],currentAmmo)
-return PLUGIN_CONTINUE
+public Run_RefilTask(taskData[refilTaskStruct])
+{
+    new currentAmmo = get_pdata_int(taskData[REFIL_PLAYERID],modOffsets[m_rgAmmo] + taskData[REFIL_AMMOID] - modOffsets[offsetAmmoDiff])
+    if(currentAmmo >= taskData[REFIL_MAXAMMO])
+        return PLUGIN_CONTINUE
+    currentAmmo = clamp(currentAmmo + taskData[REFIL_AMMOUNT],0,taskData[REFIL_MAXAMMO])
+    if(!user_has_weapon(taskData[REFIL_PLAYERID],taskData[REFIL_WEAPONID]))
+    {
+        new weaponName[MAX_PLAYERS]
+        get_weaponname(taskData[REFIL_WEAPONID],weaponName,charsmax(weaponName))
+        give_item(taskData[REFIL_PLAYERID],weaponName)
+    }
+    else
+    Ammo_PickUpMaster(taskData[REFIL_PLAYERID],taskData[REFIL_AMMOID],taskData[REFIL_AMMOUNT])
+    set_pdata_int(taskData[REFIL_PLAYERID],modOffsets[m_rgAmmo] + taskData[REFIL_AMMOID] - modOffsets[offsetAmmoDiff],currentAmmo)
+    return PLUGIN_CONTINUE
 }
 //
 // Reset refil tasks
 //
-public Reset_RefilTasks(const id){
-new taskId = task_Refill_Id + (id * task_Refill_Max)
-// freeman on the high mazafaka come get some
-while(task_exists(taskId)){
-remove_task(taskId)
-if(taskId >= (task_Refill_Id + (id * task_Refill_Max)) - task_Refill_Max)
-taskId --
-}
+public Reset_RefilTasks(const id)
+{
+    new taskId = task_Refill_Id + (id * task_Refill_Max)
+    // freeman on the high mazafaka come get some
+    while(task_exists(taskId))
+    {
+        remove_task(taskId)
+        if(taskId >= (task_Refill_Id + (id * task_Refill_Max)) - task_Refill_Max)
+        taskId --
+    }
 }
 //
 // Show status icon
