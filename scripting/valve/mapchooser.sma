@@ -76,8 +76,6 @@ public plugin_init()
     g_step      = create_cvar("amx_extendmap_step", "15")
     g_auto_pick = create_cvar("mapchooser_auto", "0")
 
-    Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "0")
-
     get_localinfo("lastMap", g_lastMap, charsmax(g_lastMap))
     set_localinfo("lastMap", "")
 
@@ -97,7 +95,6 @@ public plugin_init()
     g_mp_chattime       = get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20")
     g_wins                     = get_cvar_pointer("mp_winlimit")
     g_rnds                     = get_cvar_pointer("mp_maxrounds")
-    g_counter                = get_cvar_pointer("mp_captures")
     g_frags                     = get_cvar_pointer("mp_fraglimit")
     g_frags_remaining   = get_cvar_pointer("mp_fragleft")
     g_timelim                 = get_cvar_pointer("mp_timelimit")
@@ -105,7 +102,6 @@ public plugin_init()
     g_hlds_logging         = get_cvar_pointer("log")
 #else
     g_coloredMenus = colored_menus()
-    g_counter = get_pcvar_num(Pcvar_captures)
 
     bind_pcvar_num(get_cvar_pointer("mp_chattime") ? get_cvar_pointer("mp_chattime") : register_cvar("mp_chattime", "20"),g_mp_chattime)
 
@@ -146,8 +142,6 @@ public plugin_init()
                 log_amx "Logging is required for Capture the Flag!"
             }
             fm_set_kvd(info_detect, "map_score_max", "0")
-            ///(b_set_caps) ? g_counter : set_cvar_num("mp_captures", 6) &g_counter
-            set_cvar_num("mp_captures", 6)&g_counter
             log_amx "CAPTURE POINT MAP DETECTED!"
             register_logevent("@count", 3, "2=CapturedFlag")
             register_logevent("@count", 2, "1=tc1_bmscore", "1=tc1_opscore", "1=tc2_bmscore", "1=tc2_opscore","1=tc3_bmscore", "1=tc3_opscore","1=tc4_bmscore", "1=tc4_opscore")
@@ -158,16 +152,19 @@ public plugin_init()
             log_amx "This is not a flag/capture point map"
         }
 
+        g_counter = get_pcvar_num(Pcvar_captures)
+
     }
 
 }
 
 @rtv(id)
-if(is_user_connected(id))
 {
-    server_print "%s|%n called RTV", PLUGIN, id
     g_rtv=true
     change_task(987456,1.0)
+    ///gungame 2023
+    if(is_user_connected(id))
+        server_print "%s|%n called RTV", PLUGIN, id
 }
 
 public checkVotes()
@@ -197,8 +194,8 @@ public checkVotes()
                 goto FLAGMAP
             }
             set_cvar_num("mp_fraglimit", g_frags + floatround(steptime))
-            //client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime) //need frags instead of min translated
-            client_print 0, print_chat, "Incrementing frag limit to %i.", g_frags
+            client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_FRAG", g_frags)
+            //client_print 0, print_chat, "Incrementing frag limit to %i.", g_frags
             log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to %i frags.", mapname, g_frags)
             g_selected = false
             return
@@ -260,15 +257,16 @@ public checkVotes()
         }
     }
     server_print "Trying to change to map %s",smap
-    if(ValidMap(smap))engine_changelevel(smap)
+    if(ValidMap(smap))amxx_changelevel(smap)
 }
 
-#if AMXX_VERSION_NUM == 182
-stock engine_changelevel(smap[MAX_NAME_LENGTH])
+//#if AMXX_VERSION_NUM == 182
+stock amxx_changelevel(smap[MAX_NAME_LENGTH])
 {
-    server_cmd("changelevel %s", smap)
+///    server_cmd("changelevel %s", smap)
+    console_cmd(0,"changelevel %s", smap)
 }
-#endif
+//#endif
 
 public countVote(id, key)
 {
@@ -323,12 +321,14 @@ bool:isInMenu(id)
     }
 }
 
+/*
 public client_command(id)
 {
     if(is_user_bot(id) || !is_user_bot(id))
         return PLUGIN_CONTINUE
     return PLUGIN_CONTINUE
 }
+ */
 
 stock random_map_pick()
 {
@@ -406,8 +406,6 @@ public voteNextmap()
             return
         }
     }
-
-    //if(is_running("gearbox") == 1 )
     else if(get_pcvar_num(Pcvar_captures))
     {
         if( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) )
@@ -594,19 +592,19 @@ public plugin_end()
 
 public pfn_keyvalue( ent )
 {
-    if (is_running("gearbox") == 1 )
+    if (is_running("gearbox") == 1 && !b_set_caps)
     {
         new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
-        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "5")
 
         copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
 
-        if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max") && !b_set_caps)
+        if(equali(Classname,"info_ctfdetect") && equali(key,"map_score_max"))
         {
-            b_set_caps = true
             set_cvar_num("mp_captures", str_to_num(value))
             DispatchKeyValue("map_score_max", "0")
         }
+        Pcvar_captures = get_cvar_pointer("mp_captures") ? get_cvar_pointer("mp_captures") : register_cvar("mp_captures", "5")
+        b_set_caps = true
     }
 }
 
@@ -614,5 +612,5 @@ public pfn_keyvalue( ent )
 {
     g_counter--
     set_cvar_num("mp_captures", g_counter)
-    server_print "[AMX]FLAG CAPTURED"
+    server_print "[AMX]FLAG CAPTURED^n%i to go!", g_counter
 }
