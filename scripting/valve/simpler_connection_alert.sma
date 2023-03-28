@@ -28,6 +28,7 @@ new bool:b_Op4c
 new bool:g_bFlagMap
 new afk_sync_msg, download_sync_msg//, g_spawn_wait
 new g_SzMapName[MAX_NAME_LENGTH]
+new bool:bCS
 
 #define ALRT 84641
 #define FADE_HOLD (1<<2)
@@ -35,6 +36,7 @@ new g_SzMapName[MAX_NAME_LENGTH]
 public plugin_init()
 {
     register_plugin("Connect Alert System","1.1","SPiNX");
+    bCS = cstrike_running() == 1 ? true: false
     get_mapname(g_SzMapName, charsmax(g_SzMapName));
     g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin?true:false
     set_task(1.0, "new_users",alert,"",0,"b");
@@ -167,9 +169,11 @@ public new_users()
             if(spec_screensaver_engage < 0)
                 return PLUGIN_HANDLED_MAIN
 
-
-            if (uptime > spec_screensaver_engage && !b_Op4c)
+            if(!bCS)
+            if(uptime > spec_screensaver_engage && !b_Op4c)
             {
+                new flags = pev(players[downloader], pev_flags)
+                if(flags &~ FL_SPECTATOR)
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
                 if(g_spec && is_plugin_loaded(SPEC_PRG,true)!=charsmin)
                 {
@@ -189,12 +193,12 @@ public new_users()
                         }
 
                     }
+
                     else
                     {
                         ///SCREENSAVER:
                         screensaver(players[downloader], uptime)
                         ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
-                        //server_print "Screensaver applied to %s",  ClientName[players[downloader]]
                     }
 
                 }
