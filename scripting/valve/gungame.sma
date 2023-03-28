@@ -40,7 +40,7 @@
 #endif
 // Enable detection and usage of color codes in notify messages
 // This is only for AGHL.ru client.dll and RCD
-#define AGHL_COLOR
+//#define AGHL_COLOR
 // Enable support for Half-Life Weapon Mod by KORD_12.7
 // ---> http://aghl.ru/forum/viewtopic.php?f=42&t=721
 //#define HLWPNMOD
@@ -264,13 +264,13 @@ new setKeys[keyNames][] = {
     "icon",
     "botcant"
 }
-new cvar[cvars]
+new cvar[cvars];
 new modOffsets[dataOffsetsStruct]
 new Trie:weaponAmmoTrie
 new Trie:ammoMaxMap
 new Trie:autoSaveMap
 new Array:weaponSets
-new playersData[33][playersDataStruct]
+new playersData[MAX_PLAYERS + 1][playersDataStruct]
 new bool:isValve
 new bool:isAG
 new StatusIcon
@@ -279,8 +279,8 @@ new AmmoPickup
 new AmmoX
 new WeapPickup
 new currentPlayers
-#if AMXX_VERSION_NUM < 183
-new MaxClients
+#if !defined MaxClients
+    static MaxClients
 #endif
 new maxLevel
 new bool:isEndGame = false
@@ -293,7 +293,10 @@ new warmUpMode = 0
 new Array:warmUpSet
 new cfgFileWas[30]
 // leet sound
-new sound_winner[64],sound_levelup[64],sound_leveldown[64],prolevel_music[64]
+new sound_winner[MAX_RESOURCE_PATH_LENGTH],
+sound_levelup[MAX_RESOURCE_PATH_LENGTH],
+sound_leveldown[MAX_RESOURCE_PATH_LENGTH],
+prolevel_music[MAX_RESOURCE_PATH_LENGTH];
 new Float:proLevelLoop
 new bool:proLevelPlayed = false
 // -- HUD -- //
@@ -488,7 +491,7 @@ public plugin_precache()
     //  specify time of warump round duration
     //  user 0.0 for disable this opiton
     //
-    cvar[CVAR_WARMUP] = register_cvar("gg_warmup","20.0")
+    cvar[CVAR_WARMUP] = register_cvar("gg_warmup","20")
     //
     // endlevel music
     //  sets music which will be played when someone need one kill to win
@@ -596,7 +599,6 @@ public plugin_precache()
 public plugin_init()
 {
     register_cvar("gungame", VERSION, FCVAR_SERVER | FCVAR_SPONLY | FCVAR_UNLOGGED)
-    //RegisterHam(Ham_Killed, "player", "client_death");
     register_dictionary("gungame.txt")
 }
 new gameName[MAX_RESOURCE_PATH_LENGTH] = "Unknown"
@@ -608,9 +610,10 @@ public plugin_cfg()
     server_print "   Version %s build on %s^n^n^n", VERSION, LASTUPDATE
     ggActive = get_pcvar_num(cvar[CVAR_ENABLED])
     #if defined AGHL_COLOR && !defined CSCOLOR
-    if(isValve){
-    task_RequestColor_Id = task_WarmUp_Id + 1
-    register_dictionary("gungame_clr.txt")
+    if(isValve)
+    {
+        task_RequestColor_Id = task_WarmUp_Id + 1
+        register_dictionary("gungame_clr.txt")
     }
     #endif
     if(!modOffsets[msgWeaponList])
@@ -629,12 +632,13 @@ public plugin_cfg()
         if(!StatusIcon)
         {
             // valve client.dll has StatusIcon
-            if(isValve){
-            StatusIcon = engfunc(EngFunc_RegUserMsg,"StatusIcon",-1)
-            isValve = true
+            if(isValve)
+            {
+                StatusIcon = engfunc(EngFunc_RegUserMsg,"StatusIcon",-1)
+                isValve = true
             }
         }
-        new tmpStr[64],parseStr[3][10]
+        new tmpStr[MAX_RESOURCE_PATH_LENGTH],parseStr[3][10]
         blinkTime = get_pcvar_float(cvar[CVAR_ICON_BLINKTIME])
         // magic, no have idea how it works
         for(new i,z,j; i < sizeof iconColors ; i++,z++)
@@ -656,7 +660,7 @@ public plugin_cfg()
     }
     if(get_pcvar_num(cvar[CVAR_SHOWSTATS]))
     {
-        new tmpStr2[64],parseStr2[3][10]
+        new tmpStr2[MAX_RESOURCE_PATH_LENGTH],parseStr2[3][10]
         get_pcvar_string(cvar[CVAR_STATS_COLOR],tmpStr2,charsmax(tmpStr2))
         parse(tmpStr2,
         parseStr2[0],charsmax(parseStr2[]),
@@ -701,7 +705,7 @@ public plugin_cfg()
     WeapPickup = get_user_msgid("WeapPickup")
     syncInformerHud = CreateHudSyncObj()
 
-    #if AMXX_VERSION_NUM == 182
+    #if !defined MaxClients
         MaxClients = get_maxplayers()
     #endif
 
@@ -728,15 +732,7 @@ public plugin_cfg()
 //
 // --- GG CMDS ---
 //
-/*
-public client_death(id,weaponbox)
-{
-    //erase the weaponbox
-    set_pev(weaponbox, pev_nextthink, get_gametime( ) + 0.1) ///fucks up way too much stuff but does not crash
-    //call_think(weaponbox) //crashes op4
-    //ExecuteHam(Ham_Think, weaponbox) //crashes op4
-}
-*/
+
 public CMD_GGToggle(id,level,cid)
 {
     if(!cmd_access(id,level,cid,0))
@@ -789,8 +785,10 @@ public Enable_GunGame()
     {
         server_print("[GunGame] Offsets is missing")
         set_fail_state("missing offsets")
-    }else{
-    server_print("[GunGame] Offsets for %s loaded",gameName)
+    }
+    else
+    {
+        server_print("[GunGame] Offsets for %s loaded",gameName)
     }
     // check level weapons for valid
     if(weaponSets == Invalid_Array)
@@ -810,8 +808,10 @@ public Enable_GunGame()
         hookTrace = RegisterHam(Ham_TraceAttack,"player","On_TraceAttack",false)
         hookUseGame = RegisterHam(Ham_Use,"player_weaponstrip","HS_BlockUse",false)
         hookUseStrip = RegisterHam(Ham_Use,"game_player_equip","HS_BlockUse",false)
-    }else
-    { // enable hooks
+    }
+    else
+    {
+        // enable hooks
         EnableHamForward(hookSpawn)
         EnableHamForward(hookKilled)
         EnableHamForward(hookDamage)
@@ -828,7 +828,7 @@ public Enable_GunGame()
         set_fail_state("unable to create striper")
     }
     if(get_pcvar_num(cvar[CVAR_MAPCHANGES_STYLE]) && !get_cvar_num(cvar[CVAR_MAPCHOOSER_TYPE]))
-    mapchooser_detect()
+        mapchooser_detect()
     // infinity ammo
     hookMsgAmmoX = register_message(AmmoX,"MSG_AmmoX")
     // block weapon pickup draw icon
@@ -844,17 +844,18 @@ public Enable_GunGame()
         #if defined AGHL_COLOR
         new bool:rmb
         #endif
-        for(new i,player  ; i < pnum ; i++){
-        player = players[i]
-        #if defined AGHL_COLOR
-        rmb = playersData[player][PLAYER_AGHL]
-        #endif
-        client_putinserver(player)
-        #if defined AGHL_COLOR
-        playersData[rmb][PLAYER_AGHL] = rmb
-        #endif
-        if(is_user_alive(player))
-        Equip_PlayerWithWeapon(player)
+        for(new i,player  ; i < pnum ; i++)
+        {
+            player = players[i]
+            #if defined AGHL_COLOR
+            rmb = playersData[player][PLAYER_AGHL]
+            #endif
+            client_putinserver(player)
+            #if defined AGHL_COLOR
+            playersData[rmb][PLAYER_AGHL] = rmb
+            #endif
+            if(is_user_alive(player))
+                Equip_PlayerWithWeapon(player)
         }
         gg_notify_msg(0,NOTIFY_ENABLED)
     }
@@ -884,7 +885,7 @@ public Disable_GunGame()
         {
             player = players[i]
             if(task_Hud_Id && !playersData[player][PLAYER_BOT])
-            ClearSyncHud(player,syncInformerHud) // reset hud
+                ClearSyncHud(player,syncInformerHud) // reset hud
             Reset_RefilTasks(player) // reset refil tasks
             StatusIcon_Display(player,3)
             remove_task(task_Icon_Blink + player)
@@ -914,7 +915,7 @@ public plugin_natives()
 // thanks to Safety1st for his tips
 public load_cfg()
 {
-    new mapName[MAX_PLAYERS],cfgFilePath[512],cfgFileLen,bool:isMapCfg
+    new mapName[MAX_PLAYERS],cfgFilePath[MAX_MENU_LENGTH],cfgFileLen,bool:isMapCfg
     get_mapname(mapName,charsmax(mapName))
     // build path for config folder
     cfgFileLen = get_configsdir(cfgFilePath,charsmax(cfgFilePath))
@@ -933,7 +934,7 @@ public load_cfg()
     for(new i ; i < keyNames ; ++i) // i'm realy lazy for write few strings of code, lets do amxx dirty work
     TrieSetCell(keyTrie,setKeys[i],i)
     new f = fopen(cfgFilePath,"rt")
-    new buffer[512],lineCount
+    new buffer[MAX_MENU_LENGTH],lineCount
     if(f)
     {
         #define CFG_BLOCK_NONE      0
@@ -955,9 +956,9 @@ public load_cfg()
         new modBlockId = CFG_MOD_NONE
         get_cvar_pointer("sv_ag_version") ? copy(modName,charsmax(modName),"agmini") : get_modname(modName,charsmax(modName))
         if(strcmp(modName,"valve") == 0)
-        isValve = true
+            isValve = true
         else if(strcmp(modName,"agmini") == 0 || strcmp(modName,"ag") == 0)
-        isAG = true
+            isAG = true
         while(!feof(f))
         {
             fgets(f,buffer,charsmax(buffer))
@@ -965,7 +966,7 @@ public load_cfg()
             lineCount ++
             // skip comments and empty lines
             if(!buffer[0] || buffer[0] == ';' || contain(buffer,"//") == 0)
-            continue
+                continue
             switch(currentBlockId)
             {
                 case CFG_BLOCK_NONE:
@@ -973,11 +974,11 @@ public load_cfg()
                     if(buffer[0] == '<')
                     {
                         if(strcmp(buffer,"<cvars>") == 0)
-                        currentBlockId = CFG_BLOCK_CVARS
+                            currentBlockId = CFG_BLOCK_CVARS
                         else if(strcmp(buffer,"<sets>") == 0)
-                        currentBlockId = CFG_BLOCK_WEAPONS
+                            currentBlockId = CFG_BLOCK_WEAPONS
                         else if(strcmp(buffer,"<mods>") == 0)
-                        currentBlockId = CFG_BLOCK_MODSETTINGS
+                            currentBlockId = CFG_BLOCK_MODSETTINGS
                     }
                 }
                 case CFG_BLOCK_CVARS:
@@ -986,7 +987,7 @@ public load_cfg()
                     if(buffer[0] == '<')
                     {
                         if(strcmp(buffer,"</cvars>") == 0)
-                        currentBlockId = CFG_BLOCK_NONE
+                            currentBlockId = CFG_BLOCK_NONE
                         continue
                     }
                     new cvarName[40],cvarValue[256],cvarId
@@ -1004,9 +1005,11 @@ public load_cfg()
                 case CFG_BLOCK_WEAPONS:
                 {
                     // parse weapons block
-                    if(isMapCfg){   // we will parse weapons block later
-                    currentBlockId = CFG_BLOCK_NONE
-                    continue
+                    if(isMapCfg)
+                    {
+                        // we will parse weapons block later
+                        currentBlockId = CFG_BLOCK_NONE
+                        continue
                     }
                     if(buffer[0] == '<')
                     {
@@ -1036,9 +1039,9 @@ public load_cfg()
                             new checkingMod[12]
                             new endBracket = strfind(buffer,">")
                             if(endBracket == -1)
-                            continue
+                                continue
                             if(strlen(buffer) > charsmax(checkingMod))
-                            continue
+                                continue
                             formatex(checkingMod,strlen(buffer) - 2,"%s",buffer[1])
                             if(strcmp(checkingMod,modName) == 0)
                                 modFound = true
@@ -1074,12 +1077,12 @@ public load_cfg()
                             }
                             else
                             {
-                                new keyName[20],keyValue[64]
+                                new keyName[20],keyValue[MAX_RESOURCE_PATH_LENGTH]
                                 strtok(buffer,keyName,charsmax(keyName),keyValue,charsmax(keyValue),'=',1)
                                 replace(keyValue,charsmax(keyValue),"=","")
                                 trim(keyValue)
                                 if(strcmp(keyName,"name") == 0)
-                                copy(gameName,charsmax(gameName),keyValue)
+                                    copy(gameName,charsmax(gameName),keyValue)
                             }
                         }
                         case CFG_MOD_OFFSETS:
@@ -1181,7 +1184,7 @@ public load_cfg()
             lineCount ++
             // skip comments and empty lines
             if(!buffer[0] || buffer[0] == ';' || contain(buffer,"//") == 0)
-            continue
+                continue
             Parse_WeaponSets(buffer,lineCount,keyTrie,hamHooks,false)
         }
         fclose(f)
@@ -1223,9 +1226,9 @@ public MSG_WeaponList(MsgDEST,MsgID,id)
     }
     lastInited = get_gametime()
     if(!ammoMaxMap)
-    ammoMaxMap = TrieCreate()
+        ammoMaxMap = TrieCreate()
     if(!weaponAmmoTrie)
-    weaponAmmoTrie = TrieCreate()
+        weaponAmmoTrie = TrieCreate()
     new weaponName[MAX_PLAYERS]
     new ammoKey[10]
     new weaponAmmo[weaponAmmoStruct]
@@ -1298,8 +1301,8 @@ Map_LockItems(bool:lock)
             Item_SetLock(classname,0,lock,true)
         }
     }
-    // Loop throught all entites
-    for(new ent = MaxClients +  1 ; ent <= entCount ; ent++)
+    // Loop through all entites
+    for(new ent = MaxClients +  1 ; ent <= entCount ; ++ent)
     {
         if(is_valid_ent(ent) && Item_LockCheck(ent))
         { // find our blocked entity
@@ -1476,7 +1479,9 @@ public block_drop()
 
 public Play_ProLevelMusic()
 {
-    client_cmd(0,"mp3 play ^"%s^"",prolevel_music)
+    for (new human=1; human<=MaxClients; human++)
+    if(!playersData[human][PLAYER_BOT])
+        client_cmd(human,"mp3 play ^"%s^"",prolevel_music)
     if(proLevelLoop)
         set_task(proLevelLoop,"Play_ProLevelMusic",task_ProLevel_Id)
 }
@@ -1564,7 +1569,7 @@ public Parse_WeaponSets(buffer[],lineCount,Trie:keyTrie,&Trie:hamHooks,bool:warm
             trim(keyValue)
             new keyId
             if(!TrieGetCell(keyTrie,keyName,keyId))
-            return
+                return
             switch(keyId)
             {
                 case KEYSET_SHOWNAME: copy(weaponSet[WSET_SHOWNAME],charsmax(weaponSet[WSET_SHOWNAME]),keyValue)
@@ -1709,7 +1714,7 @@ public client_putinserver(id)
     {
         #if defined AGHL_COLOR && !defined CSCOLOR
         if(task_RequestColor_Id) // Check
-        set_task(0.1,"RequestColor_Task",task_RequestColor_Id + id)
+            set_task(0.1,"RequestColor_Task",task_RequestColor_Id + id)
         #endif
         if(autoSaveTime && autoSaveMap)
         {
@@ -1729,28 +1734,31 @@ public client_putinserver(id)
         {
             new handicap = get_pcvar_num(cvar[CVAR_HANDICAP])
             if(handicap)
-            SetLevel_ForNewPlayer(id,handicap)
+                SetLevel_ForNewPlayer(id,handicap)
         }
-        if(warmUpMode == 0 && get_pcvar_num(cvar[CVAR_WARMUP]))
-        { // start warmup mode
+        if(!warmUpMode && (get_pcvar_num(cvar[CVAR_WARMUP])))
+        {
+            // start warmup mode
             warmUpMode = 1
             new data[1]
             data[0] = get_pcvar_num(cvar[CVAR_WARMUP])
             set_task(1.0,"WarmUp_Timer",task_WarmUp_Id,data,sizeof data)
+            ///server_print "GUNGAME SETTING WARMUP TIMER ...%i", data[0]
             ExecuteForward(fwdWarmUpStart,fwdRet)
         }
         else if(warmUpMode == 0)
             warmUpMode = 2
         if(proLevelPlayed && !isEndGame)
-            client_cmd(id,"mp3 play ^"%s^"",prolevel_music)
-        else if(isEndGame)
-            client_cmd(0,"mp3 play ^"%s^"",sound_winner)
+            client_cmd(id,"mp3 play ^"%s^"", prolevel_music)
+        else if(isEndGame && !playersData[id][PLAYER_BOT])
+            client_cmd(id,"mp3 play ^"%s^"", sound_winner)
     }
 }
 
 public WarmUp_Timer(data[1])
 {
     set_hudmessage(255, 255, 255, -1.0, 0.3, 0, 6.0, 0.7, 0.1, 0.2)
+    ///server_print ("GG WARMUP TIMER FCN, mode %i | %i", warmUpMode, data[0])
     switch(warmUpMode)
     {
         case 1:
@@ -1758,6 +1766,7 @@ public WarmUp_Timer(data[1])
             if(!data[0])
             {
                 warmUpMode = 3
+                server_print "GG MODE SET TO 3"
                 data[0] = 3
                 if(!isAG)
                 {
@@ -1767,8 +1776,9 @@ public WarmUp_Timer(data[1])
                     {
                         player = players[i]
                         if(checkPlayerSpectator(player) != -1)
-                        continue
+                            continue
                         entity_set_vector(player,EV_VEC_velocity,Float:{0.0,0.0,0.0})
+                        set_user_maxspeed(player,0.0)
                         set_pev(player,pev_flags,pev(player,pev_flags) | FL_WORLDBRUSH)
                     }
                 }
@@ -1781,33 +1791,44 @@ public WarmUp_Timer(data[1])
                 warmUpMode = 2
                 new players[MAX_PLAYERS],pnum
                 get_players(players,pnum,"ah") // ah oh oh oh ah oh
-                show_hudmessage(0,"%L",LANG_PLAYER,"WARMUP_ROUND_OVER")
-                client_cmd(0,"spk buttons/bell1.wav")
+                for (new human=1; human<=MaxClients; human++)
+                if(!playersData[human][PLAYER_BOT])
+                {
+                    show_hudmessage(human,"%L",LANG_PLAYER,"WARMUP_ROUND_OVER")
+                    client_cmd(human,"spk buttons/bell1.wav")
+                }
                 ArrayDestroy(warmUpSet)
                 warmUpSet = Invalid_Array
                 ExecuteForward(fwdWarmUpEnd,fwdRet)
                 if(fwdRet == PLUGIN_HANDLED)
-                return
+                    return
                 for(new i,player ; i < pnum ; ++i)
                 {
                     player = players[i]
                     if(checkPlayerSpectator(player) != -1)
-                    continue
+                        continue
                     if(!isAG)
-                    set_pev(player,pev_flags,pev(player,pev_flags) &~ FL_WORLDBRUSH)
-                    ExecuteHam(Ham_Use,striper,player,player,1.0,0.0) // strip player's weapons
-                    ExecuteHamB(Ham_Spawn,player)
+                    {
+                        set_pev(player,pev_flags,pev(player,pev_flags) &~ FL_WORLDBRUSH)
+                        ExecuteHam(Ham_Use,striper,player,player,1.0,0.0) // strip player's weapons
+                        ExecuteHamB(Ham_Spawn,player)
+                    }
                 }
                 return
             }
         }
     }
-    if(warmUpMode == 3)
+    if(data[0])
     {
-        client_cmd(0,"spk buttons/blip1.wav")///bot should not play
-        show_hudmessage(0,"%L",LANG_PLAYER,warmUpMode == 1 ? "WARMUP_ROUND_DISPLAY" : "WARMUP_ROUND_PREPARE",data[0])
         data[0] --
         set_task(1.0,"WarmUp_Timer",task_WarmUp_Id,data,sizeof data)
+        show_hudmessage(0,"%L",LANG_PLAYER,warmUpMode == 1 ? "WARMUP_ROUND_DISPLAY" : "WARMUP_ROUND_PREPARE", data[0])
+    }
+    if(warmUpMode == 3)
+    {
+        for (new human=1; human<=MaxClients; human++)
+        if(!playersData[human][PLAYER_BOT])
+            client_cmd(human,"spk buttons/blip1.wav")///bot should not play
     }
 }
 //
@@ -1823,9 +1844,7 @@ stock checkPlayerSpectator(id)
     new iUser1 = entity_get_int(id,EV_INT_iuser1)
     new iUser2 = entity_get_int(id,EV_INT_iuser2)
 
-    if(iUser1 || iUser2)
-        return iUser2
-    if(flags & FL_SPECTATOR)
+    if(iUser1 || iUser2 || flags & FL_SPECTATOR)
         return id
     return -1
 }
@@ -1878,7 +1897,7 @@ public SetLevel_ForNewPlayer(id,handicap)
 public client_disconnected(id)
 {
     if(!ggActive)
-    return
+        return
     Reset_RefilTasks(id)
     if(task_Hud_Id && !playersData[id][PLAYER_BOT])
         remove_task(id + task_Hud_Id)
@@ -1920,16 +1939,13 @@ public ggSpawnEquip = true
 //
 public On_PlayerSpawn(id)
 {
-    new flags = pev(id, pev_flags)
-    if(flags & FL_SPECTATOR)
-        return HAM_IGNORED
-
     if(!ggSpawnEquip)
-    return HAM_IGNORED
-    if(!is_user_alive(id))
-    { // lalka style fix
-        if(isAG && entity_get_int(id,EV_INT_flags) != 8)  // ya 8, a tbi - net azazazazaza
         return HAM_IGNORED
+    if(!is_user_alive(id))
+    {
+        // lalka style fix
+        if(isAG && entity_get_int(id,EV_INT_flags) != 8)  // ya 8, a tbi - net azazazazaza
+            return HAM_IGNORED
         set_task(0.1,"On_PlayerSpawn",id)
         return HAM_IGNORED
     }
@@ -1937,11 +1953,11 @@ public On_PlayerSpawn(id)
     {
         #if defined DODBOTFIX
         if(!get_user_team(id))
-        return HAM_IGNORED
+            return HAM_IGNORED
         #endif
         Equip_PlayerWithWeapon(id)
         if(warmUpMode == 3)
-        set_pev(id,pev_flags,pev(id,pev_flags) | FL_WORLDBRUSH)
+            set_pev(id,pev_flags,pev(id,pev_flags) | FL_WORLDBRUSH)
         if(isEndGame)
         {
             set_user_godmode(id,true)
@@ -1971,7 +1987,8 @@ public On_PlayerKilled(victim,killer)
     if(warmUpMode != 2 || playersData[killer][PLAYER_CURRENTLEVEL] != playersData[killer][PLAYER_LASTLEVEL])
         return HAM_IGNORED
     if(killer == victim && get_pcvar_num(cvar[CVAR_DESCORE]) && !get_pcvar_num(cvar[CVAR_TEAMPLAY]))
-    { // descore function on selfkill
+    {
+        // descore function on selfkill
         playersData[victim][PLAYER_KILLS] --
         if(playersData[victim][PLAYER_KILLS] < 0)
         {
@@ -2039,18 +2056,19 @@ Update_TeamData(id)
 {
     new teamName[16]
     if(!get_user_team(id,teamName,charsmax(teamName)))
-    return false
+        return false
     new players[MAX_PLAYERS],pnum
     get_players(players,pnum,"e",teamName)
-    for(new i,player  ;i < pnum ; i++)
+    for(new i, player; i < pnum ; ++i)
     {
         player = players[i]
         if(player == id)
-        continue
+            continue
         playersData[player][PLAYER_KILLS] = playersData[id][PLAYER_KILLS]
-        if(playersData[player][PLAYER_CURRENTLEVEL] != playersData[id][PLAYER_CURRENTLEVEL]){
-        playersData[player][PLAYER_CURRENTLEVEL] = playersData[id][PLAYER_CURRENTLEVEL]
-        set_task(0.12,"ReEquip_Player",task_Equip_Id + player)  // oppa supa fix
+        if(playersData[player][PLAYER_CURRENTLEVEL] != playersData[id][PLAYER_CURRENTLEVEL])
+        {
+            playersData[player][PLAYER_CURRENTLEVEL] = playersData[id][PLAYER_CURRENTLEVEL]
+            set_task(0.12,"ReEquip_Player",task_Equip_Id + player)  // oppa supa fix
         }
     }
     return true
@@ -2146,12 +2164,15 @@ public On_TraceAttack(victim,attacker)
 //
 public Equip_PlayerWithWeapon(const id)
 {
+    if(checkPlayerSpectator(id) != -1)
+
     ExecuteForward(fwdEquip,fwdRet,id)
     ExecuteHam(Ham_Use,striper,id,id,USE_ON,0.0) // strip player's weapons
     if(isEndGame)
-    return
+        return
     if(playersData[id][PLAYER_CURRENTLEVEL] >= maxLevel)
-    { // do endgame stuff
+    {
+        // do endgame stuff
         endgame(id)
         return
     }
@@ -2159,7 +2180,7 @@ public Equip_PlayerWithWeapon(const id)
     // 2.1
     if(isTeamPlay && warmUpMode != 1)
     {
-        new teamName[16]
+        new teamName[MAX_IP_LENGTH]
         new teamIndex = get_user_team(id,teamName,charsmax(teamName))
         if(playersData[id][PLAYER_TEAM] != teamIndex)
         {  // recheck data for matching team stats
@@ -2176,16 +2197,8 @@ public Equip_PlayerWithWeapon(const id)
                     playersData[id][PLAYER_LASTLEVEL] = playersData[player][PLAYER_LASTLEVEL]
                     playersData[id][PLAYER_KILLS] = playersData[player][PLAYER_KILLS]
                     playersData[id][PLAYER_NEEDKILLS] = playersData[player][PLAYER_NEEDKILLS]
-                    copy(
-                    playersData[id][PLAYER_WEAPONNAME],
-                    charsmax(playersData[][PLAYER_ICON]),
-                    playersData[player][PLAYER_WEAPONNAME]
-                    )
-                    copy(
-                    playersData[id][PLAYER_ICON],
-                    charsmax(playersData[][PLAYER_ICON]),
-                    playersData[player][PLAYER_ICON]
-                    )
+                    copy(playersData[id][PLAYER_WEAPONNAME], charsmax(playersData[][PLAYER_ICON]), playersData[player][PLAYER_WEAPONNAME])
+                    copy(playersData[id][PLAYER_ICON],charsmax(playersData[][PLAYER_ICON]),playersData[player][PLAYER_ICON])
                     playersData[id][PLAYER_TEAM] = playersData[player][PLAYER_TEAM]
                     playersData[id][PLAYER_INFLICTORS] = _:playersData[player][PLAYER_INFLICTORS]
                     playersData[id][PLAYER_NOREFIL] = _:playersData[player][PLAYER_NOREFIL]
@@ -2457,10 +2470,10 @@ public Add_PlayerWeapon(id,equipItem[equipStruct],weaponSet[weaponSetStruct])
         equipEnt = give_item(id,equipItem[EQUIP_NAME])
     #endif
     if(pev_valid(equipEnt) != 2)
-    return
+        return
     new weaponAmmo[weaponAmmoStruct]
     if(!weaponAmmoTrie || !TrieGetArray(weaponAmmoTrie,equipItem[EQUIP_NAME],weaponAmmo,weaponAmmoStruct))
-    return
+        return
     for(new i ; i < 2 ; ++i)
     {
         // ammo functions
@@ -2974,6 +2987,8 @@ public Show_HudInformer(taskId)
     new id = taskId - task_Hud_Id
     if(!is_user_alive(id))
         return PLUGIN_CONTINUE
+
+    //server_print "SHOWING INFORMER TO %N", id
     new message[312],tmp[30]
     formatex(message,charsmax(message),"%L",id,"INFORMER")
     for(new i ;  i < informerDisplay ; ++i)
@@ -3042,7 +3057,7 @@ gg_get_level_playersnum(level)
     {
         player = players[i]
         if(playersData[player][PLAYER_CURRENTLEVEL] == level)
-        count ++
+            count++
     }
     return count
 }
@@ -3102,9 +3117,7 @@ public Inflictors_DestroyHandler(ent)
         if(get_weaponname(inflictorAmmo[WAMMO_SECONDARY_AMMOID],weaponName,charsmax(weaponName)))
             give_item(owner,weaponName)
     }
-    set_pdata_int(owner,
-    modOffsets[m_rgAmmo] + inflictorAmmo[WAMMO_PRIMARY_AMMOID] - modOffsets[offsetAmmoDiff],
-    curAmmo + inflictorAmmo[WAMMO_PRIMARY_MAXAMMO]                              )
+    set_pdata_int(owner, modOffsets[m_rgAmmo] + inflictorAmmo[WAMMO_PRIMARY_AMMOID] - modOffsets[offsetAmmoDiff], curAmmo + inflictorAmmo[WAMMO_PRIMARY_MAXAMMO]                              )
     return HAM_IGNORED
 }
 // inflictor hurt
@@ -3169,9 +3182,9 @@ public Update_PlayersRanks()
         if(!i)
         {
             if(!get_pcvar_num(cvar[CVAR_TEAMPLAY])) // get leader player
-            get_user_name(player,leader_name,charsmax(leader_name))
+                get_user_name(player,leader_name,charsmax(leader_name))
             else    // get leader team
-            get_user_team(player,leader_name,charsmax(leader_name))
+                get_user_team(player,leader_name,charsmax(leader_name))
             copy(wp_leader,charsmax(wp_leader),playersData[player][PLAYER_WEAPONNAME])
         }
     }
@@ -3225,7 +3238,7 @@ public start_map_vote(Float:delay)
         case 2:
         {
             new plugin = is_plugin_loaded("mapchooser.amxx",true)
-            cstrike_running() ? set_cvar_num("mp_maxrounds",-1) : set_cvar_num("mp_fragsleft", 2)
+            cstrike_running() ? set_cvar_num("mp_maxrounds",-1) : set_cvar_num("mp_fragsleft", 5)
             if(callfunc_begin("@rtv","mapchooser.amxx"))
             {
                 callfunc_push_int(0)
@@ -3283,10 +3296,20 @@ public goto_nextmap()
 {
     if(sound_winner[0])
     {
-        if(containi(sound_winner,".mp3") != -1)
-            client_cmd(0,"mp3 stop",sound_winner)
-        else
-            client_cmd(0,"stopsound",sound_winner)
+        for (new human=1; human<=MaxClients; human++)
+        {
+            if(!playersData[human][PLAYER_BOT])
+            {
+                if(containi(sound_winner,".mp3") != -1)
+                {
+                    client_cmd(human,"mp3 stop",sound_winner)
+                }
+                else
+                {
+                    client_cmd(human,"stopsound",sound_winner)
+                }
+            }
+        }
     }
     new nextMap[MAX_PLAYERS]
     get_cvar_string("amx_votenextmap",nextMap,charsmax(nextMap))
@@ -3300,128 +3323,135 @@ public goto_nextmap()
     else
         server_cmd("changelevel %s",nextMap)
 }
+
 new const statsHudPlayers = 7 // maximum players per hud message
 new Float:showTime
 // Êîíåö èãðû. Îòîáðàæåíèå ïîáåäèòåëÿ, âîñïðîèçâåäåíèå ìóçûêè è òï  // Äà ëàäíî?
 public endgame(id)
 {
     new winnerName[MAX_PLAYERS]
-    if(!get_pcvar_num(cvar[CVAR_TEAMPLAY]))
-        get_user_name(id,winnerName,charsmax(winnerName))
-    else
+    for (new human=1; human<=MaxClients; human++)
     {
-        new len = formatex(winnerName,charsmax(winnerName),"%L ",LANG_SERVER,"TEAM_STR")
-        get_user_team(id,winnerName[len],charsmax(winnerName) - len)
-    }
-    if(proLevelPlayed && proLevelLoop)
-    {
-        client_cmd(0,"mp3 stop")
-        remove_task(task_ProLevel_Id)
-    }
-    set_hudmessage(255, 0, 0, -1.0, 0.15, 2, 1.0, 5.0, 0.1, 0.2, 4)
-    show_hudmessage(0, "%L", LANG_PLAYER, "WINNER_HUD", winnerName)
-    gg_notify_msg(id,NOTIFY_WIN)
-    start_map_vote(1.0);
-    ExecuteForward(fwdWin,fwdRet,id)
-    if(fwdRet == PLUGIN_HANDLED)
-        return
-    if(sound_winner[0])
-    {
-        if(containi(sound_winner,".mp3") != -1)
-            client_cmd(0,"mp3 play ^"%s^"",sound_winner)
+        if(!playersData[human][PLAYER_BOT])
+        if(!get_pcvar_num(cvar[CVAR_TEAMPLAY]))
+            get_user_name(id,winnerName,charsmax(winnerName))
         else
-            client_cmd(0,"spk ^"%s^"",sound_winner)
-    }
-    new Float:endgame_delay = get_pcvar_float(cvar[CVAR_ENDGAME_DELAY])
-    new players[MAX_PLAYERS],pnum
-    get_players(players,pnum,"h")
-    if(get_pcvar_num(cvar[CVAR_SHOWSTATS]))
-    {
-        // shows endgame stats
-        new statsText[1024],len
-        SortCustom1D(players,pnum,"Sort_RankPos")
-        new Float:partTime = float(currentPlayers / statsHudPlayers) // calc maximum parts
-        if(!partTime)
-        partTime = 1.0
-        showTime = endgame_delay / partTime // calc maximum show time per parts
-        new parsedPlayers
-        new Float:showCount
+        {
+            new len = formatex(winnerName,charsmax(winnerName),"%L ",LANG_SERVER,"TEAM_STR")
+            get_user_team(id,winnerName[len],charsmax(winnerName) - len)
+        }
+        if(proLevelPlayed && proLevelLoop)
+        {
+            client_cmd(human,"mp3 stop")
+            remove_task(task_ProLevel_Id)
+        }
+        set_hudmessage(255, 0, 0, -1.0, 0.15, 2, 1.0, 5.0, 0.1, 0.2, 4)
+        show_hudmessage(human, "%L", LANG_PLAYER, "WINNER_HUD", winnerName)
+        gg_notify_msg(id,NOTIFY_WIN)
+        start_map_vote(1.0);
+        ExecuteForward(fwdWin,fwdRet,id)
+        if(fwdRet == PLUGIN_HANDLED)
+            return
+        if(sound_winner[0])
+        {
+            if(containi(sound_winner,".mp3") != -1)
+                client_cmd(human,"mp3 play ^"%s^"",sound_winner)
+            else
+                client_cmd(human,"spk ^"%s^"",sound_winner)
+        }
+        new Float:endgame_delay = get_pcvar_float(cvar[CVAR_ENDGAME_DELAY])
+        new players[MAX_PLAYERS],pnum
+        get_players(players,pnum,"h")
+        if(get_pcvar_num(cvar[CVAR_SHOWSTATS]))
+        {
+            // shows endgame stats
+            new statsText[1024],len
+            SortCustom1D(players,pnum,"Sort_RankPos")
+            new Float:partTime = float(currentPlayers / statsHudPlayers) // calc maximum parts
+            if(!partTime)
+            partTime = 1.0
+            showTime = endgame_delay / partTime // calc maximum show time per parts
+            new parsedPlayers
+            new Float:showCount
+            for(new i,player; i < pnum ; ++i)
+            {
+                player = players[i]
+                new usrName[MAX_PLAYERS]
+                get_user_name(player,usrName,charsmax(usrName))
+                if(i)
+                {
+                    len += formatex(statsText[len],charsmax(statsText) - len,
+                    "%L^n",
+                    LANG_PLAYER,"STATS_END_PLAYER",
+                    i + 1,usrName,
+                    playersData[player][PLAYER_CURRENTLEVEL] + 1,
+                    playersData[player][PLAYER_WEAPONNAME],
+                    playersData[player][PLAYER_KILLS],
+                    playersData[player][PLAYER_NEEDKILLS],
+                    get_user_frags(player))
+                }
+                else
+                {
+                    // for winner
+                    len += formatex(statsText[len],charsmax(statsText) - len,
+                    "%L^n",LANG_PLAYER,"STATS_END_WINNER",i + 1,usrName,get_user_frags(player))
+                }
+                parsedPlayers ++
+                if(parsedPlayers == statsHudPlayers || i == pnum - 1)
+                {
+                    // show this part
+                    new Float:taskTime = showTime * showCount
+                    set_task(taskTime,"Show_EndGameStats",_,statsText,strlen(statsText))
+                    if(i == pnum - 1) // reset hud messages
+                    set_task(showTime * (showCount + 1.0),"Show_EndGameStats",_,"^n",1)
+                    parsedPlayers = 0
+                    showCount += 1.0
+                    len = 0
+                }
+            }
+        }
+        new fadeColor[3]
+        fadeColor[0] = random(255)
+        fadeColor[1] = random(255)
+        fadeColor[2] = random(255)
         for(new i,player; i < pnum ; ++i)
         {
             player = players[i]
-            new usrName[MAX_PLAYERS]
-            get_user_name(player,usrName,charsmax(usrName))
-            if(i)
+            ExecuteHam(Ham_Use,striper,player,player,USE_ON,0.0)
+            if(task_exists(player + task_Hud_Id))
             {
-                len += formatex(statsText[len],charsmax(statsText) - len,
-                "%L^n",
-                LANG_PLAYER,"STATS_END_PLAYER",
-                i + 1,usrName,
-                playersData[player][PLAYER_CURRENTLEVEL] + 1,
-                playersData[player][PLAYER_WEAPONNAME],
-                playersData[player][PLAYER_KILLS],
-                playersData[player][PLAYER_NEEDKILLS],
-                get_user_frags(player))
+                remove_task(player + task_Hud_Id)
+                ClearSyncHud(player,syncInformerHud)
             }
-            else
-            {
-                // for winner
-                len += formatex(statsText[len],charsmax(statsText) - len,
-                "%L^n",LANG_PLAYER,"STATS_END_WINNER",i + 1,usrName,get_user_frags(player))
-            }
-            parsedPlayers ++
-            if(parsedPlayers == statsHudPlayers || i == pnum - 1){ // show this part
-            new Float:taskTime = showTime * showCount
-            set_task(taskTime,"Show_EndGameStats",_,statsText,strlen(statsText))
-            if(i == pnum - 1) // reset hud messages
-            set_task(showTime * (showCount + 1.0),"Show_EndGameStats",_,"^n",1)
-            parsedPlayers = 0
-            showCount += 1.0
-            len = 0
-            }
+            remove_task(player + task_Equip_Id)
+            StatusIcon_Display(player,3)
+            set_user_godmode(player,true)
+            set_user_gravity(player,0.3)
+            set_user_maxspeed(player,9999.0)
+            entity_set_vector(player,EV_VEC_velocity,Float:{0.0,0.0,0.0})
+            set_pev(player,pev_flags,pev(player,pev_flags) | FTRACE_SIMPLEBOX)
         }
-    }
-    new fadeColor[3]
-    fadeColor[0] = random(255)
-    fadeColor[1] = random(255)
-    fadeColor[2] = random(255)
-    for(new i,player; i < pnum ; ++i)
-    {
-        player = players[i]
-        ExecuteHam(Ham_Use,striper,player,player,USE_ON,0.0)
-        if(task_exists(player + task_Hud_Id))
+        UTIL_ScreenFade(0, {0,0,0}, endgame_delay, 40.0, 255, 1)
+        set_user_rendering(id,kRenderFxGlowShell,fadeColor[0],fadeColor[1],fadeColor[2],kRenderNormal,128)
+        if(get_pcvar_num(cvar[CVAR_MAPCHANGES_STYLE]) == 1)
         {
-            remove_task(player + task_Hud_Id)
-            ClearSyncHud(player,syncInformerHud)
+            start_map_vote(endgame_delay)
         }
-        remove_task(player + task_Equip_Id)
-        StatusIcon_Display(player,3)
-        set_user_godmode(player,true)
-        set_user_gravity(player,0.3)
-        set_user_maxspeed(player,9999.0)
-        entity_set_vector(player,EV_VEC_velocity,Float:{0.0,0.0,0.0})
-        set_pev(player,pev_flags,pev(player,pev_flags) | FTRACE_SIMPLEBOX)
+        else
+            set_task(endgame_delay,"goto_nextmap")
+        isEndGame = true
     }
-    UTIL_ScreenFade(0, {0,0,0}, endgame_delay, 40.0, 255, 1)
-    set_user_rendering(id,kRenderFxGlowShell,fadeColor[0],fadeColor[1],fadeColor[2],kRenderNormal,128)
-    if(get_pcvar_num(cvar[CVAR_MAPCHANGES_STYLE]) == 1)
-    {
-        start_map_vote(endgame_delay)
-    }
-    else
-        set_task(endgame_delay,"goto_nextmap")
-    isEndGame = true
 }
 public Show_EndGameStats(hudMessage[])
 {
     static showCount
     static hudSyncObj
     if(!hudSyncObj)
-    hudSyncObj = CreateHudSyncObj()
+        hudSyncObj = CreateHudSyncObj()
     else
-    ClearSyncHud(0,hudSyncObj)
+        ClearSyncHud(0,hudSyncObj)
     if(showCount ++ == 5)
-    showCount = 1
+        showCount = 1
     set_hudmessage(endHudColor[0], endHudColor[1],endHudColor[2],endHudPos[0],endHudPos[1], 2, 0.1, 20.0, 0.01, 0.05, showCount)
     ShowSyncHudMsg(0,hudSyncObj,hudMessage)
 }
@@ -3430,17 +3460,19 @@ public Show_EndGameStats(hudMessage[])
 stock UTIL_ScreenFade(id=0,iColor[3]={0,0,0},Float:flFxTime=-1.0,Float:flHoldTime=0.0,iAlpha=0,iFlags=0x0000,bool:bReliable=false,bool:bExternal=false)
 {
     if(!ScreenFade)
-    return
+        return
+
     new iFadeTime
+
     if(flFxTime==-1.0)
-    iFadeTime = 4
+        iFadeTime = 4
     else
-    iFadeTime = FixedUnsigned16(flFxTime,1<<12)
+        iFadeTime = FixedUnsigned16(flFxTime,1<<12)
     new MSG_DEST
     if(bReliable)
-    MSG_DEST = id ? MSG_ONE : MSG_ALL
+        MSG_DEST = id ? MSG_ONE : MSG_ALL
     else
-    MSG_DEST = id ? MSG_ONE_UNRELIABLE : MSG_BROADCAST
+        MSG_DEST = id ? MSG_ONE_UNRELIABLE : MSG_BROADCAST
     if(bExternal)
     {
         emessage_begin(MSG_DEST,ScreenFade, _,id)
