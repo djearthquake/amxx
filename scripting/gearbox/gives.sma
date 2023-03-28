@@ -150,7 +150,7 @@ public plugin_cfg()
     new mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
 
-    if(g_cvar)
+    if(get_pcvar_num(g_cvar))
         set_task(0.1,"@remove")
     else
         containi(mname,"op4c") > charsmin || find_ent(charsmin,tracer) ?  disable_event(g_event) : enable_event(g_event)
