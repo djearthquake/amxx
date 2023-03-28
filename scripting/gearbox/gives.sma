@@ -20,7 +20,7 @@ new
     bool:bLongjump,
     bool:bAccelerator
 
-new g_cvar
+new g_cvar, g_cvar_gg
 
 new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav","ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
 
@@ -158,7 +158,8 @@ public plugin_cfg()
 
 public client_getfreestuff(id)
 {
-    if(is_user_connected(id))
+    g_cvar_gg = get_cvar_num("gg_enabled")
+    if(is_user_connected(id) && !g_cvar_gg)
     {
         if(is_user_admin(id))
         {
