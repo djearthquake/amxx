@@ -45,19 +45,6 @@ public plugin_init()
     if(equal(SzModName, "cstrike"))
         b_CS = true
 }
-
-public client_authorized(id, const authid[])
-{
-    copy(ClientAuth[id], charsmax(ClientAuth[]), authid)
-
-    ///b_Bot[id] = equali(ClientAuth[id], SzBotTag) ? true : false
-    b_Bot[id] = is_user_bot(id) ? true : false
-    if(b_Bot[id])
-    {
-        copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), SzBotTag)
-    }
-}
-
 public client_connectex(id, const name[], const ip[], reason[128])
 {
     copyc(ClientIP[id], charsmax(ClientIP[]), ip, ':')
@@ -70,9 +57,13 @@ public client_connectex(id, const name[], const ip[], reason[128])
         return PLUGIN_HANDLED_MAIN
     }
 */
-    track(id)
-
     return PLUGIN_CONTINUE
+}
+
+public client_putinserver(id)
+{
+    b_Bot[id] = is_user_bot(id) ? true : false
+    track(id)
 }
 
 stock iPlayers()
@@ -156,7 +147,6 @@ public client_death(victim, killer)
 
 public client_disconnected(id)
 {
-    //copy(ClientCountry_code[id], charsmax(ClientCountry_code[]), "")
     iPlayers()
 
     if( g_iHeadcount > 0 )
