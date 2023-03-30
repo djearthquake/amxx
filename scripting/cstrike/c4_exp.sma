@@ -9,7 +9,7 @@
 #include fakemeta
 #include fakemeta_util
 
-#define IDENTIFY register_plugin("c4 Experience","1.1","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.2","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -20,6 +20,10 @@
 #define INT_BYTES                    4
 #define BYTE_BITS                    8
 #define SHORT_BYTES                  2
+
+#if !defined MaxClients
+    new MaxClients
+#endif
 
 new g_fExperience_offset
 static Float:g_fUninhibited_Walk = 272.0;
@@ -35,6 +39,10 @@ g_fire = precache_model("sprites/laserbeam.spr")
 public plugin_init()
 {
     IDENTIFY;
+
+    #if !defined MaxClients
+        MaxClients = get_maxplayers()
+    #endif
 
     if(find_ent( charsmin, "func_bomb_target") || find_ent( charsmin,"info_bomb_target"))
     {
@@ -76,40 +84,12 @@ public FnPlant()
     server_print "Is %n planting?", id
     if(is_user_alive(id))
     {
-
-        new iC4
-        {
-            while ((iC4= find_ent(charsmin,"grenade")))
-            {
-                if(pev_valid(iC4))
-                {
-                    if(get_pdata_bool(iC4, m_bIsC4))
-                        g_weapon_c4_index = iC4
-                    break;
-                }
-            }
-        }
-        set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 192, 192, 192, kRenderGlow, 50);
-        if(g_weapon_c4_index < 1)
-        {
-            new iC4
-            {
-                while ((iC4= find_ent(charsmin,"grenade")))
-                {
-                    if(pev_valid(iC4))
-                    {
-                        if(get_pdata_bool(iC4, m_bIsC4))
-                            g_weapon_c4_index = iC4
-                        break;
-                    }
-                }
-            }
-            ///g_weapon_c4_index = find_ent(charsmin,"grenade") //grenade is 'planted c4' class
-            set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50);
-        }
+        c4_from_grenade();
+        g_weapon_c4_index ? c4_from_grenade() : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50);
 
         new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
-        cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
+        if(g_weapon_c4_index)
+            cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
 
         //Multi-task
         entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
@@ -130,8 +110,9 @@ public fnDefusal(id)
 {
     if(is_user_alive(id) && !Client_C4_adjusted_already[id] /*&& cs_get_c4_defusing(g_weapon_c4_index)*/)
     {
+        c4_from_grenade();
         new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
-        cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
+        g_weapon_c4_index ? c4_from_grenade() : cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
 
         new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
         if(iBoom_time > 0)
@@ -206,4 +187,18 @@ stock iPlayers()
 {
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
     return iHeadcount
+}
+
+stock c4_from_grenade()
+{
+    while ((g_weapon_c4_index = find_ent(charsmin,"grenade")))
+    {
+        if(g_weapon_c4_index  > 0 && g_weapon_c4_index > MaxClients)
+        {
+            if(get_pdata_bool(g_weapon_c4_index , m_bIsC4))
+            return g_weapon_c4_index;
+            break
+        }
+    }
+    return g_weapon_c4_index;
 }
