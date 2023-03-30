@@ -601,6 +601,10 @@ public plugin_init()
     register_cvar("gungame", VERSION, FCVAR_SERVER | FCVAR_SPONLY | FCVAR_UNLOGGED)
     register_dictionary("gungame.txt")
 }
+public OnAutoConfigsBuffered()
+    console_cmd 0, "gg_enable" //stops game being stuck on 24/7.
+///cvar gg_enabled 1 in server.cfg might be unstable!!
+
 new gameName[MAX_RESOURCE_PATH_LENGTH] = "Unknown"
 new bool:modFound = false
 new ggActive
@@ -1712,6 +1716,7 @@ public client_putinserver(id)
 
     if(!playersData[id][PLAYER_BOT])
     {
+        console_cmd id, "spk ^"gun time is in effect^""
         #if defined AGHL_COLOR && !defined CSCOLOR
         if(task_RequestColor_Id) // Check
             set_task(0.1,"RequestColor_Task",task_RequestColor_Id + id)
@@ -1766,7 +1771,6 @@ public WarmUp_Timer(data[1])
             if(!data[0])
             {
                 warmUpMode = 3
-                server_print "GG MODE SET TO 3"
                 data[0] = 3
                 if(!isAG)
                 {
@@ -1822,7 +1826,27 @@ public WarmUp_Timer(data[1])
     {
         data[0] --
         set_task(1.0,"WarmUp_Timer",task_WarmUp_Id,data,sizeof data)
-        show_hudmessage(0,"%L",LANG_PLAYER,warmUpMode == 1 ? "WARMUP_ROUND_DISPLAY" : "WARMUP_ROUND_PREPARE", data[0])
+        for (new human=1; human<=MaxClients; human++)
+        {
+            if(!playersData[human][PLAYER_BOT])
+            show_hudmessage(human,"%L",LANG_PLAYER,warmUpMode == 1 ? "WARMUP_ROUND_DISPLAY" : "WARMUP_ROUND_PREPARE", data[0])
+            switch(data[0])
+            {
+                case 26:console_cmd human, "spk ^"ambience/port_suckin1.wav^""
+                case 24:console_cmd human, "spk ^"gun^""
+                case 23:console_cmd human, "spk ^"time^""
+                case 22:console_cmd human, "spk ^"is^""
+                case 21:console_cmd human, "spk ^"in^""
+                case 20:console_cmd human, "spk ^"effect^""
+                case 17:console_cmd human, "spk ^"effect^""
+                case 11:console_cmd human, "spk ^"ambience/port_suckout1.wav^""
+                case 30, 15, 10, 5:console_cmd human, "spk ^"gun time is in effect^""
+                case 19, 14, 9, 3, 0  :console_cmd human, "spk ^"agrunt/ag_pain2.wav^""
+                case 7:console_cmd human, "spk ^"be^""
+                case 4:console_cmd human, "spk ^"tride/c0a0_tr_arrive.wav^"",console_cmd human, "spk ^"common/bodydrop2.wav^""
+                case 6:console_cmd human, "spk ^"team^""
+            }
+        }
     }
     if(warmUpMode == 3)
     {
@@ -3238,7 +3262,7 @@ public start_map_vote(Float:delay)
         case 2:
         {
             new plugin = is_plugin_loaded("mapchooser.amxx",true)
-            cstrike_running() ? set_cvar_num("mp_maxrounds",-1) : set_cvar_num("mp_fragsleft", 5)
+            cstrike_running() ? set_cvar_num("mp_maxrounds",-1) : set_cvar_num("mp_fragsleft", 6), set_cvar_num("amx_extendmap_max", 0);
             if(callfunc_begin("@rtv","mapchooser.amxx"))
             {
                 callfunc_push_int(0)
