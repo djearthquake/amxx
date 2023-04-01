@@ -39,7 +39,7 @@ const LINUX_DIFF = 5;
 static m_iHideHUD, m_iWeaponFlash, m_iWeaponVolume
 new red,grn,blu,msk, x, y;
 new iRed, iGreen, iBlue;
-new g_think, g_mag_offset;
+new g_think, g_mag_offset
 new const updated_mod[] = "sven"
 new const hl_mag   = 20
 new const sven_mag = 300
@@ -47,7 +47,7 @@ new const sven_mag = 300
 new magazine, ammo, wpnid;
 new pXPosition,pYPosition,pHoldTime,Float:fXPos,Float:fYPos,Float:fHoldTime;
 new cl_weapon[MAX_PLAYERS + 1]
-new bool:b_Bot[MAX_PLAYERS+1], bool:bCS, bool:bNice, bool:bDrive[MAX_PLAYERS+1];
+new bool:b_Bot[MAX_PLAYERS+1], bool:bCS, bool:bNice, bool:bDrive[MAX_PLAYERS+1], bLinux;
 new g_mod_name[MAX_NAME_LENGTH];
 static iWeapon_Modded
 
@@ -67,6 +67,7 @@ public plugin_init( )
 {
     register_plugin( "Show Ammo Hud", "1.1", "SPiNX" )
     bCS = cstrike_running() == 1 ? true : false
+    bLinux = is_linux_server()
 
     register_event("CurWeapon", "event_active_weapon", "be")
 
@@ -86,11 +87,13 @@ public plugin_init( )
     #endif
 
     bNice = colored_menus() ? true : false
-    m_iHideHUD = (find_ent_data_info("CBasePlayer", "m_iHideHUD") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF //ALL 3 OS have this in DLL/SO/DYLIB
+    m_iHideHUD = (find_ent_data_info("CBasePlayer", "m_iHideHUD") / LINUX_OFFSET_WEAPONS) - (bLinux ? LINUX_DIFF : 0)
+    //ALL 3 OS have this in DLL/SO/DYLIB
+    //primary crosshair not sniper
 
-    m_iWeaponFlash = (find_ent_data_info("CBasePlayer", "m_iWeaponFlash") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+    m_iWeaponFlash = (find_ent_data_info("CBasePlayer", "m_iWeaponFlash") / LINUX_OFFSET_WEAPONS) - (bLinux ? LINUX_DIFF : 0)
 
-    m_iWeaponVolume = (find_ent_data_info("CBasePlayer", "m_iWeaponVolume") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+    m_iWeaponVolume = (find_ent_data_info("CBasePlayer", "m_iWeaponVolume") / LINUX_OFFSET_WEAPONS) - (bLinux ? LINUX_DIFF : 0)
 
     //ammo hud
     red         = register_cvar( "hud_ammo_red" , "120"   );
@@ -138,7 +141,7 @@ public EV_CurWeapon( plr )
 public make_new_ammo_hud(plr)
 {
     fHoldTime = get_pcvar_float(pHoldTime)
-    set_hudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)
+    set_hudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x), get_pcvar_float(y), 0, 6.0, fHoldTime)
     show_hudmessage(plr, "     %i         %i  " , magazine, ammo )
 }
 
@@ -177,15 +180,30 @@ public make_crosshair_hud(plr)
 
 stock weapon_details(plr)
 {
-    wpnid = get_user_weapon(plr, magazine, ammo);
-    return wpnid, magazine, ammo;
+    if(is_user_connected(plr))
+    {
+        wpnid = get_user_weapon(plr, magazine, ammo);
+        if(bCS)
+        {
+            if(cl_weapon[plr] == iWeapon_Modded)
+            {
+                get_user_ammo(plr,cl_weapon[plr], ammo, magazine)
+                cl_weapon[plr] = wpnid
+                //return magazine, ammo
+            }
+        }
+        //else
+        return wpnid, magazine, ammo
+    }
+    return -1
 }
 
 public driving(plr){if(is_user_connected(plr))bDrive[plr] = bDrive[plr] ? false : true;}
 
 public client_putinserver(plr)
 {
-    b_Bot[plr] = is_user_bot(plr) ? true : false
+    if(is_user_connected(plr))
+        b_Bot[plr] = is_user_bot(plr) ? true : false
 }
 
 public client_prethink(plr)
@@ -198,30 +216,7 @@ public client_prethink(plr)
         return PLUGIN_HANDLED;
     #endif
 
-    set_pdata_int(plr, m_iWeaponVolume, SILENCER);
-
     new button = get_user_button(plr), oldbutton = get_user_oldbutton(plr)
-
-    if(cl_weapon[plr] == iWeapon_Modded)
-    {
-        if(button & IN_ATTACK2)
-        {
-            make_crosshair_hud(plr)
-        }
-    }
-    else if(cl_weapon[plr] == HLW_GLOCK)
-    {
-        if(button & IN_ATTACK)
-        {
-            make_crosshair_hud(plr)
-            set_pdata_int(plr, m_iWeaponVolume, 0 );
-        }
-        else if(button & IN_ATTACK2)
-        {
-            @muzzlebreak(plr, 3)
-        }
-
-    }
 
     if(cl_weapon[plr] == iWeapon_Modded)
     {
@@ -240,7 +235,36 @@ public client_prethink(plr)
     }
 
     if(!bCS)
-        cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+    {
+        if(cl_weapon[plr] == iWeapon_Modded)
+        {
+            if(button & IN_ATTACK2)
+            {
+                make_crosshair_hud(plr)
+                make_new_ammo_hud(plr)
+            }
+        }
+        else if(cl_weapon[plr] == HLW_GLOCK)
+        {
+            if(button & IN_ATTACK)
+            {
+                weapon_details(plr);
+                make_crosshair_hud(plr)
+                set_pdata_int(plr, m_iWeaponVolume, 0 );
+                set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO )
+                make_new_ammo_hud(plr)
+            }
+            else if(button & IN_ATTACK2)
+            {
+                @muzzlebreak(plr, 3)
+            }
+
+        }
+        if(cl_weapon[plr] == HLW_GLOCK)
+            oldbutton & IN_ATTACK || button & IN_ATTACK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+        else  set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+    }
+
     return PLUGIN_CONTINUE;
 }
 
