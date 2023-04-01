@@ -85,7 +85,7 @@ public FnPlant()
     if(is_user_alive(id))
     {
         c4_from_grenade();
-        g_weapon_c4_index ? c4_from_grenade() : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50);
+        g_weapon_c4_index ? set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50) : c4_from_grenade()
 
         new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
         if(g_weapon_c4_index)
@@ -112,7 +112,7 @@ public fnDefusal(id)
     {
         c4_from_grenade();
         new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
-        g_weapon_c4_index ? c4_from_grenade() : cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor)
+        g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
 
         new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
         if(iBoom_time > 0)
@@ -191,14 +191,18 @@ stock iPlayers()
 
 stock c4_from_grenade()
 {
-    while ((g_weapon_c4_index = find_ent(charsmin,"grenade")))
+    new iC4
     {
-        if(g_weapon_c4_index  > 0 && g_weapon_c4_index > MaxClients)
+        while ((iC4= find_ent(charsmin,"grenade")))
         {
-            if(get_pdata_bool(g_weapon_c4_index , m_bIsC4))
-            return g_weapon_c4_index;
-            break
+            if(pev_valid(iC4) > 1 && iC4 > MaxClients)
+            {
+                if(get_pdata_bool(iC4, m_bIsC4))
+                    g_weapon_c4_index = iC4
+                break;
+            }
+            if(g_weapon_c4_index < 1)
+                c4_from_grenade()
         }
     }
-    return g_weapon_c4_index;
 }
