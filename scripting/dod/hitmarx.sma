@@ -19,7 +19,7 @@
 #include amxmodx
 #include amxmisc
 #include hamsandwich
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 #tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
 
 #define  charsmin -1
@@ -229,11 +229,8 @@ public plugin_init()
     //later larger array can depict from bots, to humans, friendlies, to objective mark (c4 carrier), to low hp or a skull for high.
     #define TICKER test_spinner2
     #if AMXX_VERSION_NUM != 110;
-    if(bStrike)
-    {
-        register_message(get_user_msgid("Money"), "OnMoneyChange")
-        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
-    }
+    register_message(get_user_msgid("Money"), "OnMoneyChange")
+    register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
     #endif
 }
 
@@ -307,7 +304,7 @@ public CS_OnBuy( id, anything )
             //return PLUGIN_HANDLED
         }
     }
-    if(iDamage > 150.0)
+    if( iDamage > 150.0)
     {
         @FnWow(iAttacker, iDamage, iVictim);
     }
@@ -370,9 +367,13 @@ public CS_OnBuy( id, anything )
                     {
                         DISPLAY beta_symbols[5][random_num(0,2)] : "╳" );
                     }
-                    if (CSW_ALL_SNIPERRIFLES & (1 << get_user_weapon(iAttacker)) )
+                    if (IS CSW_AUG || IS 1<<CSW_SG552)
                     {
                         DISPLAY two_spinners[1][random_num(0,1)] : "╳" );
+                    }
+                    if(CSW_ALL_SNIPERRIFLES & (1 << get_user_weapon(iAttacker)) )
+                    {
+                        DISPLAY beta_symbols[6][random_num(0,2)] : "╳" );
                     }
                     if (IS CSW_KNIFE)
                     {
@@ -531,7 +532,7 @@ public CS_OnBuy( id, anything )
     message_end();
 }
 
-
+#define COLT_TASK 1337
 @long_demo(id)
 {
     if(is_user_connected(id))
@@ -541,8 +542,8 @@ public CS_OnBuy( id, anything )
 
         if(is_user_admin(id)) //too long for casual user
         {
-            set_task_ex(random_float(0.1,0.2), "@cell01", id, .flags = SetTask_RepeatTimes, .repeat = 107)
-            set_task_ex(18.0, "@cell001", id, .flags = SetTask_Once);
+            set_task_ex(random_float(0.1,0.2), "@cell01", id, .flags = SetTask_RepeatTimes, .repeat = 20)
+            set_task_ex(18.0, "@cell001", id+COLT_TASK, .flags = SetTask_Once);
             @long_demo_motd(id)
         }
     }
@@ -590,6 +591,8 @@ public CS_OnBuy( id, anything )
     }
 }
 
+#define DEMO_TIME 7.0
+#define DEMO_REPEAT 12
 @cell01(id)
 if(is_user_connected(id))
 {
@@ -597,11 +600,13 @@ if(is_user_connected(id))
     DEMO beta_symbols[0][random_num(0,2)]);
     client_print(id, print_center, "P90");
 }
-@cell001(id)
+@cell001(tsk){
+new id = tsk - COLT_TASK
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.8), "@cell02", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell002", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.8), "@cell02", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell002", id, .flags = SetTask_Once);
+}
 }
 @cell02(id)
 if(is_user_connected(id))
@@ -613,8 +618,8 @@ if(is_user_connected(id))
 @cell002(id)
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.8), "@cell03", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell003", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.8), "@cell03", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell003", id, .flags = SetTask_Once);
 }
 @cell03(id)
 if(is_user_connected(id))
@@ -626,8 +631,8 @@ if(is_user_connected(id))
 @cell003(id)
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.5), "@cell04", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell004", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.5), "@cell04", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell004", id, .flags = SetTask_Once);
 }
 @cell04(id)
 if(is_user_connected(id))
@@ -639,8 +644,8 @@ if(is_user_connected(id))
 @cell004(id)
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.8), "@cell05", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell005", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.8), "@cell05", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell005", id, .flags = SetTask_Once);
 }
 @cell05(id)
 if(is_user_connected(id))
@@ -652,8 +657,8 @@ if(is_user_connected(id))
 @cell005(id)
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.7), "@cell06", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell006", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.7), "@cell06", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell006", id, .flags = SetTask_Once);
 }
 @cell06(id)
 if(is_user_connected(id))
@@ -665,8 +670,8 @@ if(is_user_connected(id))
 @cell006(id)
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.7), "@cell07", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell007", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.7), "@cell07", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell007", id, .flags = SetTask_Once);
 }
 @cell07(id)
 if(is_user_connected(id))
@@ -678,8 +683,8 @@ if(is_user_connected(id))
 @cell007(id)
 if(is_user_connected(id))
 {
-    set_task_ex(random_float(0.3,0.7), "@cell08", id, .flags = SetTask_RepeatTimes, .repeat = 20);
-    set_task_ex(12.0, "@cell008", id, .flags = SetTask_Once);
+    set_task_ex(random_float(0.3,0.7), "@cell08", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+    set_task_ex(DEMO_TIME, "@cell008", id, .flags = SetTask_Once);
 }
 @cell08(id)
 if(is_user_connected(id))
