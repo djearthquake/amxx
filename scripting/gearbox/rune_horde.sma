@@ -25,15 +25,18 @@ new const SzRune[][]=
 
 public plugin_init()
 {
-    register_plugin("powerup mgmt(rune_horde)","0.0.1","SPiNX")
+    register_plugin("powerup mgmt(rune_horde)","0.0.2","SPiNX");
     g_runefix =
-    register_event_ex("CustomIcon", "plugin_log",
-    RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnceForMultiple|RegisterEvent_OnlyAlive,
-    "2=drop_Ammo_Powerup", "2=drop_Damage_Powerup", "2=drop_Jump_Powerup",
-    "2=drop_Health_Powerup", "2=drop_Shield_Powerup");
-    register_event_ex ( "ResetHUD" , "@event_disable", RegisterEventFlags: RegisterEvent_Single)
-    new iMsg = get_user_msgid("TextMsg")
-    register_message(iMsg, "@CTFGameReset")
+    register_event_ex("PlayerIcon"/*CustomIcon*/, "plugin_log",
+    RegisterEventFlags: RegisterEvent_OnlyAlive,
+    "2=drop_Ammo_Powerup",
+    "2=drop_Damage_Powerup",
+    "2=drop_Jump_Powerup",
+    "2=drop_Health_Powerup",
+    "2=drop_Shield_Powerup");
+
+    new iMsg = get_user_msgid("TextMsg");
+    register_message(iMsg, "@CTFGameReset");
 }
 
 public client_connect(id)
@@ -41,10 +44,6 @@ public client_connect(id)
     enable_event(g_runefix)
 }
 
-@event_disable()
-{
-    disable_event(g_runefix)
-}
 
 public plugin_log()
 {
@@ -65,13 +64,14 @@ public plugin_log()
 @rune(id)
 {
     new iRune, Float:fOrigin[3];
-    for(new s;s < sizeof SzRune; s++)
+    for(new s=0;s < sizeof SzRune; ++s)
     {
         iRune = find_ent(charsmin, SzRune[s])
-        if(iRune)
+        if(iRune>charsmin)
         {
             pev(id, pev_origin, fOrigin)
             set_pev(iRune, pev_oldorigin, fOrigin)
+            set_pev(iRune, pev_origin, fOrigin)
         }
     }
 }
