@@ -283,7 +283,7 @@ public OnMoneyChange(iMsgId, iDest, id)
 public CS_OnBuy( id, anything )
 #endif
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && !bIsBot[id])
         @delayed_end(id)
 }
 
@@ -362,6 +362,14 @@ public CS_OnBuy( id, anything )
                     if (IS CSW_AK47)
                     {
                         DISPLAY beta_symbols[4][random_num(0,2)] : "╳" );
+                    }
+                    if (IS CSW_GALI)
+                    {
+                        DISPLAY test_spinner2[random(sizeof(test_spinner2))] : "╳");
+                    }
+                    if (IS CSW_FAMAS)
+                    {
+                        DISPLAY test_spinner0[random(sizeof(test_spinner0))] : "╳");
                     }
                     if (IS CSW_MP5NAVY)
                     {
@@ -449,7 +457,7 @@ public CS_OnBuy( id, anything )
 {
     if(is_user_connected(id) && !bIsBot[id])
     {
-        set_task_ex(random_float(0.1,0.3), "@Demo", id, .flags = SetTask_Repeat); //Times, .repeat = 75);
+        set_task_ex(random_float(0.1,0.3), "@Demo", id, .flags = SetTask_Repeat);
     }
     return PLUGIN_HANDLED;
 }
@@ -458,7 +466,7 @@ public CS_OnBuy( id, anything )
 {
     if(is_user_connected(id) && !bIsBot[id])
     {
-        set_task_ex(random_float(7.0,10.0), "@demo_end", id, .flags = SetTask_RepeatTimes, .repeat = 3);
+        set_task_ex(random_float(2.0,5.0), "@demo_end", id, .flags = SetTask_RepeatTimes, .repeat = 3);
     }
 }
 
@@ -600,13 +608,14 @@ if(is_user_connected(id))
     DEMO beta_symbols[0][random_num(0,2)]);
     client_print(id, print_center, "P90");
 }
-@cell001(tsk){
-new id = tsk - COLT_TASK
-if(is_user_connected(id))
+@cell001(tsk)
 {
-    set_task_ex(random_float(0.3,0.8), "@cell02", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
-    set_task_ex(DEMO_TIME, "@cell002", id, .flags = SetTask_Once);
-}
+    new id = tsk - COLT_TASK
+    if(is_user_alive(id))
+    {
+        set_task_ex(random_float(0.3,0.8), "@cell02", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
+        set_task_ex(DEMO_TIME, "@cell002", id, .flags = SetTask_Once);
+    }
 }
 @cell02(id)
 if(is_user_connected(id))
@@ -616,7 +625,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "COLT");
 }
 @cell002(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.3,0.8), "@cell03", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
     set_task_ex(DEMO_TIME, "@cell003", id, .flags = SetTask_Once);
@@ -642,7 +651,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "UMP45");
 }
 @cell004(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.3,0.8), "@cell05", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
     set_task_ex(DEMO_TIME, "@cell005", id, .flags = SetTask_Once);
@@ -655,7 +664,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "Kalashnikov");
 }
 @cell005(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.3,0.7), "@cell06", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
     set_task_ex(DEMO_TIME, "@cell006", id, .flags = SetTask_Once);
@@ -668,7 +677,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "MP5");
 }
 @cell006(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.3,0.7), "@cell07", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
     set_task_ex(DEMO_TIME, "@cell007", id, .flags = SetTask_Once);
@@ -681,7 +690,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "ALL SNIPERS");
 }
 @cell007(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.3,0.7), "@cell08", id, .flags = SetTask_RepeatTimes, .repeat = DEMO_REPEAT);
     set_task_ex(DEMO_TIME, "@cell008", id, .flags = SetTask_Once);
@@ -694,7 +703,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "KNIFE");
 }
 @cell008(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.09,0.1), "@cell09", id, .flags = SetTask_RepeatTimes, .repeat = 150)
     set_task_ex(18.0, "@cell009", id, .flags = SetTask_Once);
@@ -707,7 +716,7 @@ if(is_user_connected(id))
     client_print(id, print_center, "PARA or TMP");
 }
 @cell009(id)
-if(is_user_connected(id))
+if(is_user_alive(id))
 {
     set_task_ex(random_float(0.1,0.3), "@cell10", id, .flags = SetTask_RepeatTimes, .repeat = 150);
 }
@@ -727,9 +736,11 @@ if(is_user_connected(id))
 
         set_hudmessage(iRainbow,iRainbow,iRainbow, -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);
         show_hudmessage(0, "%n obliterated %n doing %i damage!",iAttacker,iVictim,floatround(iDamage))
-        client_cmd iAttacker, "spk exterminate"
-
-        FnKiller(iAttacker);
+        if(!bIsBot[iAttacker])
+        {
+            client_cmd iAttacker, "spk exterminate"
+            FnKiller(iAttacker);
+        }
         if(!is_user_alive(iVictim))
             FnFade(iVictim);
     }
@@ -737,13 +748,13 @@ if(is_user_connected(id))
 
 public FnKiller(iAttacker)
 {
-    if(is_user_alive(iAttacker))
+    if(is_user_alive(iAttacker) && !bIsBot[iAttacker])
         set_task_ex(0.1, "FnStrobe", iAttacker, .flags = SetTask_RepeatTimes, .repeat = get_pcvar_num(g_cvar_bsod_iConfmkills));
 }
 
 public FnStrobe(iAttacker)
 {
-    if(is_user_connected(iAttacker))
+    if(is_user_connected(iAttacker) && !bIsBot[iAttacker])
     {
         message_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenFade"),{0,0,0},iAttacker);
         write_short(1000);
