@@ -228,9 +228,9 @@ public plugin_init()
 
     //later larger array can depict from bots, to humans, friendlies, to objective mark (c4 carrier), to low hp or a skull for high.
     #define TICKER test_spinner2
-    #if AMXX_VERSION_NUM != 110;
-    register_message(get_user_msgid("Money"), "OnMoneyChange")
-    register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
+    #if !defined CS_OnBuy
+        register_message(get_user_msgid("Money"), "OnMoneyChange")
+        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
     #endif
 }
 
@@ -266,18 +266,18 @@ public client_putinserver(id)
 
 public newlog(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && !bIsBot[id])
     {
         client_print(id, print_chat, "Your landed shots appear...in HUD!");
         if(is_user_admin(id))
         {
             client_print(id, print_chat, "amx_cvar hitmarx 1-8");
+            @demo(id);
         }
-        @demo(id);
     }
 }
 
-#if AMXX_VERSION_NUM != 110
+#if !defined CS_OnBuy
 public OnMoneyChange(iMsgId, iDest, id)
 #else
 public CS_OnBuy( id, anything )
@@ -367,7 +367,7 @@ public CS_OnBuy( id, anything )
                     {
                         DISPLAY beta_symbols[5][random_num(0,2)] : "╳" );
                     }
-                    if (IS CSW_AUG || IS 1<<CSW_SG552)
+                    if (IS CSW_AUG || IS CSW_SG552)
                     {
                         DISPLAY two_spinners[1][random_num(0,1)] : "╳" );
                     }
