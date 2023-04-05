@@ -117,7 +117,7 @@
     new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ];
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
 
-    new buffer[ MAX_MOTD_LENGTH ]
+    new buffer[ MAX_MENU_LENGTH ]
     new token[MAX_PLAYERS + 1];
 
     new const SOUND_GOTATEMP[] = "misc/Temp.wav";
@@ -835,7 +835,7 @@ public write_web(text[MAX_USER_INFO_LENGTH], Task)
     {
         server_print "%s:Is %s soc writable?",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
-        if (socket_is_writable(g_Weather_Feed, 100000))
+        if (socket_is_writable(g_Weather_Feed, 0))
         #endif
         {
             IS_SOCKET_IN_USE = true;
@@ -898,7 +898,7 @@ public read_web(feeding)
 
         server_print "%s:reading %s temp",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
-        if (socket_is_readable(g_Weather_Feed, 100000))
+        if (socket_is_readable(g_Weather_Feed, 0))
         #endif
         socket_recv(g_Weather_Feed,buffer,charsmax(buffer) )
         if (!equal(buffer, "") && IS_SOCKET_IN_USE == true && containi(buffer, "temp") > charsmin)
@@ -1265,10 +1265,10 @@ public client_putinserver_now(id)
         server_print "%s",constring
 
         if(!task_exists(id+WRITE))
-            set_task(0.5, "@write_api", id+WRITE, constring, charsmax(constring) )
+            set_task(0.1, "@write_api", id+WRITE, constring, charsmax(constring) )
 
         if(!task_exists(id+READ))
-            set_task(1.0, "@read_api", id+READ)
+            set_task(0.2, "@read_api", id+READ)
     }
 }
 @write_api(text[MAX_CMD_LENGTH], Task)
@@ -1277,10 +1277,10 @@ public client_putinserver_now(id)
     new id = Task - WRITE
     if(is_user_connected(id))
     #if AMXX_VERSION_NUM != 182
-    if (socket_is_writable(ip_api_socket, 100000))
+    if (socket_is_writable(ip_api_socket, 0))
     #endif
     {
-        socket_send(ip_api_socket,text,charsmax (text));
+        socket_send(ip_api_socket,text,charsmax(text));
         server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
     }
 
@@ -1303,7 +1303,7 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
         new msg[MAX_MOTD_LENGTH]
         server_print "%s:reading %s coords",PLUGIN, ClientName[id]
         #if AMXX_VERSION_NUM != 182
-        if (socket_is_readable(ip_api_socket, 100000))
+        if (socket_is_readable(ip_api_socket, 0))
         #endif
         socket_recv(ip_api_socket,buffer,charsmax(buffer) )
         if(!equal(buffer, "") )
@@ -1365,14 +1365,14 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
                 set_task(random_num(2,7)*1.0,"@country_finder",id+WEATHER);
 
         }
-        else if(!got_coords[id] || equal(ClientCountry[id],"") || equal(ClientCity[id],"") || equal(ClientRegion[id],"") && g_socket_pass[id] < 10)
+        else if(g_socket_pass[id] < 3 && (!got_coords[id] || equal(ClientCountry[id],"") || equal(ClientCity[id],"") || equal(ClientRegion[id],"")))
         {
             server_print "No %s buffer checking again",ClientName[id]
             set_task(0.2, "@read_api",id+READ)
             g_socket_pass[id]++
             server_print "pass:%i",g_socket_pass[id]
         }
-        else if(!got_coords[id] && g_socket_pass[id] >= 10)
+        else if(!got_coords[id] && g_socket_pass[id] >= 3)
         {
             if(task_exists(id+READ))
             {
