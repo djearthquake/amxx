@@ -6,7 +6,7 @@
 
 ///new const SzMakersMark[]="𝓼𝓹𝓲𝓷𝔁"
 
-new g_runefix, szPowerup[ MAX_PLAYERS ];
+new bool:bFlagMap, g_runefix, szPowerup[ MAX_PLAYERS ];
 
 new const SzRune[][]=
 {
@@ -39,6 +39,10 @@ public plugin_init()
 
     new iMsg = get_user_msgid("TextMsg");
     register_message(iMsg, "@CTFGameReset");
+    new mname[MAX_NAME_LENGTH]
+    get_mapname(mname, charsmax(mname));
+
+    bFlagMap = containi(mname,"op4c") > charsmin?true:false
 }
 
 public client_connect(id)
@@ -53,25 +57,37 @@ public client_connect(id)
 
 public plugin_log()
 {
+    new iRune, Float:fOrigin[3];
     read_logargv(2,szPowerup, charsmax(szPowerup));
 
     if(containi(szPowerup, "drop_") != charsmin)
     {
-
         new target = get_loguser_index()
-
         if(is_user_connected(target))
         {
-            new iRune, Float:fOrigin[3];
             pev(target, pev_origin, fOrigin)
-            if(containi(szPowerup, "Ammo") != charsmin||containi(szPowerup, "Jump") != charsmin ||containi(szPowerup, "Shield") != charsmin)
+            if(bFlagMap)
             {
-                for(new s=0;s < sizeof SzRune; ++s)
+                if(containi(szPowerup, "Ammo") != charsmin||containi(szPowerup, "Jump") != charsmin ||containi(szPowerup, "Shield") != charsmin)
                 {
-                    iRune = find_ent(charsmin, SzRune[s])
-                    if(iRune)
+                    for(new s=0;s < sizeof SzRune; ++s)
                     {
-                        set_pev(iRune, pev_oldorigin, fOrigin)
+                        iRune = find_ent(charsmin, SzRune[s])
+                        if(iRune)
+                        {
+                            set_pev(iRune, pev_oldorigin, fOrigin)
+                        }
+                    }
+                }
+                else
+                {
+                    for(new s=0;s < sizeof SzRune; ++s)
+                    {
+                        iRune = find_ent(charsmin, SzRune[s])
+                        if(iRune)
+                        {
+                            set_pev(iRune, pev_origin, fOrigin)
+                        }
                     }
                 }
             }
@@ -82,7 +98,7 @@ public plugin_log()
                     iRune = find_ent(charsmin, SzRune[s])
                     if(iRune)
                     {
-                        set_pev(iRune, pev_origin, fOrigin)
+                        set_pev(iRune, pev_oldorigin, fOrigin)
                     }
                 }
             }
