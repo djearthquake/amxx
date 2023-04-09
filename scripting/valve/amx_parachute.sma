@@ -86,6 +86,7 @@
 #define MAX_AUTHID_LENGTH          64
 #define MAX_IP_LENGTH              16
 #define MAX_USER_INFO_LENGTH       256
+#define IS_THERE (~(0<<IN_SCORE))
 #define charsmin                  -1
 
 #define Parachute_size  0.1
@@ -324,7 +325,8 @@ public parachute_prethink(id)
         new button = get_user_button(id)
         new oldbutton = get_user_oldbutton(id)
 
-        parachute_think(flags, id, button, oldbutton)
+        if(pev(id, pev_oldbuttons) & IS_THERE)
+            parachute_think(flags, id, button, oldbutton)
     }
 }
 
