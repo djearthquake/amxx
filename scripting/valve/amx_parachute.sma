@@ -1,7 +1,7 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8.1"
+#define VERSION "1.8.2"
 /*******************************************************************************
     Original AMX Author: KRoTaL
     Original AMXX Porter: JTP10181
@@ -31,6 +31,7 @@
     1.7    SPiNX -                                 - Over last few months. Added 3 chutes. Bot or admin or not. Fixed stabily on mods outside of cstrike when chute is shot down.
     1.8    SPiNX - Mon Aug 22 2022 16:00:00 PM CDT - Updated to show admin speed and incorporate Arkshine's wind request properly. Optimize code. Fail-safe for jk_botti crashing servers from breakables.
     1.8.1 SPiNX - Tues Aug 23 2022 07:43:00 AM CDT - Worked on wind not colliding when firing weapon. Stable jk_botti tested.
+    1.8.2 SPiNX - Sun 09 Apr 2023 11:12:08 AM CDT - Optimize some natives. Add a couple fail safes.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -89,7 +90,7 @@
 
 #define Parachute_size  0.1
 
-new bool:has_parachute[ MAX_PLAYERS +1 ]
+new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1];
 new para_ent[ MAX_PLAYERS +1 ]
 new gCStrike = 0
 new pDetach, pFallSpeed, pEnabled, pCost, pPayback, pAutoDeploy /*MAY2020*/,pAutoRules /*MAY2020*/;
@@ -118,7 +119,18 @@ public plugin_init()
     bind_pcvar_num(register_cvar("parachute_safemode", "0"),g_UnBreakable)
     g_packHP    = register_cvar("parachute_health", "75")
     g_debug     = register_cvar("parachute_debug", "0")
-    if (cstrike_running()) gCStrike = true
+
+    new mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name))
+    if(equal(mod_name, "cstrike"))
+    {
+        gCStrike = true
+    }
+    else if(equal(mod_name, "czero"))
+    {
+        log_amx "Hambot required for this mod!"
+        pause("a")
+    }
 
     if (gCStrike)
     {
@@ -127,11 +139,12 @@ public plugin_init()
 
         register_concmd("amx_parachute", "admin_give_parachute", PARACHUTE_LEVEL, "<nick, #userid or @team>" )
     }
-    bOF_run =  is_running("gearbox") || is_running("valve")
+    bOF_run  = equal(mod_name, "gearbox") || equal(mod_name, "valve") ? true : false
     register_clcmd("say", "HandleSay")
     register_clcmd("say_team", "HandleSay")
 
-    RegisterHam(Ham_Spawn, "player", "newSpawn", 1);
+    bOF_run ? (register_event_ex ( "ResetHUD" , "newSpawn", RegisterEventFlags: RegisterEvent_Single|RegisterEvent_OnlyAlive )) : RegisterHam(Ham_Spawn, "player", "newSpawn", 1);
+
     RegisterHam(Ham_Killed, "player", "death_event", 1);
 
     register_forward(FM_PlayerPreThink, "parachute_prethink", 1)
@@ -161,7 +174,16 @@ public native_filter(const name[], index, trap)
 
 public plugin_precache()
 {
-    precache_sound(LOST_CHUTE_SOUND);
+    if (file_exists("sound/misc/erriewind.wav"))
+    {
+        precache_sound(LOST_CHUTE_SOUND);
+    }
+    else
+    {
+        log_amx("Your parachute sound, ^"%s^", is not correct!", LOST_CHUTE_SOUND);
+        pause "a";
+    }
+
     g_model = precache_model("models/glassgibs.mdl");
 
     //for func_breakable
@@ -200,6 +222,15 @@ public plugin_precache()
         pause "a";
     }
 
+}
+
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        bIsBot[id] = is_user_bot(id) ? true : false
+        bIsAdmin[id] = is_user_admin(id) ? true : false
+    }
 }
 
 public parachute_reset(id)
@@ -256,11 +287,14 @@ public parachute_reset(id)
 public newSpawn(id)
 if(is_user_connected(id))
 {
+    if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0)
+        has_parachute[id] = true
+
     if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
     {
         set_user_gravity(id, 1.0)
 
-        if(bOF_run && is_user_bot(id))
+        if(bOF_run && bIsBot[id])
         {
             if(g_UnBreakable)
             {
@@ -279,14 +313,12 @@ if(is_user_connected(id))
         }
 
     }
-    if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0)
-        has_parachute[id] = true
 }
 
 public parachute_prethink(id)
 {
     if(!get_pcvar_num(pEnabled)) return
-    if(is_user_connected(id))
+    if(is_user_connected(id) && is_user_alive(id))
     {
         new flags = get_entity_flags(id)
         new button = get_user_button(id)
@@ -304,7 +336,7 @@ public parachute_think(flags, id, button, oldbutton)
      * 1 - idle - 39 frames
      * 2 - detach - 29 frames
      */
-    if(is_user_alive(id))
+    if(flags)
     {
         new AUTO;
         new Rip_Cord = get_pcvar_num(pAutoDeploy);
@@ -312,12 +344,12 @@ public parachute_think(flags, id, button, oldbutton)
         new print = get_pcvar_num(g_debug)
         new fParachuteSpeed = get_pcvar_num(pFallSpeed)
 
-        if (get_pcvar_num(pAutoRules) == 1 && is_user_admin(id) || get_pcvar_num(pAutoRules) == 2)
+        if (get_pcvar_num(pAutoRules) == 1 && bIsAdmin[id] || get_pcvar_num(pAutoRules) == 2)
         {
             AUTO = !bFirstAuto[id] ? iDrop >= Rip_Cord : iDrop > fParachuteSpeed
         }
 
-        if(is_user_admin(id) && print && iDrop != 0)
+        if(bIsAdmin[id] && print && iDrop != 0)
             client_print id, print_center, "Fall Velocity:%d", iDrop
 
         if(button & IN_ATTACK)/*Sniper first shot sound is still clipped*/
@@ -405,11 +437,11 @@ public parachute_think(flags, id, button, oldbutton)
                             entity_set_edict(para_ent[id], EV_ENT_owner, id)
                             entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
 
-                            if( is_user_bot(id) )
+                            if( bIsBot[id] )
                             {
                                 entity_set_model(para_ent[id], PARA_MODELW);
                             }
-                            else if( is_user_admin(id) )
+                            else if( bIsAdmin[id] )
                             {
                                 entity_set_model(para_ent[id], PARA_MODEL);
                             }
@@ -421,7 +453,7 @@ public parachute_think(flags, id, button, oldbutton)
                             entity_set_size(para_ent[id], minbox, maxbox )
                             set_pev(para_ent[id],pev_angles,angles)
 
-                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable || is_user_bot(id) && bOF_run ? DAMAGE_NO : DAMAGE_YES)
+                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable || bIsBot[id] && bOF_run ? DAMAGE_NO : DAMAGE_YES)
 
                             //Give the parachute health so we can destroy it later in a fight.
                             if(!g_UnBreakable)
@@ -477,7 +509,7 @@ public parachute_think(flags, id, button, oldbutton)
                         if(print)
                         {
                             server_print "%n parachute destroyed!", id
-                            client_print 0, print_console, "%n parachute destroyed!", id
+                            client_print 0, print_chat, "%n parachute destroyed!", id
                         }
                         return;
                     }
