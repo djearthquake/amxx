@@ -3,7 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.3"
 
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -158,6 +158,7 @@ public plugin_init()
         else
         {
             RegisterHamBots(Ham_Spawn, "newSpawn", 1);
+            RegisterHamBots(Ham_Killed, "death_event", 1);
         }
     }
     #endif
@@ -315,7 +316,7 @@ public parachute_reset(id)
     {
         server_print "Adjusting %n parachute...", id
 
-        if(para_ent[id] > MaxClients && is_user_alive(id))
+        if(para_ent[id] && is_user_connected(id))
         {
              if(is_valid_ent(para_ent[id]))
              {
@@ -361,8 +362,6 @@ public parachute_prethink(id)
     if(!get_pcvar_num(pEnabled)) return
     if(is_user_connected(id))
     {
-        if(!has_parachute[id])
-            return
         new flags = get_entity_flags(id)
         if(flags & FL_SPECTATOR)
             return
@@ -393,6 +392,8 @@ public parachute_think(flags, id, button, oldbutton)
         new iDrop = pev(id,pev_flFallVelocity)
 
 
+        emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
+
         if (get_pcvar_num(pAutoRules) == 1 && bIsAdmin[id] || get_pcvar_num(pAutoRules) == 2)
         {
             AUTO = !bFirstAuto[id] ? iDrop >= Rip_Cord : iDrop > fParachuteSpeed
@@ -400,9 +401,6 @@ public parachute_think(flags, id, button, oldbutton)
 
         if(bIsAdmin[id] && print && iDrop != 0)
             client_print id, print_center, "Fall Velocity:%d", iDrop
-
-        if(button & IN_ATTACK)/*Sniper first shot sound is still clipped*/
-            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 
         if(has_parachute[id])
         {
@@ -452,8 +450,6 @@ public parachute_think(flags, id, button, oldbutton)
             }
             if(flags & ~FL_ONGROUND)
             {
-                emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 999 ? 0 : SND_STOP, PITCH)
-
                 if(button & IN_USE|AUTO)
                 {
                     if(AUTO && !bFirstAuto[id])
@@ -585,6 +581,7 @@ public parachute_think(flags, id, button, oldbutton)
     {
         emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
     }
+
 }
 
 //effects
