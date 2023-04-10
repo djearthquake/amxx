@@ -1,7 +1,15 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8.2"
+#define VERSION "1.8.3"
+
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR
+
+//CZ install instructions. Per Ham install this plugin first.
+#define SPEC_PRG    "cs_ham_bots_api.amxx"
+#define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/czero/AI"
+
 /*******************************************************************************
     Original AMX Author: KRoTaL
     Original AMXX Porter: JTP10181
@@ -32,6 +40,7 @@
     1.8    SPiNX - Mon Aug 22 2022 16:00:00 PM CDT - Updated to show admin speed and incorporate Arkshine's wind request properly. Optimize code. Fail-safe for jk_botti crashing servers from breakables.
     1.8.1 SPiNX - Tues Aug 23 2022 07:43:00 AM CDT - Worked on wind not colliding when firing weapon. Stable jk_botti tested.
     1.8.2 SPiNX - Sun 09 Apr 2023 11:12:08 AM CDT - Optimize some natives. Add a couple fail safes.
+    1.8.3 SPiNX - Mon 10 Apr 2023 AM - Finishing trouble-shooting. Refine so when using hook, jumping, in water etc the parachute is removed. Other optimizaions such as update admin when infochanges.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -89,7 +98,7 @@
 #define IS_THERE (~(0<<IN_SCORE))
 #define charsmin                  -1
 
-#define Parachute_size  0.1
+#define Parachute_size  15.0
 
 new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1];
 new para_ent[ MAX_PLAYERS +1 ]
@@ -108,6 +117,11 @@ new bool:bFirstAuto[MAX_PLAYERS+1]
 
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
+
+#if !defined MaxClients
+    static MaxClients
+#endif
+
 public plugin_init()
 {
     register_plugin(PLUGIN,VERSION,AUTHOR)
@@ -121,34 +135,49 @@ public plugin_init()
     g_packHP    = register_cvar("parachute_health", "75")
     g_debug     = register_cvar("parachute_debug", "0")
 
+    #if !defined MaxClients
+        MaxClients = get_maxplayers()
+    #endif
+
     new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
     if(equal(mod_name, "cstrike"))
     {
         gCStrike = true
     }
+    #if defined CZERO
     else if(equal(mod_name, "czero"))
     {
-        log_amx "Hambot required for this mod!"
-        pause("a")
+        if(is_plugin_loaded(SPEC_PRG,true) == charsmin)
+        {
+            log_amx("%s must be installed! %s", SPEC_PRG, URL)
+            pause("c")
+        }
+        else
+        {
+            RegisterHamBots(Ham_Spawn, "newSpawn", 1);
+        }
     }
-
+    #endif
     if (gCStrike)
     {
         pCost = register_cvar("parachute_cost", "1000")
         pPayback = register_cvar("parachute_payback", "75") //percentage
 
-        register_concmd("amx_parachute", "admin_give_parachute", PARACHUTE_LEVEL, "<nick, #userid or @team>" )
+        register_concmd("amx_parachute", "admin_give_parachute", PARACHUTE_LEVEL, "<nick, #userid or @team>")
     }
-    bOF_run  = equal(mod_name, "gearbox") || equal(mod_name, "valve") ? true : false
+    bOF_run  = equal(mod_name, "gearbox") | equal(mod_name, "valve") ? true : false
     register_clcmd("say", "HandleSay")
     register_clcmd("say_team", "HandleSay")
 
-    bOF_run ? (register_event_ex ( "ResetHUD" , "newSpawn", RegisterEventFlags: RegisterEvent_Single|RegisterEvent_OnlyAlive )) : RegisterHam(Ham_Spawn, "player", "newSpawn", 1);
+    if(bOF_run)
+        register_event_ex ( "ResetHUD" , "newSpawn", RegisterEventFlags: RegisterEvent_Single)
+    else
+        RegisterHam(Ham_Spawn, "player", "newSpawn", 1);
 
     RegisterHam(Ham_Killed, "player", "death_event", 1);
 
-    register_forward(FM_PlayerPreThink, "parachute_prethink", 1)
+    register_forward(FM_PlayerPreThink, "parachute_prethink", 0)
 }
 
 public plugin_natives()
@@ -159,7 +188,7 @@ public plugin_natives()
 
 public module_filter(const module[])
 {
-    if (!cstrike_running() && equali(module, "cstrike")) {
+    if (!gCStrike && equali(module, "cstrike")) {
         return PLUGIN_HANDLED
     }
 
@@ -230,8 +259,12 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         bIsBot[id] = is_user_bot(id) ? true : false
-        bIsAdmin[id] = is_user_admin(id) ? true : false
     }
+}
+
+public client_infochanged(id)
+{
+    bIsAdmin[id] = get_user_flags(id) & PARACHUTE_LEVEL ? true : false
 }
 
 public parachute_reset(id)
@@ -252,12 +285,11 @@ public parachute_reset(id)
 
             server_print "Set ent to 0 for %n", id
         }
-        para_ent[id] = 0
         if(pev_valid(para_ent[id]))
         {
             if(print)
                 server_print "PAST Set ent to 0 for %n", id
-            if (pev_valid(para_ent[id]) > 1)
+            if(pev_valid(para_ent[id]))
             {
                 if(print)
                     server_print "Removing para_ent for %n", id
@@ -265,6 +297,10 @@ public parachute_reset(id)
             }
         }
     }
+    if(pev_valid(para_ent[id]))
+        remove_entity(para_ent[id])
+
+    para_ent[id] = 0
 }
 
 @chute_touch(chute,whatever)
@@ -274,13 +310,10 @@ public parachute_reset(id)
     {
         server_print "Adjusting %n parachute", id
 
-        if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
+        if( para_ent[id] && para_ent[id])
         {
-            if(!is_user_alive(id))/*Spec interference*/
+            if(is_user_alive(id))
                 set_pev(para_ent[id], pev_solid, SOLID_NOT)
-
-            remove_entity(para_ent[id])
-            para_ent[id] = 0
         }
     }
 }
@@ -288,10 +321,7 @@ public parachute_reset(id)
 public newSpawn(id)
 if(is_user_connected(id))
 {
-    if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0)
-        has_parachute[id] = true
-
-    if( para_ent[id] > 0 && pev_valid(para_ent[id]) > 1 )
+    if( para_ent[id] )
     {
         set_user_gravity(id, 1.0)
 
@@ -304,7 +334,7 @@ if(is_user_connected(id))
             }
             else
             {
-                set_task(20.0, "parachute_reset", id)
+                set_task(2.0, "parachute_reset", id)
             }
         }
         else
@@ -314,19 +344,24 @@ if(is_user_connected(id))
         }
 
     }
+    if (!gCStrike || access(id,PARACHUTE_LEVEL) || get_pcvar_num(pCost) <= 0)
+        has_parachute[id] = true
 }
 
 public parachute_prethink(id)
 {
     if(!get_pcvar_num(pEnabled)) return
-    if(is_user_connected(id) && is_user_alive(id))
+    if(is_user_connected(id))
     {
         new flags = get_entity_flags(id)
+        if(flags & FL_SPECTATOR)
+            return
+
         new button = get_user_button(id)
         new oldbutton = get_user_oldbutton(id)
 
-        if(pev(id, pev_oldbuttons) & IS_THERE)
-            parachute_think(flags, id, button, oldbutton)
+        //if(pev(id, pev_oldbuttons) & IS_THERE)
+        parachute_think(flags, id, button, oldbutton)
     }
 }
 
@@ -338,13 +373,15 @@ public parachute_think(flags, id, button, oldbutton)
      * 1 - idle - 39 frames
      * 2 - detach - 29 frames
      */
-    if(flags)
+    new Float:frame;
+    new fParachuteSpeed = get_pcvar_num(pFallSpeed)
+    if(is_user_alive(id))
     {
         new AUTO;
         new Rip_Cord = get_pcvar_num(pAutoDeploy);
-        new iDrop = pev(id,pev_flFallVelocity)
         new print = get_pcvar_num(g_debug)
-        new fParachuteSpeed = get_pcvar_num(pFallSpeed)
+        new iDrop = pev(id,pev_flFallVelocity)
+
 
         if (get_pcvar_num(pAutoRules) == 1 && bIsAdmin[id] || get_pcvar_num(pAutoRules) == 2)
         {
@@ -357,25 +394,19 @@ public parachute_think(flags, id, button, oldbutton)
         if(button & IN_ATTACK)/*Sniper first shot sound is still clipped*/
             emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 
-        else if(flags & ~FL_ONGROUND)
-            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 999 ? 0 : SND_STOP, PITCH)
-
         if(has_parachute[id])
         {
-            new Float:frame
-
             new Float:fallspeed = fParachuteSpeed * -1.0
 
-            if( (pev_valid(para_ent[id]) > 1) && (para_ent[id] > 0 && (flags & FL_ONGROUND)) )
+            if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND) || iDrop < charsmin )
             {
-                if (get_pcvar_num(pDetach))
+                if(get_pcvar_num(pDetach))
                 {
                     bFirstAuto[id] = false
 
-                    if (get_user_gravity(id) == 0.1)
+                    if(get_user_gravity(id) == 0.1)
                         set_user_gravity(id, 1.0)
-
-                    if( (pev_valid(para_ent[id]) > 1))
+                    if (entity_get_int(para_ent[id],EV_INT_sequence) != 2)
                     {
                         entity_set_int(para_ent[id], EV_INT_sequence, 2)
                         entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
@@ -390,7 +421,7 @@ public parachute_think(flags, id, button, oldbutton)
                     entity_set_float(para_ent[id],EV_FL_fuser1,frame)
                     entity_set_float(para_ent[id],EV_FL_frame,frame)
 
-                    if (frame > 254.0)
+                    if(frame > 254.0 && para_ent[id])
                     {
                         remove_entity(para_ent[id])
                         para_ent[id] = 0
@@ -403,135 +434,140 @@ public parachute_think(flags, id, button, oldbutton)
                     set_user_gravity(id, 1.0)
                     para_ent[id] = 0
                 }
-
                 return
             }
-            if(button & IN_USE|AUTO)
+            if(flags & ~FL_ONGROUND)
             {
-                if(AUTO && !bFirstAuto[id])
-                    bFirstAuto[id] = true
-                else if(button & IN_USE)
-                bFirstAuto[id] = false
+                emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 999 ? 0 : SND_STOP, PITCH)
 
-                new Float:velocity[3]
-                entity_get_vector(id, EV_VEC_velocity, velocity)
-
-                if (velocity[2] < 0.0)
+                if(button & IN_USE|AUTO)
                 {
-                    if(para_ent[id] <= 0)
+                    if(AUTO && !bFirstAuto[id])
+                        bFirstAuto[id] = true
+                    else if(button & IN_USE)
+                        bFirstAuto[id] = false
+
+                    new Float:velocity[3]
+                    entity_get_vector(id, EV_VEC_velocity, velocity)
+
+                    if (velocity[2] < 0.0)
                     {
-                        new Float:minbox[3] = { -Parachute_size, -Parachute_size, -Parachute_size }
-                        new Float:maxbox[3] = { Parachute_size, Parachute_size, Parachute_size }
-                        new Float:angles[3] = { 0.0, 0.0, 0.0 }
-                        set_pev(para_ent[id], pev_spawnflags, 6)
-
-                        para_ent[id] = g_UnBreakable ?create_entity("info_target") : create_entity("func_breakable")
-                        set_pev(para_ent[id], pev_solid, g_UnBreakable  ? SOLID_NOT : SOLID_BBOX)
-
-                        new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
-                        formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
-                        set_pev(para_ent[id], pev_classname, "parachute")
-
-                        if(pev_valid(para_ent[id]) > 1)
+                        if(para_ent[id] <= 0)
                         {
-                            entity_set_string(para_ent[id], EV_SZ_targetname, SzChuteName)
-                            entity_set_edict(para_ent[id], EV_ENT_aiment, id)
-                            entity_set_edict(para_ent[id], EV_ENT_owner, id)
-                            entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
+                            new Float:minbox[3] = { -Parachute_size, -Parachute_size, -Parachute_size }
+                            new Float:maxbox[3] = { Parachute_size, Parachute_size, Parachute_size }
+                            new Float:angles[3] = { 0.0, 0.0, 0.0 }
 
-                            if( bIsBot[id] )
+                            set_pev(para_ent[id], pev_spawnflags, 6)
+
+                            para_ent[id] = g_UnBreakable ? create_entity("info_target") : create_entity("func_breakable")
+                            set_pev(para_ent[id], pev_solid, g_UnBreakable  ? SOLID_NOT : SOLID_BBOX)
+
+                            new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
+                            formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
+                            set_pev(para_ent[id], pev_classname, "parachute")
+
+                            if(pev_valid(para_ent[id]))
                             {
-                                entity_set_model(para_ent[id], PARA_MODELW);
-                            }
-                            else if( bIsAdmin[id] )
-                            {
-                                entity_set_model(para_ent[id], PARA_MODEL);
-                            }
-                            else
-                            {
-                                entity_set_model(para_ent[id], PARA_MODELO);
-                            }
+                                entity_set_string(para_ent[id], EV_SZ_targetname, SzChuteName)
+                                entity_set_edict(para_ent[id], EV_ENT_aiment, id)
+                                entity_set_edict(para_ent[id], EV_ENT_owner, id)
+                                entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
 
-                            entity_set_size(para_ent[id], minbox, maxbox )
-                            set_pev(para_ent[id],pev_angles,angles)
+                                if( bIsBot[id] )
+                                {
+                                    entity_set_model(para_ent[id], PARA_MODELW);
+                                }
+                                else if( bIsAdmin[id] )
+                                {
+                                    entity_set_model(para_ent[id], PARA_MODEL);
+                                }
+                                else
+                                {
+                                    entity_set_model(para_ent[id], PARA_MODELO);
+                                }
 
-                            set_pev(para_ent[id],pev_takedamage,  g_UnBreakable || bIsBot[id] && bOF_run ? DAMAGE_NO : DAMAGE_YES)
+                                entity_set_size(para_ent[id], minbox, maxbox )
+                                set_pev(para_ent[id],pev_angles,angles)
 
-                            //Give the parachute health so we can destroy it later in a fight.
-                            if(!g_UnBreakable)
-                            {
-                                DispatchKeyValue(para_ent[id], "explodemagnitude", "15")
-                                entity_set_float(para_ent[id], EV_FL_health, get_pcvar_float(g_packHP))
-                            }
+                                set_pev(para_ent[id],pev_takedamage,  g_UnBreakable || bIsBot[id] && bOF_run ? DAMAGE_NO : DAMAGE_YES)
 
-                            entity_set_int(para_ent[id], EV_INT_sequence, 0)
-                            entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
-                            entity_set_float(para_ent[id], EV_FL_frame, 0.0)
-                            entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
-                        }
-                    }
-                    if (pev_valid(para_ent[id]) > 1 && para_ent[id] > 0)
-                    {
-                        entity_set_int(id, EV_INT_sequence, 3)
-                        entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
-                        entity_set_int(id, EV_INT_gaitsequence, 1)
-                        entity_set_float(id, EV_FL_frame, 1.0)
-                        entity_set_float(id, EV_FL_framerate, 1.0)
-                        set_user_gravity(id, 0.1)
+                                //Give the parachute health so we can destroy it later in a fight.
+                                if(!g_UnBreakable)
+                                {
+                                    DispatchKeyValue(para_ent[id], "explodemagnitude", "15")
+                                    entity_set_float(para_ent[id], EV_FL_health, get_pcvar_float(g_packHP))
+                                }
 
-                        velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
-                        entity_set_vector(id, EV_VEC_velocity, velocity)
-
-                        if( (pev_valid(para_ent[id]) > 1) && (entity_get_int(para_ent[id],EV_INT_sequence) == 0) )
-                        {
-
-                            frame = entity_get_float(para_ent[id],EV_FL_fuser1) + 1.0
-                            entity_set_float(para_ent[id],EV_FL_fuser1,frame)
-                            entity_set_float(para_ent[id],EV_FL_frame,frame)
-
-                            if (frame > 100.0 && pev_valid(para_ent[id]) > 1)
-                            {
-                                entity_set_float(para_ent[id], EV_FL_animtime, 0.0)
-                                entity_set_float(para_ent[id], EV_FL_framerate, 0.4)
-                                entity_set_int(para_ent[id], EV_INT_sequence, 1)
+                                entity_set_int(para_ent[id], EV_INT_sequence, 0)
                                 entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
                                 entity_set_float(para_ent[id], EV_FL_frame, 0.0)
                                 entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
                             }
                         }
-                    }
-                    if ( para_ent[id] < 1 || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
-                    {
-                        emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
-                        colorize(id)
-                        set_user_gravity(id, 1.0)
-
-                        //Let player know they shot the chute not the player.
-                        set_task(0.2,"chute_pop",id)
-                        if(print)
+                        if(para_ent[id])
                         {
-                            server_print "%n parachute destroyed!", id
-                            client_print 0, print_chat, "%n parachute destroyed!", id
+                            entity_set_int(id, EV_INT_sequence, 3)
+                            entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
+                            entity_set_int(id, EV_INT_gaitsequence, 1)
+                            entity_set_float(id, EV_FL_frame, 1.0)
+                            entity_set_float(id, EV_FL_framerate, 1.0)
+                            set_user_gravity(id, 0.1)
+
+                            velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
+                            entity_set_vector(id, EV_VEC_velocity, velocity)
+
+                            if(entity_get_int(para_ent[id],EV_INT_sequence) == 0)
+                            {
+
+                                frame = entity_get_float(para_ent[id],EV_FL_fuser1) + 1.0
+                                entity_set_float(para_ent[id],EV_FL_fuser1,frame)
+                                entity_set_float(para_ent[id],EV_FL_frame,frame)
+
+                                if(frame > 100.0)
+                                {
+                                    entity_set_float(para_ent[id], EV_FL_animtime, 0.0)
+                                    entity_set_float(para_ent[id], EV_FL_framerate, 0.4)
+                                    entity_set_int(para_ent[id], EV_INT_sequence, 1)
+                                    entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
+                                    entity_set_float(para_ent[id], EV_FL_frame, 0.0)
+                                    entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
+                                }
+                            }
                         }
-                        return;
+                        if(para_ent[id] < 1 || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
+                        {
+                            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
+                            colorize(id)
+                            set_user_gravity(id, 1.0)
+
+                            //Let player know they shot the chute not the player.
+                            set_task(0.2,"chute_pop",id)
+                            if(print)
+                            {
+                                server_print "%n parachute destroyed!", id
+                                client_print 0, print_chat, "%n parachute destroyed!", id
+                            }
+                            return;
+                        }
+                    }
+                    else if (para_ent[id])
+                    {
+                        remove_entity(para_ent[id])
+                        set_user_gravity(id, 1.0)
+                        para_ent[id] = 0
                     }
                 }
-                else if (para_ent[id] > 0 && pev_valid(para_ent[id]) > 1)
+                else if ((oldbutton & IN_USE) && para_ent[id])
                 {
                     remove_entity(para_ent[id])
                     set_user_gravity(id, 1.0)
                     para_ent[id] = 0
                 }
             }
-            else if ((oldbutton & IN_USE) && para_ent[id] > 0 && pev_valid(para_ent[id]) > 1)
-            {
-                remove_entity(para_ent[id])
-                set_user_gravity(id, 1.0)
-                para_ent[id] = 0
-            }
         }
     }
-    if(flags & FL_ONGROUND)
+    else
     {
         emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
     }
@@ -558,7 +594,7 @@ public chute_pop(id)
 
         pev(id, pev_origin, Origin)
 
-        emessage_begin(MSG_PVS, SVC_TEMPENTITY);
+        emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY);
         ewrite_byte(TE_EXPLODEMODEL);
         ewrite_coord(floatround(Origin[0]+random_float(-11.0,11.0)));
         ewrite_coord(floatround(Origin[1]-random_float(-11.0,11.0)));
@@ -591,7 +627,7 @@ public death_event()
     new id = read_data(2)
 
     //otherwise the dead become a stepping stone for the living
-    if(pev_valid(para_ent[id]))
+    if(para_ent[id])
         set_pev(para_ent[id],pev_solid,SOLID_NOT)
 
     parachute_reset(id)
@@ -606,22 +642,27 @@ public HandleSay(id)
     read_args(args, charsmax(args))
     remove_quotes(args)
 
-    if (gCStrike) {
-        if (equali(args, "buy_parachute")) {
+    if (gCStrike)
+    {
+        if (equali(args, "buy_parachute"))
+        {
             buy_parachute(id)
             return PLUGIN_HANDLED
         }
-        else if (equali(args, "sell_parachute")) {
+        else if (equali(args, "sell_parachute"))
+        {
             sell_parachute(id)
             return PLUGIN_HANDLED
         }
-        else if (containi(args, "give_parachute") == 0) {
+        else if (containi(args, "give_parachute") == 0)
+        {
             give_parachute(id,args[15])
             return PLUGIN_HANDLED
         }
     }
 
-    if (containi(args, "parachute") != -1) {
+    if (containi(args, "parachute") != charsmin)
+    {
         if (gCStrike) client_print(id, print_chat, "[AMXX] Parachute commands: buy_parachute, sell_parachute, give_parachute")
         client_print(id, print_chat, "[AMXX] To use your parachute press and hold your +use button while falling")
     }
@@ -634,12 +675,14 @@ public buy_parachute(id)
     if (!gCStrike) return PLUGIN_CONTINUE
     if (!is_user_connected(id)) return PLUGIN_CONTINUE
 
-    if (!get_pcvar_num(pEnabled)) {
+    if (!get_pcvar_num(pEnabled))
+    {
         client_print(id, print_chat, "[AMXX] Parachute plugin is disabled")
         return PLUGIN_HANDLED
     }
 
-    if (has_parachute[id]) {
+    if (has_parachute[id])
+    {
         client_print(id, print_chat, "[AMXX] You already have a parachute")
         return PLUGIN_HANDLED
     }
@@ -647,7 +690,8 @@ public buy_parachute(id)
     new money = cs_get_user_money(id)
     new cost = get_pcvar_num(pCost)
 
-    if (money < cost) {
+    if (money < cost)
+    {
         client_print(id, print_chat, "[AMXX] You don't have enough moneyfor a parachute - Costs $%i", cost)
         return PLUGIN_HANDLED
     }
@@ -664,17 +708,20 @@ public sell_parachute(id)
     if (!gCStrike) return PLUGIN_CONTINUE
     if (!is_user_connected(id)) return PLUGIN_CONTINUE
 
-    if (!get_pcvar_num(pEnabled)) {
+    if (!get_pcvar_num(pEnabled))
+    {
         client_print(id, print_chat, "[AMXX] Parachute plugin is disabled")
         return PLUGIN_HANDLED
     }
 
-    if (!has_parachute[id]) {
+    if (!has_parachute[id])
+    {
         client_print(id, print_chat, "[AMXX] You don't have a parachute to sell")
         return PLUGIN_HANDLED
     }
 
-    if (access(id,PARACHUTE_LEVEL)) {
+    if (access(id,PARACHUTE_LEVEL))
+    {
         client_print(id, print_chat, "[AMXX] You cannot sell your free admin parachute")
         return PLUGIN_HANDLED
     }
@@ -697,12 +744,14 @@ public give_parachute(id,args[])
     if (!gCStrike) return PLUGIN_CONTINUE
     if (!is_user_connected(id)) return PLUGIN_CONTINUE
 
-    if (!get_pcvar_num(pEnabled)) {
+    if (!get_pcvar_num(pEnabled))
+    {
         client_print(id, print_chat, "[AMXX] Parachute plugin is disabled")
         return PLUGIN_HANDLED
     }
 
-    if (!has_parachute[id]) {
+    if (!has_parachute[id])
+    {
         client_print(id, print_chat, "[AMXX] You don't have a parachute to give")
         return PLUGIN_HANDLED
     }
@@ -714,7 +763,8 @@ public give_parachute(id,args[])
     get_user_name(id, id_name, charsmax(id_name))
     get_user_name(player, pl_name, charsmax(pl_name))
 
-    if(has_parachute[player]) {
+    if(has_parachute[player])
+    {
         client_print(id, print_chat, "[AMXX] %s already has a parachute.", pl_name)
         return PLUGIN_HANDLED
     }
@@ -734,7 +784,8 @@ public admin_give_parachute(id, level, cid)
 
     if(!cmd_access(id,level,cid,2)) return PLUGIN_HANDLED
 
-    if (!get_pcvar_num(pEnabled)) {
+    if (!get_pcvar_num(pEnabled))
+    {
         client_print(id, print_chat, "[AMXX] Parachute plugin is disabled")
         return PLUGIN_HANDLED
     }
@@ -750,16 +801,19 @@ public admin_give_parachute(id, level, cid)
         if (equali("T",arg[1])) copy(arg[1],31,"TERRORIST")
         equali("ALL",arg[1]) ? get_players(players,inum) : get_players(players,inum,"e",arg[1])
 
-        if (inum == 0) {
+        if (inum == 0)
+        {
             console_print(id,"No clients in such team")
             return PLUGIN_HANDLED
         }
 
-        for(new a = 0; a < inum; a++) {
+        for(new a = 0; a < inum; a++)
+        {
             has_parachute[players[a]] = true
         }
 
-        switch(get_cvar_num("amx_show_activity"))   {
+        switch(get_cvar_num("amx_show_activity"))
+        {
             case 2: client_print(0,print_chat,"ADMIN %s: gave a parachute to ^"%s^" players",name,arg[1])
             case 1: client_print(0,print_chat,"ADMIN: gave a parachute to ^"%s^" players",arg[1])
         }
@@ -776,7 +830,8 @@ public admin_give_parachute(id, level, cid)
         get_user_name(player,name2,charsmax(name2))
         get_user_authid(player,authid2,charsmax(authid2))
 
-        switch(get_cvar_num("amx_show_activity")) {
+        switch(get_cvar_num("amx_show_activity"))
+        {
             case 2: client_print(0,print_chat,"ADMIN %s: gave a parachute to ^"%s^"",name,name2)
             case 1: client_print(0,print_chat,"ADMIN: gave a parachute to ^"%s^"",name2)
         }
