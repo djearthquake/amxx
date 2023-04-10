@@ -3,8 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.3"
 
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
-#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR
+#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -87,6 +86,7 @@
 #include <cstrike>
 #include <fun>
 #include <hamsandwich>
+#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR
 
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
