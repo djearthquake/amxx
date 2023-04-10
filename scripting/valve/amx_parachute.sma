@@ -3,7 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.3"
 
-#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -86,7 +86,9 @@
 #include <cstrike>
 #include <fun>
 #include <hamsandwich>
+#if defined CZERO
 #tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR
+#endif
 
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
@@ -98,7 +100,7 @@
 #define IS_THERE (~(0<<IN_SCORE))
 #define charsmin                  -1
 
-#define Parachute_size  15.0
+#define Parachute_size  35.0
 
 new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1];
 new para_ent[ MAX_PLAYERS +1 ]
@@ -129,10 +131,10 @@ public plugin_init()
     pEnabled    = register_cvar("sv_parachute", "1" )
     pFallSpeed  = register_cvar("parachute_fallspeed", "100")
     pDetach     = register_cvar("parachute_detach", "1")
-    pAutoDeploy = register_cvar("parachute_autorip", "1200")
+    pAutoDeploy = register_cvar("parachute_autorip", "650")
     pAutoRules  = register_cvar("parachute_autoadmin", "2") //0|off 1|admin 2|all
     bind_pcvar_num(register_cvar("parachute_safemode", "0"),g_UnBreakable)
-    g_packHP    = register_cvar("parachute_health", "75")
+    g_packHP    = register_cvar("parachute_health", "50")
     g_debug     = register_cvar("parachute_debug", "0")
 
     #if !defined MaxClients
@@ -264,7 +266,10 @@ public client_putinserver(id)
 
 public client_infochanged(id)
 {
-    bIsAdmin[id] = get_user_flags(id) & PARACHUTE_LEVEL ? true : false
+    if(is_user_connected(id))
+    {
+        bIsAdmin[id] = get_user_flags(id) & PARACHUTE_LEVEL ? true : false
+    }
 }
 
 public parachute_reset(id)
@@ -308,12 +313,15 @@ public parachute_reset(id)
     new id = pev(chute, pev_owner)
     if(is_user_connected(id))
     {
-        server_print "Adjusting %n parachute", id
+        server_print "Adjusting %n parachute...", id
 
-        if( para_ent[id] && para_ent[id])
+        if(para_ent[id] > MaxClients && is_user_alive(id))
         {
-            if(is_user_alive(id))
+             if(is_valid_ent(para_ent[id]))
+             {
                 set_pev(para_ent[id], pev_solid, SOLID_NOT)
+                server_print "Adjusted %n parachute!", id
+            }
         }
     }
 }
@@ -353,6 +361,8 @@ public parachute_prethink(id)
     if(!get_pcvar_num(pEnabled)) return
     if(is_user_connected(id))
     {
+        if(!has_parachute[id])
+            return
         new flags = get_entity_flags(id)
         if(flags & FL_SPECTATOR)
             return
@@ -400,13 +410,14 @@ public parachute_think(flags, id, button, oldbutton)
 
             if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND) || iDrop < charsmin )
             {
-                if(get_pcvar_num(pDetach))
+                if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
                 {
                     bFirstAuto[id] = false
 
                     if(get_user_gravity(id) == 0.1)
                         set_user_gravity(id, 1.0)
-                    if (entity_get_int(para_ent[id],EV_INT_sequence) != 2)
+
+                    if(entity_get_int(para_ent[id],EV_INT_sequence) != 2)
                     {
                         entity_set_int(para_ent[id], EV_INT_sequence, 2)
                         entity_set_int(para_ent[id], EV_INT_gaitsequence, 1)
@@ -430,9 +441,12 @@ public parachute_think(flags, id, button, oldbutton)
                 }
                 else
                 {
-                    remove_entity(para_ent[id])
+                    if(pev_valid(para_ent[id]>1))
+                    {
+                        remove_entity(para_ent[id])
+                        para_ent[id] = 0
+                    }
                     set_user_gravity(id, 1.0)
-                    para_ent[id] = 0
                 }
                 return
             }
@@ -467,7 +481,7 @@ public parachute_think(flags, id, button, oldbutton)
                             formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
                             set_pev(para_ent[id], pev_classname, "parachute")
 
-                            if(pev_valid(para_ent[id]))
+                            if(is_valid_ent(para_ent[id]))
                             {
                                 entity_set_string(para_ent[id], EV_SZ_targetname, SzChuteName)
                                 entity_set_edict(para_ent[id], EV_ENT_aiment, id)
@@ -490,7 +504,7 @@ public parachute_think(flags, id, button, oldbutton)
                                 entity_set_size(para_ent[id], minbox, maxbox )
                                 set_pev(para_ent[id],pev_angles,angles)
 
-                                set_pev(para_ent[id],pev_takedamage,  g_UnBreakable || bIsBot[id] && bOF_run ? DAMAGE_NO : DAMAGE_YES)
+                                set_pev(para_ent[id],pev_takedamage, g_UnBreakable || bIsBot[id] && bOF_run ? DAMAGE_NO : DAMAGE_YES)
 
                                 //Give the parachute health so we can destroy it later in a fight.
                                 if(!g_UnBreakable)
@@ -505,7 +519,7 @@ public parachute_think(flags, id, button, oldbutton)
                                 entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
                             }
                         }
-                        if(para_ent[id])
+                        if(para_ent[id] && is_valid_ent(para_ent[id]))
                         {
                             entity_set_int(id, EV_INT_sequence, 3)
                             entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
@@ -535,7 +549,7 @@ public parachute_think(flags, id, button, oldbutton)
                                 }
                             }
                         }
-                        if(para_ent[id] < 1 || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
+                        if(!para_ent[id] || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
                         {
                             emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
                             colorize(id)
