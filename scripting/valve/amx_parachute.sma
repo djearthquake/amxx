@@ -3,7 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.3"
 
-#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -279,6 +279,7 @@ public parachute_reset(id)
     if(is_user_connected(id))
     {
         set_user_gravity(id, 1.0)
+        set_user_info(id, "is_parachuting", "0")
 
         if(print)
             server_print "Resetting chute for %n", id
@@ -333,6 +334,7 @@ if(is_user_connected(id))
     if( para_ent[id] )
     {
         set_user_gravity(id, 1.0)
+        set_user_info(id, "is_parachuting", "0")
 
         if(bOF_run && bIsBot[id])
         {
@@ -523,6 +525,7 @@ public parachute_think(flags, id, button, oldbutton)
                             entity_set_float(id, EV_FL_frame, 1.0)
                             entity_set_float(id, EV_FL_framerate, 1.0)
                             set_user_gravity(id, 0.1)
+                            set_user_info(id, "is_parachuting", "1")
 
                             velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
                             entity_set_vector(id, EV_VEC_velocity, velocity)
@@ -550,6 +553,7 @@ public parachute_think(flags, id, button, oldbutton)
                             emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
                             colorize(id)
                             set_user_gravity(id, 1.0)
+                            set_user_info(id, "is_parachuting", "0")
 
                             //Let player know they shot the chute not the player.
                             set_task(0.2,"chute_pop",id)
