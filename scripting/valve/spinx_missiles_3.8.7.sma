@@ -30,6 +30,9 @@
 *    Change log 3.8.5 3.8.6
 *    -Cleaned up the scoreboard. The frags were not showing up in 'real time'.
 *
+*    04/11/23 SPiNX
+*    Change log 3.8.6 3.8.7
+*    -Optimize. Rework the parachute seekers. They were behaving like next level heat seekers. Stop sending client commands to bots!
 *
 ****************************************************************************
 *
@@ -789,7 +792,7 @@ do_victim(victim,attacker,damage,unarmed,tk){
 
 
             if(is_heat_rocket[attacker] == 1)
-                set_task(1.0,"delay_arnold")
+                set_task(1.0,"delay_arnold", attacker)
 
             if(get_pcvar_num(g_logdetail) == 3){
                 log_message("^"%s<%d><%s><%s>^" attacked ^"%s<%d><%s><%s>^" with ^"missile^" (hit ^"chest^") (damage ^"%d^") (health ^"0^")",
@@ -898,12 +901,16 @@ do_victim(victim,attacker,damage,unarmed,tk){
 #endif
 }
 
-public delay_arnold(){
-    client_cmd(0,"play misc/arnold_heatseeker.wav")
+public delay_arnold(attacker)
+{
+    if(is_user_connected(attacker))
+        client_cmd(attacker,"play misc/arnold_heatseeker.wav")
 }
 
-public delay_prizewin(){
-    client_cmd(0,"play ambience/lv4.wav")
+public delay_prizewin(id)
+{
+    if(is_user_connected(id))
+        client_cmd(id,"play ambience/lv4.wav")
 }
 
 public player_sdmf(id,level,cid){
@@ -2095,8 +2102,8 @@ public ls_missile_ck(){
                 }
             }
             show_hudmessage(0,Message)
-            client_cmd(0,"spk ^"rocket destroyed^"")
-            set_task(2.0,"delay_prizewin")
+            client_cmd(id,"spk ^"rocket destroyed^"")
+            set_task(2.0,"delay_prizewin", id)
             vexd_pfntouch(iarg,0)
         }
     }
