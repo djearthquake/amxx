@@ -19,7 +19,7 @@
 #include amxmodx
 #include amxmisc
 #include hamsandwich
-#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 #tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
 
 #define  charsmin -1
@@ -221,6 +221,9 @@ public plugin_init()
     bDod = is_running("dod") == 1  ? true : false
     bStrike = cstrike_running() ? true : false
     g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
+
+    if(bStrike)
+        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
     //hitmarx 1-8. 1 snipers-only (w/ legacy HL support).2 all (w/ legacy HL support) . 3 Dice. (Future organized DOD) 4. Crosses. 5. Organized just for Cstrike. 6. Dice again. 7.Random inventory 8.Random inventory 2.
     //Type hitmark_demo in console or nodemo to test without players or as a spec.
     //bsod_confirm_kills # <0-?> sets how many times screen flashes you you kill an opponent.
@@ -230,7 +233,6 @@ public plugin_init()
     #define TICKER test_spinner2
     #if !defined CS_OnBuy
         register_message(get_user_msgid("Money"), "OnMoneyChange")
-        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
     #endif
 }
 
@@ -238,7 +240,7 @@ public plugin_init()
 public plugin_precache()
 {
     //fail-safe although plugin is expected to stop beforehand.
-    if (is_running("czero"))
+    if(is_running("czero"))
     {
         if(is_plugin_loaded(SPEC_PRG,true) == charsmin)
         {
