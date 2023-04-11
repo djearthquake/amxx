@@ -3,7 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.3"
 
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -370,11 +370,13 @@ public parachute_prethink(id)
         new oldbutton = get_user_oldbutton(id)
 
         //if(pev(id, pev_oldbuttons) & IS_THERE)
-        parachute_think(flags, id, button, oldbutton)
+        new iDrop = pev(id,pev_flFallVelocity)
+        emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
+        parachute_think(flags, id, button, oldbutton, iDrop)
     }
 }
 
-public parachute_think(flags, id, button, oldbutton)
+public parachute_think(flags, id, button, oldbutton, iDrop)
 {
     /*
      * parachute.mdl animation information
@@ -389,10 +391,7 @@ public parachute_think(flags, id, button, oldbutton)
         new AUTO;
         new Rip_Cord = get_pcvar_num(pAutoDeploy);
         new print = get_pcvar_num(g_debug)
-        new iDrop = pev(id,pev_flFallVelocity)
 
-
-        emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
 
         if (get_pcvar_num(pAutoRules) == 1 && bIsAdmin[id] || get_pcvar_num(pAutoRules) == 2)
         {
@@ -582,11 +581,7 @@ public parachute_think(flags, id, button, oldbutton)
             }
         }
     }
-    else
-    {
-        emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
-    }
-
+    emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 }
 
 //effects
@@ -641,12 +636,14 @@ public client_disconnected(id)
 public death_event()
 {
     new id = read_data(2)
+    if(is_user_connected(id))
+    {
+        //otherwise the dead become a stepping stone for the living
+        if(para_ent[id])
+            set_pev(para_ent[id],pev_solid,SOLID_NOT)
 
-    //otherwise the dead become a stepping stone for the living
-    if(para_ent[id])
-        set_pev(para_ent[id],pev_solid,SOLID_NOT)
-
-    parachute_reset(id)
+        parachute_reset(id)
+    }
 
 }
 
