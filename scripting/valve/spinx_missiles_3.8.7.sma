@@ -372,6 +372,7 @@ new MaxClients
 new beam, boom, ls_dot;
 new Float:fAngle;
 new bool:roundfreeze
+new bool:b_Bot[MAX_PLAYERS+1]
 new bool:bCS
 new round_delay;
 new has_rocket[ MAX_PLAYERS + 1 ];
@@ -546,6 +547,12 @@ public client_connect(id) {
     user_sdmf[id] = 0.0
     hookgrabtask[id] = 0
     cmd_onParachute[id] = 0
+}
+
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+        b_Bot[id] = is_user_bot(id) ? true : false
 }
 
 public client_disconnect(id){
@@ -1115,7 +1122,7 @@ public fire_missile(id) {
         if(!id) id = 1
     }
 
-    if(!get_cvar_num("amx_luds_missiles") || roundfreeze || !is_user_alive(id) && !is_user_bot(id))
+    if(!get_cvar_num("amx_luds_missiles") || roundfreeze || !is_user_alive(id) && !b_Bot[id])
         return PLUGIN_HANDLED
 
     show_missile_inv(id)
@@ -1354,7 +1361,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
 
             get_pcvar_string(g_heatseeker_tag, SzTag, charsmax(SzTag));
 
-            if (get_pcvar_num(g_heatseeker_bot) && is_user_bot(players[i]) && containi(playername,SzTag) == charsmin
+            if (get_pcvar_num(g_heatseeker_bot) && b_Bot[players[i]] && containi(playername,SzTag) == charsmin
             ||
                 get_pcvar_num(g_heatseeker_user) == 1 && containi(playername,szRunawayHeatSignature) > charsmin
                 )
