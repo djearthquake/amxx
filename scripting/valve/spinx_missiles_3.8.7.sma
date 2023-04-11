@@ -369,6 +369,7 @@ new MaxClients
 new beam, boom, ls_dot;
 new Float:fAngle;
 new bool:roundfreeze
+new bool:bCS
 new round_delay;
 new has_rocket[ MAX_PLAYERS + 1 ];
 //new is_parachuting[ MAX_PLAYERS + 1 ];
@@ -388,7 +389,8 @@ new gmsgDeathMsg, gmsgScoreInfo, g_costcvar, g_heatseeker_tag, g_heatseeker_bot,
 
 
 public plugin_init(){
-    register_plugin("Missiles Launcher","3.8.6","SPINX") //Original by EJL. AMXX PORT JTP10181. HL/OP4 PORT SPiNX.
+    register_plugin("Missiles Launcher","3.8.7","SPINX") //Original by EJL. AMXX PORT JTP10181. HL/OP4 PORT SPiNX.
+    bCS = cstrike_running() == 1 ? true : false
 
     register_concmd("amx_missiles","admin_missiles",ADMIN_MISSILE_SET,"- Toggles Missiles Mode ON and OFF")
     register_concmd("amx_missilesbuying","admin_missilebuy",ADMIN_MISSILE_SET,"- Toggles Missile Buy Requirement mode ON and OFF")
@@ -477,7 +479,7 @@ public plugin_init(){
 
     register_event("DeathMsg","death_event","a")
 
-    if(cstrike_running())
+    if(bCS)
     {
         register_logevent("round_start", 2, "1=Round_Start")
         register_logevent("round_end", 2, "1=Round_End")
@@ -512,7 +514,7 @@ public plugin_precache() {
     precache_model("models/rpgrocket.mdl")
     precache_model("models/hvr.mdl")
 
-    if(cstrike_running())
+    if(bCS)
     precache_model("models/chick.mdl")
 
     beam = precache_model("sprites/smoke.spr")
@@ -683,7 +685,7 @@ public vexd_pfntouch(pToucher, pTouched) {
         if(has_rocket[id] == pToucher)
         has_rocket[id] = 0
 
-        for ( i = 1; i < MaxClients; i++) {
+        for ( i = 1; i <= MaxClients; ++i) {
 
             if((is_user_alive(i)) && (i != id)){
                 get_user_origin(i,origin)
@@ -709,7 +711,7 @@ public vexd_pfntouch(pToucher, pTouched) {
                     }
 
 
-                    if (!cstrike_running())
+                    if(!bCS)
                             do_victim(i,id,damage,unarmed,0)
 
                             else
@@ -819,9 +821,9 @@ do_victim(victim,attacker,damage,unarmed,tk){
             }
 
             //set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
-            if(cstrike_running())
+            if(bCS)
                 set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-            if(!cstrike_running())
+            if(!bCS)
                 set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
 
             fakedamage(victim," Missile",500.0,DMG_MORTAR);
@@ -979,7 +981,7 @@ public admin_missile(id,level,cid) {
         }
     }
 
-    if(iarg2 == 1 && !cstrike_running()) {
+    if(iarg2 == 1 && !bCS) {
         iarg2 = 0
     }
     else if(iarg2 > 2) {
@@ -1225,7 +1227,6 @@ public fire_missile(id) {
 }
 
 public anti_missile_radar(args[]) {
-    new maxplayers = get_maxplayers()
     new id = args[0]
     new tid = 0
     new aimvec[3],origin[3],length
@@ -1252,8 +1253,8 @@ public anti_missile_radar(args[]) {
     radarvec1[1]=radarvec1[1]*350/length + origin[1]
     radarvec1[2]=radarvec1[2]*350/length + origin[2]
 
-    for (new i = 1; i <= maxplayers; i++) {
-        if( (has_rocket[i] > maxplayers) && (i != id) && (tid <= maxplayers) ) {
+    for (new i = 1; i <= MaxClients; ++i) {
+        if( (has_rocket[i] > MaxClients) && (i != id) && (tid <= MaxClients) ) {
             new szClassName[ MAX_PLAYERS ]
             if(is_valid_ent(has_rocket[i]))
             entity_get_string(has_rocket[i], EV_SZ_classname, szClassName, charsmax (szClassName))
@@ -1277,7 +1278,7 @@ public anti_missile_radar(args[]) {
             }
         }
     }
-    if(tid > maxplayers){
+    if(tid > MaxClients){
         client_cmd(id,"spk fvox/beep")
         set_hudmessage(255,10,10, -1.0, 0.26, 0, 0.02, 3.0, 1.01, 1.1, 54)
         show_hudmessage(id,"ANTIMISSILE LOCKED ONTO TARGET")
@@ -1346,11 +1347,10 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
 
             get_pcvar_string(g_heatseeker_tag, SzTag, charsmax(SzTag));
 
-            if( get_pcvar_num(g_heatseeker_bot) && is_user_bot(players[i]) && containi(playername,SzTag) == charsmin
-                ||
+            if (get_pcvar_num(g_heatseeker_bot) && is_user_bot(players[i]) && containi(playername,SzTag) == charsmin
+            ||
                 get_pcvar_num(g_heatseeker_user) == 1 && containi(playername,szRunawayHeatSignature) > charsmin
-
-              )
+                )
 
                 output = 1
 
@@ -1363,8 +1363,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
 
                 if(dist1 < dist || dist1 < dist &&
 
-                cstrike_running() && get_user_team(id) != get_user_team(players[i]) )
-
+                bCS && get_user_team(id) != get_user_team(players[i]) )
                 {
                     dist = dist1
 
@@ -1433,7 +1432,10 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
                         {
                             dist = dist1
                             found = 1
-                            args[6] = players[i]
+                            if(players[i] != id)
+                            {
+                                args[6] = players[i]
+                            }
                         }
                     }
                 }
@@ -1443,7 +1445,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
             client_print(id,print_chat,"[AMXX] Cannot fire Parachute-Seeking Missile, no skydivers in view.")
             if(!admin){
                 #if defined CSTRIKE
-                if(get_cvar_num("amx_missile_buy") == 1 & cstrike_running() ){
+                if(get_cvar_num("amx_missile_buy") == 1 & bCS ){
                     new umoney = cs_get_user_money(id)
                     new m_cost = get_cvar_num("amx_missile_cost6")
                     cs_set_user_money(id,umoney+m_cost,1)
@@ -2072,7 +2074,7 @@ public ls_missile_ck(){
             get_user_name(id,name,charsmax(name))
             get_user_name(owner,nameowner,charsmax(nameowner))
             set_hudmessage(255,25,25, -1.0, 0.23, 0, 0.02, 8.0, 1.01, 1.1, 54)
-            if( (Tid == Towner) && (cstrike_running() ) && ( ((ff == 1 ) && (obey == 0)) || (ff == 0) ) ){
+            if( (Tid == Towner) && bCS && ( ((ff == 1 ) && (obey == 0)) || (ff == 0) ) ){
                 format(Message,charsmax(Message),"%s successfully shot down^n%s's missile with a laser",name,nameowner)
             }
             else {
@@ -2156,7 +2158,7 @@ public rocket_motd(id){
     new n = 0
 
 #if !defined NO_STEAM
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if ( bCS || (is_running("dod") == 1)  )
         n += copy( buffer[n],len-n,"<html><head><style type=^"text/css^">pre{color:#FFB000;}body{background:#000000;margin-left:8px;margin-top:0px;}</style></head><body><pre>^n")
 #endif
 
@@ -2191,7 +2193,7 @@ public rocket_motd(id){
     n += format( buffer[n],len-n,"  - Currently Missiles %s.^n",get_cvar_num("amx_missile_buy") ? "are free" : "must be paid for")
 
 #if !defined NO_STEAM
-    if ( cstrike_running() || (is_running("dod") == 1)  )
+    if ( bCS || (is_running("dod") == 1)  )
       n += copy( buffer[n],len-n,"</pre></body></html>")
 #endif
 
@@ -2243,12 +2245,12 @@ public show_main_menu(id) {
     if(!get_cvar_num("amx_luds_missiles") || !is_user_alive(id))
         return PLUGIN_HANDLED
 
-    if (cstrike_running())
+    if (bCS)
         n += format( menu_body[n],len-n,"\yFire Missile Menu^n\w^n")
     else
         n += format( menu_body[n],len-n,"Fire Missile Menu^n^n")
 
-    if(get_cvar_num("amx_missile_buy") == 1 && cstrike_running()){
+    if(get_cvar_num("amx_missile_buy") == 1 && bCS){
 
         n += format( menu_body[n],len-n,"1. Common Missile - $%d^n",get_cvar_num("amx_missile_cost1"))
         n += format( menu_body[n],len-n,"2. Laser Guided Missile - $%d^n",get_cvar_num("amx_missile_cost2"))
@@ -2367,7 +2369,7 @@ public round_end(){
     if(get_cvar_num("amx_luds_missiles") == 0)
         return PLUGIN_CONTINUE
 
-    for (new i=1; i <= get_maxplayers(); i++) {
+    for (new i=1; i <= MaxClients; ++i) {
         if(is_user_connected(i)) {
             if( !is_user_alive(i) && get_cvar_num("amx_missile_buy") ){
                 missile_inv[i][1] = 0
@@ -2399,7 +2401,7 @@ public round_start(){
 
     new prize = get_cvar_num("amx_missile_prizes")
 
-    for (new i = 1; i <= get_maxplayers(); i++) {
+    for (new i = 1; i <= MaxClients; i++) {
         radar_batt[i] = get_cvar_num("amx_missile_radarbattery")
         if(!get_cvar_num("amx_missile_buy")){
             missile_inv[i][1] = get_cvar_num("amx_missile_ammo1")
@@ -2468,7 +2470,7 @@ public replace_dm(id,tid,tbody) {
     ewrite_byte(id); //killer
     ewrite_byte(tid); //victim
 
-    if(cstrike_running())
+    if(bCS)
         ewrite_string(" rpg_rocket")
     else
         ewrite_string("rpg_rocket");
@@ -2486,7 +2488,7 @@ public pin_scoreboard(killer)
         static iDEATHS = 422
         ewrite_short(get_pdata_int(killer, iDEATHS))
 
-        if(cstrike_running())
+        if(bCS)
         {
             ewrite_short(0); //TFC CLASS
             ewrite_short(get_user_team(killer));
