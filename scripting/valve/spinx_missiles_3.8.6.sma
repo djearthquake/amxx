@@ -5,7 +5,7 @@
 /**
 *    AMXX MISSILES. Missile menu launcher for GoldSrc.
 *
-*    Copyleft (C) Oct 2020 .sρiηX҉.
+*    Copyleft (C) Oct 2020-2023 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -1418,7 +1418,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
             if(players[i] != id){
 
             get_user_info(players[i],"is_parachuting",parachute_check,charsmax(parachute_check))
-            if(containi(parachute_check, "false") == charsmin) {
+            if(str_to_num(parachute_check)){
                 output = 1;
 
                 if(output == 1){
