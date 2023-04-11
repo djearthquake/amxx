@@ -279,7 +279,6 @@ public parachute_reset(id)
     if(is_user_connected(id))
     {
         set_user_gravity(id, 1.0)
-        set_user_info(id, "is_parachuting", "0")
 
         if(print)
             server_print "Resetting chute for %n", id
@@ -334,7 +333,6 @@ if(is_user_connected(id))
     if( para_ent[id] )
     {
         set_user_gravity(id, 1.0)
-        set_user_info(id, "is_parachuting", "0")
 
         if(bOF_run && bIsBot[id])
         {
@@ -410,6 +408,7 @@ public parachute_think(flags, id, button, oldbutton)
 
             if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND) || iDrop < charsmin )
             {
+                set_user_info(id, "is_parachuting", "0")
                 if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
                 {
                     bFirstAuto[id] = false
@@ -454,6 +453,7 @@ public parachute_think(flags, id, button, oldbutton)
             {
                 if(button & IN_USE|AUTO)
                 {
+                    set_user_info(id, "is_parachuting", "1")
                     if(AUTO && !bFirstAuto[id])
                         bFirstAuto[id] = true
                     else if(button & IN_USE)
@@ -525,7 +525,6 @@ public parachute_think(flags, id, button, oldbutton)
                             entity_set_float(id, EV_FL_frame, 1.0)
                             entity_set_float(id, EV_FL_framerate, 1.0)
                             set_user_gravity(id, 0.1)
-                            set_user_info(id, "is_parachuting", "1")
 
                             velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
                             entity_set_vector(id, EV_VEC_velocity, velocity)
@@ -565,8 +564,9 @@ public parachute_think(flags, id, button, oldbutton)
                             return;
                         }
                     }
-                    else if (para_ent[id])
+                    else if(para_ent[id])
                     {
+                        set_user_info(id, "is_parachuting", "0")
                         remove_entity(para_ent[id])
                         set_user_gravity(id, 1.0)
                         para_ent[id] = 0
@@ -574,6 +574,7 @@ public parachute_think(flags, id, button, oldbutton)
                 }
                 else if ((oldbutton & IN_USE) && para_ent[id])
                 {
+                    set_user_info(id, "is_parachuting", "0")
                     remove_entity(para_ent[id])
                     set_user_gravity(id, 1.0)
                     para_ent[id] = 0
