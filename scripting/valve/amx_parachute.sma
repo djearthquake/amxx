@@ -3,7 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.3"
 
-#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -164,6 +164,7 @@ public plugin_init()
     #endif
     if (gCStrike)
     {
+
         pCost = register_cvar("parachute_cost", "1000")
         pPayback = register_cvar("parachute_payback", "75") //percentage
 
@@ -369,8 +370,8 @@ public parachute_prethink(id)
         new button = get_user_button(id)
         new oldbutton = get_user_oldbutton(id)
 
-        //if(pev(id, pev_oldbuttons) & IS_THERE)
         new iDrop = pev(id,pev_flFallVelocity)
+        //if(pev(id, pev_oldbuttons) & IS_THERE)
         emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
         parachute_think(flags, id, button, oldbutton, iDrop)
     }
@@ -548,7 +549,6 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                         }
                         if(!para_ent[id] || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
                         {
-                            emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, 0, PITCH)
                             colorize(id)
                             set_user_gravity(id, 1.0)
                             set_user_info(id, "is_parachuting", "0")
@@ -581,7 +581,6 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
             }
         }
     }
-    emit_sound(id, CHAN_AUTO, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
 }
 
 //effects
