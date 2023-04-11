@@ -477,11 +477,10 @@ public plugin_init(){
     register_event("DeathMsg","death_event","a")
 
     if(cstrike_running())
-
-        {
-            register_logevent("round_start", 2, "1=Round_Start")
-            register_logevent("round_end", 2, "1=Round_End")
-        }
+    {
+        register_logevent("round_start", 2, "1=Round_Start")
+        register_logevent("round_end", 2, "1=Round_End")
+    }
 
     else
 
@@ -1303,7 +1302,7 @@ public amr_pay(args[]) {
 //make_rocket(userindex,commandtype,missilespeed,model,nofake,admincommand,antimissleid)
 make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
 
-    if (!is_user_alive(id)) return PLUGIN_CONTINUE
+    if(!is_user_alive(id)) return PLUGIN_CONTINUE
 
     new args[MAX_IP_LENGTH]
     new Float:vOrigin[3]
@@ -1316,8 +1315,8 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
     notFloat_vOrigin[2] = floatround(vOrigin[2])
 
     if(icmd == 5)
-        {
-        new aimvec[3]
+    {
+        new aimvec[3], temp[3]
         get_user_origin(id,aimvec,3)
         new dist = get_distance(notFloat_vOrigin,aimvec)
         new found
@@ -1328,57 +1327,54 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
 
         for(new i = 0 ;i < inum ;++i)
 
-            if(players[i] != id)
+        if(players[i] != id)
+        {
+            new SzTag[MAX_IP_LENGTH], szRunawayHeatSignature[MAX_IP_LENGTH];
+            new playername[MAX_NAME_LENGTH],output;
+            get_user_info(players[i],"name",playername,charsmax(playername))
+            get_user_info(id,"heat",szRunawayHeatSignature, charsmax(szRunawayHeatSignature))
+            //user puts set_info "heat" "spinx" to make seekers target player named spinx
+            /*Bot seekers SPINX 10-27-2020*/
+
+            server_print("heat signature shows as: %s", szRunawayHeatSignature);
+
+            get_pcvar_string(g_heatseeker_tag, SzTag, charsmax(SzTag));
+
+            if( get_pcvar_num(g_heatseeker_bot) && is_user_bot(players[i]) && containi(playername,SzTag) == charsmin
+                ||
+                get_pcvar_num(g_heatseeker_user) == 1 && containi(playername,szRunawayHeatSignature) > charsmin
+
+              )
+
+                output = 1
+
+            if(output)
+
+            if(is_user_connected(players[i]))
+            {
+                get_user_origin(players[i],temp)
+                dist1 = get_distance(temp,aimvec)
+
+                if(dist1 < dist || dist1 < dist &&
+
+                cstrike_running() && get_user_team(id) != get_user_team(players[i]) )
+
                 {
+                    dist = dist1
 
-                    new SzTag[MAX_IP_LENGTH], szRunawayHeatSignature[MAX_IP_LENGTH];
-                    new playername[MAX_NAME_LENGTH],output;
-                    get_user_info(players[i],"name",playername,charsmax(playername))
-                    get_user_info(id,"heat",szRunawayHeatSignature, charsmax(szRunawayHeatSignature))
-                    //user puts set_info "heat" "spinx" to make seekers target player named spinx
-                    /*Bot seekers SPINX 10-27-2020*/
+                    #if AMXX_VERSION_NUM == 182
+                        new name[MAX_NAME_LENGTH];
+                        get_user_name(players[i], name, charsmax(name))
+                        client_print(id,print_center,"[AMXX][TARGET-IN-VIEW]^n^nLocking coordinates on^n^n%s",name)
+                    #else
+                        client_print(id,print_center,"[AMXX][TARGET-IN-VIEW]^n^nLocking coordinates on^n^n%n",players[i])
+                    #endif
 
-                    server_print("heat signature shows as: %s", szRunawayHeatSignature);
+                    found = 1
 
-                    get_pcvar_string(g_heatseeker_tag, SzTag, charsmax(SzTag));
-
-                    if( get_pcvar_num(g_heatseeker_bot) && is_user_bot(players[i]) || containi(playername,SzTag) == charsmin
-                        ||
-                        get_pcvar_num(g_heatseeker_user) == 1 && containi(playername,szRunawayHeatSignature) > charsmin
-
-                      )
-
-                        output = 1
-
-                    if(output)
-
-                    if(is_user_connected(players[i]))
-
-                    {
-                            new temp[3]
-                            get_user_origin(players[i],temp)
-                            dist1 = get_distance(temp,aimvec)
-
-                            if(dist1 < dist || dist1 < dist &&
-
-                            cstrike_running() && get_user_team(id) != get_user_team(players[i]) )
-
-                                {
-                                    dist = dist1
-
-                                    #if AMXX_VERSION_NUM == 182
-                                        new name[MAX_NAME_LENGTH];
-                                        get_user_name(players[i], name, charsmax(name))
-                                        client_print(id,print_center,"[AMXX][TARGET-IN-VIEW]^n^nLocking coordinates on^n^n%s",name)
-                                    #else
-                                        client_print(id,print_center,"[AMXX][TARGET-IN-VIEW]^n^nLocking coordinates on^n^n%n",players[i])
-                                    #endif
-
-                                    found = 1
-
-                                    args[6] = players[i]
-                                }
-                    }
+                    args[6] = players[i]
+                }
+            }
         }
 
         if(!found){
@@ -1408,29 +1404,31 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
         new dist = get_distance(notFloat_vOrigin,aimvec)
         new found
         new parachute_check[MAX_IP_LENGTH];
-        new dist1 = 20000
+        new dist1 = 200000
         new players[ MAX_PLAYERS ], inum
 
-        get_players(players,inum,"a")
+        get_players(players,inum,"ah")
 
         for(new i = 0 ;i < inum ;++i)
+        {
+            if(players[i] != id)
+            {
+                get_user_info(players[i],"is_parachuting",parachute_check,charsmax(parachute_check))
+                if(str_to_num(parachute_check))
+                {
+                    output = 1;
+                    if(output == 1)
+                    {
+                        new temp[3]
+                        get_user_origin(players[i],temp)
+                        dist1 = get_distance(temp,aimvec)
 
-            if(players[i] != id){
-
-            get_user_info(players[i],"is_parachuting",parachute_check,charsmax(parachute_check))
-            if(str_to_num(parachute_check)){
-                output = 1;
-
-                if(output == 1){
-
-                    new temp[3]
-                    get_user_origin(players[i],temp)
-                    dist1 = get_distance(temp,aimvec)
-
-                    if(dist1 < dist){
-                        dist = dist1
-                        found = 1
-                        args[6] = players[i]
+                        if(dist1 < dist)
+                        {
+                            dist = dist1
+                            found = 1
+                            args[6] = players[i]
+                        }
                     }
                 }
             }
