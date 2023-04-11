@@ -103,11 +103,13 @@ public track(id)
 
             if ( b_CS )
             {
-                client_print_color admin, 0, "^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
+                b_Admin[admin] ? client_print_color(admin, 0, "^x03%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
+                client_print_color(admin, 0, "^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
             }
             else
             {
-                client_print admin, print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
+                b_Admin[admin] ? client_print(admin, print_chat,"%s %s from %s appeared on %s, %s radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
+                client_print(admin, print_chat,"%s from %s appeared on %s, %s radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
             }
             log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
         }
@@ -153,16 +155,22 @@ public client_disconnected(id)
     {
         if(b_Bot[id] || is_user_hltv(id)) return;
         for (new admin=1; admin<=g_iHeadcount; admin++)
-        if(is_user_connected(admin) && !b_Bot[admin])
+        if(is_user_connected(admin))
         {
-            #if AMXX_VERSION_NUM != 182
-            if ( b_CS )
-                client_print_color admin, 0, "%s %s by %s|^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", PLUGIN,VERSION,AUTHOR, ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
-            else
-                client_print admin, print_chat, "%s %s by %s|%s %s from %s disappeared on %s, %s radar.", PLUGIN,VERSION,AUTHOR,ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
-            #else
-                client_print admin, print_chat, "%s %s by %s|%s %s from %s disappeared on %s, %s radar.", PLUGIN,VERSION,AUTHOR,ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]
-            #endif
+            if(!b_Bot[admin])
+            {
+                #if AMXX_VERSION_NUM != 182
+                if ( b_CS )
+                    b_Admin[admin] ? client_print_color(admin, 0, "%s %s by %s|^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", PLUGIN,VERSION,AUTHOR, ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
+                    client_print_color(admin, 0, "%s %s by %s|^x03%s^x01 from ^x04%s^x01 disappeared on ^x04%s^x01, ^x04%s^x01 radar.", PLUGIN,VERSION,AUTHOR, ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
+                else
+                    b_Admin[admin] ? client_print(admin, print_chat, "%s %s by %s|%s %s from %s disappeared on %s, %s radar.", PLUGIN,VERSION,AUTHOR,ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
+                    client_print(admin, print_chat, "%s %s by %s|%s from %s disappeared on %s, %s radar.", PLUGIN,VERSION,AUTHOR,ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
+                #else
+                    b_Admin[admin] client_print(admin, print_chat, "%s %s by %s|%s %s from %s disappeared on %s, %s radar.", PLUGIN,VERSION,AUTHOR,ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
+                    client_print(admin, print_chat, "%s %s by %s|%s from %s disappeared on %s, %s radar.", PLUGIN,VERSION,AUTHOR,ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
+                #endif
+            }
         }
     }
 }
