@@ -352,7 +352,7 @@
 #define PI 3.1415926535897932384626433832795
 #define client_disconnect client_disconnected
 #define WITHOUT_PORT                   1
-#define charsmin                      -1
+
 
 #if !defined MAX_PLAYERS
 const MAX_PLAYERS                =    32
@@ -363,6 +363,7 @@ const MAX_MENU_LENGTH            =    512
 const MAX_NAME_LENGTH            =    32
 const MAX_MOTD_LENGTH            =    1536
 const MAX_RESOURCE_PATH_LENGTH   =    64
+new MaxClients
 #endif
 
 new beam, boom, ls_dot;
@@ -490,6 +491,11 @@ public plugin_init(){
 
     gmsgDeathMsg = get_user_msgid("DeathMsg")
     gmsgScoreInfo = get_user_msgid("ScoreInfo")
+
+
+    #if !defined MaxClients
+        MaxClients = get_maxplayers()
+    #endif
 
 }
 
@@ -677,7 +683,7 @@ public vexd_pfntouch(pToucher, pTouched) {
         if(has_rocket[id] == pToucher)
         has_rocket[id] = 0
 
-        for ( i = 1; i < 32; i++) {
+        for ( i = 1; i < MaxClients; i++) {
 
             if((is_user_alive(i)) && (i != id)){
                 get_user_origin(i,origin)
