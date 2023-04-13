@@ -1,9 +1,9 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8.3"
+#define VERSION "1.8.4"
 
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -40,6 +40,7 @@
     1.8.1 SPiNX - Tues Aug 23 2022 07:43:00 AM CDT - Worked on wind not colliding when firing weapon. Stable jk_botti tested.
     1.8.2 SPiNX - Sun 09 Apr 2023 11:12:08 AM CDT - Optimize some natives. Add a couple fail safes.
     1.8.3 SPiNX - Mon 10 Apr 2023 AM - Finishing trouble-shooting. Refine so when using hook, jumping, in water etc the parachute is removed. Other optimizaions such as update admin when infochanges.
+    1.8.4 SPiNX - Thurs 10 Apr 2023 AM - Players can now set rip cord depth. setinfo "auto_rip" "1000"
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -106,14 +107,14 @@ new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bI
 new para_ent[ MAX_PLAYERS +1 ]
 new gCStrike = 0
 new pDetach, pFallSpeed, pEnabled, pCost, pPayback, pAutoDeploy /*MAY2020*/,pAutoRules /*MAY2020*/;
-new g_UnBreakable, g_debug
+new g_UnBreakable, g_debug, g_admin, g_original, g_wings
 
 new const LOST_CHUTE_SOUND[] = "misc/erriewind.wav"
 new const PARA_MODELO[] = "models/parachute.mdl"
 new const PARA_MODELW[] = "models/Parachute_wings.mdl"
 new const PARA_MODEL[] = "models/parachute2.mdl"
 
-new g_model, g_packHP
+new /*g_model, */g_packHP
 new bool:bOF_run
 new bool:bFirstAuto[MAX_PLAYERS+1]
 
@@ -218,7 +219,7 @@ public plugin_precache()
         pause "a";
     }
 
-    g_model = precache_model("models/glassgibs.mdl");
+    //g_model = precache_model("models/glassgibs.mdl"); //future looking for a nicer universal model for chutes being torn up.
 
     //for func_breakable
     precache_sound("debris/bustglass2.wav");
@@ -229,7 +230,7 @@ public plugin_precache()
 
     if (file_exists(PARA_MODEL))
     {
-        precache_model(PARA_MODEL)
+        g_admin = precache_model(PARA_MODEL),precache_model(PARA_MODEL)
     }
     else
     {
@@ -239,7 +240,7 @@ public plugin_precache()
 
     if (file_exists(PARA_MODELO))
     {
-        precache_model(PARA_MODELO)
+        g_original = precache_model(PARA_MODELO),precache_model(PARA_MODELO)
     }
     else
     {
@@ -248,7 +249,7 @@ public plugin_precache()
     }
     if (file_exists(PARA_MODELW))
     {
-        precache_model(PARA_MODELW)
+        g_wings = precache_model(PARA_MODELW),precache_model(PARA_MODELW)
     }
     else
     {
@@ -396,7 +397,11 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 
         if (get_pcvar_num(pAutoRules) == 1 && bIsAdmin[id] || get_pcvar_num(pAutoRules) == 2)
         {
-            AUTO = !bFirstAuto[id] ? iDrop >= Rip_Cord : iDrop > fParachuteSpeed
+            new szRipCordCustom[8]
+            get_user_info(id,"auto_rip",szRipCordCustom, charsmax(szRipCordCustom))
+            new PlayerRipCord = str_to_num(szRipCordCustom);Rip_Cord = PlayerRipCord > 500 ? PlayerRipCord : Rip_Cord
+
+            AUTO = !bFirstAuto[id] ? iDrop >= (bIsBot[id] ? floatround(Rip_Cord*0.633) : Rip_Cord) : iDrop > fParachuteSpeed
         }
 
         if(bIsAdmin[id] && print && iDrop != 0)
@@ -547,7 +552,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                                 }
                             }
                         }
-                        if(!para_ent[id] || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.1)
+                        if(!para_ent[id] || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.2)
                         {
                             colorize(id)
                             set_user_gravity(id, 1.0)
@@ -592,7 +597,7 @@ public colorize(id)
 
 public chute_pop(id)
 {
-    if(is_user_connected(id) && has_parachute[id])
+    if(is_user_connected(id) /*&& has_parachute[id]*/)
     {
         has_parachute[id] = false
         new print = get_pcvar_num(g_debug)
@@ -610,9 +615,9 @@ public chute_pop(id)
         ewrite_coord(floatround(Origin[1]-random_float(-11.0,11.0)));
         ewrite_coord(floatround(Origin[2]+random_float(1.0,75.0)));
         ewrite_coord(random_num(-150,1000));  //vel
-        ewrite_short(g_model); //model
-        ewrite_short(5); //quantity
-        ewrite_byte(random_num(20,100)); //size
+        ewrite_short(bIsBot[id] ? g_wings : bIsAdmin[id] ? g_admin : g_original); //model
+        ewrite_short(3); //quantity
+        ewrite_byte(random_num(50,100)); //size
         emessage_end();
 
         if(print)
