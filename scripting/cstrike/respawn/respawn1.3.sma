@@ -110,7 +110,8 @@ Float:vec[3], Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1]
 Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
-bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1];
+bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
+bool:bIsVip[MAX_PLAYERS + 1];
 
 new const SzSuit[]="item_assaultsuit"
 
@@ -215,6 +216,7 @@ public CS_OnBuy(id, item)
     new iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
     if(is_user_connected(id))
     {
+        bIsVip[id] = cs_get_user_vip(id) ? true : false
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
             if(!bIsBot[id])
@@ -400,6 +402,8 @@ public control_bot(dead_spec)
         get_user_velocity(alive_bot, vec);
 
         #define IS_THERE (~(1<<IN_SCORE))
+
+        if(!bIsVip[alive_bot])
 
         if(get_user_team(dead_spec) == get_user_team(alive_bot))
 
