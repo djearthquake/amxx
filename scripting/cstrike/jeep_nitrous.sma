@@ -60,6 +60,7 @@ public plugin_init()
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
     m_flVolume = (find_ent_data_info("CFuncVehicle", "m_flVolume") /LINUX_OFFSET_WEAPONS) - LINUX_DIFF
 }
+
 public pfn_touch(ptr, ptd)
 {
     new iCar = get_pcvar_num(g_iNitrous)
@@ -74,6 +75,8 @@ public pfn_touch(ptr, ptd)
                 set_pev(g_mod_car[iPlayer], pev_owner, iPlayer + 50)
                 bSet[iPlayer] = true
             }
+            else
+                set_pev(g_mod_car[iPlayer], pev_owner, 0)
         }
     }
 }
@@ -95,7 +98,7 @@ public plugin_log()
                 cs_set_user_money(iOwner, cs_get_user_money(iOwner)  + 1500)
             }
             else
-            {   
+            {
                 set_user_frags(iOwner, get_user_frags(iOwner) -2)
                 cs_set_user_money(iOwner, cs_get_user_money(iOwner)  -  2500)
             }
@@ -185,7 +188,7 @@ public driving_think()
                                         new Accel = get_pdata_int(g_mod_car[iPlayer], m_acceleration, LINUX_DIFF);
                                         new fSpeed = get_pdata_int(g_mod_car[iPlayer], m_speed, LINUX_DIFF);
                                         new Float:fVol = get_pdata_float(g_mod_car[iPlayer], m_flVolume, LINUX_DIFF);
-        
+
                                         client_print iPlayer, print_center, "%f|%i|%f", fSpeed, Accel, fVol //max
                                     }
                                 }
