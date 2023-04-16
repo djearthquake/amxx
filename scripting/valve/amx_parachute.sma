@@ -117,6 +117,7 @@ new const PARA_MODEL[] = "models/parachute2.mdl"
 new /*g_model, */g_packHP
 new bool:bOF_run
 new bool:bFirstAuto[MAX_PLAYERS+1]
+new BotsThink, bool:think_captured
 
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
@@ -264,6 +265,14 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         bIsBot[id] = is_user_bot(id) ? true : false
+        if(bIsBot[id] && !think_captured)
+        {
+            think_captured = true
+            BotsThink = pev(id, pev_framerate)
+            server_print "Bot framerate is %i", BotsThink
+            if(!BotsThink)
+                BotsThink = 25
+        }
     }
 }
 
@@ -372,7 +381,7 @@ public parachute_prethink(id)
         new oldbutton = get_user_oldbutton(id)
 
         new iDrop = pev(id,pev_flFallVelocity)
-        //if(pev(id, pev_oldbuttons) & IS_THERE)
+
         emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
         parachute_think(flags, id, button, oldbutton, iDrop)
     }
@@ -399,9 +408,10 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
         {
             new szRipCordCustom[8]
             get_user_info(id,"auto_rip",szRipCordCustom, charsmax(szRipCordCustom))
-            new PlayerRipCord = str_to_num(szRipCordCustom);Rip_Cord = PlayerRipCord > 500 ? PlayerRipCord : Rip_Cord
+            new PlayerRipCord = str_to_num(szRipCordCustom);Rip_Cord = PlayerRipCord  ? PlayerRipCord : Rip_Cord
 
             AUTO = !bFirstAuto[id] ? iDrop >= (bIsBot[id] ? floatround(Rip_Cord*0.633) : Rip_Cord) : iDrop > fParachuteSpeed
+            //AUTO = !bFirstAuto[id] ? iDrop >= (bIsBot[id] ? floatround(Rip_Cord*0.633) : Rip_Cord) : iDrop > fParachuteSpeed
         }
 
         if(bIsAdmin[id] && print && iDrop != 0)
@@ -411,7 +421,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
         {
             new Float:fallspeed = fParachuteSpeed * -1.0
 
-            if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND) || iDrop < charsmin )
+            if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND | flags &~ FL_ONTRAIN) || iDrop < charsmin )
             {
                 set_user_info(id, "is_parachuting", "0")
                 if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
