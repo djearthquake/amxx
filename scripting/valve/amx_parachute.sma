@@ -411,7 +411,6 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
             new PlayerRipCord = str_to_num(szRipCordCustom);Rip_Cord = PlayerRipCord  ? PlayerRipCord : Rip_Cord
 
             AUTO = !bFirstAuto[id] ? iDrop >= (bIsBot[id] ? floatround(Rip_Cord*0.633) : Rip_Cord) : iDrop > fParachuteSpeed
-            //AUTO = !bFirstAuto[id] ? iDrop >= (bIsBot[id] ? floatround(Rip_Cord*0.633) : Rip_Cord) : iDrop > fParachuteSpeed
         }
 
         if(bIsAdmin[id] && print && iDrop != 0)
@@ -421,7 +420,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
         {
             new Float:fallspeed = fParachuteSpeed * -1.0
 
-            if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND | flags &~ FL_ONTRAIN) || iDrop < charsmin )
+            if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND | flags & FL_ONTRAIN) || iDrop < charsmin )
             {
                 set_user_info(id, "is_parachuting", "0")
                 if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
