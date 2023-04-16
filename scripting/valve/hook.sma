@@ -22,7 +22,7 @@
 *   sv_hookhostfollow - If set 1 you can make hostages follow you (default 1)
 *   sv_hookinstant - Hook doesnt throw (default: 0)
 *   sv_hooknoise - adds some noise to the hook line (default: 0)
-*   sv_hookmax - Maximun numbers of hooks a player can use in 1 round
+*   sv_hookmax - Maximun numbers of hooks a player can use in 1 round                                        k
 *          - 0 for infinitive hooks (default: 0)
 *   sv_hookdelay - delay on the start of each round before a player can hook
 *                - 0.0 for no delay (default: 0.0)
@@ -48,11 +48,11 @@
 
 #include <amxmodx>
 #include <amxmisc>
-#include engine
-#include engine_stocks
+#include <engine>
+#include <engine_stocks>
 #include <fakemeta>
 #include <fakemeta_util>
-#include gearbox
+#tryinclude gearbox
 #include <hamsandwich>
 #include <xs>
 #define message_begin_f(%1,%2,%3,%4) engfunc(EngFunc_MessageBegin, %1, %2, %3, %4)
@@ -64,7 +64,7 @@
 
 
 //new const RPG[]         = "models/flag.mdl" //fun. makes the xbow sound effect seems more realistic. Need a decent harpoon model please.
-new const RPG[]         = "models/tool_box.mdl" //need to pin that to weapons pick up and dmg_crush to humans. Thanks Sierra, Valve, OLO DLEJ. Many names. From DJEQ!
+new const RPG[]         = "models/hvr.mdl" //need to pin that to weapons pick up and dmg_crush to humans. Thanks Sierra, Valve, OLO DLEJ. Many names. From DJEQ!
 new const HOOK_MODEL[]  = "sprites/zbeam4.spr"
 new g_mapname[MAX_NAME_LENGTH]
 new bool:bsatch_crash_fix, bool:bKnife[MAX_PLAYERS + 1]
@@ -90,6 +90,8 @@ new gMaxPlayers
 new bool:gHooked[MAX_NAME_LENGTH + 1]
 new bool:canThrowHook[MAX_NAME_LENGTH + 1]
 new bool:rndStarted
+new bool:bHotWire
+new bool:bOF_run
 
 // Player Spawn
 new bool:gRestart[MAX_NAME_LENGTH + 1] = {false, ...}
@@ -97,6 +99,17 @@ new bool:gUpdate[MAX_NAME_LENGTH + 1] = {false, ...}
 
 new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
+
+new g_monsters
+static gCStrike
+
+new const SzRope[][]={
+    "models/hvr.mdl",
+    "models/wire_copper32.mdl",
+    "models/wire_red32.mdl",
+    "models/rope16.mdl",
+    "models/rope32.mdl"
+}
 
  /*
 new const debris1[]  = "sound/debris/pushbox1.wav"
@@ -116,6 +129,17 @@ new Xdebug
 new g_Client
 new bool:biHookFix[MAX_PLAYERS+1]
 
+enum _:Client_hookgrab
+{
+    iHookcolor[MAX_PLAYERS+1],
+    iHookhead[MAX_PLAYERS+1],
+    bHookInstant[MAX_PLAYERS+1],
+    bHookplayers[MAX_PLAYERS+1],
+}
+
+new HookParameters[ Client_hookgrab ]
+
+
 public plugin_init()
 {
     register_plugin("Hook", "1.8", "SPINX") //1.5 and under was developed by P34nut for CS
@@ -134,6 +158,15 @@ public plugin_init()
 
     RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
     RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
+
+    new mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name))
+    if(equal(mod_name, "cstrike"))
+    {
+        gCStrike = true
+    }
+
+    bOF_run  = equal(mod_name, "gearbox") ? true : false
 
     if(cstrike_running())
     {
@@ -199,9 +232,16 @@ public _SecondaryAttack_Pre(const gun)
 
 public _SecondaryAttack_Post(const gun)
 {
+    new iSafety
     new Client = g_Client
     if(is_user_connected(Client) && is_user_admin(Client))
     {
+        iSafety = get_pcvar_num(pHead)
+        if(iSafety != 9)
+        {
+            set_pcvar_num(pHead, 9)
+            biHookFix[Client] = false
+        }
         if(biHookFix[Client])
         {
             del_hook(Client)
@@ -219,11 +259,11 @@ public _SecondaryAttack_Post(const gun)
     return HAM_SUPERCEDE
 }
 
-
+/*
 @rope_control(id)
 {
     new iRope = find_ent(charsmin, "env_rope") > charsmin
-    new iWire = find_ent(charsmin, "env_electricified_wire") > charsmin
+    new iWire = find_ent(charsmin, "env_electrified_wire") > charsmin
     if(iRope|iWire)
     {
         if(iRope)
@@ -237,39 +277,83 @@ public _SecondaryAttack_Post(const gun)
             fm_set_kvd(iWire, "disable", "0")
         }
     }
+    return PLUGIN_HANDLED
+}
+*/
+@rope_control(id)
+{
+    if(is_user_connected(id))
+    {
+        //new one_time = create_entity("multi_manager")
+        //new amxx_button = create_entity("func_button")
+
+        //fm_set_kvd(one_time, "rope_wire", "0.1")
+        //fm_set_kvd(one_time, "targetname", "mgr")
+        //if(pev_valid(one_time>1))
+         //   dllfunc( DLLFunc_Spawn, one_time )
+
+        //fm_set_kvd(amxx_button, "target", "rope_wire")
+        //fm_set_kvd(amxx_button, "targetname", "elec_co")
+        //fm_set_kvd(amxx_button, "targetname", "spinx_hook_wirebutton")
+
+        //if(pev_valid(amxx_button>1))
+        //    dllfunc( DLLFunc_Spawn, amxx_button )
+
+        bHotWire = bHotWire ? false : true
+        for(new s;s < sizeof SzRope;s++)
+        {
+            //new iClean = SzRope[s]
+            //new iSweep = find_ent_by_model(charsmin, "rope_wire", SzRope[s])
+            new iSweep = find_ent_by_model(charsmin, "rope_wire", SzRope[s])
+            if(pev_valid(iSweep))
+            {
+                client_print id, print_chat, SzRope[s]
+                remove_entity(iSweep)
+            }
+        }
+        new iWire = find_ent_by_tname(charsmin, "hooks_wire") > charsmin
+        if(iWire>0) /*&& iWire>gMaxPlayers*/
+        {
+            //iWire = 0
+            //set_pev(iWire, pev_owner, 0)
+            client_print id, print_chat, "Wire found!"
+            //fm_set_kvd(iWire, "disable", "0")
+            //fm_set_kvd(iWire, "disable", bHotWire ? "0" : "1")
+            //fm_set_kvd(iWire, "disable", "1")
+            //remove_entity(iWire)
+            //set_pev(iWire, pev_flags, FL_KILLME);
+            //iWire = 0
+            //new ent  = find_ent_by_tname(charsmin, "rope_wire") > charsmin
+            //////new iWired = find_ent(charsmin, "env_electrified_wire") > charsmin
+            #define TOGGLE 3
+            //f(pev_valid(iWired))
+            ExecuteHam(Ham_Use, iWire, id, 0, 3, 2.0) //toggle current
+            //return PLUGIN_CONTINUE
+        }
+/*
+        new iRope = find_ent(charsmin, "env_rope") > charsmin
+        //if(pev_valid(iRope)>1)
+        {
+            //iRope = 0
+            //set_pev(iRope, pev_owner, 0)
+            client_print id, print_chat, "Rope found!"
+            ExecuteHam(Ham_Use, iRope, id, 0, TOGGLE, 2.0) //toggle current
+            //set_pev(Hook[id], pev_owner, 0)
+           // fm_set_kvd(iRope, "disable", bHotWire ? "0" : "1")
+            //remove_entity(iRope)
+            //set_pev(iRope, pev_flags, FL_KILLME);
+            ///remove_entity_name("env_rope")
+            //return PLUGIN_CONTINUE
+        }
+*/
+    }
+    return PLUGIN_HANDLED
 }
 
 public plugin_precache()
 {
     // Hook Model
     precache_model(RPG)
-
-    ///precache_model("models/prdroid.mdl")
-
-    precache_model("models/barnacle.mdl")
-
-    precache_model("models/barnaclet.mdl")
-
-    precache_model("models/headcrab.mdl")
-
-    precache_model("models/headcrabt.mdl")
-
-    precache_sound("headcrab/hc_alert1.wav")
-    precache_sound("headcrab/hc_alert2.wav")
-    precache_sound("headcrab/hc_attack1.wav")
-    precache_sound("headcrab/hc_attack2.wav")
-    precache_sound("headcrab/hc_attack3.wav")
-    precache_sound("headcrab/hc_die1.wav")
-    precache_sound("headcrab/hc_die2.wav")
-    precache_sound("headcrab/hc_headbite.wav")
-    precache_sound("headcrab/hc_idle1.wav")
-    precache_sound("headcrab/hc_idle2.wav")
-    precache_sound("headcrab/hc_idle3.wav")
-    precache_sound("headcrab/hc_idle4.wav")
-    precache_sound("headcrab/hc_idle5.wav")
-    precache_sound("headcrab/hc_pain1.wav")
-    precache_sound("headcrab/hc_pain2.wav")
-    precache_sound("headcrab/hc_pain3.wav")
 
     // Hook Beam
     sprBeam = precache_model(HOOK_MODEL)
@@ -279,60 +363,59 @@ public plugin_precache()
     precache_generic("sound/weapons/xbow_hit2.wav")
     precache_generic("sound/weapons/xbow_hitbod1.wav")
     precache_generic("sound/weapons/xbow_fire1.wav")
- /*
-    precache_generic(battery); //func_pushable
-    precache_generic(debris1); //func_pushable
-    precache_generic(debris2); //func_pushable
-    precache_generic(debris3); //func_pushable
 
-    //breakable ent properties
-    precache_sound(glass1);   //func_pushable
-    precache_sound(glass2);   //func_pushable
+    if(bOF_run)
+    {
+        precache_model("models/barnacle.mdl")
 
-    precache_generic(glass1a);   //func_pushable
-    precache_generic(glass2a);   //func_pushable
+        precache_model("models/barnaclet.mdl")
 
-    precache_sound("debris/bustmetal1.wav");
+        precache_model("models/headcrab.mdl")
 
-    precache_sound("debris/bustmetal2.wav");
+        precache_model("models/headcrabt.mdl")
 
-    precache_sound("debris/metal1.wav");
+        precache_sound("headcrab/hc_alert1.wav")
+        precache_sound("headcrab/hc_alert2.wav")
+        precache_sound("headcrab/hc_attack1.wav")
+        precache_sound("headcrab/hc_attack2.wav")
+        precache_sound("headcrab/hc_attack3.wav")
+        precache_sound("headcrab/hc_die1.wav")
+        precache_sound("headcrab/hc_die2.wav")
+        precache_sound("headcrab/hc_headbite.wav")
+        precache_sound("headcrab/hc_idle1.wav")
+        precache_sound("headcrab/hc_idle2.wav")
+        precache_sound("headcrab/hc_idle3.wav")
+        precache_sound("headcrab/hc_idle4.wav")
+        precache_sound("headcrab/hc_idle5.wav")
+        precache_sound("headcrab/hc_pain1.wav")
+        precache_sound("headcrab/hc_pain2.wav")
+        precache_sound("headcrab/hc_pain3.wav")
 
-    precache_sound("debris/metal2.wav");
+        precache_model("models/rope32.mdl")
+        precache_model("models/rope16.mdl")
 
-    precache_sound("debris/metal3.wav");
+        precache_model("models/wire_copper32.mdl")
+        precache_model("models/wire_red32.mdl")
 
-    precache_model("sprites/fexplo.spr")
-
-    precache_model("models/w_battery.mdl")
-
-    precache_model("models/hair.mdl")
-    */
-    precache_model("models/rope32.mdl")
-    precache_model("models/rope16.mdl")
-
-
-    precache_model("models/wire_copper32.mdl")
-    precache_model("models/wire_red32.mdl")
-
-    precache_sound("items/grab_rope.wav")
-    precache_sound("items/rope1.wav")
-    precache_sound("items/rope2.wav")
-    precache_sound("items/rope3.wav")
-    precache_model("models/leech.mdl")
-    precache_sound("leech/leech_bite1.wav")
-    precache_sound("leech/leech_bite2.wav")
-    precache_sound("leech/leech_bite3.wav")
-    precache_sound("leech/leech_alert1.wav")
-    precache_sound("leech/leech_alert2.wav")
-    precache_sound("barnacle/bcl_alert2.wav")
-    precache_sound("barnacle/bcl_bite3.wav")
-    precache_sound("barnacle/bcl_chew1.wav")
-    precache_sound("barnacle/bcl_chew2.wav")
-    precache_sound("barnacle/bcl_chew3.wav")
-    precache_sound("barnacle/bcl_die1.wav")
-    precache_sound("barnacle/bcl_die3.wav")
-    precache_sound("barnacle/bcl_tongue1.wav")
+        precache_sound("items/grab_rope.wav")
+        precache_sound("items/rope1.wav")
+        precache_sound("items/rope2.wav")
+        precache_sound("items/rope3.wav")
+        precache_model("models/leech.mdl")
+        precache_sound("leech/leech_bite1.wav")
+        precache_sound("leech/leech_bite2.wav")
+        precache_sound("leech/leech_bite3.wav")
+        precache_sound("leech/leech_alert1.wav")
+        precache_sound("leech/leech_alert2.wav")
+        precache_sound("barnacle/bcl_alert2.wav")
+        precache_sound("barnacle/bcl_bite3.wav")
+        precache_sound("barnacle/bcl_chew1.wav")
+        precache_sound("barnacle/bcl_chew2.wav")
+        precache_sound("barnacle/bcl_chew3.wav")
+        precache_sound("barnacle/bcl_die1.wav")
+        precache_sound("barnacle/bcl_die3.wav")
+        precache_sound("barnacle/bcl_tongue1.wav")
+    }
 }
 
 
@@ -371,7 +454,7 @@ public make_hook(id)
         if (fDelay > 0 && !rndStarted)
             client_print(id, print_chat, "[Hook] You cannot use the hook in the first %0.0f seconds of the round", fDelay)
 
-        throw_hook(id)
+        if(pev_valid(id)>1)throw_hook(id)
         new check_head = get_pcvar_num(pHead)
         if(check_head == 5 || check_head == 10 )
             set_task(1.0, "@penguin_think", id+PENGUIN, _, _, "b")
@@ -542,7 +625,7 @@ public fwTouch(ptr, ptd)
             {
                 pev(ptr, pev_origin, fOrigin)
 
-                while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 256.0)) > 0 && pev_valid(ent))
+                while ((ent = engfunc(EngFunc_FindEntityInSphere, ent, fOrigin, 128.0/*256.0*/)) > 0 && pev_valid(ent))
                 {
                     pev(ent, pev_classname, szentClass, charsmax(szentClass))
                     if(containi(szentClass, "door") > charsmin || containi(szentClass,"illusionary") > charsmin || containi(szentClass,"wall") > charsmin)
@@ -562,7 +645,10 @@ public fwTouch(ptr, ptd)
 
                         if (containi(szentClass, grabable_goodies[toget]) != charsmin || bsatch_crash_fix && containi(szentClass, "satchel") == charsmin)
                         {
-                            server_print "Scanning Sphere: %n found %s.", id, szentClass
+                            if(get_pcvar_num(Xdebug))
+                            {
+                                server_print "Scanning Sphere: %n found %s.", id, szentClass
+                            }
                             dllfunc(DLLFunc_Touch, ent, id)
                         }
                     }
@@ -571,7 +657,7 @@ public fwTouch(ptr, ptd)
                 {
                     pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
-                    if (!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
+                    if(!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
                     {
                         // Hit a player
                         if (get_pcvar_num(pSound))
@@ -583,7 +669,7 @@ public fwTouch(ptr, ptd)
                     }
                     else if (get_pcvar_num(pPlayers) && equali(szPtdClass, "player"))  goto damage
 
-                    else if (get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin)
+                    if (get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin)
                     {
                         if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin ||  equali(szPtdClass, "monster_barney")
                         ||  equali(szPtdClass, "monster_otis") || containi(szPtdClass, "nuke") >  charsmin || containi(szPtdClass,"scientist") > charsmin )
@@ -598,7 +684,7 @@ public fwTouch(ptr, ptd)
                         else
                         goto damage
                     }
-                    else if (containi(szPtdClass, "able") > charsmin)
+                    if (containi(szPtdClass, "able") > charsmin)
                     {
                         damage:
                         /*          */
@@ -612,12 +698,12 @@ public fwTouch(ptr, ptd)
                         return FMRES_HANDLED
                     }
 
-                    else if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
+                    if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
                     {
                         DOORS:
                         dllfunc(DLLFunc_Use, ptd, ptr) //ok for grap
                         dllfunc(DLLFunc_Touch, ptd, ptr) //ok for grap
-                        if(!get_pcvar_num(pHook_break) && get_pcvar_num(pColor) > 2)
+                        if(!get_pcvar_num(pHook_break) && get_pcvar_num(pColor) > 2 && ptd > gMaxPlayers)
                         {
                             set_pev(ptd, pev_rendermode, kRenderTransColor);
                             set_pev(ptd, pev_renderamt, random_float(15.0,200.0))
@@ -630,23 +716,23 @@ public fwTouch(ptr, ptd)
                             }
                             set_task(15.0, "@fix_color_ent", ptd)
                         }
-                        else
+                    }
+                    else
+                    {
+                        if(get_pcvar_num(pHook_break)>1)
                         {
-                            if(get_pcvar_num(pHook_break)>1)
-                            {
-                                ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
-                            }
+                            ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
                         }
                     }
-                    else if (containi(szPtdClass, "train") > charsmin )
+                    if (containi(szPtdClass, "train") > charsmin )
                     {
                         dllfunc(DLLFunc_Use, ptd, id)
                     }
-                    else if (containi(szPtdClass, "tank") > charsmin )
+                    if (containi(szPtdClass, "tank") > charsmin )
                     {
                         dllfunc(DLLFunc_Use, ptd, id)
                     }
-                    else if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
+                    if (get_pcvar_num(pUseButtons) && (containi(szPtdClass, "button") > charsmin || containi(szPtdClass, "charger") > charsmin || containi(szPtdClass, "recharge") > charsmin))
                     //dont reduce to "charge" on containi satchels crash when picking them up with hook otherwise
                     {
                         dllfunc(DLLFunc_Use, ptd, id) // Use Buttons
@@ -667,7 +753,7 @@ public fwTouch(ptr, ptd)
                 // Player is now hooked
                 gHooked[id] = true
                 // Play sound
-                if (get_pcvar_num(pSound))
+                if (get_pcvar_num(pSound) && !bKnife[id])
                 {
                     emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hit1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
                 }
@@ -744,10 +830,12 @@ public hookthink(param[])
 
     // If cvar sv_hooksky is 0 and hook is in the sky remove it!
     new iContents = engfunc(EngFunc_PointContents, entOrigin)
-    if (!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
+    if(!get_pcvar_num(pHookSky) && iContents == CONTENTS_SKY)
     {
-        if(get_pcvar_num(pSound))
+        if(get_pcvar_num(pSound) && !bKnife[id])
+        {
             emit_sound(HookEnt, CHAN_STATIC, "weapons/xbow_hit2.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+        }
         remove_hook(id)
     }
 
@@ -807,7 +895,7 @@ public throw_hook(id)
         pev(id, pev_angles, fAngle)
         pev(id, pev_v_angle, fvAngle)
 
-        if(get_pcvar_num(pInstant))
+        ///if(get_pcvar_num(pInstant))
         {
             get_user_hitpoint(id, fStart)
 
@@ -896,14 +984,15 @@ public throw_hook(id)
             ///classname env_electrified_wire
             if(get_pcvar_num(pHead) == 1)
             {
-                fm_set_kvd(Hook[id], "sparkfrequency", "7");
-                fm_set_kvd(Hook[id], "bodysparkfrequency", "3");
-                fm_set_kvd(Hook[id], "lightningfrequency", "3");
+                fm_set_kvd(Hook[id], "sparkfrequency", "15");
+                fm_set_kvd(Hook[id], "bodysparkfrequency", "20");
+                fm_set_kvd(Hook[id], "lightningfrequency", "10");
                 fm_set_kvd(Hook[id], "spawnflags", "1");
                 fm_set_kvd(Hook[id], "xforce", "40000");
                 fm_set_kvd(Hook[id], "yforce", "30000");
                 fm_set_kvd(Hook[id], "zforce", "10000");
                 fm_set_kvd(Hook[id], "disable", "1");
+                //fm_set_kvd(Hook[id], "targetname", "rope_wire") ghet overidden later
             }
 
             engfunc(EngFunc_SetModel, Hook[id], RPG)
@@ -958,15 +1047,21 @@ public throw_hook(id)
 
             //give env_rope spec target name so penguins don't explode and disable the ropes. use that later to cancel out ropes we do not need/want.
             //long segmented ropes are hard on the processor.
-            !get_pcvar_num(pHead) ? fm_set_kvd(Hook[id], "targetname", "hooks_rope") : fm_set_kvd(Hook[id], "targetname", "hooks_head")
+            ///!get_pcvar_num(pHead) ? fm_set_kvd(Hook[id], "targetname", "hooks_rope") : fm_set_kvd(Hook[id], "targetname", "hooks_head")
+            switch(get_pcvar_num(pHead))
+            {
+                case 0: fm_set_kvd(Hook[id], "targetname", "rope_wire")
+                case 1: fm_set_kvd(Hook[id], "targetname", "rope_wire")
+                default :fm_set_kvd(Hook[id], "targetname", "hooks_head")
+            }
 
             switch(get_pcvar_num(pSegments))
             {
                 case   1..2: fm_set_kvd(Hook[id], "segments", "2")
-                case   3..6: fm_set_kvd(Hook[id], "segments", "6")
-                case  7..16: fm_set_kvd(Hook[id], "segments", "14")
-                case 17..36: fm_set_kvd(Hook[id], "segments", "24")
-                case 37..50: fm_set_kvd(Hook[id], "segments", "36")
+                case   3..6: fm_set_kvd(Hook[id], "segments", "4")
+                case  7..16: fm_set_kvd(Hook[id], "segments", "12")
+                case 17..36: fm_set_kvd(Hook[id], "segments", "18")
+                case 37..100: fm_set_kvd(Hook[id], "segments", "24")
             }
             //end rope
 
@@ -978,7 +1073,7 @@ public throw_hook(id)
             set_pev(Hook[id], pev_solid, SOLID_BBOX)
 
             set_pev(Hook[id], pev_movetype, 5)
-            //get_pcvar_num(pHead) == 5 ? set_pev(Hook[id], pev_owner, 0) : set_pev(Hook[id], pev_owner, id) //jk_botti crash when penguin explodes
+            get_pcvar_num(pHead) == 5 ? set_pev(Hook[id], pev_owner, 0) : set_pev(Hook[id], pev_owner, id) //jk_botti crash when penguin explodes
 
             //detach pengin other unstable when they explode
             get_pcvar_num(pHead) == 5 && get_pcvar_num(pUseButtons) < 2 ? set_pcvar_num(pUseButtons, 2) : set_pcvar_num(pUseButtons, 1)
@@ -1028,7 +1123,7 @@ public throw_hook(id)
             write_byte(get_pcvar_num(pHookNoise)) // Noise
             // Colors now
             new ipColor = get_pcvar_num(pColor)
-            if (ipColor && cstrike_running() )
+            if (ipColor && gCStrike )
             {
                 if (get_user_team(id) == 1) // Terrorist
                 {
@@ -1057,7 +1152,7 @@ public throw_hook(id)
                     write_byte(255) // B
                 }
             }
-            else if (ipColor>3)
+            else if (ipColor>2 && !bKnife[id])
             {
                 write_byte(random(256)) // R
                 write_byte(random(256)) // G
@@ -1080,7 +1175,7 @@ public throw_hook(id)
             write_byte(0) // Scroll speed
             message_end()
 
-            if (get_pcvar_num(pSound) && !get_pcvar_num(pInstant))
+            if (get_pcvar_num(pSound) && !get_pcvar_num(pInstant) && !bKnife[id])
                 emit_sound(id, CHAN_BODY, "weapons/xbow_fire1.wav", VOL_NORM, ATTN_NORM, 0, PITCH_HIGH) //make pitch dynamic
 
             static TaskData[2]
@@ -1112,7 +1207,7 @@ public remove_hook(id)
             if (containi(szClass, "rope") > charsmin || containi(szClass, "wire") > charsmin || containi(szClass, "barnacle") != charsmin || containi(szClass, "penguin") != charsmin )    //equali(szClass, "monster_barnacle"))
             {
                 //prevents rope crashing
-                set_pev(Hook[id], pev_owner, 0) //little effect
+                //set_pev(Hook[id], pev_owner, 0) //little effect
                 return PLUGIN_HANDLED_MAIN //will crash otherwise
             }
 
@@ -1260,7 +1355,7 @@ stock statusMsg(id, szMsg[], {Float,_}:...)
     if(is_user_connected(id) && is_user_alive(id))
     {
         static iStatusText
-        iStatusText = cstrike_running() ? get_user_msgid("StatusText") : get_user_msgid("HudText")
+        iStatusText = gCStrike ? get_user_msgid("StatusText") : get_user_msgid("HudText")
 
         static szBuffer[MAX_MENU_LENGTH]
         vformat(szBuffer, charsmax(szBuffer), szMsg, 3)
@@ -1269,7 +1364,7 @@ stock statusMsg(id, szMsg[], {Float,_}:...)
             emessage_begin(MSG_BROADCAST, iStatusText, _, 0)
         else if(id != 0)
             emessage_begin(MSG_ONE_UNRELIABLE, iStatusText, _, id)
-        if(cstrike_running() )
+        if(gCStrike)
         {
             ewrite_byte(0) //InitHUDstyle
             ewrite_string(szBuffer) // Message
