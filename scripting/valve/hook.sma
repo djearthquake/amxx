@@ -45,6 +45,7 @@
 
 // Players admin level
 #define ADMINLEVEL ADMIN_SLAY
+#define HLW_KNIFE           0x0019
 
 #include <amxmodx>
 #include <amxmisc>
@@ -684,6 +685,9 @@ public fwTouch(ptr, ptd)
                         else
                         goto damage
                     }
+                    if (containi(szPtdClass, "hostage") > charsmin && get_pcvar_num(pHostage))
+                        dllfunc(DLLFunc_Use, ptd, id)
+
                     if (containi(szPtdClass, "able") > charsmin)
                     {
                         damage:
