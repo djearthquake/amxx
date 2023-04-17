@@ -359,14 +359,16 @@ public plugin_precache()
     // Hook Beam
     sprBeam = precache_model(HOOK_MODEL)
     precache_generic(HOOK_MODEL)
-    // Hook Sounds
-    precache_generic("sound/weapons/xbow_hit1.wav")
-    precache_generic("sound/weapons/xbow_hit2.wav")
-    precache_generic("sound/weapons/xbow_hitbod1.wav")
-    precache_generic("sound/weapons/xbow_fire1.wav")
+
 
     if(bOF_run)
     {
+        // Hook Sounds
+        precache_generic("weapons/xbow_hit1.wav")
+        precache_generic("weapons/xbow_hit2.wav")
+        precache_generic("weapons/xbow_hitbod1.wav")
+        precache_generic("weapons/xbow_fire1.wav")
+
         precache_model("models/barnacle.mdl")
 
         precache_model("models/barnaclet.mdl")
@@ -416,6 +418,14 @@ public plugin_precache()
         precache_sound("barnacle/bcl_die1.wav")
         precache_sound("barnacle/bcl_die3.wav")
         precache_sound("barnacle/bcl_tongue1.wav")
+    }
+    else
+    {
+        // Hook Sounds
+        precache_sound("weapons/xbow_hit1.wav")
+        precache_sound("weapons/xbow_hit2.wav")
+        precache_sound("weapons/xbow_hitbod1.wav")
+        precache_sound("weapons/xbow_fire1.wav")
     }
 }
 
