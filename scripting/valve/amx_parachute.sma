@@ -3,7 +3,7 @@
 #define AUTHOR "SPiNX"
 #define VERSION "1.8.4"
 
-#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -118,6 +118,8 @@ new /*g_model, */g_packHP
 new bool:bOF_run
 new bool:bFirstAuto[MAX_PLAYERS+1]
 new BotsThink, bool:think_captured
+new PlayerRipCord[MAX_PLAYERS+1]
+new bool:bMissileSet[MAX_PLAYERS+1]
 
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
@@ -126,9 +128,16 @@ new BotsThink, bool:think_captured
     static MaxClients
 #endif
 
+
+@highrise(id)
+{
+     has_parachute[id] = false
+}
+
 public plugin_init()
 {
     register_plugin(PLUGIN,VERSION,AUTHOR)
+    register_touch("player", "func_train", "@highrise") //as_highrise
     register_touch("parachute", "", "@chute_touch")
     pEnabled    = register_cvar("sv_parachute", "1" )
     pFallSpeed  = register_cvar("parachute_fallspeed", "100")
@@ -278,9 +287,13 @@ public client_putinserver(id)
 
 public client_infochanged(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && !bIsBot[id])
     {
         bIsAdmin[id] = get_user_flags(id) & PARACHUTE_LEVEL ? true : false
+
+        new szRipCordCustom[MAX_NAME_LENGTH]
+        get_user_info(id,"auto_rip", szRipCordCustom, charsmax(szRipCordCustom))
+        PlayerRipCord[id] = str_to_num(szRipCordCustom);
     }
 }
 
@@ -406,10 +419,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 
         if (get_pcvar_num(pAutoRules) == 1 && bIsAdmin[id] || get_pcvar_num(pAutoRules) == 2)
         {
-            new szRipCordCustom[8]
-            get_user_info(id,"auto_rip",szRipCordCustom, charsmax(szRipCordCustom))
-            new PlayerRipCord = str_to_num(szRipCordCustom);Rip_Cord = PlayerRipCord  ? PlayerRipCord : Rip_Cord
-
+            Rip_Cord = PlayerRipCord[id] ? PlayerRipCord[id] : Rip_Cord
             AUTO = !bFirstAuto[id] ? iDrop >= (bIsBot[id] ? floatround(Rip_Cord*0.633) : Rip_Cord) : iDrop > fParachuteSpeed
         }
 
@@ -422,7 +432,11 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 
             if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND | flags & FL_ONTRAIN) || iDrop < charsmin )
             {
-                set_user_info(id, "is_parachuting", "0")
+                if(bMissileSet[id])
+                {
+                    set_user_info(id, "is_parachuting", "0")
+                    bMissileSet[id] = false
+                }
                 if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
                 {
                     bFirstAuto[id] = false
@@ -463,11 +477,15 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                 }
                 return
             }
-            if(flags & ~FL_ONGROUND)
+            if(flags & ~FL_ONGROUND && flags & ~FL_ONTRAIN)
             {
                 if(button & IN_USE|AUTO)
                 {
-                    set_user_info(id, "is_parachuting", "1")
+                    if(!bMissileSet[id])
+                    {
+                        set_user_info(id, "is_parachuting", "1")
+                        bMissileSet[id] = true
+                    }
                     if(AUTO && !bFirstAuto[id])
                         bFirstAuto[id] = true
                     else if(button & IN_USE)
@@ -565,7 +583,11 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                         {
                             colorize(id)
                             set_user_gravity(id, 1.0)
-                            set_user_info(id, "is_parachuting", "0")
+                            if(bMissileSet[id])
+                            {
+                                set_user_info(id, "is_parachuting", "0")
+                                bMissileSet[id] = false
+                            }
 
                             //Let player know they shot the chute not the player.
                             set_task(0.2,"chute_pop",id)
@@ -579,7 +601,11 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                     }
                     else if(para_ent[id])
                     {
-                        set_user_info(id, "is_parachuting", "0")
+                        if(bMissileSet[id])
+                        {
+                            set_user_info(id, "is_parachuting", "0")
+                            bMissileSet[id] = false
+                        }
                         remove_entity(para_ent[id])
                         set_user_gravity(id, 1.0)
                         para_ent[id] = 0
@@ -587,7 +613,11 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                 }
                 else if ((oldbutton & IN_USE) && para_ent[id])
                 {
-                    set_user_info(id, "is_parachuting", "0")
+                    if(bMissileSet[id])
+                    {
+                        set_user_info(id, "is_parachuting", "0")
+                        bMissileSet[id] = false
+                    }
                     remove_entity(para_ent[id])
                     set_user_gravity(id, 1.0)
                     para_ent[id] = 0
