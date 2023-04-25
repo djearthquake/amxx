@@ -8,14 +8,25 @@
 
 new const svMessage[]="Invalid fps_max hacking."
 new iFps_kick, iFps_kick2;
+new bool: b_Bot[MAX_PLAYERS+1];
+
 public plugin_init()
 {
     register_plugin("FPS kick", "1.3", "SPiNX");
     iFps_kick = register_cvar("fps_kick","200");
     iFps_kick2 = register_cvar("fps_drop","20");
 }
+
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        b_Bot[id] = is_user_bot(id) ? true : false
+    }
+}
+
 public client_command(id)
-    if(is_user_connected(id) && !is_user_bot(id) )
+    if(is_user_connected(id) && !b_Bot[id])
 
         query_client_cvar(id, "fps_max", "cvar_result_func");
 
@@ -63,7 +74,7 @@ public client_connected(id)
 
 public CmdStart(id, uc_handle)
 {
-    if( get_pcvar_num(iFps_kick) && id > 0 && is_user_connected(id) && !is_user_bot(id))
+    if( get_pcvar_num(iFps_kick) && id > 0 && is_user_connected(id) && !b_Bot[id])
 
     {
 
