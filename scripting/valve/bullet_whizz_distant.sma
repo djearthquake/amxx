@@ -141,7 +141,7 @@ public Event_CurWeapon(id)
         {
             switch(WeaponID)
             {
-                    case CSW_HEGRENADE, CSW_FLASHBANG, CSW_SMOKEGRENADE, CSW_C4, CSW_KNIFE: return;
+                case CSW_HEGRENADE, CSW_FLASHBANG, CSW_SMOKEGRENADE, CSW_C4, CSW_KNIFE: return;
             }
         }
         else if(b_HL)
@@ -149,7 +149,6 @@ public Event_CurWeapon(id)
             switch(WeaponID)
             {
                 case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK: return;
-
             }
         }
         else if(b_OF)
@@ -157,7 +156,6 @@ public Event_CurWeapon(id)
             switch(WeaponID)
             {
                 case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK, HLW_GRAPPLE, HLW_PIPEWRENCH, HLW_KNIFE, HLW_DISPLACER, HLW_SHOCKROACH, HLW_SPORE, HLW_PENGUIN: return;
-
             }
         }
 
