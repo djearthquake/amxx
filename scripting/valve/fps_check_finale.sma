@@ -6,9 +6,11 @@
 
 #define charsmin    -1
 
+#define BAN_TIME  1.0
+
 new const svMessage[]="Invalid fps_max hacking."
 new iFps_kick, iFps_kick2;
-new bool: b_Bot[MAX_PLAYERS+1];
+new bool: b_Bot[MAX_PLAYERS+1], bool:bBanned[MAX_PLAYERS+1];
 
 public plugin_init()
 {
@@ -25,23 +27,30 @@ public client_putinserver(id)
     }
 }
 
+public client_disconnected(id)
+    bBanned[id] = false
 public client_command(id)
     if(is_user_connected(id) && !b_Bot[id])
 
         query_client_cvar(id, "fps_max", "cvar_result_func");
 
 public cvar_result_func(id, const cvar[], const value[])
+{
+    new Uid;
+    if(is_user_connected(id) && !bBanned[id])
+    {
+        Uid = get_user_userid(id)
+        if( Uid && equali(cvar,"fps_max") && !is_str_num(value) && containi(value, ".") == charsmin )
+            server_cmd("banid %f #%d;writeid;", BAN_TIME, Uid, str_to_num(value)) &&
+            server_cmd("kick #%d Your %s is %s. That is not a number! %s", Uid, cvar, value, svMessage), bBanned[id] = true;
 
+        else
 
-    if( equali(cvar,"fps_max") && !is_str_num(value) && containi(value, ".") == charsmin && get_user_userid(id))
-        server_cmd("banid 5.0 #%d", get_user_userid(id), str_to_num(value)) && server_cmd("writeid") &&
-        server_cmd("kick #%d Your %s is %s. That is not a number! %s", get_user_userid(id), cvar, value, svMessage);
+        if(equali(cvar,"fps_max") && str_to_num(value) >= get_pcvar_num(iFps_kick) || (equali(cvar,"fps_max") && str_to_num(value) <=  get_pcvar_num(iFps_kick2)) )
 
-    else
-
-    if(equali(cvar,"fps_max") && str_to_num(value) >= get_pcvar_num(iFps_kick) || (equali(cvar,"fps_max") && str_to_num(value) <=  get_pcvar_num(iFps_kick2)) )
-
-        server_cmd("kick #%d Your %s is %s. Do not use over %i or under %i", get_user_userid(id), cvar, value, get_pcvar_num(iFps_kick), get_pcvar_num(iFps_kick2));
+            server_cmd("kick #%d Your %s is %s. Do not use over %i or under %i", Uid, cvar, value, get_pcvar_num(iFps_kick), get_pcvar_num(iFps_kick2));
+    }
+}
 #endif
 
 #if !defined SPINX
