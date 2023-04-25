@@ -1,13 +1,16 @@
 #include amxmodx
-///#define SPINX
+#define SPINX
 /*#define JOCANIS*/
 
 #if defined SPINX
+
+#define charsmin    -1
+
 new const svMessage[]="Invalid fps_max hacking."
 new iFps_kick, iFps_kick2;
 public plugin_init()
 {
-    register_plugin("FPS kick", "1.2", "SPiNX");
+    register_plugin("FPS kick", "1.3", "SPiNX");
     iFps_kick = register_cvar("fps_kick","200");
     iFps_kick2 = register_cvar("fps_drop","20");
 }
@@ -18,15 +21,16 @@ public client_command(id)
 
 public cvar_result_func(id, const cvar[], const value[])
 
-    if( equali(cvar,"fps_max") && !is_str_num(value) )
-        server_cmd("banid 5.0 #%d;writeid", get_user_userid(id), str_to_num(value)) &&
-        server_cmd("kick #%d Your %s is %i. %s", get_user_userid(id), cvar, str_to_num(value), svMessage);
+
+    if( equali(cvar,"fps_max") && !is_str_num(value) && containi(value, ".") == charsmin && get_user_userid(id))
+        server_cmd("banid 5.0 #%d", get_user_userid(id), str_to_num(value)) && server_cmd("writeid") &&
+        server_cmd("kick #%d Your %s is %s. That is not a number! %s", get_user_userid(id), cvar, value, svMessage);
 
     else
 
     if(equali(cvar,"fps_max") && str_to_num(value) >= get_pcvar_num(iFps_kick) || (equali(cvar,"fps_max") && str_to_num(value) <=  get_pcvar_num(iFps_kick2)) )
 
-        server_cmd("kick #%d Your %s is %i. Do not use over %i or under %i", get_user_userid(id), cvar, str_to_num(value), get_pcvar_num(iFps_kick), get_pcvar_num(iFps_kick2));
+        server_cmd("kick #%d Your %s is %s. Do not use over %i or under %i", get_user_userid(id), cvar, value, get_pcvar_num(iFps_kick), get_pcvar_num(iFps_kick2));
 #endif
 
 #if !defined SPINX
@@ -60,7 +64,7 @@ public client_connected(id)
 public CmdStart(id, uc_handle)
 {
     if( get_pcvar_num(iFps_kick) && id > 0 && is_user_connected(id) && !is_user_bot(id))
-    
+
     {
 
         if (fps_info[id][next_check] <= get_gametime())
@@ -70,7 +74,7 @@ public CmdStart(id, uc_handle)
             fps_info[id][fps] = (CALC / fps_info[id][msec_sum])
 
             if (fps_info[id][fps] > get_pcvar_num(iFps_kick))
-            
+
             if (++fps_info[id][warnings] > 3)
 
                 server_cmd("kick #%d Your FPS is %i. Do not use over %i", get_user_userid(id), floatround(fps_info[id][fps]), get_pcvar_num(iFps_kick));
