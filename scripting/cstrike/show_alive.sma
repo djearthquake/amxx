@@ -125,8 +125,6 @@ public client_disconnected(id)
                     ShowSyncHudMsg(id, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue)
                 }
             }
-        }
-        state OFF
-    }
-    state OFF
+        }state OFF
+    }state OFF
 }
