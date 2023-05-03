@@ -19,7 +19,7 @@
 #include amxmodx
 #include amxmisc
 #include hamsandwich
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
 #tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
 
 #define  charsmin -1
@@ -126,7 +126,7 @@ enum {
 #define PYRAMID two_spinners[1][random_num(0,1)]
 #define RADIO two_spinners[2][random_num(0,1)]
 #define DIAMONDS beta_symbols[2][random_num(0,2)]
-#define STAR beta_symbols[3][random_num(0,2)]
+#define STAR beta_symbols[1][random_num(0,2)]
 //For super kills over 150HP.
 new g_cvar_bsod_iConfmkills,g_cvar_bsod_iDelay;
 new g_cvar_iHitSym;
@@ -221,9 +221,6 @@ public plugin_init()
     bDod = is_running("dod") == 1  ? true : false
     bStrike = cstrike_running() ? true : false
     g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
-
-    if(bStrike)
-        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
     //hitmarx 1-8. 1 snipers-only (w/ legacy HL support).2 all (w/ legacy HL support) . 3 Dice. (Future organized DOD) 4. Crosses. 5. Organized just for Cstrike. 6. Dice again. 7.Random inventory 8.Random inventory 2.
     //Type hitmark_demo in console or nodemo to test without players or as a spec.
     //bsod_confirm_kills # <0-?> sets how many times screen flashes you you kill an opponent.
@@ -233,6 +230,7 @@ public plugin_init()
     #define TICKER test_spinner2
     #if !defined CS_OnBuy
         register_message(get_user_msgid("Money"), "OnMoneyChange")
+        register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
     #endif
 }
 
@@ -306,7 +304,7 @@ public CS_OnBuy( id, anything )
             //return PLUGIN_HANDLED
         }
     }
-    if( iDamage > 150.0)
+    if( iDamage > 250.0)
     {
         @FnWow(iAttacker, iDamage, iVictim);
     }
@@ -341,80 +339,116 @@ public CS_OnBuy( id, anything )
 
         if(bStrike|bDod)
         {
+            new iGat = get_user_weapon(iAttacker)
+
             if(get_pcvar_num(g_cvar_iHitSym) == 5 )
             {
-                if(bStrike )
+                if(bStrike)
                 {
-                    if (IS CSW_P90)
+                    switch(iGat)
                     {
-                        DISPLAY beta_symbols[0][random_num(0,2)] : "╳" );
+                        case CSW_P90:
+                        {
+                            DISPLAY beta_symbols[0][random_num(0,2)] : "╳" );
+                        }
+                        case CSW_M4A1:
+                        {
+                            DISPLAY COLT : "╳" );
+                        }
+                        case CSW_UMP45:
+                        {
+                            DISPLAY JAX : "╳" );
+                        }
+                        case CSW_MAC10:
+                        {
+                            DISPLAY STAR: "╳" );
+                        }
+                        case CSW_AK47:
+                        {
+                            DISPLAY HALF : "╳" );
+                        }
+                        case CSW_GALI:
+                        {
+                            DISPLAY test_spinner2[random(sizeof(test_spinner2))] : "╳");
+                        }
+                        case CSW_FAMAS:
+                        {
+                            DISPLAY test_spinner0[random(sizeof(test_spinner0))] : "╳");
+                        }
+                        case CSW_MP5NAVY:
+                        {
+                            DISPLAY beta_symbols[5][random_num(0,2)] : "╳" );
+                        }
+                        case CSW_AUG:
+                        {
+                            DISPLAY PYRAMID : "╳" );
+                        }
+                        case CSW_SG552:
+                        {
+                            DISPLAY PYRAMID: "╳" );
+                        }
+                        case CSW_KNIFE:
+                        {
+                            DISPLAY beta_symbols[7][random_num(0,2)] : "╳" );
+                        }
+                        case CSW_TMP:
+                        {
+                            DISPLAY GRATEFUL_DEAD: "╳" );
+                        }
+                        case CSW_M249:
+                        {
+                            DISPLAY GRATEFUL_DEAD : "╳" );
+                        }
                     }
-                    if (IS CSW_M4A1)
-                    {
-                        DISPLAY two_spinners[0][random_num(0,1)] : "╳" );
-                    }
-                    if (CSW_ALL_SHOTGUNS & (1 << get_user_weapon(iAttacker)) )
-                    {
-                        DISPLAY DIAMONDS : "╳" );
-                    }
-                    if (IS CSW_UMP45)
-                    {
-                        DISPLAY beta_symbols[3][random_num(0,2)] : "╳" );
-                    }
-                    if (IS CSW_AK47)
-                    {
-                        DISPLAY beta_symbols[4][random_num(0,2)] : "╳" );
-                    }
-                    if (IS CSW_GALI)
-                    {
-                        DISPLAY test_spinner2[random(sizeof(test_spinner2))] : "╳");
-                    }
-                    if (IS CSW_FAMAS)
-                    {
-                        DISPLAY test_spinner0[random(sizeof(test_spinner0))] : "╳");
-                    }
-                    if (IS CSW_MP5NAVY)
-                    {
-                        DISPLAY beta_symbols[5][random_num(0,2)] : "╳" );
-                    }
-                    if (IS CSW_AUG || IS CSW_SG552)
-                    {
-                        DISPLAY two_spinners[1][random_num(0,1)] : "╳" );
-                    }
-                    if(CSW_ALL_SNIPERRIFLES & (1 << get_user_weapon(iAttacker)) )
+                    if(CSW_ALL_SNIPERRIFLES & (1 << get_user_weapon(iAttacker)))
                     {
                         DISPLAY beta_symbols[6][random_num(0,2)] : "╳" );
                     }
-                    if (IS CSW_KNIFE)
+                    if(CSW_ALL_PISTOLS & (1 << get_user_weapon(iAttacker)))
                     {
-                        DISPLAY beta_symbols[7][random_num(0,2)] : "╳" );
+                        DISPLAY RADIO : "╳" );
                     }
-                    if (IS CSW_TMP || IS CSW_M249)
+                    if(CSW_ALL_SHOTGUNS & (1 << get_user_weapon(iAttacker)))
                     {
-                        DISPLAY beta_symbols[8][random_num(0,2)] : "╳" );
-                    }
-                    if (CSW_ALL_PISTOLS & (1 << get_user_weapon(iAttacker)) )
-                    {
-                        DISPLAY two_spinners[2][random_num(0,1)] : "╳" );
+                        DISPLAY DIAMONDS : "╳" );
                     }
                 }
                 if(bDod)
                 {
-                    if (IS DODW_MG42 || IS DODW_MG34)
+                    switch(iGat)
                     {
-                        DISPLAY GRATEFUL_DEAD : "╳" );
-                    }
-                    if (IS DODW_COLT || IS DODW_THOMPSON)
-                    {
-                        DISPLAY COLT : "╳" );
-                    }
-                    if (IS DODW_FG42 || IS DODW_BREN || IS DODW_30_CAL)
-                    {
-                        DISPLAY STAR : "╳" );
-                    }
-                    else
-                    {
-                        DISPLAY VOLKS : "╳" );
+                        case DODW_MG42:
+                        {
+                            DISPLAY GRATEFUL_DEAD : "╳" );
+                        }
+                        case DODW_MG34:
+                        {
+                            DISPLAY GRATEFUL_DEAD : "╳" );
+                        }
+                        case DODW_COLT:
+                        {
+                            DISPLAY COLT : "╳" );
+                        }
+                        case DODW_THOMPSON:
+                        {
+                            DISPLAY COLT : "╳" );
+                        }
+                        case DODW_FG42:
+                        {
+                            DISPLAY STAR : "╳" );
+                        }
+                        case DODW_BREN:
+                        {
+                            DISPLAY STAR : "╳" );
+                        }
+                        case DODW_30_CAL:
+                        {
+                            DISPLAY STAR : "╳" );
+                        }
+                        default:
+                        {
+                            DISPLAY VOLKS : "╳" );
+                        }
                     }
                 }
             }
