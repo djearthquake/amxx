@@ -289,8 +289,9 @@ public CS_OnBuy( id, anything )
 
 @PostTakeDamage(iVictim, iInflictor, iAttacker, Float:iDamage, iDamagebits)
 {
-    static iRed, iGRN, iBLU;
-    if(get_pcvar_num(g_cvar_iHitSym) >= 1)
+    static iRed, iGRN, iBLU, iCvar_Hitmark_type;
+    iCvar_Hitmark_type = get_pcvar_num(g_cvar_iHitSym)
+    if(iCvar_Hitmark_type >= 1)
     if(is_user_connected(iAttacker) && is_user_connected(iVictim))
     if(!bIsBot[iAttacker])
     if(get_pcvar_num(g_teams))
@@ -310,7 +311,7 @@ public CS_OnBuy( id, anything )
     }
     if(is_user_alive(iAttacker) && is_user_alive(iVictim))
     {
-        if(get_pcvar_num(g_cvar_iHitSym) == 1)
+        if(iCvar_Hitmark_type == 1)
         {
             if(bStrike)
             {
@@ -334,14 +335,14 @@ public CS_OnBuy( id, anything )
 
         set_hudmessage(iRed, iGRN, iBLU, get_pcvar_float(pHUDx), get_pcvar_float(pHUDy) , 0, 2.0, get_pcvar_float(pLinger) , 0.0, 0.0, -1);
 
-        if(get_pcvar_num(g_cvar_iHitSym) == 2 )
+        if(iCvar_Hitmark_type == 2 )
             DISPLAY alpha_symbols[random(sizeof(alpha_symbols))] : "X");
 
         if(bStrike|bDod)
         {
             new iGat = get_user_weapon(iAttacker)
 
-            if(get_pcvar_num(g_cvar_iHitSym) == 5 )
+            if(iCvar_Hitmark_type == 5 )
             {
                 if(bStrike)
                 {
@@ -454,28 +455,28 @@ public CS_OnBuy( id, anything )
             }
             else
             {
-                if (get_pcvar_num(g_cvar_iHitSym) <= 2 )
+                if (iCvar_Hitmark_type <= 2 )
                 {
                     DISPLAY test_spinner1[random(sizeof(test_spinner1))] : "╳");
                 }
-                if (get_pcvar_num(g_cvar_iHitSym) == 3 )
+                if (iCvar_Hitmark_type == 3 )
                 {
                     DISPLAY test_spinner2[random(sizeof(test_spinner2))] : "╳");
                 }
-                if (get_pcvar_num(g_cvar_iHitSym) == 4 )
+                if (iCvar_Hitmark_type == 4 )
                 {
                     DISPLAY test_spinner0[random(sizeof(test_spinner0))] : "╳");
                 }
-                if (get_pcvar_num(g_cvar_iHitSym) == 6 )
+                if (iCvar_Hitmark_type == 6 )
                 {
                     DISPLAY TICKER[random(sizeof(TICKER))] : "╳");
                 }
-                if (get_pcvar_num(g_cvar_iHitSym) == 7 )
+                if (iCvar_Hitmark_type == 7 )
                 {
                     DISPLAY beta_symbols[random_num(0,9)][random_num(0,2)] : "╳" );
                 }
 
-                if (get_pcvar_num(g_cvar_iHitSym) == 8 )
+                if (iCvar_Hitmark_type == 8 )
                 {
                     DISPLAY TestArray[random_num(0,3)][random_num(0,5)] : "╳");
                 }
@@ -657,7 +658,7 @@ if(is_user_connected(id))
 if(is_user_connected(id))
 {
     HUDSUP
-    DEMO two_spinners[0][random_num(0,1)]);
+    DEMO COLT);
     client_print(id, print_center, "COLT");
 }
 @cell002(id)
@@ -670,7 +671,7 @@ if(is_user_alive(id))
 if(is_user_connected(id))
 {
     HUDSUP
-    DEMO beta_symbols[2][random_num(0,2)]);
+    DEMO JAX);
     client_print(id, print_center, "ALL SHOTGUNS");
 }
 @cell003(id)
@@ -683,7 +684,7 @@ if(is_user_connected(id))
 if(is_user_connected(id))
 {
     HUDSUP
-    DEMO beta_symbols[3][random_num(0,2)]);
+    DEMO JAX);
     client_print(id, print_center, "UMP45");
 }
 @cell004(id)
@@ -696,7 +697,7 @@ if(is_user_alive(id))
 if(is_user_connected(id))
 {
     HUDSUP
-    DEMO beta_symbols[4][random_num(0,2)]);
+    DEMO HALF);
     client_print(id, print_center, "Kalashnikov");
 }
 @cell005(id)
@@ -748,7 +749,7 @@ if(is_user_alive(id))
 if(is_user_connected(id))
 {
     HUDSUP
-    DEMO beta_symbols[8][random_num(0,2)]);
+    DEMO GRATEFUL_DEAD);
     client_print(id, print_center, "PARA or TMP");
 }
 @cell009(id)
@@ -760,7 +761,7 @@ if(is_user_alive(id))
 if(is_user_connected(id))
 {
     HUDSUP
-    DEMO beta_symbols[9][random_num(0,2)]);
+    DEMO VOLKS);
     client_print(id, print_center, "ALL PISTOLS");
 }
 
