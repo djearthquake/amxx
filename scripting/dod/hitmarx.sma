@@ -28,6 +28,7 @@
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
 #define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/czero/AI"
 new bool:bIsBot[MAX_PLAYERS + 1]
+new g_SyncMarks
 
 stock FixedSigned16( Float:value, scale )
 // Converts floating-point number to signed 16-bit fixed-point representation
@@ -102,7 +103,7 @@ enum {
 
 #define PLUGIN "HitMarx"
 //Works on DOD, CS, CZ, OP4, and plain HL. Missing your mod? PM me.
-#define VERSION "A1"
+#define VERSION "A2"
 //Demo of selected style 1-8
 #define AUTHOR "SPiNX"
 //This is better than NapoleoN# script as it as a copy of Bugsy's work, mine and Call of Duty. This is 100% original idea.
@@ -189,9 +190,9 @@ new pRainbow,pSpinners,pMarkerRed,pMarkerGRN,pMarkerBLU,pHUDx,pHUDy,pLinger,bool
          "⋮","⋯","⋰","⋱"
                 };
 
-    #define DISPLAY show_hudmessage(iAttacker, "%s" , get_pcvar_num(pSpinners) ?
+    #define DISPLAY ShowSyncHudMsg(iAttacker,g_SyncMarks, "%s" , pSpinners ?
     #define IS get_user_weapon(iAttacker) ==
-    #define HUDSUP set_dhudmessage(iRainbow,iRainbow,iRainbow, -1.0, -1.0, 0, 0.0, 0.3)
+    #define HUDSUP set_dhudmessage(iRainbow,iRainbow,iRainbow, -1.0, -1.0, 0, 0.0, 0.1)
     #define DEMO show_dhudmessage(id,   "%s",
     #define SPEED   change_task(id,random_float(0.1,0.3),0)
     #define SLOW change_task(id,random_float(0.5,0.9),0)
@@ -207,7 +208,7 @@ public plugin_init()
 
     //Reused a few of Napolean's cvars to make the 2 plugins more interchangeable.
     pRainbow    = register_cvar("amx_hmrainbow", "1"); // Enables/disables random colors on every hit.
-    pSpinners   = register_cvar("amx_hmrandom", "1"); //Enables/disables random hit markers.
+    bind_pcvar_num(register_cvar("amx_hmrandom", "1"), pSpinners); //Enables/disables random hit markers.
     pMarkerRed  = register_cvar("amx_hmrcolor", "165"); // RGB - Red (This won't work when amx_hmrainbow = 1)
     pMarkerGRN  = register_cvar("amx_hmgcolor", "165"); // RGB - GRN (This won't work when amx_hmrainbow = 1)
     pMarkerBLU  = register_cvar("amx_hmbcolor", "165"); // RGB - BLU (This won't work when amx_hmrainbow = 1)
@@ -221,6 +222,9 @@ public plugin_init()
     bDod = is_running("dod") == 1  ? true : false
     bStrike = cstrike_running() ? true : false
     g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
+
+    g_SyncMarks = CreateHudSyncObj()
+
     //hitmarx 1-8. 1 snipers-only (w/ legacy HL support).2 all (w/ legacy HL support) . 3 Dice. (Future organized DOD) 4. Crosses. 5. Organized just for Cstrike. 6. Dice again. 7.Random inventory 8.Random inventory 2.
     //Type hitmark_demo in console or nodemo to test without players or as a spec.
     //bsod_confirm_kills # <0-?> sets how many times screen flashes you you kill an opponent.
