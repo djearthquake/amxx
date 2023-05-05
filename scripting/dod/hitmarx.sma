@@ -19,8 +19,8 @@
 #include amxmodx
 #include amxmisc
 #include hamsandwich
-#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
-#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
+//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+//#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO NOT PLAY CZ.
 
 #define  charsmin -1
 
@@ -233,8 +233,11 @@ public plugin_init()
     //later larger array can depict from bots, to humans, friendlies, to objective mark (c4 carrier), to low hp or a skull for high.
     #define TICKER test_spinner2
     #if !defined CS_OnBuy
+    if(bStrike)
+    {
         register_message(get_user_msgid("Money"), "OnMoneyChange")
         register_event("HLTV", "OnMoneyChange", "a", "1=0", "2=0")
+    }
     #endif
 }
 
