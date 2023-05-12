@@ -157,9 +157,6 @@ public plugin_init()
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
     //assign to glock attack2
 
-    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
-    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
-
     new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
     if(equal(mod_name, "cstrike"))
@@ -168,6 +165,12 @@ public plugin_init()
     }
 
     bOF_run  = equal(mod_name, "gearbox") ? true : false
+
+    if(bOF_run)
+    {
+        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
+        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
+    }
 
     if(cstrike_running())
     {
