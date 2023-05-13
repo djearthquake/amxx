@@ -13,10 +13,10 @@ new bool:bCalled
 
 new const szZeroRnd[][] =
 {
-    "Hostages_Not_Rescued",  //cs
-    "Round_Draw",                    //es?
-    "Target_Saved",                   //de
-    "VIP_Not_Escaped"              //as
+    "Hostages_Not_Rescued",
+    "Round_Draw",
+    "Target_Saved",
+    "VIP_Not_Escaped"
 }
 
 #if AMXX_VERSION_NUM == 182
@@ -32,10 +32,14 @@ public plugin_init()
     register_logevent("@rnd_start", 2, "1=Round_Start")
     #if AMXX_VERSION_NUM != 182
     bind_pcvar_string(create_cvar("rnd_cmd_cvar", "say Round over!"), g_cvar_cmd, charsmax(g_cvar_cmd))
-    register_plugin(PLUGIN, VERSION, AUTHOR, URL)
     #else
     g_cvar_cmd_182 = register_cvar("rnd_cmd_cvar", "say Round over!")
+    #endif
+
+    #if AMXX_VERSION_NUM >= 182 || AMXX_VERSION_NUM <= 190
     register_plugin(PLUGIN, VERSION, AUTHOR)
+    #else
+    register_plugin(PLUGIN, VERSION, AUTHOR, URL)
     #endif
     g_cvar_rnd = get_cvar_pointer("mp_roundtime") //For maps without objectives.
     state ON
