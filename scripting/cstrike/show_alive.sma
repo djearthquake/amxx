@@ -4,15 +4,15 @@
 #include <fakemeta>
 
 #define PLUGIN  "!Alive"
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 #define AUTHOR  "SPiNX | vato loco [GE-S]"
 
 #define TASK_GETPLAYER    37852
 #define TASK_LOOP_TIME    1.0
 
-#define SetBits(%1,%2)       %1 |= 1<<(%2 & 31)
-#define ClearBits(%1,%2)   %1 &= ~(1<<(%2 & 31))
-#define GetBits(%1,%2)       %1 &  1<<(%2 & 31)
+#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
+#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
+#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
 
 #if !defined client_disconnect
 #define client_disconnected client_disconnect
@@ -103,18 +103,28 @@ public client_disconnected(id)
             if(~GetBits(g_AI, id))
             {
                 R = 255, X = 0.391;
-                set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1)
+                g_cvar_cont ?
+                set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_T) :
+                set_dhudmessage(R, G, B, X+0.22, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
 
-                ShowSyncHudMsg(id, g_SyncTeamCount_T, "[Alive T: %d]", iTnum)
+                g_cvar_cont ?
+                ShowSyncHudMsg(id, g_SyncTeamCount_T, "[Alive T: %d]", iTnum) :
+                show_dhudmessage(id, "[Alive T: %d]", iTnum)
 
                 R = 0, B = 255, X =0.54;
-                set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1)
+                g_cvar_cont ?
+                set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_CT) :
+                set_dhudmessage(R, G, B, X-0.227, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
 
-                ShowSyncHudMsg(id, g_SyncTeamCount_CT, "[Alive CT: %d]", iCTnum)
+                g_cvar_cont ?
+                ShowSyncHudMsg(id, g_SyncTeamCount_CT, "[Alive CT: %d]", iCTnum) :
+                show_dhudmessage(id, "[Alive CT: %d]", iCTnum)
                 if(g_Hostie)
                 {
                     G = 255, B = 0, X =0.462;
-                    set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1)
+                    g_cvar_cont ?
+                    set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id,g_SyncTeamCount_H) :
+                    set_dhudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
                     new iHostage,  Is_Hostage_alive, iHostie_count
                     while ((iHostage = find_ent(iHostage , szEnt)) > 0)
                     {
@@ -122,7 +132,9 @@ public client_disconnected(id)
                         if(Is_Hostage_alive)
                             iHostie_count++
                     }
-                    ShowSyncHudMsg(id, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue)
+                    g_cvar_cont ?
+                    ShowSyncHudMsg(id, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue) :
+                    show_dhudmessage(id, "[Hostages: %d]", iHostie_count-g_rescue)
                 }
             }
         }state OFF
