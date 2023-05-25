@@ -1,7 +1,7 @@
 #include <amxmodx>
 
 #define PLUGIN  "Zero Round"
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define AUTHOR  "SPiNX|victorrr"
 
 #define MAX_NAME_LENGTH 32
@@ -36,7 +36,7 @@ public plugin_init()
     g_cvar_cmd_182 = register_cvar("rnd_cmd_cvar", "say Round over!")
     #endif
 
-    #if AMXX_VERSION_NUM >= 182 || AMXX_VERSION_NUM <= 190
+    #if AMXX_VERSION_NUM >= 179 || AMXX_VERSION_NUM <= 190
     register_plugin(PLUGIN, VERSION, AUTHOR)
     #else
     register_plugin(PLUGIN, VERSION, AUTHOR, URL)
@@ -95,5 +95,9 @@ public plugin_log()
 @plugin_control()<OFF>
 {
     bCalled = false;
+    #if AMXX_VERSION_NUM == 182
     set_task(get_pcvar_num(g_cvar_rnd)*60.0, "@rnd_zero", 2023);
+    #else
+    set_task(get_pcvar_float(g_cvar_rnd)*60.0, "@rnd_zero", 2023);
+    #endif
 }
