@@ -42,7 +42,7 @@ public plugin_init()
     RegisterHam(Ham_Killed, "player", "client_death", 1);
     new SzModName[MAX_NAME_LENGTH]
     get_modname(SzModName, charsmax(SzModName));
-    if(equal(SzModName, "cstrike"))
+    if(equal(SzModName, "cstrike") || equal(SzModName, "czero") )
         b_CS = true
 }
 public client_connectex(id, const name[], const ip[], reason[128])
@@ -130,19 +130,23 @@ public client_infochanged(id)
     }
 }
 
-public client_death(victim, killer)
+public client_death(victim, killer, shouldgib)
 {
-    if(is_user_connected(killer)) //filter out mortars etc!
+    static ClientVicName[MAX_PLAYERS+1][MAX_NAME_LENGTH], ClientKilName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
+    ///filter out mortars etc!
+    if(is_user_connected(killer) && is_user_connected(victim))
     {
-        new ClientVicName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
-        new ClientKilName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
-
         formatex(ClientKilName[killer], charsmax(ClientKilName[]), "[%s]%s", ClientCountry_code[killer], ClientName[killer] )
         formatex(ClientVicName[victim], charsmax(ClientVicName[]), "[%s]%s", ClientCountry_code[victim], ClientName[victim] )
 
         if(!equal(ClientVicName[victim],"") && !equal(ClientKilName[killer],"") )
         {
-            client_print 0, print_chat, "%s killed %s", ClientKilName[killer], ClientVicName[victim]
+            b_CS
+            ?
+            client_print( 0, print_chat, "%s killed %s", ClientVicName[victim], ClientKilName[killer])
+            :
+            client_print( 0, print_chat, "%s killed %s", ClientKilName[killer], ClientVicName[victim])
+
         }
     }
 }
