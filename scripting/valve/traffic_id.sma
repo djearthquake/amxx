@@ -103,8 +103,8 @@ public track(id)
 
             if ( b_CS )
             {
-                b_Admin[admin] ? client_print_color(admin, 0, "^x03%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
-                client_print_color(admin, 0, "^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
+                b_Admin[admin] ? client_print_color(admin, 0, "^x03%s^x01 ^x04%s^x01 from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id]) :
+                client_print_color(admin, 0, "^x03%s^x01  from ^x04%s^x01 appeared on ^x04%s^x01 , ^x04%s^x01 radar.", ClientName[id], ClientCountry[id], ClientCity[id], ClientRegion[id])
             }
             else
             {
@@ -178,3 +178,5 @@ public client_disconnected(id)
         }
     }
 }
+
+
