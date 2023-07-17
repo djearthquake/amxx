@@ -353,10 +353,10 @@ public round_end()
     if ( !cool_down_active )
     if(is_user_connected(dead_spec))
     {
-        if(!bIsBot[dead_spec] || !is_user_alive(dead_spec))
+        if(!bIsBot[dead_spec] && !is_user_alive(dead_spec))
         {
             if(is_user_connected(alive_bot))
-            if(bIsBot[alive_bot] && get_user_team(dead_spec) == get_user_team(alive_bot) && !is_user_alive(dead_spec))
+            if(get_user_team(dead_spec) == get_user_team(alive_bot))
             {
                 if(!bIsCtrl[alive_bot])
                 {
@@ -406,9 +406,9 @@ public control_bot(dead_spec)
         if(!bIsVip[alive_bot])
 
         if(get_user_team(dead_spec) == get_user_team(alive_bot))
+        get_user_velocity(alive_bot, vec)
 
-        if(bIsBot[alive_bot] || get_pcvar_num(g_humans) && !bIsBot[alive_bot] && vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0 && (pev(alive_bot, pev_button) & IS_THERE == 0))
-        {
+        if(bIsBot[alive_bot] || (get_pcvar_num(g_humans) && !bIsBot[alive_bot] && vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0 && (pev(alive_bot, pev_button) & IS_THERE == 0)))        {
             set_user_rendering(alive_bot, kRenderFxNone, 0, 0, 0, kRenderTransTexture,0)
             entity_set_int(dead_spec, EV_INT_fixangle, 1)
             g_JustTook[dead_spec] = true
