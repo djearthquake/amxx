@@ -1,5 +1,6 @@
 /*Spin-off idea derived from request by malec321 via https://forums.alliedmods.net/showthread.php?t=153046*/
 #include <amxmodx>
+#include <amxmisc>
 #include <engine_stocks>
 #include <fakemeta>
 
@@ -20,7 +21,8 @@
 
 #define charsmin -1
 
-new g_AI, g_cvar_cont, g_continuous, g_rescue
+new g_AI
+new g_cvar_cont, g_continuous, g_rescue
 static g_Hostie
 
 static g_SyncTeamCount_CT,  g_SyncTeamCount_H, g_SyncTeamCount_T
@@ -61,15 +63,7 @@ public plugin_init()
     @solid_state()
 
 public client_putinserver(id)
-{
-    if(is_user_connected(id) && is_user_bot(id))
-    {
-        SetBits(g_AI, id)
-    }
-}
-
-public client_disconnected(id)
-    ClearBits(g_AI, id)
+    is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
 
 @solid_state()<ON>{set_task(TASK_LOOP_TIME, "@GetPlayers", TASK_GETPLAYER, .flags="b");if(g_cvar_cont>1)server_print("%s is on...", PLUGIN);}
 
@@ -83,7 +77,7 @@ public client_disconnected(id)
     Float:X, Float:Y,
     iPlayers[MAX_PLAYERS], iNum, iTnum, iCTnum;
 
-    get_players(iPlayers, iNum, "a")
+    get_players_ex(iPlayers, iNum, GetPlayers_ExcludeDead)
 
     if(iNum)
     {
@@ -97,7 +91,8 @@ public client_disconnected(id)
         }
 
         id = iPlayers[ALIVE]
-
+        if(g_cvar_cont && is_user_connected(id))
+            client_print( 0, print_chat, ~GetBits(g_AI, id) ? "%N is a human" : "%N is a bot", id )
         if(iTnum && iCTnum)
         {
             if(~GetBits(g_AI, id))
@@ -108,8 +103,8 @@ public client_disconnected(id)
                 set_dhudmessage(R, G, B, X+0.22, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
 
                 g_cvar_cont ?
-                ShowSyncHudMsg(id, g_SyncTeamCount_T, "[Alive T: %d]", iTnum) :
-                show_dhudmessage(id, "[Alive T: %d]", iTnum)
+                ShowSyncHudMsg(0, g_SyncTeamCount_T, "[Alive T: %d]", iTnum) :
+                show_dhudmessage(0, "[Alive T: %d]", iTnum)
 
                 R = 0, B = 255, X =0.54;
                 g_cvar_cont ?
@@ -117,8 +112,8 @@ public client_disconnected(id)
                 set_dhudmessage(R, G, B, X-0.227, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
 
                 g_cvar_cont ?
-                ShowSyncHudMsg(id, g_SyncTeamCount_CT, "[Alive CT: %d]", iCTnum) :
-                show_dhudmessage(id, "[Alive CT: %d]", iCTnum)
+                ShowSyncHudMsg(0, g_SyncTeamCount_CT, "[Alive CT: %d]", iCTnum) :
+                show_dhudmessage(0, "[Alive CT: %d]", iCTnum)
                 if(g_Hostie)
                 {
                     G = 255, B = 0, X =0.462;
@@ -133,8 +128,8 @@ public client_disconnected(id)
                             iHostie_count++
                     }
                     g_cvar_cont ?
-                    ShowSyncHudMsg(id, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue) :
-                    show_dhudmessage(id, "[Hostages: %d]", iHostie_count-g_rescue)
+                    ShowSyncHudMsg(0, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue) :
+                    show_dhudmessage(0, "[Hostages: %d]", iHostie_count-g_rescue)
                 }
             }
         }state OFF
