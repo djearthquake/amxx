@@ -22,7 +22,7 @@
 *   sv_hookhostfollow - If set 1 you can make hostages follow you (default 1)
 *   sv_hookinstant - Hook doesnt throw (default: 0)
 *   sv_hooknoise - adds some noise to the hook line (default: 0)
-*   sv_hookmax - Maximun numbers of hooks a player can use in 1 round                                        k
+*   sv_hookmax - Maximun numbers of hooks a player can use in 1 round
 *          - 0 for infinitive hooks (default: 0)
 *   sv_hookdelay - delay on the start of each round before a player can hook
 *                - 0.0 for no delay (default: 0.0)
@@ -45,7 +45,6 @@
 
 // Players admin level
 #define ADMINLEVEL ADMIN_SLAY
-#define HLW_KNIFE           0x0019
 
 #include <amxmodx>
 #include <amxmisc>
@@ -157,6 +156,9 @@ public plugin_init()
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
     //assign to glock attack2
 
+    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
+    RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
+
     new mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
     if(equal(mod_name, "cstrike"))
@@ -165,12 +167,6 @@ public plugin_init()
     }
 
     bOF_run  = equal(mod_name, "gearbox") ? true : false
-
-    if(bOF_run)
-    {
-        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
-        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
-    }
 
     if(cstrike_running())
     {
@@ -362,16 +358,14 @@ public plugin_precache()
     // Hook Beam
     sprBeam = precache_model(HOOK_MODEL)
     precache_generic(HOOK_MODEL)
-
+    // Hook Sounds
+    precache_generic("sound/weapons/xbow_hit1.wav")
+    precache_generic("sound/weapons/xbow_hit2.wav")
+    precache_generic("sound/weapons/xbow_hitbod1.wav")
+    precache_generic("sound/weapons/xbow_fire1.wav")
 
     if(bOF_run)
     {
-        // Hook Sounds
-        precache_generic("weapons/xbow_hit1.wav")
-        precache_generic("weapons/xbow_hit2.wav")
-        precache_generic("weapons/xbow_hitbod1.wav")
-        precache_generic("weapons/xbow_fire1.wav")
-
         precache_model("models/barnacle.mdl")
 
         precache_model("models/barnaclet.mdl")
@@ -421,14 +415,6 @@ public plugin_precache()
         precache_sound("barnacle/bcl_die1.wav")
         precache_sound("barnacle/bcl_die3.wav")
         precache_sound("barnacle/bcl_tongue1.wav")
-    }
-    else
-    {
-        // Hook Sounds
-        precache_sound("weapons/xbow_hit1.wav")
-        precache_sound("weapons/xbow_hit2.wav")
-        precache_sound("weapons/xbow_hitbod1.wav")
-        precache_sound("weapons/xbow_fire1.wav")
     }
 }
 
@@ -698,10 +684,7 @@ public fwTouch(ptr, ptd)
                         else
                         goto damage
                     }
-                    if (containi(szPtdClass, "hostage") > charsmin && get_pcvar_num(pHostage))
-                        dllfunc(DLLFunc_Use, ptd, id)
-
-                    if (containi(szPtdClass, "able") > charsmin)
+                    if (containi(szPtdClass, "able") > charsmin && get_pcvar_num(pHook_break))
                     {
                         damage:
                         /*          */
@@ -736,7 +719,7 @@ public fwTouch(ptr, ptd)
                     }
                     else
                     {
-                        if(get_pcvar_num(pHook_break)>1)
+                        if(get_pcvar_num(pHook_break))
                         {
                             ExecuteHam(Ham_TakeDamage,ptd,ptr,id,100.0,DMG_CRUSH|DMG_ALWAYSGIB) //Attacker killed Victim w/ Hook
                         }
