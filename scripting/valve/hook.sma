@@ -53,6 +53,7 @@
 #include <fakemeta>
 #include <fakemeta_util>
 #tryinclude gearbox
+#define HLW_KNIFE           0x0019
 #include <hamsandwich>
 #include <xs>
 #define message_begin_f(%1,%2,%3,%4) engfunc(EngFunc_MessageBegin, %1, %2, %3, %4)
