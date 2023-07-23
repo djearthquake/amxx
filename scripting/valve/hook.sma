@@ -100,6 +100,7 @@ new bool:gUpdate[MAX_NAME_LENGTH + 1] = {false, ...}
 
 new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
+new bool:bHOokUser[MAX_PLAYERS + 1]
 
 new g_monsters
 static gCStrike
@@ -363,10 +364,10 @@ public plugin_precache()
     sprBeam = precache_model(HOOK_MODEL)
     precache_generic(HOOK_MODEL)
     // Hook Sounds
-    precache_generic("sound/weapons/xbow_hit1.wav")
-    precache_generic("sound/weapons/xbow_hit2.wav")
-    precache_generic("sound/weapons/xbow_hitbod1.wav")
-    precache_generic("sound/weapons/xbow_fire1.wav")
+    precache_sound("weapons/xbow_hit1.wav")
+    precache_sound("weapons/xbow_hit2.wav")
+    precache_sound("weapons/xbow_hitbod1.wav")
+    precache_sound("weapons/xbow_fire1.wav")
 
     if(bOF_run)
     {
@@ -425,8 +426,8 @@ public plugin_precache()
 
 public make_hook(id)
 {
-    if (pHook && get_pcvar_num(pHook) && is_user_connected(id) && is_user_alive(id) && canThrowHook[id] && !gHooked[id]) {
-        if (get_pcvar_num(pAdmin))
+    if (pHook && get_pcvar_num(pHook) && is_user_connected(id) && is_user_alive(id) && canThrowHook[id] && !gHooked[id] && !is_user_bot(id)) {
+        if(get_pcvar_num(pAdmin))
         {
             if (!(get_user_flags(id) & ADMINLEVEL) && !g_bHookAllowed[id])
             {
@@ -437,7 +438,7 @@ public make_hook(id)
                 return PLUGIN_HANDLED
             }
         }
-
+        bHOokUser[id] = true
         new iMaxHooks = get_pcvar_num(pMaxHooks)
         if (iMaxHooks > 0)
         {
@@ -602,6 +603,7 @@ public ResetHUD(id)
 
         if (get_pcvar_num(pMaxHooks) > 0)
         {
+            bHOokUser[id] = false
             gHooksUsed[id] = 0
             statusMsg(id, "[Hook] 0 of %d hooks used.", get_pcvar_num(pMaxHooks))
         }
@@ -1356,7 +1358,7 @@ stock get_user_hitpoint(id, Float:hOrigin[3])
 
 stock statusMsg(id, szMsg[], {Float,_}:...)
 {
-    if(is_user_connected(id) && is_user_alive(id))
+    if(is_user_connected(id) && is_user_alive(id) && bHOokUser[id] )
     {
         static iStatusText
         iStatusText = gCStrike ? get_user_msgid("StatusText") : get_user_msgid("HudText")
