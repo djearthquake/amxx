@@ -90,7 +90,8 @@ public on_new_round()
 
 public client_putinserver(id)
 {
-    is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
+    if(is_user_connected(id))
+        is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
 }
 //Conner's
 
@@ -126,6 +127,7 @@ public plugin_precache()
 public on_damage(id)
 {
     if(g_enabled)
+    if(is_user_connected(id) && ~GetBits(g_AI, id))
     {
         static attacker; attacker = get_user_attacker(id)
         static damage; damage = read_data(2)
