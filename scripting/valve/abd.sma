@@ -32,6 +32,7 @@ new g_pCvarEnabled
 
 new g_type, g_enabled, g_recieved, bool:g_showrecieved, g_hudmsg1, g_hudmsg2
 new g_fade_human, g_fade_npc, g_shake_human, g_shake_npc, g_cry, g_AI
+static g_event_fade, g_event_shake
 
 public plugin_init()
 {
@@ -45,6 +46,9 @@ public plugin_init()
     //conner end
 
     register_plugin(PLUGIN, VERSION, AUTHOR)
+
+    g_event_fade = get_user_msgid("ScreenFade")
+    g_event_shake = get_user_msgid("ScreenShake")
 
     register_event("Damage", "on_damage", "b", "2!0", "3=0", "4!0")
     if ( cstrike_running() )register_event("HLTV", "on_new_round", "a", "1=0", "2=0");
@@ -64,7 +68,7 @@ public plugin_init()
     g_fade_npc = register_cvar("hn_npc", "1") //fadescreen from bot or npc attacker's landed hits.
     g_shake_human = register_cvar("hn_dam_hum","1") //screenshake effect on or off from human attacker's landed hits.
     g_shake_npc = register_cvar("hn_dam_npc","1") //screenshake effect on or off from bot attacker's landed hits.
-    g_cry = register_cvar("hn_cry","1") //victim cries out each time you shoot them and land a shot! Different sound if human or bot. Human's squeek and bots make a short cowardly scientist cry.
+    g_cry = register_cvar("hn_cry","0") //victim cries out each time you shoot them and land a shot! Different sound if human or bot. Human's squeek and bots make a short cowardly scientist cry.
 
     if ( cstrike_running() ) return;
     else
@@ -161,7 +165,7 @@ public got_hit(id)
         {
             if(get_pcvar_num(g_fade_human))
            {
-                emessage_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenFade"),{0,0,0},id)
+                emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},id)
                 ewrite_short(300)       //duration
                 ewrite_short(350)       //hold time
                 ewrite_short(0x0001) //flags
@@ -173,7 +177,7 @@ public got_hit(id)
             }
             if(get_pcvar_num(g_shake_human))
            {
-                emessage_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenShake"),{0,0,0},id)
+                emessage_begin(MSG_ONE_UNRELIABLE,g_event_shake,{0,0,0},id)
                 ewrite_short(5000)
                 ewrite_short(1000)
                 ewrite_short(1000)
@@ -192,7 +196,7 @@ public got_hit(id)
         //NPC
         if(get_pcvar_num(g_fade_npc))
        {
-            emessage_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenFade"),{0,0,0},id)
+            emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},id)
             ewrite_short(300)
             ewrite_short(350)
             ewrite_short(0x0001)
@@ -204,7 +208,7 @@ public got_hit(id)
         }
         if(get_pcvar_num(g_shake_npc))
        {
-            emessage_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenShake"),{0,0,0},id)
+            emessage_begin(MSG_ONE_UNRELIABLE,g_event_shake,{0,0,0},id)
             ewrite_short(0)
             ewrite_short(10000)
             ewrite_short(1000)
