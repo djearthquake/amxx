@@ -141,7 +141,7 @@ public sniffer(id)
     {
         static attacker; attacker = get_user_attacker(id)
         static damage; damage = read_data(2)
-        if(~GetBits(g_AI, attacker))
+        if(~GetBits(g_AI, id))
         {
             if(g_showrecieved)
             {
