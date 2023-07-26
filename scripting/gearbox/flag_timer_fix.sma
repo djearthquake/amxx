@@ -112,9 +112,6 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
             ewrite_byte(255) //GREEN HUD
             ewrite_byte(0)
             emessage_end()
-
-            if(!task_exists(id))
-                set_task_ex(0.33, "show_timer", id, .flags = SetTask_Repeat);
         }
         else if(equal(SzTeam,"Black Mesa"))
         {
@@ -123,9 +120,6 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
             ewrite_byte(151) //ORANGE HUD
             ewrite_byte(25)
             emessage_end()
-
-            if(!task_exists(id))
-                set_task_ex(0.33, "show_timer", id, .flags = SetTask_Repeat);
         }
         else //spec
         {
