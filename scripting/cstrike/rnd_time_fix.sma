@@ -26,7 +26,7 @@ public client_putinserver(id)
     new id = Tsk - g_ForceRoundTimer
     if(is_user_connected(id))
     {
-        message_begin(MSG_ONE_UNRELIABLE , g_ForceRoundTimer, _, id);
+        emessage_begin(MSG_ONE_UNRELIABLE , g_ForceRoundTimer, _, id);
         emessage_end();
         client_print id, print_chat, "Round timer restored on your client."
     }
