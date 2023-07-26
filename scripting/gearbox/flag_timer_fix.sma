@@ -24,18 +24,23 @@
 #include amxmisc
 #include engine_stocks
 #include fakemeta
+
+#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
+#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
+#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
+
 #define charsmin -1
 
-const LINUX_OFFSET_WEAPONS = 4;
-const LINUX_DIFF = 5;
-#define m_bIsTimer (1<<4) //CS only then
-static g_compatible1, g_compatible2,bool:B_op4c_map//, m_iHideHUD, m_iUpdateTime,m_iClientHideHUD
+static g_compatible1, g_compatible2,bool:B_op4c_map
 new bool:bProjector[MAX_PLAYERS+1]
 new bool:bBlackMesa[MAX_PLAYERS+1]
+new bool:bPatchRan[MAX_PLAYERS+1]
+new g_AI
 
 public plugin_init()
 {
     register_plugin("OF:FlagTimer", "1.1", ".sρiηX҉.");
+
     g_compatible1 = get_user_msgid("FlagTimer")
     g_compatible2 = get_user_msgid("HudColor")
     if(!g_compatible1|!g_compatible2)
@@ -43,27 +48,57 @@ public plugin_init()
         log_amx "Your mod does not support 'OP4CTF'."
         pause "c"
     }
-    register_event ( "ResetHUD" , "@flag_time_fix" , "bef" )
-    //m_iHideHUD = (find_ent_data_info("CBasePlayer", "m_iHideHUD") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS //ALL 3 OS have this in DLL/SO/DYLIB
-    //m_iUpdateTime = (find_ent_data_info("CBasePlayer", " m_iUpdateTime") /LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
-    new info_detect = find_ent(charsmin,"info_ctfdetect")
+    register_event( "ResetHUD" , "@flag_time_fix" , "bef" )
+    register_event( "TeamNames", "@flag_time_fix" , "b" )
+
+    static info_detect
+    info_detect = find_ent(charsmin,"info_ctfdetect")
     B_op4c_map = info_detect ? true : false
 }
 
-@flag_time_fix(id)
-if(is_user_connected(id))
+public client_putinserver(id)
 {
+    if(is_user_connected(id))
+        is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
+    if(~GetBits(g_AI, id) && B_op4c_map)
+        bProjector[id] = true
+}
+
+@flag_time_fix(id)
+if(is_user_connected(id) && ~GetBits(g_AI, id))
+{
+    new iTimeleft = get_timeleft()
+
+    if(!B_op4c_map && !bPatchRan[id])
+    {
+        emessage_begin(MSG_ONE_UNRELIABLE, g_compatible1, _, id)
+        ewrite_byte(B_op4c_map ? 1 : 0)
+
+        if(B_op4c_map)
+        {
+            ewrite_short(iTimeleft)
+        }
+        emessage_end()
+
+        bPatchRan[id] = true
+        client_print id, print_chat, "Fixed your broken Time Remaining counter"
+        server_print "Fixed broken time remaining on %N", id
+    }
+
     emessage_begin(MSG_ONE_UNRELIABLE, g_compatible1, _, id)
-    //ewrite_byte(B_op4c_map ? 1 : 0) //show TIME REMAINING resets working OSes to zero time not counting
-    ewrite_byte(0)
-    emessage_end()
-    
+    ewrite_byte(B_op4c_map ? 1 : 0)
 
     if(B_op4c_map)
     {
-        new SzTeam[MAX_PLAYERS]
+        ewrite_short(iTimeleft)
+    }
+    emessage_end()
+
+    if(B_op4c_map)
+    {
+        static SzTeam[MAX_PLAYERS]
         get_user_team(id, SzTeam, charsmax(SzTeam));
-        
+
         client_print id, print_chat, SzTeam
 
         emessage_begin(MSG_ONE_UNRELIABLE, g_compatible2, _, id)
@@ -113,21 +148,31 @@ if(is_user_connected(id))
     }
 }
 
-
 public client_disconnected(id)
 {
     bProjector[id] = false
+    bPatchRan[id] = false
 }
 
 public show_timer(id)
 {
-    new timeleft = get_timeleft();
-    static effects=0,Float:fxtime=1.0,Float:fadeintime = 0.1, Float:holdtime=1.0, Float:fadouttime = 0.2, channel = 13,
-    Float:Xpos =0.08, Float:Ypos = 0.96 
-    bBlackMesa[id] ? set_hudmessage(234,151,25,Xpos, Ypos,effects, fxtime, holdtime, fadeintime, fadouttime, channel) :
-    set_hudmessage(0,255,0,Xpos,Ypos,effects, fxtime, holdtime, fadeintime, fadouttime, channel)
-    ///set_hudmessage(255,255,255,0.11,0.90,0, 1.0, 1.0, 0.1, 0.2, 13) //above
+    static timeleft
+    timeleft = get_timeleft();
+    static effects=0,Float:fxtime=1.0,Float:fadeintime = 0.1, Float:holdtime=1.0, Float:fadouttime = 0.2, channel = 13, Float:Xpos =0.08, Float:Ypos = 0.96
+    if(is_user_connected(id))
+    if(~GetBits(g_AI, id))
+    {
+        static iColor[3]
+        iColor = bBlackMesa[id] ? {234,151,25} : {0,255,0}
 
-    show_hudmessage(id,"         %d:%02d",timeleft / 60, timeleft % 60)
+        static SzTeam[MAX_PLAYERS]
+        get_user_team(id, SzTeam, charsmax(SzTeam));
+        if(equal(SzTeam,""))
+            iColor = {33,209,175}
+
+        set_hudmessage(iColor[0], iColor[1], iColor[2], Xpos, Ypos,effects, fxtime, holdtime, fadeintime, fadouttime, channel)
+
+        show_hudmessage(id,"         %d:%02d",timeleft / 60, timeleft % 60)
+    }
     return PLUGIN_CONTINUE
 }
