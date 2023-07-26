@@ -32,9 +32,7 @@
 #define charsmin -1
 
 static g_compatible1, g_compatible2,bool:B_op4c_map
-//new bool:bProjector[MAX_PLAYERS+1]
 new bBlackMesa[MAX_PLAYERS+1]
-//new bool:bPatchRan[MAX_PLAYERS+1]
 new g_AI, g_Projector, g_Ran_Patch
 
 public plugin_init()
@@ -87,7 +85,6 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
         emessage_end()
 
         SetBits(g_Ran_Patch, id)
-        client_print id, print_chat, "Fixed your broken Time Remaining counter"
         server_print "Fixed broken time remaining on %N", id
     }
 
