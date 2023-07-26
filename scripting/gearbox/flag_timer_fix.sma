@@ -32,10 +32,10 @@
 #define charsmin -1
 
 static g_compatible1, g_compatible2,bool:B_op4c_map
-new bool:bProjector[MAX_PLAYERS+1]
-new bool:bBlackMesa[MAX_PLAYERS+1]
-new bool:bPatchRan[MAX_PLAYERS+1]
-new g_AI
+//new bool:bProjector[MAX_PLAYERS+1]
+new bBlackMesa[MAX_PLAYERS+1]
+//new bool:bPatchRan[MAX_PLAYERS+1]
+new g_AI, g_Projector, g_Ran_Patch
 
 public plugin_init()
 {
@@ -59,17 +59,23 @@ public plugin_init()
 public client_putinserver(id)
 {
     if(is_user_connected(id))
+    {
         is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
-    if(~GetBits(g_AI, id) && B_op4c_map)
-        bProjector[id] = true
+    }
+    if(~GetBits(g_AI, id))
+    {
+        ClearBits(g_Ran_Patch, id)
+
+        B_op4c_map ? (SetBits(g_Projector, id)) : (ClearBits(g_Projector, id))
+    }
 }
 
 @flag_time_fix(id)
 if(is_user_connected(id) && ~GetBits(g_AI, id))
 {
-    new iTimeleft = get_timeleft()
+    static iTimeleft; iTimeleft = get_timeleft()
 
-    if(!B_op4c_map && !bPatchRan[id])
+    if(!B_op4c_map && ~GetBits(g_Ran_Patch, id))
     {
         emessage_begin(MSG_ONE_UNRELIABLE, g_compatible1, _, id)
         ewrite_byte(B_op4c_map ? 1 : 0)
@@ -80,7 +86,7 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
         }
         emessage_end()
 
-        bPatchRan[id] = true
+        SetBits(g_Ran_Patch, id)
         client_print id, print_chat, "Fixed your broken Time Remaining counter"
         server_print "Fixed broken time remaining on %N", id
     }
@@ -126,6 +132,7 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
         }
         else //spec
         {
+            bBlackMesa[id] = 3
             ewrite_byte(29)
             ewrite_byte(211) //OCEANBLUE/TEAL HUD
             ewrite_byte(199)
@@ -141,38 +148,26 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
         ewrite_byte(0)
         emessage_end()
     }
-    if(!task_exists(id) && bProjector[id])
+    if(!task_exists(id) && GetBits(g_Projector, id))
     {
-        bBlackMesa[id] = false
         set_task_ex(1.0, "show_timer", id, .flags = SetTask_Repeat);
     }
 }
 
-public client_disconnected(id)
-{
-    bProjector[id] = false
-    bPatchRan[id] = false
-}
-
 public show_timer(id)
 {
-    static timeleft
-    timeleft = get_timeleft();
+    static iTimeleft
+    iTimeleft = get_timeleft();
     static effects=0,Float:fxtime=1.0,Float:fadeintime = 0.1, Float:holdtime=1.0, Float:fadouttime = 0.2, channel = 13, Float:Xpos =0.08, Float:Ypos = 0.947
     if(is_user_connected(id))
     if(~GetBits(g_AI, id))
     {
-        static iColor[3]
-        iColor = bBlackMesa[id] ? {234,151,25} : {0,255,0}
+        static iRGB[3]
+        iRGB = bBlackMesa[id] == 3 ? {33,209,175} : bBlackMesa[id] ? {234,151,25} : {0,255,0}
 
-        static SzTeam[MAX_PLAYERS]
-        get_user_team(id, SzTeam, charsmax(SzTeam));
-        if(equal(SzTeam,""))
-            iColor = {33,209,175}
+        set_hudmessage(iRGB[0], iRGB[1], iRGB[2], Xpos, Ypos,effects, fxtime, holdtime, fadeintime, fadouttime, channel)
 
-        set_hudmessage(iColor[0], iColor[1], iColor[2], Xpos, Ypos,effects, fxtime, holdtime, fadeintime, fadouttime, channel)
-
-        show_hudmessage(id,"         %d:%02d",timeleft / 60, timeleft % 60)
+        show_hudmessage(id,"         %d:%02d",iTimeleft / 60, iTimeleft % 60)
     }
     return PLUGIN_CONTINUE
 }
