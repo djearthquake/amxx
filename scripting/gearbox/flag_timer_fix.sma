@@ -158,7 +158,7 @@ public show_timer(id)
 {
     static timeleft
     timeleft = get_timeleft();
-    static effects=0,Float:fxtime=1.0,Float:fadeintime = 0.1, Float:holdtime=1.0, Float:fadouttime = 0.2, channel = 13, Float:Xpos =0.08, Float:Ypos = 0.96
+    static effects=0,Float:fxtime=1.0,Float:fadeintime = 0.1, Float:holdtime=1.0, Float:fadouttime = 0.2, channel = 13, Float:Xpos =0.08, Float:Ypos = 0.947
     if(is_user_connected(id))
     if(~GetBits(g_AI, id))
     {
