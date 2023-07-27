@@ -38,7 +38,7 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
 
-    g_pCvarEnabled = register_cvar("bullet_damage", "1")
+    g_pCvarEnabled = register_cvar("bullet_damage", "4")
     g_iMaxPlayers = get_maxplayers()
 
     get_modname(g_modname, charsmax(g_modname))
@@ -62,7 +62,7 @@ public plugin_init()
     g_fade_npc = register_cvar("hn_npc", "1") //fadescreen from bot or npc attacker's landed hits.
     g_shake_human = register_cvar("hn_dam_hum","1") //screenshake effect on or off from human attacker's landed hits.
     g_shake_npc = register_cvar("hn_dam_npc","1") //screenshake effect on or off from bot attacker's landed hits.
-    g_cry = register_cvar("hn_cry","0") //victim cries out each time you shoot them and land a shot! Different sound if human or bot. Human's squeek and bots make a short cowardly scientist cry.
+    g_cry = register_cvar("hn_cry","1") //victim cries out each time you shoot them and land a shot! Different sound if human or bot. Human's squeek and bots make a short cowardly scientist cry.
 }
 
 public plugin_cfg()
@@ -126,13 +126,27 @@ public conner( iVictim )
 ///arcade classic effects
 #include <engine>
 #include <fun>
+
+new const SZCRYBOT[]="misc/ni1.wav"
+new const SZCRYMAN[]="scientist/scream19.wav"
+
 public plugin_precache()
 {
-    if (file_exists("sound/misc/ni1.wav"))
-        precache_sound("misc/ni1.wav")
+    if(file_exists("sound/misc/ni1.wav"))
+        precache_sound(SZCRYBOT)
     else
-        log_amx"Missing ni1.wav"
-    equali(g_modname, "valve", charsmin) ? precache_sound("../../valve/sound/scientist/scream19.wav") : precache_sound("scientist/scream19.wav")
+    {
+        log_amx"Missing %s", SZCRYBOT
+        pause("a")
+    }
+    if(file_exists("sound/scientist/scream19.wav"))
+        precache_sound(SZCRYMAN)
+    else
+    {
+        log_amx"Missing %s", SZCRYMAN
+        pause("a")
+    }
+
 }
 
 public sniffer(id)
@@ -173,17 +187,22 @@ public spinx(id)
     if(is_user_connected(id))
     if(is_user_alive(id))
     {
+        static attacker
+        attacker = get_user_attacker(id)
+        if(is_user_connected(attacker))
         if(~GetBits(g_AI, id))
         {
             if(get_pcvar_num(g_fade_human))
            {
-                emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},id)
+                static iBot
+                iBot =  GetBits(g_AI, attacker) ? 1 : 0
+                emessage_begin(MSG_ONE_UNRELIABLE, g_event_fade,{0,0,0},id)
                 ewrite_short(300)       //duration
                 ewrite_short(350)       //hold time
                 ewrite_short(0x0001) //flags
-                ewrite_byte(0)            //rgb alpha
-                ewrite_byte(119)
-                ewrite_byte(190)
+                ewrite_byte(iBot ? 248 : 0)            //rgb alpha
+                ewrite_byte(iBot ? 24 : 119)
+                ewrite_byte(iBot ? 148 : 190)
                 ewrite_byte(300)
                 emessage_end()
             }
@@ -197,25 +216,20 @@ public spinx(id)
             }
             if(get_pcvar_num(g_cry))
             {
-                new attacker=get_user_attacker(id)
-                if(is_user_connected(attacker) && ~GetBits(g_AI, attacker))
-                {
-                    client_cmd(attacker,"spk scientist/scream19.wav")
-                    return PLUGIN_HANDLED
-                }
+                emit_sound(id, CHAN_AUTO, SZCRYMAN, VOL_NORM, ATTN_NORM, 0, PITCH_NORM)
             }
         }
         //NPC
         if(get_pcvar_num(g_fade_npc))
        {
             emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},id)
-            ewrite_short(300)
+            ewrite_short(1000)
             ewrite_short(350)
             ewrite_short(0x0001)
             ewrite_byte(248)
             ewrite_byte(24)
             ewrite_byte(148)
-            ewrite_byte(150)
+            ewrite_byte(150)  //alpha
             emessage_end()
         }
         if(get_pcvar_num(g_shake_npc))
@@ -226,14 +240,9 @@ public spinx(id)
             ewrite_short(1000)
             emessage_end()
         }
-        if(get_pcvar_num(g_cry))
+        if(get_pcvar_num(g_cry) && GetBits(g_AI, id))
         {
-            new attacker=get_user_attacker(id)
-            if(is_user_connected(attacker && ~GetBits(g_AI, attacker)))
-            {
-                client_cmd(attacker,"spk misc/ni1.wav")
-            }
+            emit_sound(id, CHAN_AUTO, SZCRYBOT, VOL_NORM, ATTN_NORM, 0, PITCH_NORM)
         }
     }
-    return PLUGIN_HANDLED
 }
