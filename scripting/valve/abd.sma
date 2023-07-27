@@ -139,31 +139,28 @@ public sniffer(id)
 {
     if(is_user_connected(id))
     {
-        if(~GetBits(g_AI, id))
-        {
-            static attacker; attacker = get_user_attacker(id)
-            static damage; damage = read_data(2)
+        static attacker; attacker = get_user_attacker(id)
+        static damage; damage = read_data(2)
 
-            if(g_showrecieved)
+        if(g_showrecieved && ~GetBits(g_AI, id))
+        {
+            set_hudmessage(255, 0, 0, 0.45, 0.50, 2, 0.2, 0.1, 0.1, 0.0, -1)
+            ShowSyncHudMsg(id, g_hudmsg2, "%i^n", damage)
+        }
+        if(is_user_connected(attacker) && ~GetBits(g_AI, attacker))
+        {
+            set_hudmessage(0, 255, 100, -1.0, 0.55, 2, 0.2, 0.1, 0.1, 0.0, -1)
+            switch(g_enabled)
             {
-                set_hudmessage(255, 0, 0, 0.45, 0.50, 2, 0.2, 0.1, 0.1, 0.0, -1)
-                ShowSyncHudMsg(id, g_hudmsg2, "%i^n", damage)
-            }
-            if(is_user_connected(attacker) && ~GetBits(g_AI, attacker))
-            {
-                set_hudmessage(0, 255, 100, -1.0, 0.55, 2, 0.2, 0.1, 0.1, 0.0, -1)
-                switch(g_enabled)
+                case 1:
                 {
-                    case 1:
+                    ShowSyncHudMsg(attacker, g_hudmsg1, "%i^n", damage)
+                }
+                case 2:
+                {
+                    if(fm_is_ent_visible(attacker,id))
                     {
                         ShowSyncHudMsg(attacker, g_hudmsg1, "%i^n", damage)
-                    }
-                    case 2:
-                    {
-                        if(fm_is_ent_visible(attacker,id))
-                        {
-                            ShowSyncHudMsg(attacker, g_hudmsg1, "%i^n", damage)
-                        }
                     }
                 }
             }
