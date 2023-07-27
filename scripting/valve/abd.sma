@@ -139,30 +139,31 @@ public sniffer(id)
 {
     if(is_user_connected(id))
     {
-        static attacker; attacker = get_user_attacker(id)
-        static damage; damage = read_data(2)
         if(~GetBits(g_AI, id))
         {
+            static attacker; attacker = get_user_attacker(id)
+            static damage; damage = read_data(2)
+
             if(g_showrecieved)
             {
                 set_hudmessage(255, 0, 0, 0.45, 0.50, 2, 0.2, 0.1, 0.1, 0.0, -1)
-                if(~GetBits(g_AI, id))
-                    ShowSyncHudMsg(id, g_hudmsg2, "%i^n", damage)
+                ShowSyncHudMsg(id, g_hudmsg2, "%i^n", damage)
             }
-            set_hudmessage(0, 255, 100, -1.0, 0.55, 2, 0.2, 0.1, 0.1, 0.0, -1)
-            switch(g_enabled)
+            if(is_user_connected(attacker) && ~GetBits(g_AI, attacker))
             {
-                case 1:
+                set_hudmessage(0, 255, 100, -1.0, 0.55, 2, 0.2, 0.1, 0.1, 0.0, -1)
+                switch(g_enabled)
                 {
-                    if(is_user_connected(attacker))
-                        ShowSyncHudMsg(attacker, g_hudmsg1, "%i^n", damage)
-                }
-                case 2:
-                {
-                    if(fm_is_ent_visible(attacker,id))
+                    case 1:
                     {
-                        if(is_user_connected(attacker))
+                        ShowSyncHudMsg(attacker, g_hudmsg1, "%i^n", damage)
+                    }
+                    case 2:
+                    {
+                        if(fm_is_ent_visible(attacker,id))
+                        {
                             ShowSyncHudMsg(attacker, g_hudmsg1, "%i^n", damage)
+                        }
                     }
                 }
             }
