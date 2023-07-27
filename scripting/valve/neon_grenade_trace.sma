@@ -117,9 +117,10 @@
     new g_pickerton[MAX_PLAYERS];
     new g_cvar_bsod_iDelay;
     new g_iLoss,g_iPing;
-    new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, /*g_tank_think,*/ g_rocket_think;
+    new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, g_tank_think, g_rocket_think;
     new bool: bRADead[MAX_PLAYERS + 1];
     new bool: bStrike;
+    static g_event_fade
 
 public plugin_end()
 {
@@ -128,20 +129,17 @@ public plugin_end()
     unregister_think(g_mortar_think);
     unregister_think(g_rocket_think);
     unregister_think(g_rpg_think);
-//    unregister_think(g_tank_think);
+    unregister_think(g_tank_think);
 }
 public plugin_init()
 {
-    //register_event("CurWeapon", "CurentWeapon", "bce", "1=1");
     register_plugin("Neon Grenade Trace","A","SPiNX");
     bStrike = cstrike_running() == 1 ? true : false
+
+    g_event_fade = get_user_msgid("ScreenFade")
     g_pickable = register_cvar("neon_pick", "func_button")
 
     get_pcvar_string(g_pickable, g_pickerton, charsmax(g_pickerton));
-
-    //CUSTOM CVAR PICK
-
-    ///register_touch(g_pickerton,"func_illusionary","Other_Attack_Touch");
 
     g_debug = register_cvar("neon_debug", "0")
 
@@ -153,7 +151,7 @@ public plugin_init()
     g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
     g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
     g_proximity             = register_cvar("sv_neon_range",  "500"); //max range
-    g_teams            = !cstrike_running() ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
+    g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
     clamp(g_cvar_neon_wid,1,150);
     g_shake_msg = get_user_msgid("ScreenShake")
     g_cvar_bsod_iDelay = register_cvar("neon_flashbang_time", "2");
@@ -199,14 +197,22 @@ public plugin_init()
             g_mortar_think = register_think("mortar_shell", "@tracer");
             register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
         }
+        //TANK MORTAR (can't isolate the shell from the cannon)
+        /*
+        if(has_map_ent_class("weapon_snark"))
+        {
+            g_tank_think = register_think("monster_snark", "@tracer");
+            register_touch("monster_snark", "player", "HandGrenade_Attack2_Touch");
+        }
+        */
         //MISSILES //affecting spec mode
-        if(has_map_ent_class("func_rocket"))
+        if(is_plugin_loaded("spinx_missiles.amxx",true)!=charsmin)
         {
             g_rocket_think = register_think("func_rocket", "@tracer");
             register_touch("func_rocket", "*", "HandGrenade_Attack2_Touch");
         }
     }
-    if(cstrike_running())
+    if(bStrike)
     {
         register_logevent("plugin_save", 3, "2=Planted_The_Bomb")
     }
@@ -462,7 +468,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                             fakedamage(players[m],"Grenade Radiation",15.0,DMG_RADIATION)
 
 
-                            emessage_begin(MSG_ONE_UNRELIABLE,get_user_msgid("ScreenFade"),{0,0,0},players[m]);
+                            emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},players[m]);
                             DELAY;DELAY;FLAGS;PUR;ALPHA; //This is where one can change BLU to GRN.
                             emessage_end();
 
@@ -504,9 +510,9 @@ public HandGrenade_Attack2_Touch(ent, id)
                             }
                             #endif
 
-                            if(cstrike_running())
+                            if(bStrike)
                                 set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-                            if(!cstrike_running())
+                            if(!bStrike)
                             set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
 
                             fakedamage(players[m],"Grenade Radiation",300.0,DMG_RADIATION|DMG_NEVERGIB)
@@ -646,7 +652,7 @@ stock log_kill(killer, victim, weapon[], headshot)
     if(is_user_connected(killer))
     {
        //Scoring
-        if(get_pcvar_num(g_teams) == 1 || cstrike_running() )
+        if(get_pcvar_num(g_teams) == 1 || bStrike )
         {
 
             if(!equal(killers_team,victims_team))
@@ -673,9 +679,9 @@ stock log_kill(killer, victim, weapon[], headshot)
         ewrite_byte(killer);
         ewrite_byte(victim);
 
-        if(cstrike_running())
+        if(bStrike)
             ewrite_byte(headshot);
-        if( (get_pcvar_num(g_teams) == 1 || cstrike_running())
+        if( (get_pcvar_num(g_teams) == 1 || bStrike)
         &&
         equal(killers_team,victims_team))
             ewrite_string("teammate");
@@ -714,7 +720,7 @@ public pin_scoreboard(killer)
         new dead = get_pdata_int(killer, DEATHS)
         ewrite_short(dead);
 
-        if(cstrike_running())
+        if(bStrike)
         {
             ewrite_short(0); //TFC CLASS
             ewrite_short(get_user_team(killer));
