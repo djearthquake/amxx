@@ -16,6 +16,10 @@
 #define MAX_USER_INFO_LENGTH       256
 #define charsmin                  -1
 
+#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
+#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
+#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
+
 new g_timer[MAX_PLAYERS + 1]
 new g_afk_spec_player
 new const CvarAFKTimeDesc[] = "Seconds before moving AFK player into spectator mode."
@@ -28,14 +32,16 @@ new bool:b_Op4c
 new bool:g_bFlagMap
 new afk_sync_msg, download_sync_msg//, g_spawn_wait
 new g_SzMapName[MAX_NAME_LENGTH]
-new bool:bCS
+new bool:bCS, g_bGunGameRunning, g_AI
+static g_event_fade
 
 #define ALRT 84641
 #define FADE_HOLD (1<<2)
 
 public plugin_init()
 {
-    register_plugin("Connect Alert System","1.1","SPiNX");
+    register_plugin("Connect Alert System","1.2","SPiNX");
+    g_event_fade = get_user_msgid("ScreenFade")
     bCS = cstrike_running() == 1 ? true: false
     get_mapname(g_SzMapName, charsmax(g_SzMapName));
     g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin?true:false
@@ -57,16 +63,24 @@ public plugin_init()
     //no over-lapping
     afk_sync_msg        = CreateHudSyncObj( )
     download_sync_msg   = CreateHudSyncObj( )
+    if(is_plugin_loaded("gungame.amxx",true)!=charsmin)
+    {
+        g_bGunGameRunning = true
+    }
 }
 
 public client_putinserver(index)
 {
-
-    if(!task_exists(ALRT) && !is_user_bot(index) && !is_user_admin(index))
+    if(is_user_connected(index))
     {
-        set_task(1.75,"the_alert", ALRT)
+        is_user_bot(index) ? (SetBits(g_AI, index)) : (ClearBits(g_AI, index))
+
+        if(!task_exists(ALRT) && ~GetBits(g_AI, index) && !is_user_admin(index))
+        {
+            set_task(1.75,"the_alert", ALRT)
+        }
+        g_timer[index] = 1
     }
-    g_timer[index] = 1
 }
 
 public the_alert()
@@ -81,20 +95,19 @@ public client_authorized(id) //auth was messing up names on download
     server_print "%s is lurking...", ClientName[id]
 }
 
-
 public new_users()
 {
     new players[MAX_PLAYERS], playercount;
     get_players(players,playercount,"i");
 
-
-    for (new downloader; downloader<playercount; ++downloader)
+    for (new downloader; downloader<=playercount; ++downloader)
     {
 
         if(is_user_connecting(players[downloader]))
         {
             set_hudmessage(255, 255, 255, 0.00, 0.50, .effects= 0 , .holdtime= 5.0)
-            new uptime = g_timer[players[downloader]]++
+            static uptime
+            uptime = g_timer[players[downloader]]++
             #if AMXX_VERSION_NUM == 182
             server_print"%s download time:%i", ClientName[players[downloader]], uptime
             #else
@@ -105,11 +118,11 @@ public new_users()
             {
                 #if AMXX_VERSION_NUM == 182
 
-                client_print 0,print_chat,"%s is connecting...", ClientName[players[downloader]]
+                client_print 0, print_chat,"%s is connecting...", ClientName[players[downloader]]
                 server_print "%s is connecting...", ClientName[players[downloader]
 
                 #else
-                client_print 0,print_chat,"%n is connecting...", players[downloader]
+                client_print 0, print_chat,"%n is connecting...", players[downloader]
                 server_print "%n is connecting...", players[downloader]
 
                 #endif
@@ -138,13 +151,14 @@ public new_users()
                 b_Walled[players[downloader]] = true; //stop console thrash
                 //Update server's built-in AMXX scrolling message.
                 new SzScrolling[256], SzNewScroller[256]
-                new iPlayers = players[downloader]
-                if(!is_user_bot(iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
+                static iPlayers
+                iPlayers = players[downloader]
+                if(~GetBits(g_AI, iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
                     copy(DownloaderName[iPlayers], charsmax(DownloaderName[]), ClientName[iPlayers])
 
                 implode_strings( DownloaderName, charsmax(DownloaderName[]), " ", SzNewScroller, charsmax(SzNewScroller) )
 
-                new SzBuffer[256]
+                static SzBuffer[256]
                 copy(SzBuffer, charsmax(SzBuffer), SzNewScroller)
                 trim(SzBuffer)
 
@@ -157,13 +171,16 @@ public new_users()
 
         }
 
-        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && !is_user_bot(players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
+        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && ~GetBits(g_AI, players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
         {
-            new uptime = sleepy[players[downloader]]++
+            static uptime
+            uptime = sleepy[players[downloader]]++
             #if AMXX_VERSION_NUM == 182
-            new spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
+            static spec_screensaver_engage
+            spec_screensaver_engage = get_pcvar_num(g_afk_spec_player)
             #else
-            new spec_screensaver_engage = g_afk_spec_player
+            static spec_screensaver_engage
+            spec_screensaver_engage = g_afk_spec_player
             #endif
 
             if(spec_screensaver_engage < 0)
@@ -172,17 +189,21 @@ public new_users()
             if(!bCS)
             if(uptime > spec_screensaver_engage && !b_Op4c)
             {
-                new flags = pev(players[downloader], pev_flags)
+                static flags
+                flags = pev(players[downloader], pev_flags)
                 if(flags &~ FL_SPECTATOR)
                 set_hudmessage(255, 255, 255, 0.41, 0.00, .effects= 0 , .holdtime= 5.0)
                 if(g_spec && is_plugin_loaded(SPEC_PRG,true)!=charsmin)
                 {
-                    if(is_plugin_loaded("gungame.amxx",true)==charsmin)
+                    static cvar_gg
+                    cvar_gg = get_cvar_num("gg_enabled")
+                    if(!g_bGunGameRunning || !cvar_gg)
                     {
-                        new Group_of_players =  players[downloader]
+                        static Group_of_players
+                        Group_of_players = players[downloader]
                         log_amx "Sending %s to spec", ClientName[Group_of_players]
 
-                        if(is_user_connected(Group_of_players) && !is_user_bot(Group_of_players))
+                        if(is_user_connected(Group_of_players) && ~GetBits(g_AI, Group_of_players))
                         {
                             dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
                             callfunc_begin("@go_spec",SPEC_PRG)
@@ -213,7 +234,7 @@ public new_users()
             else
             {
                 ShowSyncHudMsg 0, afk_sync_msg, "%s is NO LONGER active...", ClientName[players[downloader]]
-                client_print players[downloader],print_chat, "AFK time:%i", uptime
+                client_print players[downloader], print_chat, "AFK time:%i", uptime
             }
         }
     }
@@ -221,24 +242,25 @@ public new_users()
 }
 
 @make_spec(id)
-if(is_user_connected(id) && !is_user_bot(id))
+if(is_user_connected(id) && ~GetBits(g_AI, id))
 {
-    server_print("Sending %n spec...", id)
+    server_print("Sending %N spec...", id)
     client_print id, print_chat, "Sending you to spec %n...", id
     client_cmd(id, "say !spec")
 }
 
 public screensaver_stop(id,{Float,_}:...)
 {
-    new duration = 1<<12
-    new holdTime = 1<<8
-    new fadeType = FADE_HOLD
-    new blindness = 0
+    static duration, holdTime, fadeType, blindness
+    duration = 1<<12
+    holdTime = 1<<8
+    fadeType = FADE_HOLD
+    blindness = 0
     g_timer[id] = 1
     sleepy[id] = 1
-    if (is_user_connected(id) && !is_user_bot(id))
+    if(is_user_connected(id) && ~GetBits(g_AI, id))
     {
-        message_begin(MSG_ONE, get_user_msgid("ScreenFade"), _, id);
+        message_begin(MSG_ONE, g_event_fade, _, id);
         write_short(duration); // fade lasts this long duration
         write_short(holdTime); // fade lasts this long hold time
         write_short(fadeType); // fade type
@@ -251,10 +273,10 @@ public screensaver_stop(id,{Float,_}:...)
 }
 
 public screensaver(id, uptime,{Float,_}:...)
-if (is_user_connected(id) && !is_user_bot(id))
+if(is_user_connected(id) && ~GetBits(g_AI, id))
 {
-    client_print id,print_center, "Screen saver active for:%i seconds", uptime
-    message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id);
+    client_print id, print_center, "Screen saver active for:%i seconds", uptime
+    message_begin(MSG_ONE_UNRELIABLE, g_event_fade, _, id);
     write_short(1<<12); // fade lasts this long duration
     write_short(1<<8); // fade lasts this long hold time
     write_short(FADE_HOLD); // fade type
