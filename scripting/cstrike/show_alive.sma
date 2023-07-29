@@ -5,8 +5,8 @@
 #include <fakemeta>
 
 #define PLUGIN  "!Alive"
-#define VERSION "1.0.2"
-#define AUTHOR  "SPiNX | vato loco [GE-S]"
+#define VERSION "1.0.3"
+#define AUTHOR  "SPiNX"
 
 #define TASK_GETPLAYER    37852
 #define TASK_LOOP_TIME    1.0
