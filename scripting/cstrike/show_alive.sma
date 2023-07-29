@@ -11,19 +11,14 @@
 #define TASK_GETPLAYER    37852
 #define TASK_LOOP_TIME    1.0
 
-#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
-#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
-#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
-
 #if !defined client_disconnected
 #define client_disconnected client_disconnect
 #endif
 
 #define charsmin -1
 
-new g_AI, g_Adm
 new g_cvar_cont, g_continuous, g_rescue
-static g_Hostie
+static g_Hostie, g_maxPlayers
 
 static g_SyncTeamCount_CT,  g_SyncTeamCount_H, g_SyncTeamCount_T
 
@@ -36,6 +31,7 @@ new g_hasFeat[MAX_PLAYERS]
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
+    g_maxPlayers = get_maxplayers()
     register_clcmd("amx_show_alive", "adj_hud", 0, "- toggle players alive.")
 
     g_SyncTeamCount_CT = CreateHudSyncObj()
@@ -87,8 +83,6 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
-        is_user_admin(id) ? (SetBits(g_Adm, id)) : (ClearBits(g_Adm, id))
         g_hasFeat[id] = 0
     }
 }
@@ -99,70 +93,66 @@ public client_putinserver(id)
 
 @GetPlayers()
 {
-    new
-    R,G,B,
-    Float:X, Float:Y,
-    iPlayers[MAX_PLAYERS], iNum, iTnum, iCTnum;
+    static R,G,B,
+    Float:X, Float:Y;
+    new iTnum, iCTnum;
 
-    get_players_ex(iPlayers, iNum, GetPlayers_ExcludeDead)
-
-    if(iNum)
+    for (new id=1; id<=g_maxPlayers;++id)
     {
-        for(new ALIVE; ALIVE < iNum; ++ALIVE)
+        if(is_user_connected(id))
         {
-            switch( get_user_team( iPlayers[ALIVE] ) )
+            if(is_user_alive(id))
             {
-                case 1: ++iTnum
-                case 2: ++iCTnum
-            }
-            static id;id = iPlayers[ALIVE]
-            if(is_user_connected(id) && ~GetBits(g_AI, id) && g_hasFeat[id])
-            {
-                if(g_cvar_cont>1 && GetBits(g_Adm, id))
+                switch( get_user_team( id ) )
                 {
-                    client_print( id, print_chat, ~GetBits(g_AI, id) ? "%N is a human" : "%N is a bot", id )
+                    case 1: ++iTnum
+                    case 2: ++iCTnum
                 }
-                if(iTnum && iCTnum)
+                if(g_hasFeat[id])
                 {
-                    new bool:Regular_hud
-                    if(g_hasFeat[id] == 1)
-                        Regular_hud = true
-                    R = 255, X = 0.391;
-                    g_cvar_cont || Regular_hud  ?
-                    set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_T) :
-                    set_dhudmessage(R, G, B, X+0.22, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
-
-                    g_cvar_cont || Regular_hud ?
-                    ShowSyncHudMsg(id, g_SyncTeamCount_T, "[Alive T: %d]", iTnum) :
-                    show_dhudmessage(id, "[Alive T: %d]", iTnum)
-
-                    R = 0, B = 255, X =0.54;
-                    g_cvar_cont || Regular_hud ?
-                    set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_CT) :
-                    set_dhudmessage(R, G, B, X-0.227, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
-
-                    g_cvar_cont || Regular_hud ?
-                    ShowSyncHudMsg(id, g_SyncTeamCount_CT, "[Alive CT: %d]", iCTnum) :
-                    show_dhudmessage(id, "[Alive CT: %d]", iCTnum)
-                    if(g_Hostie)
+                    if(iTnum && iCTnum)
                     {
-                        G = 255, B = 0, X =0.462;
-                        g_cvar_cont ?
-                        set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id,g_SyncTeamCount_H) :
-                        set_dhudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
-                        new iHostage,  Is_Hostage_alive, iHostie_count
-                        while ((iHostage = find_ent(iHostage , szEnt)) > 0)
-                        {
-                            Is_Hostage_alive = pev(iHostage, pev_health)
-                            if(Is_Hostage_alive)
-                                iHostie_count++
-                        }
+                        new Regular_hud
+                        if(g_hasFeat[id] == 1)
+                            Regular_hud = true
+;
+                        B = 0, R = 255, X = 0.391;
+                        g_cvar_cont || Regular_hud  ?
+                        set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_T) :
+                        set_dhudmessage(R, G, B, X+0.22, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
+
                         g_cvar_cont || Regular_hud ?
-                        ShowSyncHudMsg(id, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue) :
-                        show_dhudmessage(id, "[Hostages: %d]", iHostie_count-g_rescue)
+                        ShowSyncHudMsg(id, g_SyncTeamCount_T, "[Alive T: %d]", iTnum) :
+                        show_dhudmessage(id, "[Alive T: %d]", iTnum)
+
+                        R = 0, B = 255, X =0.54;
+                        g_cvar_cont || Regular_hud ?
+                        set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_CT) :
+                        set_dhudmessage(R, G, B, X-0.227, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
+
+                        g_cvar_cont || Regular_hud ?
+                        ShowSyncHudMsg(id, g_SyncTeamCount_CT, "[Alive CT: %d]", iCTnum) :
+                        show_dhudmessage(id, "[Alive CT: %d]", iCTnum)
+                        if(g_Hostie)
+                        {
+                            G = 255, B = 0, X = 0.462;
+                            g_cvar_cont ?
+                            set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id,g_SyncTeamCount_H) :
+                            set_dhudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _)
+                            new iHostage,  Is_Hostage_alive, iHostie_count
+                            while ((iHostage = find_ent(iHostage , szEnt)) > 0)
+                            {
+                                Is_Hostage_alive = pev(iHostage, pev_health)
+                                if(Is_Hostage_alive)
+                                    iHostie_count++
+                            }
+                            g_cvar_cont || Regular_hud ?
+                            ShowSyncHudMsg(id, g_SyncTeamCount_H, "[Hostages: %d]", iHostie_count-g_rescue) :
+                            show_dhudmessage(id, "[Hostages: %d]", iHostie_count-g_rescue)
+                        }
                     }
-                }
+                }state OFF
             }state OFF
-        }state OFF
+        }
     }
 }
