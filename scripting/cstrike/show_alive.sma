@@ -24,7 +24,7 @@ static g_SyncTeamCount_CT,  g_SyncTeamCount_H, g_SyncTeamCount_T
 
 new const szEnt[] = "hostage_entity"
 new const szRescue[] = "2=Rescued_A_Hostage"
-new const CvarDesc[] = "Show who is alive as round ends."
+new const CvarDesc[] = "Show who is alive as round ends. 2 is more persistent."
 
 new g_hasFeat[MAX_PLAYERS]
 
