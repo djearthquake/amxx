@@ -5,8 +5,8 @@
 #include <fakemeta>
 
 #define PLUGIN  "!Alive"
-#define VERSION "1.0.3"
-#define AUTHOR  "SPiNX"
+#define VERSION "1.0.2"
+#define AUTHOR  "SPiNX | vato loco [GE-S]"
 
 #define TASK_GETPLAYER    37852
 #define TASK_LOOP_TIME    1.0
@@ -93,9 +93,8 @@ public client_putinserver(id)
 
 @GetPlayers()
 {
-    static R,G,B,
-    Float:X, Float:Y;
-    new iTnum, iCTnum;
+    static R,G,B;
+    new Float:X, Float:Y, iTnum, iCTnum;
 
     for (new id=1; id<=g_maxPlayers;++id)
     {
@@ -114,8 +113,8 @@ public client_putinserver(id)
                     {
                         new Regular_hud
                         if(g_hasFeat[id] == 1)
-                            Regular_hud = true
-;
+                            Regular_hud = true;
+
                         B = 0, R = 255, X = 0.391;
                         g_cvar_cont || Regular_hud  ?
                         set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_T) :
@@ -135,6 +134,7 @@ public client_putinserver(id)
                         show_dhudmessage(id, "[Alive CT: %d]", iCTnum)
                         if(g_Hostie)
                         {
+                            new R, G, B
                             G = 255, B = 0, X = 0.462;
                             g_cvar_cont ?
                             set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id,g_SyncTeamCount_H) :
