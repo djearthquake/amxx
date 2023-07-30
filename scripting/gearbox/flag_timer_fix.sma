@@ -25,9 +25,9 @@
 #include engine_stocks
 #include fakemeta
 
-#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
-#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
-#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 #define charsmin -1
 
@@ -58,22 +58,22 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
     }
-    if(~GetBits(g_AI, id))
+    if(~CheckPlayerBit(g_AI, id))
     {
-        ClearBits(g_Ran_Patch, id)
+        ClearPlayerBit(g_Ran_Patch, id)
 
-        B_op4c_map ? (SetBits(g_Projector, id)) : (ClearBits(g_Projector, id))
+        B_op4c_map ? (SetPlayerBit(g_Projector, id)) : (ClearPlayerBit(g_Projector, id))
     }
 }
 
 @flag_time_fix(id)
-if(is_user_connected(id) && ~GetBits(g_AI, id))
+if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
 {
     static iTimeleft; iTimeleft = get_timeleft()
 
-    if(!B_op4c_map && ~GetBits(g_Ran_Patch, id))
+    if(!B_op4c_map && ~CheckPlayerBit(g_Ran_Patch, id))
     {
         emessage_begin(MSG_ONE_UNRELIABLE, g_compatible1, _, id)
         ewrite_byte(B_op4c_map ? 1 : 0)
@@ -84,7 +84,7 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
         }
         emessage_end()
 
-        SetBits(g_Ran_Patch, id)
+        SetPlayerBit(g_Ran_Patch, id)
         server_print "Fixed broken time remaining on %N", id
     }
 
@@ -139,7 +139,7 @@ if(is_user_connected(id) && ~GetBits(g_AI, id))
         ewrite_byte(0)
         emessage_end()
     }
-    if(!task_exists(id) && GetBits(g_Projector, id))
+    if(!task_exists(id) && CheckPlayerBit(g_Projector, id))
     {
         set_task_ex(1.0, "show_timer", id, .flags = SetTask_Repeat);
     }
@@ -151,7 +151,7 @@ public show_timer(id)
     iTimeleft = get_timeleft();
     static effects=0,Float:fxtime=1.0,Float:fadeintime = 0.1, Float:holdtime=1.0, Float:fadouttime = 0.2, channel = 13, Float:Xpos =0.08, Float:Ypos = 0.947
     if(is_user_connected(id))
-    if(~GetBits(g_AI, id))
+    if(~CheckPlayerBit(g_AI, id))
     {
         static iRGB[3]
         iRGB = bBlackMesa[id] == 3 ? {33,209,175} : bBlackMesa[id] ? {234,151,25} : {0,255,0}
