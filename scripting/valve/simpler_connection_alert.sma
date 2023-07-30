@@ -73,13 +73,13 @@ public client_putinserver(index)
 {
     if(is_user_connected(index))
     {
+        g_timer[index] = 1
         is_user_bot(index) ? (SetPlayerBit(g_AI, index)) : (ClearPlayerBit(g_AI, index))
-
-        if(!task_exists(ALRT) && ~CheckPlayerBit(g_AI, index) && !is_user_admin(index))
+        if(!CheckPlayerBit(g_AI, index))
+        if(!task_exists(ALRT) && !is_user_admin(index))
         {
             set_task(1.75,"the_alert", ALRT)
         }
-        g_timer[index] = 1
     }
 }
 
