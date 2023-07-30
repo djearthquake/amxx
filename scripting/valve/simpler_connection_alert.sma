@@ -95,6 +95,12 @@ public client_authorized(id) //auth was messing up names on download
     server_print "%s is lurking...", ClientName[id]
 }
 
+public client_infochanged(id)
+{
+    if(is_user_connected(id))
+        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+}
+
 public new_users()
 {
     new players[MAX_PLAYERS], playercount;
