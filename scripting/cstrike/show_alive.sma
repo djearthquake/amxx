@@ -130,7 +130,9 @@ public client_disconnected(id)
 
                 if(iTnum && iCTnum)
                 {
-                    server_print "checking %i", id
+                    if(g_cvar_cont>1)
+                        server_print "checking %i", id
+
                     B = 0, R = 255, X = 0.391;
                     Regular_hud ?
                     set_hudmessage(R, G, B, X, Y, _, _, TASK_LOOP_TIME+0.01, _,  _, 1) & ClearSyncHud(id, g_SyncTeamCount_T) :
