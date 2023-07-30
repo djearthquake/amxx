@@ -28,7 +28,12 @@
 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
 
 #define OK if(is_user_connected(id)
-new maxplayers
+
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
+new g_AI /*,maxplayers*/
 new bool:g_spectating[MAX_PLAYERS + 1]
 new bool:bDemo[MAX_PLAYERS +1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
@@ -44,7 +49,7 @@ new Float:g_user_origin[MAX_PLAYERS + 1][3]
 
 new g_iViewtype[MAX_PLAYERS + 1]
 
-new g_startaspec
+new g_startaspec, cvar_gg
 new bool:g_bGunGameRunning, bool:g_bGrenadesOnlyRunning
 new bool:g_bSpecNam[MAX_PLAYERS + 1]
 new SzSpecName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
@@ -54,7 +59,7 @@ new /*Float:g_Velocity[MAX_PLAYERS + 1][3],*/ g_Duck[MAX_PLAYERS + 1], g_BackPac
 
 new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
-#define IS_THERE (~(1<<IN_SCORE))
+#define IS_THERE (~(0<<IN_SCORE))
 
 public plugin_init()
 {
@@ -64,7 +69,6 @@ public plugin_init()
         register_dictionary(DIC);
 
     else
-
     {
         log_amx("%s %s by %s paused to prevent data key leakage from missing %s.", PLUGIN, VERSION, AUTHOR, DIC);
         pause "a";
@@ -100,10 +104,11 @@ public plugin_init()
     //RegisterHam(Ham_Spawn, "player", "@play", 1); //ents can disappear on map start.
     register_event("ResetHUD", "@play", "b")
     register_clcmd("say", "handle_say")
-    set_task_ex(11.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
-    maxplayers = get_maxplayers()
+    ///set_task_ex(11.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
+    //maxplayers = get_maxplayers()
 }
 
+/*
 public plugin_end()
 {
     for(new id = 1 ; id <= maxplayers ; ++id)
@@ -120,10 +125,11 @@ public plugin_end()
         }
     }
 }
+*/
 
 public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
 {
-    if(is_user_connected(id) && g_cvar_nametag)
+    OK && g_cvar_nametag)
     {
         new reblah[MAX_RESOURCE_PATH_LENGTH]
         read_args(blah,charsmax(blah))
@@ -158,9 +164,9 @@ public client_impulse(id)
 
 public client_prethink( id )
 {
-    if(is_user_connected(id) && is_user_alive(id) && pev_valid(id)>1)
+    OK && is_user_alive(id) && pev_valid(id)>1)
     {
-        if(g_spectating[id] && !is_user_bot(id))
+        if(g_spectating[id] && ~CheckPlayerBit(g_AI, id))
         {
             //Remember!
             #define OBS_NONE                        0
@@ -180,7 +186,6 @@ public client_prethink( id )
                     client_print id, print_center, "%f|%f|%f^n^n%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2], g_Vangle[id][0], g_Vangle[id][1]
                 }
             }
-           /// fm_strip_user_weapons(id)
 /*
             if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
             {
@@ -201,11 +206,12 @@ public client_prethink( id )
 */
             if(g_bGunGameRunning)
             {
-                if(g_spectating[id])
+                cvar_gg = get_cvar_pointer("gg_enabled")
+                if(cvar_gg)
                 {
+                    //set_view(id, CAMERA_NONE)
                     fm_strip_user_weapons(id)
-                    set_view(id, CAMERA_NONE)
-                    entity_set_float(id, EV_FL_fov, 100.0)
+                    //entity_set_float(id, EV_FL_fov, 100.0)
                 }
             }
 
@@ -224,7 +230,6 @@ public client_prethink( id )
                     new iTarget = g_random_view[id]
                     if(is_user_connected(iTarget)) //needs checked here as index was made up!
                     {
-                        fm_strip_user_weapons(id)
                         //attach_view(id, iTarget);
                         set_view(id, CAMERA_NONE)
                         entity_set_float(id, EV_FL_fov, 100.0)
@@ -257,10 +262,9 @@ public client_prethink( id )
 
             }
         }
-        if(!is_user_connecting(id))
-        {
-            pev(id, pev_origin, g_user_origin[id]);
-        }
+
+        pev(id, pev_origin, g_user_origin[id]);
+
         if(!g_spectating[id])
         {
             entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
@@ -301,7 +305,7 @@ stock loss()
 
 @play(id)
 {
-    if(is_user_connected(id) && !is_user_bot(id))
+    OK && ~CheckPlayerBit(g_AI, id))
     {
         //server_print "%n spectator mode is resetting.", id
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
@@ -352,22 +356,26 @@ stock loss()
 }
 
 public client_putinserver(id)
-OK && !is_user_bot(id))
 {
-    g_random_view[id] = 0
-    if(!g_bFlagMap)
-    {
-        if(!g_startaspec)
-        {
-            if(g_spectating[id])
-            {
-                g_spectating[id] = false
-            }
+    is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
 
-        }
-        else
+    OK && ~CheckPlayerBit(g_AI, id))
+    {
+        g_random_view[id] = 0
+        if(!g_bFlagMap)
         {
-            set_task(g_startaspec*1.0,"@go_check",id)
+            if(!g_startaspec)
+            {
+                if(g_spectating[id])
+                {
+                    g_spectating[id] = false
+                }
+
+            }
+            else
+            {
+                set_task(g_startaspec*1.0,"@go_check",id)
+            }
         }
     }
 }
@@ -425,10 +433,6 @@ public client_connectex(id, const name[], const ip[], reason[128])
 {
     if(is_user_connected(id) && pev_valid(id)>1)
     {
-        if(g_bGunGameRunning)
-        {
-            fm_strip_user_weapons(id)
-        }
         bAlready_shown_menu[id] = true
         switch(item)
         {
@@ -460,7 +464,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
                 if(g_spectating[id])
                 {
                     new iTarget = g_random_view[id]
-                    if(is_user_bot(iTarget) && bFirstPerson[id])
+                    if(CheckPlayerBit(g_AI, iTarget) && bFirstPerson[id])
                     {
                         server_print "TAKING OVER BOT!"
                         g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
@@ -538,16 +542,16 @@ public client_infochanged(id)
 
 @go_spec(id)
 {
+    new cvar_gg = get_cvar_num("gg_enabled")
     OK)
     {
-        if(!is_user_bot(id) || !is_user_hltv(id))
+        if(~CheckPlayerBit(g_AI, id) || !is_user_hltv(id))
         {
             //if(pev(id, pev_button) & ~IS_THERE)
             {
-                fm_strip_user_weapons(id)
                 if(!g_spectating[id])
                 {
-                    if(!g_bGunGameRunning)
+                    //if(/*!g_bGunGameRunning*/)
                     {
                         if(!g_bSpecNam[id] && g_cvar_nametag > 1)
                         {
@@ -566,6 +570,8 @@ public client_infochanged(id)
                         set_pev(id, pev_flags, (flags | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_CUSTOMENTITY))
 
                         dllfunc(DLLFunc_SpectatorConnect, id)
+
+                        fm_strip_user_weapons(id)
 
                         server_print "%s GOING TO SPEC", SzClientName[id]
 
@@ -588,12 +594,13 @@ public client_infochanged(id)
                         set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
                         show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
 
-                        if(g_bGrenadesOnlyRunning)
+                        if(g_bGrenadesOnlyRunning || g_bGunGameRunning)
                         {
                             if(g_spectating[id])
                             {
                                 fm_strip_user_weapons(id)
-                                set_view(id, CAMERA_NONE)
+                                if(cvar_gg)
+                                    set_view(id, CAMERA_NONE)
                             }
                         }
                     }
@@ -639,13 +646,13 @@ public client_infochanged(id)
 }
 
 @update_player(id)
-if(is_user_connected(id) && !is_user_bot(id))
+if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
     g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
 
 
 public client_command(id)
 {
-    if(is_user_connected(id) && !is_user_bot(id))
+    if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
     {
         new szArg[MAX_PLAYERS];
         new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
