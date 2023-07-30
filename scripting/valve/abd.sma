@@ -6,9 +6,9 @@
 #define VERSION "2.2" ///1.0 to 2.0 is Half-Life port along with SFX. Both by SPiNX.
 #define AUTHOR "Sn!ff3r & SPiNX"
 
-#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
-#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
-#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 #define charsmin    -1
 
@@ -84,7 +84,7 @@ if ( !bStrike )  @LogEvent_Round_Start()
 public client_putinserver(id)
 {
     if(is_user_connected(id))
-        is_user_bot(id) ? (SetBits(g_AI, id)) : (ClearBits(g_AI, id))
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
 }
 
 @abd_event(id)
@@ -110,7 +110,7 @@ public conner( iVictim )
     if( get_pcvar_num(g_pCvarEnabled) && (read_data(4) || read_data(5) || read_data(6)) )
     {
         new id = get_user_attacker(iVictim)
-        if( (1 <= id <= g_iMaxPlayers) && is_user_connected(id) && ~GetBits(g_AI, id) )
+        if( (1 <= id <= g_iMaxPlayers) && is_user_connected(id) && ~CheckPlayerBit(g_AI, id) )
         {
             new iPos = ++g_iPlayerPos[id]
             if( iPos == sizeof(g_flCoords) )
@@ -156,12 +156,12 @@ public sniffer(id)
         static attacker; attacker = get_user_attacker(id)
         static damage; damage = read_data(2)
 
-        if(g_showrecieved && ~GetBits(g_AI, id))
+        if(g_showrecieved && ~CheckPlayerBit(g_AI, id))
         {
             set_hudmessage(255, 0, 0, 0.45, 0.50, 2, 0.2, 0.1, 0.1, 0.0, -1)
             ShowSyncHudMsg(id, g_hudmsg2, "%i^n", damage)
         }
-        if(is_user_connected(attacker) && ~GetBits(g_AI, attacker))
+        if(is_user_connected(attacker) && ~CheckPlayerBit(g_AI, attacker))
         {
             set_hudmessage(0, 255, 100, -1.0, 0.55, 2, 0.2, 0.1, 0.1, 0.0, -1)
             switch(g_enabled)
@@ -190,12 +190,12 @@ public spinx(id)
         static attacker
         attacker = get_user_attacker(id)
         if(is_user_connected(attacker))
-        if(~GetBits(g_AI, id))
+        if(~CheckPlayerBit(g_AI, id))
         {
             if(get_pcvar_num(g_fade_human))
            {
                 static iBot
-                iBot =  GetBits(g_AI, attacker) ? 1 : 0
+                iBot =  CheckPlayerBit(g_AI, attacker) ? 1 : 0
                 emessage_begin(MSG_ONE_UNRELIABLE, g_event_fade,{0,0,0},id)
                 ewrite_short(300)       //duration
                 ewrite_short(350)       //hold time
@@ -240,7 +240,7 @@ public spinx(id)
             ewrite_short(1000)
             emessage_end()
         }
-        if(get_pcvar_num(g_cry) && GetBits(g_AI, id))
+        if(get_pcvar_num(g_cry) && CheckPlayerBit(g_AI, id))
         {
             emit_sound(id, CHAN_AUTO, SZCRYBOT, VOL_NORM, ATTN_NORM, 0, PITCH_NORM)
         }
