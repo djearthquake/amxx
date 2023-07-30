@@ -16,9 +16,9 @@
 #define MAX_USER_INFO_LENGTH       256
 #define charsmin                  -1
 
-#define SetBits(%1,%2)       %1 |=   1<<(%2 & 31)
-#define ClearBits(%1,%2)     %1 &= ~(1<<(%2 & 31))
-#define GetBits(%1,%2)       %1 &    1<<(%2 & 31)
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 new g_timer[MAX_PLAYERS + 1]
 new g_afk_spec_player
@@ -73,9 +73,9 @@ public client_putinserver(index)
 {
     if(is_user_connected(index))
     {
-        is_user_bot(index) ? (SetBits(g_AI, index)) : (ClearBits(g_AI, index))
+        is_user_bot(index) ? (SetPlayerBit(g_AI, index)) : (ClearPlayerBit(g_AI, index))
 
-        if(!task_exists(ALRT) && ~GetBits(g_AI, index) && !is_user_admin(index))
+        if(!task_exists(ALRT) && ~CheckPlayerBit(g_AI, index) && !is_user_admin(index))
         {
             set_task(1.75,"the_alert", ALRT)
         }
@@ -153,7 +153,7 @@ public new_users()
                 new SzScrolling[256], SzNewScroller[256]
                 static iPlayers
                 iPlayers = players[downloader]
-                if(~GetBits(g_AI, iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
+                if(~CheckPlayerBit(g_AI, iPlayers) && is_user_connecting(iPlayers) && !is_user_connected(iPlayers))
                     copy(DownloaderName[iPlayers], charsmax(DownloaderName[]), ClientName[iPlayers])
 
                 implode_strings( DownloaderName, charsmax(DownloaderName[]), " ", SzNewScroller, charsmax(SzNewScroller) )
@@ -171,7 +171,7 @@ public new_users()
 
         }
 
-        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && ~GetBits(g_AI, players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
+        if(is_user_connected(players[downloader]) && !is_user_alive(players[downloader]) && ~CheckPlayerBit(g_AI, players[downloader]) && !g_bFlagMap) //stops pointless endless counting on maps with spec built already
         {
             static uptime
             uptime = sleepy[players[downloader]]++
@@ -203,7 +203,7 @@ public new_users()
                         Group_of_players = players[downloader]
                         log_amx "Sending %s to spec", ClientName[Group_of_players]
 
-                        if(is_user_connected(Group_of_players) && ~GetBits(g_AI, Group_of_players))
+                        if(is_user_connected(Group_of_players) && ~CheckPlayerBit(g_AI, Group_of_players))
                         {
                             dllfunc(DLLFunc_ClientPutInServer, Group_of_players)
                             callfunc_begin("@go_spec",SPEC_PRG)
@@ -242,7 +242,7 @@ public new_users()
 }
 
 @make_spec(id)
-if(is_user_connected(id) && ~GetBits(g_AI, id))
+if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
 {
     server_print("Sending %N spec...", id)
     client_print id, print_chat, "Sending you to spec %n...", id
@@ -258,7 +258,7 @@ public screensaver_stop(id,{Float,_}:...)
     blindness = 0
     g_timer[id] = 1
     sleepy[id] = 1
-    if(is_user_connected(id) && ~GetBits(g_AI, id))
+    if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
     {
         message_begin(MSG_ONE, g_event_fade, _, id);
         write_short(duration); // fade lasts this long duration
@@ -273,7 +273,7 @@ public screensaver_stop(id,{Float,_}:...)
 }
 
 public screensaver(id, uptime,{Float,_}:...)
-if(is_user_connected(id) && ~GetBits(g_AI, id))
+if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
 {
     client_print id, print_center, "Screen saver active for:%i seconds", uptime
     message_begin(MSG_ONE_UNRELIABLE, g_event_fade, _, id);
