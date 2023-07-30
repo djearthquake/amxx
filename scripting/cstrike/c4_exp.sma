@@ -64,11 +64,16 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         Client_C4_adjusted_already[id] = false
-
-        if(equal(ClientName[id],""))
-            get_user_name(id,ClientName[id],charsmax(ClientName[]))
+        get_user_name(id,ClientName[id],charsmax(ClientName[]))
     }
 }
+
+public client_infochanged(id)
+{
+    if(is_user_connected(id))
+        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+}
+
 #if AMXX_VERSION_NUM == 182
 stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
 {
@@ -79,7 +84,7 @@ stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
 public FnPlant()
 {
     //get username via log
-    g_weapon_c4_index = 0
+    //g_weapon_c4_index = 0
     new id = get_loguser_index();
     server_print "Is %n planting?", id
     if(is_user_alive(id))
@@ -89,20 +94,23 @@ public FnPlant()
 
         new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
         if(g_weapon_c4_index)
+        {
             cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
 
-        //Multi-task
-        entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+            //Multi-task
+            entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
 
-        new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
-        if(iBoom_time > 0)
-            g_boomtime = iBoom_time
+            new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+            if(iBoom_time > 0)
+                g_boomtime = iBoom_time
+            else
+                return
+            set_task(1.0,"@count_down",5656,_,0,"b")
+            client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime, ClientName[id]
+        }
         else
-            return
-        set_task(1.0,"@count_down",5656,_,0,"b")
-        client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+            c4_from_grenade()
     }
-
     return;
 }
 
@@ -191,7 +199,7 @@ stock iPlayers()
 
 stock c4_from_grenade()
 {
-    new iC4
+    static iC4
     {
         while ((iC4= find_ent(charsmin,"grenade")))
         {
@@ -201,7 +209,7 @@ stock c4_from_grenade()
                     g_weapon_c4_index = iC4
                 break;
             }
-            if(g_weapon_c4_index < 1)
+            if(g_weapon_c4_index <= MaxClients)
                 c4_from_grenade()
         }
     }
