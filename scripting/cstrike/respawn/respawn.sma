@@ -141,7 +141,6 @@ public plugin_precache()
         else
         {
             RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
-            RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
             RegisterHamBots(Ham_Killed, "@died")
         }
     }
@@ -204,8 +203,13 @@ public CS_OnBuy(id, item)
 }
 @PlayerSpawn(id)
 {
-    if(is_user_connected(id) && !g_JustTook[id])
-        set_task(0.1,"@ReSpawn", id)
+    if(is_user_connected(id))
+    {
+        bIsVip[id] = cs_get_user_vip(id) ? true : false
+
+        if(!g_JustTook[id])
+            set_task(0.1,"@ReSpawn", id)
+    }
 }
 
 @ReSpawn(id)
@@ -216,13 +220,12 @@ public CS_OnBuy(id, item)
     new iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
     if(is_user_connected(id))
     {
-        bIsVip[id] = cs_get_user_vip(id) ? true : false
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
-            if(!bIsBot[id])
+            if(is_user_alive(id))
             {
-                new iTeam = get_user_team(id)
-                if(iTeam == 1 && !iSpawnBackpackT )
+                static iTeam; iTeam = get_user_team(id)
+                if(iTeam == 1 && !iSpawnBackpackT && !user_has_weapon(id, CSW_C4))
                 {
                     iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
                 }
@@ -237,6 +240,7 @@ public CS_OnBuy(id, item)
             g_BackPack[id] = g_BackPack[iBotOwner[id]]
             fm_set_kvd(id, "zhlt_lightflags", "0")
             set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255)
+
             if(!iKeep)
                 goto TRADE
             goto RECLAIM
@@ -265,10 +269,15 @@ public CS_OnBuy(id, item)
                 strip_user_weapons(id)
                 for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
                 {
-                    if( iDefaultTeamPack & 1<<iArms )
+                    if(iDefaultTeamPack & 1<<iArms)
                     if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
                     {
+                        if(equal(SzWeaponClassname, "weapon_c4"))
+                        {
+                            return
+                        }
                         give_item(id, SzWeaponClassname)
+
                         client_print id, print_chat,  SzWeaponClassname
                     }
                     TRADE:
@@ -282,7 +291,12 @@ public CS_OnBuy(id, item)
                             if( g_BackPack[id] & 1<<iArms )
                             if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
                             {
+                                if(equal(SzWeaponClassname, "weapon_c4"))
+                                {
+                                    return
+                                }
                                 give_item(id, SzWeaponClassname)
+
                                 formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname);
                                 client_print iBotOwner[id], print_chat,  SzParaphrase
                             }
@@ -351,7 +365,7 @@ public round_end()
     }
 
     if ( !cool_down_active )
-    if(is_user_connected(dead_spec))
+    if(is_user_connected(dead_spec) && !bIsVip[alive_bot])
     {
         if(!bIsBot[dead_spec] && !is_user_alive(dead_spec))
         {
@@ -512,6 +526,8 @@ stock weapon_details(alive_bot)
         if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
         {
             give_item(dead_spec, SzWeaponClassname)
+            if(equal(SzWeaponClassname, "weapon_c4"))
+                cs_set_user_plant(dead_spec, 1, 1)
             client_print dead_spec, print_chat,  SzWeaponClassname
         }
     }
