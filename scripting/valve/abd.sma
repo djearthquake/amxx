@@ -11,6 +11,7 @@
 #define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 #define charsmin    -1
+#define PITCH_RAN (random_num (100,125))
 
 new const Float:g_flCoords[][] =
 {
@@ -84,7 +85,7 @@ if ( !bStrike )  @LogEvent_Round_Start()
 public client_putinserver(id)
 {
     if(is_user_connected(id))
-        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+        is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
 }
 
 @abd_event(id)
@@ -184,65 +185,52 @@ public sniffer(id)
 
 public spinx(id)
 {
+    static iNPC_fade, iFade
+    iNPC_fade = get_pcvar_num(g_fade_npc)
+    iFade = get_pcvar_num(g_fade_human)
+
+    static iNPC_shake, iShake
+    iNPC_shake = get_pcvar_num(g_shake_npc)
+    iShake = get_pcvar_num(g_shake_human)
+
     if(is_user_connected(id))
-    if(is_user_alive(id))
     {
-        static attacker
+        new attacker
         attacker = get_user_attacker(id)
         if(is_user_connected(attacker))
-        if(~CheckPlayerBit(g_AI, id))
         {
-            if(get_pcvar_num(g_fade_human))
-           {
-                static iBot
-                iBot =  CheckPlayerBit(g_AI, attacker) ? 1 : 0
-                emessage_begin(MSG_ONE_UNRELIABLE, g_event_fade,{0,0,0},id)
+            new iBot, iBotMan
+            iBot =  CheckPlayerBit(g_AI, attacker) ? 1 : 0
+            iBotMan =  CheckPlayerBit(g_AI, id) ? 1 : 0
+
+            if(get_pcvar_num(g_cry))
+            {
+                emit_sound(id, CHAN_AUTO, iBotMan ? SZCRYBOT : SZCRYMAN, VOL_NORM, ATTN_NORM, 0, PITCH_NORM)
+            }
+
+            if(iBotMan)
+                return
+
+            if(iNPC_fade || iFade)
+            {
+                emessage_begin(MSG_ONE_UNRELIABLE, g_event_fade,{0,0,0}, id)
                 ewrite_short(300)       //duration
                 ewrite_short(350)       //hold time
                 ewrite_short(0x0001) //flags
-                ewrite_byte(iBot ? 248 : 0)            //rgb alpha
-                ewrite_byte(iBot ? 24 : 119)
-                ewrite_byte(iBot ? 148 : 190)
-                ewrite_byte(300)
+                ewrite_byte(iBot   ?   (iNPC_fade ? 248 : 0)   :   (iFade ? 0     : 0) )     //R
+                ewrite_byte(iBot   ?   (iNPC_fade ? 24   : 0)   :   (iFade ? 119 : 0) )     //G
+                ewrite_byte(iBot   ?   (iNPC_fade ? 148 : 0)   :   (iFade ? 190 : 0) )     //B
+                ewrite_byte(iBot   ?   (iNPC_fade ? 150 : 0)   :   (iFade ? 300 : 0) )     //alpha
                 emessage_end()
             }
-            if(get_pcvar_num(g_shake_human))
-           {
-                emessage_begin(MSG_ONE_UNRELIABLE,g_event_shake,{0,0,0},id)
-                ewrite_short(5000)
-                ewrite_short(1000)
-                ewrite_short(1000)
-                emessage_end()
-            }
-            if(get_pcvar_num(g_cry))
+            if(iNPC_shake || iShake)
             {
-                emit_sound(id, CHAN_AUTO, SZCRYMAN, VOL_NORM, ATTN_NORM, 0, PITCH_NORM)
+                emessage_begin(MSG_ONE_UNRELIABLE, g_event_shake,{0,0,0}, id)
+                ewrite_short(iBot     ?     iNPC_shake ?   1000 : 0    :    iShake ? 5000 : 0)
+                ewrite_short(iBot     ?     iNPC_shake ? 10000 : 0    :    iShake ? 1000 : 0)
+                ewrite_short(1000)
+                emessage_end()
             }
-        }
-        //NPC
-        if(get_pcvar_num(g_fade_npc))
-       {
-            emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},id)
-            ewrite_short(1000)
-            ewrite_short(350)
-            ewrite_short(0x0001)
-            ewrite_byte(248)
-            ewrite_byte(24)
-            ewrite_byte(148)
-            ewrite_byte(150)  //alpha
-            emessage_end()
-        }
-        if(get_pcvar_num(g_shake_npc))
-       {
-            emessage_begin(MSG_ONE_UNRELIABLE,g_event_shake,{0,0,0},id)
-            ewrite_short(0)
-            ewrite_short(10000)
-            ewrite_short(1000)
-            emessage_end()
-        }
-        if(get_pcvar_num(g_cry) && CheckPlayerBit(g_AI, id))
-        {
-            emit_sound(id, CHAN_AUTO, SZCRYBOT, VOL_NORM, ATTN_NORM, 0, PITCH_NORM)
         }
     }
 }
