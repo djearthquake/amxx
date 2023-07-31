@@ -217,17 +217,17 @@ public spinx(id)
                 ewrite_short(300)       //duration
                 ewrite_short(350)       //hold time
                 ewrite_short(0x0001) //flags
-                ewrite_byte(iBot   ?   (iNPC_fade ? 248 : 0)   :   (iFade ? 0     : 0) )     //R
-                ewrite_byte(iBot   ?   (iNPC_fade ? 24   : 0)   :   (iFade ? 119 : 0) )     //G
-                ewrite_byte(iBot   ?   (iNPC_fade ? 148 : 0)   :   (iFade ? 190 : 0) )     //B
-                ewrite_byte(iBot   ?   (iNPC_fade ? 150 : 0)   :   (iFade ? 300 : 0) )     //alpha
+                ewrite_byte(iBot     ?   (iNPC_fade ? 248 : 0)   :   (iFade ? 0     : 0) )     //R
+                ewrite_byte(iBot     ?   (iNPC_fade ? 24  : 0)   :   (iFade ? 119   : 0) )     //G
+                ewrite_byte(iBot     ?   (iNPC_fade ? 148 : 0)   :   (iFade ? 190   : 0) )     //B
+                ewrite_byte(iBot     ?   (iNPC_fade ? 150 : 0)   :   (iFade ? 300   : 0) )     //alpha
                 emessage_end()
             }
             if(iNPC_shake || iShake)
             {
                 emessage_begin(MSG_ONE_UNRELIABLE, g_event_shake,{0,0,0}, id)
-                ewrite_short(iBot     ?     iNPC_shake ?   1000 : 0    :    iShake ? 5000 : 0)
-                ewrite_short(iBot     ?     iNPC_shake ? 10000 : 0    :    iShake ? 1000 : 0)
+                ewrite_short(iBot    ?   iNPC_shake ? 1000  : 0  :   iShake ? 5000  : 0)
+                ewrite_short(iBot    ?   iNPC_shake ? 10000 : 0  :   iShake ? 1000  : 0)
                 ewrite_short(1000)
                 emessage_end()
             }
