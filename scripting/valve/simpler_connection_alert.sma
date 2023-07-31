@@ -32,7 +32,7 @@ new bool:b_Op4c
 new bool:g_bFlagMap
 new afk_sync_msg, download_sync_msg//, g_spawn_wait
 new g_SzMapName[MAX_NAME_LENGTH]
-new bool:bCS, g_bGunGameRunning, g_AI
+new bool:bCS, g_bGunGameRunning, g_AI, g_Adm
 static g_event_fade
 
 #define ALRT 84641
@@ -40,11 +40,11 @@ static g_event_fade
 
 public plugin_init()
 {
-    register_plugin("Connect Alert System","1.2","SPiNX");
+    register_plugin("Connect Alert System","1.3","SPiNX");
     g_event_fade = get_user_msgid("ScreenFade")
-    bCS = cstrike_running() == 1 ? true: false
+    bCS = cstrike_running() == 1 ? true : false
     get_mapname(g_SzMapName, charsmax(g_SzMapName));
-    g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin?true:false
+    g_bFlagMap = containi(g_SzMapName,"op4c") > charsmin ? true : false
     set_task(1.0, "new_users",alert,"",0,"b");
 
     //g_spawn_wait = get_cvar_pointer("sv_sptime") ? get_cvar_pointer("sv_sptime") : 1
@@ -74,9 +74,12 @@ public client_putinserver(index)
     if(is_user_connected(index))
     {
         g_timer[index] = 1
-        is_user_bot(index) ? (SetPlayerBit(g_AI, index)) : (ClearPlayerBit(g_AI, index))
-        if(!CheckPlayerBit(g_AI, index))
-        if(!task_exists(ALRT) && !is_user_admin(index))
+        is_user_bot(index) ? SetPlayerBit(g_AI, index) : ClearPlayerBit(g_AI, index)
+        is_user_admin(index) ? SetPlayerBit(g_Adm, index) : ClearPlayerBit(g_Adm, index)
+        if(CheckPlayerBit(g_AI, index) || CheckPlayerBit(g_Adm, index))
+            return
+
+        if(!task_exists(ALRT))
         {
             set_task(1.75,"the_alert", ALRT)
         }
@@ -85,13 +88,19 @@ public client_putinserver(index)
 
 public the_alert()
 {
-    client_cmd(0,"spk ^"alert a intruder is here^"")
+    new iPlayers = get_playersnum()
+    if(iPlayers)
+    {
+        static iSaid[MAX_PLAYERS]; num_to_word(iPlayers, iSaid, charsmax(iSaid))
+        iPlayers == 1 ? client_cmd(0,"spk ^"alert a intruder is here^"")
+        : client_cmd(0,"spk ^"alert %s intruder are here^"", iSaid)
+    }
 }
 
 public client_authorized(id) //auth was messing up names on download
 {
     get_user_name(id,ClientName[id],charsmax(ClientName[]))
-    client_print 0,print_chat,"%s is lurking...", ClientName[id]
+    client_print 0, print_chat, "%s is lurking...", ClientName[id]
     server_print "%s is lurking...", ClientName[id]
 }
 
