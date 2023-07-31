@@ -3,8 +3,8 @@
 #include <fakemeta_util>
 
 #define PLUGIN "Advanced Bullet Damage"
-#define VERSION "2.2" ///1.0 to 2.0 is Half-Life port along with SFX. Both by SPiNX.
-#define AUTHOR "Sn!ff3r & SPiNX"
+#define VERSION "2.3" ///1.0 to 2.0 is Half-Life port along with SFX. Both by SPiNX.
+#define AUTHOR "SPiNX" //Forgot who did original. Remakes can be seen from Sn!ff3r and Conner back to late AMX.
 
 #define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
 #define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
@@ -18,8 +18,8 @@ new const Float:g_flCoords[][] =
     {0.50, 0.40},
     {0.56, 0.44},
     {0.60, 0.50},
-    {0.56, 0.56},
-    {0.50, 0.60}, /*Conner's contstant*/
+    {0.56, 0.56}, /*Conner's contstant*/
+    {0.50, 0.60},
     {0.44, 0.56},
     {0.40, 0.50},
     {0.44, 0.44}
@@ -124,32 +124,6 @@ public conner( iVictim )
     }
 }
 
-///arcade classic effects
-#include <engine>
-#include <fun>
-
-new const SZCRYBOT[]="misc/ni1.wav"
-new const SZCRYMAN[]="scientist/scream19.wav"
-
-public plugin_precache()
-{
-    if(file_exists("sound/misc/ni1.wav"))
-        precache_sound(SZCRYBOT)
-    else
-    {
-        log_amx"Missing %s", SZCRYBOT
-        pause("a")
-    }
-    if(file_exists("sound/scientist/scream19.wav"))
-        precache_sound(SZCRYMAN)
-    else
-    {
-        log_amx"Missing %s", SZCRYMAN
-        pause("a")
-    }
-
-}
-
 public sniffer(id)
 {
     if(is_user_connected(id))
@@ -183,6 +157,32 @@ public sniffer(id)
     }
 }
 
+///arcade classic effects
+#include <engine>
+#include <fun>
+
+new const SZCRYBOT[]="misc/ni1.wav"
+new const SZCRYMAN[]="scientist/scream19.wav"
+
+public plugin_precache()
+{
+    if(file_exists("sound/misc/ni1.wav"))
+        precache_sound(SZCRYBOT)
+    else
+    {
+        log_amx"Missing %s", SZCRYBOT
+        pause("a")
+    }
+    if(file_exists("sound/scientist/scream19.wav"))
+        precache_sound(SZCRYMAN)
+    else
+    {
+        log_amx"Missing %s", SZCRYMAN
+        pause("a")
+    }
+
+}
+
 public spinx(id)
 {
     static iNPC_fade, iFade
@@ -214,9 +214,10 @@ public spinx(id)
             if(iNPC_fade || iFade)
             {
                 emessage_begin(MSG_ONE_UNRELIABLE, g_event_fade,{0,0,0}, id)
-                ewrite_short(300)       //duration
-                ewrite_short(350)       //hold time
-                ewrite_short(0x0001) //flags
+                ewrite_short(300)   //duration
+                ewrite_short(350)   //hold time
+                ewrite_short(0x0001)//flags
+                //RGB AND ALPHA
                 ewrite_byte(iBot     ?   (iNPC_fade ? 248 : 0)   :   (iFade ? 0     : 0) )     //R
                 ewrite_byte(iBot     ?   (iNPC_fade ? 24  : 0)   :   (iFade ? 119   : 0) )     //G
                 ewrite_byte(iBot     ?   (iNPC_fade ? 148 : 0)   :   (iFade ? 190   : 0) )     //B
@@ -226,8 +227,8 @@ public spinx(id)
             if(iNPC_shake || iShake)
             {
                 emessage_begin(MSG_ONE_UNRELIABLE, g_event_shake,{0,0,0}, id)
-                ewrite_short(iBot    ?   iNPC_shake ? 1000  : 0  :   iShake ? 5000  : 0)
-                ewrite_short(iBot    ?   iNPC_shake ? 10000 : 0  :   iShake ? 1000  : 0)
+                ewrite_short(iBot    ?   (iNPC_shake ? 1000  : 0)  :   (iShake ? 5000  : 0) )
+                ewrite_short(iBot    ?   (iNPC_shake ? 10000 : 0)  :   (iShake ? 1000  : 0) )
                 ewrite_short(1000)
                 emessage_end()
             }
