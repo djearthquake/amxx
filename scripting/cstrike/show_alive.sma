@@ -111,7 +111,7 @@ public client_disconnected(id)
     {
         if(iNum)
         {
-            for(new ALIVE=1; ALIVE <= iNum; ++ALIVE)
+            for(new ALIVE; ALIVE <= iNum; ++ALIVE)
             {
                 switch( get_user_team( iPlayers[ALIVE] ) )
                 {
@@ -119,7 +119,7 @@ public client_disconnected(id)
                     case 2: ++iCTnum
                 }
             }
-            for(new ALIVE=1; ALIVE <= iNum; ++ALIVE)
+            for(new ALIVE; ALIVE <= iNum; ++ALIVE)
             if(g_hasFeat[iPlayers[ALIVE]])
             {
                 static id
