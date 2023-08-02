@@ -87,7 +87,7 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+        is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
         g_hasFeat[id] = CheckPlayerBit(g_AI, id) ? 0 : 2
     }
 }
@@ -101,18 +101,17 @@ public client_disconnected(id)
 
 @GetPlayers()
 {
-    new
-    ALIVE,
-    R,G,B, id,
-    Float:X, Float:Y,
-    iPlayers[MAX_PLAYERS], iNum, iTnum, iCTnum, Regular_hud
+    static
+    R,G,B,
+    Float:X, Float:Y;
+    new iPlayers[MAX_PLAYERS], iNum, iTnum, iCTnum, Regular_hud
 
     get_players_ex(iPlayers, iNum, GetPlayers_ExcludeDead)
     if(g_cvar_cont)
     {
         if(iNum)
         {
-            for(new ALIVE; ALIVE < iNum; ++ALIVE)
+            for(new ALIVE=1; ALIVE <= iNum; ++ALIVE)
             {
                 switch( get_user_team( iPlayers[ALIVE] ) )
                 {
@@ -120,18 +119,19 @@ public client_disconnected(id)
                     case 2: ++iCTnum
                 }
             }
-
-            id = iPlayers[ALIVE]
-
-            if(g_hasFeat[id] && ~CheckPlayerBit(g_AI, id))
+            for(new ALIVE=1; ALIVE <= iNum; ++ALIVE)
+            if(g_hasFeat[iPlayers[ALIVE]])
             {
+                static id
+                id = iPlayers[ALIVE]
+                if(CheckPlayerBit(g_AI, id))return
                 if(g_hasFeat[id] == 1)
                     Regular_hud = 1;
 
                 if(iTnum && iCTnum)
                 {
                     if(g_cvar_cont>1)
-                        server_print "checking %i", id
+                        server_print "checking %i %N", id, id
 
                     B = 0, R = 255, X = 0.391;
                     Regular_hud ?
