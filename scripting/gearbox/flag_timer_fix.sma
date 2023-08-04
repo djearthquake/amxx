@@ -33,7 +33,7 @@
 
 static g_compatible1, g_compatible2,bool:B_op4c_map
 new bBlackMesa[MAX_PLAYERS+1]
-new g_AI, g_Projector, g_Ran_Patch
+new g_AI, g_Projector, g_Ran_Patch, bFixed[MAX_PLAYERS + 1]
 
 public plugin_init()
 {
@@ -63,13 +63,14 @@ public client_putinserver(id)
     if(~CheckPlayerBit(g_AI, id))
     {
         ClearPlayerBit(g_Ran_Patch, id)
+        bFixed[id] = false
 
         B_op4c_map ? (SetPlayerBit(g_Projector, id)) : (ClearPlayerBit(g_Projector, id))
     }
 }
 
 @flag_time_fix(id)
-if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
+if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id) &&!bFixed[id])
 {
     static iTimeleft; iTimeleft = get_timeleft()
 
@@ -86,6 +87,7 @@ if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
 
         SetPlayerBit(g_Ran_Patch, id)
         server_print "Fixed broken time remaining on %N", id
+        bFixed[id] = true
     }
 
     emessage_begin(MSG_ONE_UNRELIABLE, g_compatible1, _, id)
