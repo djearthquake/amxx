@@ -34,7 +34,8 @@
 #define MAX_USER_INFO_LENGTH       256
 
 #define PLUGIN "!Client ReNaMeR"
-#define VERSION "1.0"
+#define VERSION "1.1"
+#define charsmin -1
 
 new const SzBotFileName[]="/BotNames.ini"
 
@@ -42,25 +43,55 @@ new Array:g_aBotNames, g_iTotalNames;
 
 new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
-new XBots_only, XCyborgFilter, XUTF8_Strafe;
+new XCheck_Humans, XCyborgFilter, XUTF8_Strafe;
 
 static const SzInitFakeName[] = "gamer"
+new bNameCheck[MAX_PLAYERS + 1]
+
+
+public client_command(id)
+{
+    if(is_user_connected(id))
+    {
+        static szArgCmd[MAX_RESOURCE_PATH_LENGTH + MAX_RESOURCE_PATH_LENGTH]
+        read_argv(0, szArgCmd, charsmax(szArgCmd));
+
+        if (equal(szArgCmd,"name") != charsmin && !bNameCheck[id])
+        {
+            client_infochanged(id)
+            bNameCheck[id] = true
+            return PLUGIN_HANDLED
+        }
+    }
+    return PLUGIN_CONTINUE;
+}
+
+public client_putinserver(id)
+    client_infochanged(id)
 
 public client_infochanged(id)
 {
     if(is_user_connected(id))
     {
-        if(!is_user_bot(id) && get_pcvar_num(XBots_only))
+        if(!is_user_bot(id) && !get_pcvar_num(XCheck_Humans))
             return
 
-        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+        get_user_name(id, ClientName[id], charsmax(ClientName[]))
 
-        new Szcheck[2]
+        static Szcheck[2], Output
         copy(Szcheck, charsmax(Szcheck), ClientName[id])
 
-        if(containi(ClientName[id],"(1)") > -1 || equal(ClientName[id], "") || get_pcvar_num(XUTF8_Strafe) && get_char_bytes(Szcheck) != 1)
+        if(get_pcvar_num(XUTF8_Strafe))
+        {
+            if(get_char_bytes(Szcheck) != 1 || !is_string_category(ClientName[id], charsmax(ClientName[]), UTF8C_ALL, Output))
+                @player_rename(id)
+        }
+
+        if(containi(ClientName[id],"(1)") > -1 || equal(ClientName[id], ""))
             @player_rename(id)
+        bNameCheck[id] = false
     }
+
 }
 
 @player_rename(id)
@@ -77,7 +108,7 @@ public client_infochanged(id)
             }
             if(g_iTotalNames--)
             {
-                new szName[MAX_NAME_LENGTH], i = random(g_iTotalNames)
+                static szName[MAX_NAME_LENGTH];new i = random(g_iTotalNames)
                 ArrayGetString(g_aBotNames, i, szName, charsmax(szName))
                 ArrayDeleteItem(g_aBotNames, i)
 
@@ -106,8 +137,8 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, "SPiNX")
 
     XCyborgFilter   = register_cvar("sv_rename_intregrity","0") //If humans complain when sv_rename_humans 1 seldomly fails.
-    XBots_only      = register_cvar("sv_rename_humans","0") //This was made for bots but applied to humans also.
-    XUTF8_Strafe    = register_cvar("sv_rename_utf","0") //Ever watched the flood from renaming non-utf8 CountryOnName? Not pretty.
+    XCheck_Humans      = register_cvar("sv_rename_humans","1") //This was made for bots but applied to humans also.
+    XUTF8_Strafe    = register_cvar("sv_rename_utf","1") //Ever watched the flood from renaming non-utf8 CountryOnName? Not pretty.
 
     g_aBotNames = ArrayCreate(MAX_NAME_LENGTH)
     ReadFile()
