@@ -1,35 +1,50 @@
-#include amxmodx
 //If client retries in 20 sec auto CT.
+#include amxmodx
+#include amxmisc
+#include cstrike
+#include hamsandwich
+
 #define SNAKE 5000
+#if !defined disconnected
 #define disconnected disconnect
+#endif
+
+static g_iTeam, g_iMotd
+new const SzCMD[]="sv_restartround 3"
 
 public plugin_init()
 {
-    register_plugin("Force CT on 20s retry","A",".sρiηX҉.");
+    register_plugin("Force CT on 20s retry","B",".sρiηX҉.");
+    g_iMotd = get_user_msgid( "MOTD" )
+    g_iTeam = get_user_msgid( "TeamInfo" )
 }
 
 public client_putinserver(id)
 {
-    set_user_info(id,"_vgui_menus", "0")
+    if(is_user_connected(id) && task_exists(id+SNAKE) && !is_user_bot(id))
+    {
+        set_msg_block(g_iTeam, BLOCK_SET);
+        set_msg_block(g_iMotd, BLOCK_SET);
 
-    if(task_exists(id+SNAKE))
-        change_task(id+SNAKE, 0.3) &&
-        set_msg_block( get_user_msgid( "MOTD" ), BLOCK_SET );
-    else
-        CS_OnBuyAttempt(id)
+        cs_set_user_team(id, 2);
+        change_task(id+SNAKE, 2.0);
+    }
 }
 
 public set_team_ct(TaskID)
 {
-    new id = TaskID-SNAKE
-    set_user_info(id,"_vgui_menus", "0")
-
-    client_cmd(id,"jointeam 2");
+    set_msg_block(g_iMotd, BLOCK_NOT);
+    static id;id =TaskID-SNAKE
+    if(is_user_connected(id))
+    {
+        ExecuteHamB(Ham_CS_RoundRespawn, id); // do after round start after checks
+        if(is_user_admin(id))
+            console_cmd( 0, SzCMD );
+    }
 }
-
-public CS_OnBuyAttempt(id){ set_user_info(id,"_vgui_menus", "0");}
 
 public client_disconnected(id)
 {
-    set_task(20.0,"set_team_ct", id+SNAKE);
+    if(!is_user_bot(id))
+        set_task(20.0,"set_team_ct", id+SNAKE);
 }
