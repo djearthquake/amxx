@@ -127,11 +127,11 @@ public plugin_end()
 }
 */
 
-public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
+public handle_say(id, blah[MAX_USER_INFO_LENGTH])
 {
     OK && g_cvar_nametag)
     {
-        new reblah[MAX_RESOURCE_PATH_LENGTH]
+        static reblah[MAX_USER_INFO_LENGTH]
         read_args(blah,charsmax(blah))
         remove_quotes(blah)
 
@@ -148,7 +148,7 @@ public handle_say(id, blah[MAX_RESOURCE_PATH_LENGTH])
 
 @strip_spec(id)
 {
-    if( bFirstPerson[id] && g_spectating[id] )
+    OK && bFirstPerson[id] && g_spectating[id] )
     {
         fm_strip_user_weapons(id)
     }
@@ -166,7 +166,9 @@ public client_prethink( id )
 {
     OK && is_user_alive(id) && pev_valid(id)>1)
     {
-        if(g_spectating[id] && ~CheckPlayerBit(g_AI, id))
+        if(CheckPlayerBit(g_AI, id))
+            return
+        if(g_spectating[id])
         {
             //Remember!
             #define OBS_NONE                        0
@@ -227,7 +229,7 @@ public client_prethink( id )
 
                 if(bFirstPerson[id])
                 {
-                    new iTarget = g_random_view[id]
+                    static iTarget; iTarget = g_random_view[id]
                     if(is_user_connected(iTarget)) //needs checked here as index was made up!
                     {
                         //attach_view(id, iTarget);
@@ -294,7 +296,7 @@ public fwdAddToFullPack_Post( es_handle, e, ent, host, hostflags, player, pset )
 
 stock loss()
 {
-    new iPing,iLoss
+    static iPing,iLoss
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"i")
 
     for(new lot;lot < sizeof players;lot++)
@@ -305,8 +307,10 @@ stock loss()
 
 @play(id)
 {
-    OK && ~CheckPlayerBit(g_AI, id))
+    OK)
     {
+        if(CheckPlayerBit(g_AI, id))
+            return
         //server_print "%n spectator mode is resetting.", id
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
 
@@ -330,7 +334,7 @@ stock loss()
 
 @reset(Tsk)
 {
-    new id = Tsk - RESET
+    static id; id = Tsk - RESET
     if(g_spectating[id] && is_user_connected(id) )
     {
         set_user_godmode(id,false)
@@ -346,10 +350,10 @@ stock loss()
         set_view(id, CAMERA_NONE)
         entity_set_float(id, EV_FL_fov, 100.0)
 
-        new effects = pev(id, pev_effects)
+        static effects; effects = pev(id, pev_effects)
         set_pev(id, pev_effects, (effects | ~EF_NODRAW))
 
-        new flags = pev(id, pev_flags)
+        static flags; flags = pev(id, pev_flags)
         set_pev(id, pev_flags, (flags | ~FL_SPECTATOR | ~FL_NOTARGET | ~FL_PROXY  | ~FL_PROXY | ~FL_CUSTOMENTITY))
         //set_pev(id, pev_flags, (flags | ~FL_SPECTATOR))
     }
@@ -359,8 +363,11 @@ public client_putinserver(id)
 {
     is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
 
-    OK && ~CheckPlayerBit(g_AI, id))
+    OK)
     {
+        if(CheckPlayerBit(g_AI, id))
+            return
+
         g_random_view[id] = 0
         if(!g_bFlagMap)
         {
@@ -412,7 +419,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
 
 @menu(id)
 {
-    if(is_user_connected(id) && pev_valid(id)>1)
+    OK && pev_valid(id)>1)
     {
         new menu = menu_create ("Spectate", "@spec_menu");
         menu_additem(menu, "PLAY/WATCH^n", "1");
@@ -431,7 +438,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
 
 @spec_menu(id, menu, item)
 {
-    if(is_user_connected(id) && pev_valid(id)>1)
+    OK && pev_valid(id)>1)
     {
         bAlready_shown_menu[id] = true
         switch(item)
@@ -533,7 +540,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
 public client_infochanged(id)
 {
     //name sync
-    if(!g_bSpecNam[id])
+    OK && !g_bSpecNam[id])
     {
         get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
     }
@@ -542,7 +549,7 @@ public client_infochanged(id)
 
 @go_spec(id)
 {
-    new cvar_gg = get_cvar_num("gg_enabled")
+    static cvar_gg; cvar_gg = get_cvar_num("gg_enabled")
     OK)
     {
         if(~CheckPlayerBit(g_AI, id) || !is_user_hltv(id))
@@ -563,10 +570,10 @@ public client_infochanged(id)
                             }
                         }
                         g_spectating[id] = true
-                        new effects = pev(id, pev_effects)
+                        static effects; effects = pev(id, pev_effects)
 
                         set_pev(id, pev_effects, (effects | EF_NODRAW))
-                        new flags = pev(id, pev_flags)
+                        static flags; flags = pev(id, pev_flags)
                         set_pev(id, pev_flags, (flags | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_CUSTOMENTITY))
 
                         dllfunc(DLLFunc_SpectatorConnect, id)
@@ -639,23 +646,25 @@ public client_infochanged(id)
 
 @show_motd(value)
 {
-    new id = value - MOTD
+    static id; id = value - MOTD
     show_motd(id, g_motd, "SPECTATOR MODE")
     client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
     set_task(30.0,"random_view", id)
 }
 
 @update_player(id)
-if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
+OK && ~CheckPlayerBit(g_AI, id))
     g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
 
 
 public client_command(id)
 {
-    if(is_user_connected(id) && ~CheckPlayerBit(g_AI, id))
+    OK)
     {
-        new szArg[MAX_PLAYERS];
-        new szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
+        if(CheckPlayerBit(g_AI, id))
+            goto SKIP
+        static szArg[MAX_PLAYERS],
+        szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
 
         read_args(szArg, charsmax(szArg));
         read_argv(0,szArgCmd, charsmax(szArgCmd));
@@ -681,7 +690,7 @@ public client_command(id)
 }
 public random_view(id)
 {
-    if(is_user_connected(id) && g_spectating[id])
+    OK && g_spectating[id])
     {
         if(!task_exists(id+TOGGLE))
         {
@@ -706,8 +715,8 @@ public random_view(id)
 
 @random_view(Tsk)
 {
-    new id = Tsk - TOGGLE
-    if(is_user_connected(id) && g_spectating[id])
+    static id; id = Tsk - TOGGLE
+    OK && g_spectating[id])
     {
         new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
         get_players(players,playercount,"i");
@@ -752,10 +761,13 @@ public random_view(id)
 
 public client_disconnected(id)
 {
-    g_spectating[id] = false
-    bAlready_shown_menu[id] = false
-    g_random_view[id] = 0
-    @clear_menu(id)
+    if(!is_user_connected(id) && !is_user_connecting(id))
+    {
+        g_spectating[id] = false
+        bAlready_shown_menu[id] = false
+        g_random_view[id] = 0
+        @clear_menu(id)
+    }
 }
 
 stock players_who_see_effects()
@@ -774,9 +786,9 @@ stock iPlayers()
 
 @clear_menu(id)
 {
-    if(is_user_connected(id))
+    OK)
     {
-        new menu = menu_create ("Menu cleaner", "@menu2");
+        static menu; menu = menu_create ("Menu cleaner", "@menu2");
         menu_additem(menu, "Server menu reset", "1");
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
         menu_display(id, menu, 0,1);
@@ -786,7 +798,7 @@ stock iPlayers()
 
 @menu2(id, menu, item)
 {
-    if(is_user_connected(id))
+    OK)
     {
         menu_destroy(menu)
     }
