@@ -218,7 +218,7 @@ public CS_OnBuy(id, item)
     new SzParaphrase[128];
     g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
     new iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
-    if(is_user_connected(id))
+    if(is_user_connected(id) && is_user_connected(iBotOwner[id]))
     {
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
@@ -249,7 +249,7 @@ public CS_OnBuy(id, item)
         {
             if(iSound)
             {
-                client_cmd(id, iKeep? "spk turret/tu_spinup.wav" : "spk turret/tu_spindown.wav")
+                client_cmd(id, iKeep ? "spk turret/tu_spinup.wav" : "spk turret/tu_spindown.wav")
             }
             if(iKeep > charsmin)
             {
