@@ -312,6 +312,7 @@ stock loss()
         if(CheckPlayerBit(g_AI, id))
             return
         //server_print "%n spectator mode is resetting.", id
+
         client_cmd id,"spk valve/sound/UI/buttonclick.wav"
 
         if(g_startaspec)
@@ -487,7 +488,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
                 if(g_spectating[id])
                 {
                     static iTarget; iTarget = g_random_view[id]
-                    if(bFirstPerson[id]) //add take over AFK human next
+                    if(bFirstPerson[id] && is_user_connected(iTarget)) //add take over AFK human next
                     {
                         if(CheckPlayerBit(g_AI, iTarget) || pev(iTarget, pev_button) & ~IS_THERE)
                         {
@@ -767,7 +768,7 @@ public random_view(id)
         if(playercount > 1 && !g_random_view[viewable])
         {
             iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
-
+            if(is_user_connected(iViewPlayer))
             if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) )
             {
                 set_view(id, CAMERA_3RDPERSON)
@@ -837,7 +838,7 @@ stock iPlayers()
         static menu; menu = menu_create ("Menu cleaner", "@menu2");
         menu_additem(menu, "Server menu reset", "1");
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
-        menu_display(id, menu, 0,1);
+        menu_display(id, menu, 0,1)
     }
 
 }
