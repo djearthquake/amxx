@@ -19,6 +19,8 @@
 #define BYTE_BITS                    8
 #define SHORT_BYTES                  2
 
+#define ADMIN_FLAG "l"
+
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
 const UNIX_DIFF = 20;
@@ -271,7 +273,6 @@ stock c4_from_grenade()
         fBeep =get_pdata_float( g_weapon_c4_index, m_flNextBeep, LINUX_DIFF);
 
         for (new admin=1; admin<=g_maxPlayers; admin++)
-        if (is_user_connected(admin) && is_user_admin(admin))
+        if (is_user_connected(admin) && has_flag(admin, ADMIN_FLAG))
             client_print admin, print_chat, "Interval:%f|Beep:%f|Attn:%f|Count:%f", fInterval, fBeep, fAttn, fCount
 }
-
