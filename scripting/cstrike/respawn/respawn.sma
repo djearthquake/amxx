@@ -218,7 +218,7 @@ public CS_OnBuy(id, item)
     new SzParaphrase[128];
     g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
     new iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
-    if(is_user_connected(id) && is_user_connected(iBotOwner[id]))
+    if(is_user_connected(id))
     {
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
@@ -237,7 +237,8 @@ public CS_OnBuy(id, item)
         }
         if(bIsCtrl[id])
         {
-            g_BackPack[id] = g_BackPack[iBotOwner[id]]
+            if(is_user_connected(iBotOwner[id]))
+                g_BackPack[id] = g_BackPack[iBotOwner[id]]
             fm_set_kvd(id, "zhlt_lightflags", "0")
             set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255)
 
