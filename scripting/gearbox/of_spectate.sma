@@ -89,7 +89,8 @@ public plugin_init()
     server_print("Loading %s.", PLUGIN)
     register_clcmd("!spec", "@menu", 0, "- Spectator Menu")
     register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
-    register_concmd("say !spec_switch","random_view",0,"spectate random")
+    register_concmd("say !spec_switch","@switch_views",0,"spectate random")
+    register_clcmd("!spec_switch", "@switch_views", 0, "- Spectator Menu")
 
     //g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
 
@@ -164,11 +165,21 @@ public client_impulse(id)
 
 public client_prethink( id )
 {
-    OK && is_user_alive(id) && pev_valid(id)>1)
+    OK)
     {
-        if(CheckPlayerBit(g_AI, id))
-            return
-        if(g_spectating[id])
+        if(!g_spectating[id])
+        {
+            pev(id, pev_origin, g_user_origin[id]);
+            entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
+            entity_get_vector(id, EV_VEC_view_ofs, g_Plane[id]);
+            entity_get_vector(id, EV_VEC_punchangle, g_Punch[id]);
+            entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
+            entity_get_vector(id, EV_VEC_movedir, g_Mdir[id]);
+
+            if(CheckPlayerBit(g_AI, id))
+                return
+        }
+        else
         {
             //Remember!
             #define OBS_NONE                        0
@@ -181,7 +192,7 @@ public client_prethink( id )
 
             if(pev(id, pev_button) & IN_SCORE)
             {
-                new iTOS = get_user_time(id)
+                static iTOS; iTOS = get_user_time(id)
                 if(iTOS > 30 && iTOS < 120 )
                 {
                     entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
@@ -221,7 +232,7 @@ public client_prethink( id )
             {
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
 
-                new effects = pev(id, pev_effects)
+                static effects; effects = pev(id, pev_effects)
                 set_pev(id, pev_effects, (effects | EF_NODRAW))
                 fm_strip_user_weapons(id)
 
@@ -244,7 +255,7 @@ public client_prethink( id )
 
                         //trace_line(0, g_Plane[id], g_Plane[iTarget], g_Velocity[iTarget])
                         entity_set_int( id, EV_INT_fixangle, 1 )
-                        if(loss() > 1)
+                        if(loss() > 2) //MAKE CVAR
                         {
                             bFirstPerson[id] = false
                         }
@@ -263,17 +274,6 @@ public client_prethink( id )
                 }
 
             }
-        }
-
-        pev(id, pev_origin, g_user_origin[id]);
-
-        if(!g_spectating[id])
-        {
-            entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
-            entity_get_vector(id, EV_VEC_view_ofs, g_Plane[id]);
-            entity_get_vector(id, EV_VEC_punchangle, g_Punch[id]);
-            entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
-            entity_get_vector(id, EV_VEC_movedir, g_Mdir[id]);
         }
     }
 }
@@ -335,7 +335,8 @@ stock loss()
 @reset(Tsk)
 {
     static id; id = Tsk - RESET
-    if(g_spectating[id] && is_user_connected(id) )
+    OK)
+    if(g_spectating[id])
     {
         set_user_godmode(id,false)
         server_print "Spec mode reset for ^n%n",id
@@ -361,10 +362,9 @@ stock loss()
 
 public client_putinserver(id)
 {
-    is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
-
     OK)
     {
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
         if(CheckPlayerBit(g_AI, id))
             return
 
@@ -395,12 +395,13 @@ public client_connectex(id, const name[], const ip[], reason[128])
         replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
         set_user_info(id, "name", SzClientName[id])
     }
+    g_spectating[id] = false
     return PLUGIN_CONTINUE
 }
 
 @go_check(id)
 {
-    if(is_user_connected(id))
+    OK)
     {
         server_print("spec check %n if AFK...", id)
 
@@ -421,16 +422,23 @@ public client_connectex(id, const name[], const ip[], reason[128])
 {
     OK && pev_valid(id)>1)
     {
-        new menu = menu_create ("Spectate", "@spec_menu");
+        static menu; menu = menu_create ("Spectate", "@spec_menu");
+
         menu_additem(menu, "PLAY/WATCH^n", "1");
+        //if(g_spectating[id])
         menu_additem(menu, "Chase Cam/Free-look^n^n", "2")
+        //if(g_random_view[id] && !bFirstPerson[id])
         menu_additem(menu, "First Person Chase Cam^n^n", "3")
-        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4")
+        bFirstPerson[id] && CheckPlayerBit(g_AI, g_random_view[id]) ?
+        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4"):menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
+
         menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
-        menu_additem(menu, "New Map(frags required)^n^n^n", "6")
+        //if(!g_spectating[id])
+        //menu_additem(menu, "New Map^n^n^n", "6")
+        menu_additem(menu, "Toggle views^n^n^n", "6")
         menu_additem(menu, "LEAVE SERVER!^n", "7")
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
-        menu_display(id, menu, 0, 900);
+        menu_display(id, menu, 0, 9);
         return PLUGIN_HANDLED
     }
     return PLUGIN_CONTINUE
@@ -447,7 +455,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
             {
                 @go_spec(id)
                 if(g_spectating[id])
-                    menu_display(id, menu, 0, 600);
+                    menu_display(id, menu, 0, 10);
             }
             case 1:
             {
@@ -455,7 +463,11 @@ public client_connectex(id, const name[], const ip[], reason[128])
                 {
                     random_view(id)
                     bFirstPerson[id] = false
-                    menu_display(id, menu, 0,900);
+                    menu_display(id, menu, 0,15);
+                }
+                else
+                {
+                    client_print id, print_chat, "Must be spectating!"
                 }
             }
             case 2:
@@ -463,53 +475,67 @@ public client_connectex(id, const name[], const ip[], reason[128])
                 if(g_spectating[id])
                 {
                     bFirstPerson[id] = true
-                    menu_display(id, menu, 0,900);
+                    ///menu_display(id, menu, 0,15);
+                }
+                else
+                {
+                    client_print id, print_chat, "Must be spectating!"
                 }
             }
             case 3:
             {
                 if(g_spectating[id])
                 {
-                    new iTarget = g_random_view[id]
-                    if(CheckPlayerBit(g_AI, iTarget) && bFirstPerson[id])
+                    static iTarget; iTarget = g_random_view[id]
+                    if(bFirstPerson[id]) //add take over AFK human next
                     {
-                        server_print "TAKING OVER BOT!"
-                        g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
-                        dllfunc(DLLFunc_ClientPutInServer, id)
-                        dllfunc(DLLFunc_SpectatorDisconnect, id)
-                        g_iViewtype[id]  = 0
-                        g_spectating[id] = false
-                        g_random_view[id] = 0
-                        set_user_info(id, "_spec", "0")
+                        if(CheckPlayerBit(g_AI, iTarget) || pev(iTarget, pev_button) & ~IS_THERE)
+                        {
+                            server_print "TAKING OVER BOT/ AFK PLAYER!"
+                            g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
+                            dllfunc(DLLFunc_ClientPutInServer, id)
+                            dllfunc(DLLFunc_SpectatorDisconnect, id)
+                            g_iViewtype[id]  = 0
+                            g_spectating[id] = false
+                            g_random_view[id] = 0
+                            set_user_info(id, "_spec", "0")
 
-                        entity_set_float(id, EV_FL_fov, 100.0)
-                        change_task(id, 60.0) //less spam
-                        remove_task(id+MOTD)
-                        entity_set_int(id, EV_INT_bInDuck, g_Duck[iTarget]);
-                        entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
-                        entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
-                        entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
-                        entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
-                        entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+                            entity_set_float(id, EV_FL_fov, 100.0)
+                            change_task(id, 60.0) //less spam
+                            remove_task(id+MOTD)
+                            entity_set_int(id, EV_INT_bInDuck, g_Duck[iTarget]);
+                            entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
+                            entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
+                            entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
+                            entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
+                            entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
 
-                        g_BackPack[iTarget] = entity_get_int(iTarget, EV_INT_weapons)
-                        entity_set_int(id, EV_INT_weapons, g_BackPack[iTarget])
+                            g_BackPack[iTarget] = entity_get_int(iTarget, EV_INT_weapons)
+                            entity_set_int(id, EV_INT_weapons, g_BackPack[iTarget])
 
 
-                        client_print id, print_chat, "%n took control of %n.", id, iTarget
-                        set_pev(id, pev_origin, g_user_origin[iTarget]);
-                        server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
+                            client_print id, print_chat, "%n took control of %n.", id, iTarget
+                            set_pev(id, pev_origin, g_user_origin[iTarget]);
+                            server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
 
-                        set_user_godmode(id,false)
-                        client_cmd 0, "spk debris/beamstart6.wav"
+                            set_user_godmode(id,false)
+                            client_cmd 0, "spk debris/beamstart6.wav"
+                        }
                     }
                     else
+                    {
+                        client_print id, print_chat, "Must be in First Person view!"
                         menu_display(id, menu, 0,900);
+                    }
+                }
+                else
+                {
+                    client_print id, print_chat, "Must be in First Person view!"
                 }
             }
             case 4:
             {
-                new Loop, iTrack = random_num(1,27)
+                new Loop, iTrack; iTrack = random_num(1,27)
                 menu_display(id, menu, 0,300);
                 if( bListening[id] )
                 {
@@ -525,11 +551,13 @@ public client_connectex(id, const name[], const ip[], reason[128])
             }
             case 5:
             {
-                client_cmd id, "say rtv"
+                //client_print id, print_chat, "Say rtv"
+                @switch_views(id)
+                menu_display(id, menu, 0,900);
             }
             case 6:
             {
-                client_cmd id, "dropclient"
+                server_cmd "kick #%i", get_user_userid(id)
             }
         }
     }
@@ -647,9 +675,12 @@ public client_infochanged(id)
 @show_motd(value)
 {
     static id; id = value - MOTD
-    show_motd(id, g_motd, "SPECTATOR MODE")
-    client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
-    set_task(30.0,"random_view", id)
+    OK)
+    {
+        show_motd(id, g_motd, "SPECTATOR MODE")
+        client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
+        set_task(30.0,"random_view", id)
+    }
 }
 
 @update_player(id)
@@ -661,7 +692,7 @@ public client_command(id)
 {
     OK)
     {
-        if(CheckPlayerBit(g_AI, id))
+        if(CheckPlayerBit(g_AI, id) || is_user_admin(id)/*dev random view*/)
             goto SKIP
         static szArg[MAX_PLAYERS],
         szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
@@ -679,7 +710,7 @@ public client_command(id)
                 set_user_godmode(id,true)
                 fm_strip_user_weapons(id)
 
-                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
+                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "!spec_switch") || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
                     goto SKIP
                 return PLUGIN_HANDLED_MAIN
             }
@@ -690,11 +721,11 @@ public client_command(id)
 }
 public random_view(id)
 {
-    OK && g_spectating[id])
+    OK && g_spectating[id] && ~CheckPlayerBit(g_AI, id))
     {
-        if(!task_exists(id+TOGGLE))
+        if(!g_random_view[id])
         {
-            set_task(0.1,"@random_view",id+TOGGLE,.flags = "b")
+            set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
             if(!bDemo[id])
             {
                 client_cmd id, "spk holo/tr_ba_use.wav"
@@ -713,6 +744,17 @@ public random_view(id)
     return PLUGIN_HANDLED;
 }
 
+@switch_views(id)
+{
+    OK && g_spectating[id] && ~CheckPlayerBit(g_AI, id))
+    {
+        task_exists(id+TOGGLE) ? change_task(id+TOGGLE, 0.3)
+        :
+        set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
+    }
+    return PLUGIN_HANDLED;
+}
+
 @random_view(Tsk)
 {
     static id; id = Tsk - TOGGLE
@@ -722,10 +764,11 @@ public random_view(id)
         get_players(players,playercount,"i");
 
         for (viewable=0; viewable < playercount; ++viewable)
-        if(playercount > 1 && !g_random_view[id])
+        if(playercount > 1 && !g_random_view[viewable])
         {
-            iViewPlayer = random_num(1,playercount+1)
-            if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) && is_user_connected(iViewPlayer) )
+            iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
+
+            if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) )
             {
                 set_view(id, CAMERA_3RDPERSON)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
@@ -734,8 +777,11 @@ public random_view(id)
                     bDemo[id] = true
                     client_cmd(id,"spk fvox/targetting_system.wav")
                 }
+                if(task_exists(id + TOGGLE))
+                    remove_task(id + TOGGLE)
                 client_print(id, print_chat, "Say !spec_switch to change perspectives.")
                 //otherwise switches players randomly
+
                 g_random_view[id] = iViewPlayer
                 return PLUGIN_CONTINUE;
             }
