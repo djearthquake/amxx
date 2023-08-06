@@ -3,23 +3,27 @@
 #include amxmodx
 #include amxmisc
 #include cstrike
-//#include csx
 #include engine
 #include engine_stocks
 #include fakemeta
 #include fakemeta_util
 
-#define IDENTIFY register_plugin("c4 Experience","1.2","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.22","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
 #define charsmin -1
 
-#define m_bIsC4                    385
 #define INT_BYTES                    4
 #define BYTE_BITS                    8
 #define SHORT_BYTES                  2
+
+const LINUX_OFFSET_WEAPONS = 4;
+const LINUX_DIFF = 5;
+const UNIX_DIFF = 20;
+
+static m_bIsC4, m_flNextBeep, m_flNextFreqInterval, m_flDefuseCountDown, m_fAttenu
 
 #if !defined MaxClients
     new MaxClients
@@ -29,7 +33,7 @@ new g_fExperience_offset
 static Float:g_fUninhibited_Walk = 272.0;
 new g_fire
 new g_boomtime
-new g_weapon_c4_index
+new g_weapon_c4_index, g_maxPlayers
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 new bool:Client_C4_adjusted_already[MAX_PLAYERS+1]
 
@@ -52,11 +56,17 @@ public plugin_init()
         register_event("BarTime", "fnDefusal", "be", "1=5", "1=10");
 
         g_fExperience_offset = register_cvar("exp_offset",  "1.03");
+        m_bIsC4 = find_ent_data_info("CGrenade", "m_bIsC4") + UNIX_DIFF
+        m_flNextBeep =  (find_ent_data_info("CGrenade", "m_flNextBeep") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+        m_flNextFreqInterval =  (find_ent_data_info("CGrenade", "m_flNextFreqInterval") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+        m_flDefuseCountDown = (find_ent_data_info("CGrenade", "m_flDefuseCountDown") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+        m_fAttenu = (find_ent_data_info("CGrenade", "m_fAttenu") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
     }
     else
     {
         pause( "a" );
     }
+    g_maxPlayers = get_maxplayers()
 }
 
 public client_putinserver(id)
@@ -74,7 +84,7 @@ public client_infochanged(id)
         get_user_name(id,ClientName[id],charsmax(ClientName[]))
 }
 
-#if AMXX_VERSION_NUM == 182
+#if !defined get_pdata_bool
 stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
 {
     return !!(get_pdata_int(ent, charbased_offset / INT_BYTES, intbase_linuxdiff) & (0xFF<<((charbased_offset % INT_BYTES) * BYTE_BITS)))
@@ -85,31 +95,59 @@ public FnPlant()
 {
     //get username via log
     //g_weapon_c4_index = 0
-    new id = get_loguser_index();
+    static id; id = get_loguser_index();
     server_print "Is %n planting?", id
     if(is_user_alive(id))
     {
         c4_from_grenade();
-        g_weapon_c4_index ? set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50) : c4_from_grenade()
-
-        new Float:fC4_factor =  get_user_frags(id) * get_pcvar_float(g_fExperience_offset)
-        if(g_weapon_c4_index)
+        if(g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
         {
-            cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
+            g_weapon_c4_index ? set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50) : c4_from_grenade()
 
-            //Multi-task
-            entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+            static Float:fC4_factor
+            fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
+            g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index, cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor) : c4_from_grenade()
 
-            new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
-            if(iBoom_time > 0)
-                g_boomtime = iBoom_time
+            if(g_weapon_c4_index && g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
+            {
+                new iC4TimeOffset
+
+                iC4TimeOffset = floatround(cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
+                new Float:fTime
+                fTime = float(iC4TimeOffset)
+                new Float:fHuman_readable = fTime - get_gametime()
+                if(fHuman_readable <=7.0)
+                    fHuman_readable = 15.0 // so does not blow up in face!
+
+                if(fHuman_readable >= 7.0)
+                {
+                    cs_set_c4_explode_time(g_weapon_c4_index, fTime)
+                    server_print "boom time is %f seconds!", fTime
+                }
+
+                //Multi-task
+                entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+
+                static iBoom_time
+                iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+
+                if(iBoom_time)
+                    g_boomtime = iBoom_time
+
+                set_task(1.0,"@count_down",5656,_,0,"b")
+                client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime, ClientName[id]
+
+                set_task(0.1,"@c4_status",3400,_,_,"b")
+            }
             else
-                return
-            set_task(1.0,"@count_down",5656,_,0,"b")
-            client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime, ClientName[id]
+            {
+                c4_from_grenade()
+            }
         }
         else
+        {
             c4_from_grenade()
+        }
     }
     return;
 }
@@ -119,41 +157,45 @@ public fnDefusal(id)
     if(is_user_alive(id) && !Client_C4_adjusted_already[id] /*&& cs_get_c4_defusing(g_weapon_c4_index)*/)
     {
         c4_from_grenade();
-        new Float:fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
+        static Float:fC4_factor
+        fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
         g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
 
-        new iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+        static iBoom_time
+        iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
         if(iBoom_time > 0)
             g_boomtime = iBoom_time
         else
             return
-        new Float:fplayervector[3];
+        static Float:fplayervector[3];
         entity_get_vector(id, EV_VEC_origin, fplayervector);
         client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
 
         if(!is_user_bot(id))
             entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
 
-        set_task(0.1, "nice", id+911);
+        set_task(1.0, "nice", id+911);
         Client_C4_adjusted_already[id] = true
     }
     return;
 }
 
-@count_down() g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+@count_down()
+if(get_playersnum())g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
 
 public nice(show)
 {
-    new ct_defusing = show - 911;
-    new iPlayerOrigin[3];
-    new Float:C4_origin[3];
+    static ct_defusing,
+    iPlayerOrigin[3],
+    Float:C4_origin[3];
+    ct_defusing = show - 911
 
     fm_get_brush_entity_origin(g_weapon_c4_index, C4_origin)
     get_user_origin(ct_defusing, iPlayerOrigin, 3)
 
     #define TE_LIGHTNING 7          // TE_BEAMPOINTS with simplified parameters
 
-    new iC4_origin[3];
+    static iC4_origin[3];
     iC4_origin[0] = floatround(C4_origin[0]);
     iC4_origin[1] = floatround(C4_origin[1]);
     iC4_origin[2] = floatround(C4_origin[2]);
@@ -182,11 +224,16 @@ public nice(show)
     Client_C4_adjusted_already[players[CT]] = false
 }
 
-@round_end()@round_start()
+@round_end()
+{
+    @round_start()
+    if(task_exists(3400))
+        remove_task(3400)
+}
 
 stock get_loguser_index()
 {
-    new loguser[MAX_RESOURCE_PATH_LENGTH + MAX_IP_LENGTH], name[MAX_NAME_LENGTH]
+    static loguser[MAX_RESOURCE_PATH_LENGTH + MAX_IP_LENGTH], name[MAX_NAME_LENGTH]
     read_logargv(0, loguser, charsmax(loguser))
     parse_loguser(loguser, name, charsmax(name))
     return get_user_index(name)
@@ -205,12 +252,26 @@ stock c4_from_grenade()
         {
             if(pev_valid(iC4) > 1 && iC4 > MaxClients)
             {
-                if(get_pdata_bool(iC4, m_bIsC4))
+                if(get_pdata_bool(iC4, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
                     g_weapon_c4_index = iC4
                 break;
             }
-            if(g_weapon_c4_index <= MaxClients)
+            if(g_weapon_c4_index <= MaxClients || pev_valid(g_weapon_c4_index) < 2)
                 c4_from_grenade()
         }
     }
 }
+
+@c4_status()
+{
+        static Float:fInterval, Float:fBeep, Float:fAttn, Float:fCount
+        fAttn = get_pdata_float( g_weapon_c4_index, m_fAttenu, LINUX_DIFF )
+        fCount =get_pdata_float( g_weapon_c4_index, m_flDefuseCountDown, LINUX_DIFF ) //expecting instant
+        fInterval = get_pdata_float( g_weapon_c4_index, m_flNextFreqInterval, LINUX_DIFF ) //in your face
+        fBeep =get_pdata_float( g_weapon_c4_index, m_flNextBeep, LINUX_DIFF);
+
+        for (new admin=1; admin<=g_maxPlayers; admin++)
+        if (is_user_connected(admin) && is_user_admin(admin))
+            client_print admin, print_chat, "Interval:%f|Beep:%f|Attn:%f|Count:%f", fInterval, fBeep, fAttn, fCount
+}
+
