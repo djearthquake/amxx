@@ -36,7 +36,7 @@ public client_PreThink(iPlayer)
     {
         if(bReadble[iPlayer] && is_user_alive(iPlayer))
         {
-            new Float:get_friction = entity_get_float(iPlayer, EV_FL_friction)
+            static Float:get_friction; get_friction = entity_get_float(iPlayer, EV_FL_friction)
             if(get_friction != FRICTION_NOT)
             {
                 entity_set_float(iPlayer, EV_FL_friction, get_friction + 0.001)
@@ -44,10 +44,12 @@ public client_PreThink(iPlayer)
                 {
                     entity_set_float(iPlayer, EV_FL_friction, FRICTION_NOT)
                 }
+                /*
                 if(!task_exists(iPlayer))
                 {
                     set_task(3.0, "@feedback", iPlayer)
                 }
+                */
             }
         }
     }
@@ -56,5 +58,6 @@ public client_PreThink(iPlayer)
 
 @feedback(iPlayer)
 {
-    client_print(0, print_center, "%n,^nis on ICE!", iPlayer)
+    if(is_user_connected(iPlayer))
+        client_print(0, print_center, "%n,^nis on ICE!", iPlayer)
 }
