@@ -25,7 +25,9 @@ public plugin_init()
 public plugin_precache()
 {
     get_modname(mod_name, charsmax(mod_name));
-    new ent = create_entity(ent_type)
+    static ent; ent = create_entity(ent_type)
+    if(!is_valid_ent(ent))
+        return
 
     log_amx "Attempting to partially patch Counter-Strike map for %s.", mod_name
 
@@ -84,7 +86,7 @@ public pfn_keyvalue(ent)
     if(!bHL)
     {
         bHL = true
-        new szMap[MAX_NAME_LENGTH]
+        static szMap[MAX_NAME_LENGTH]
         get_mapname(szMap, charsmax(szMap))
 
         if(equal(szMap, "vote_map_final"))
