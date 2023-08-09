@@ -8,30 +8,20 @@ new bool:bPatched, bool:bHL
 new const ent_type[]="game_player_equip"
 new mod_name[MAX_NAME_LENGTH]
 
+new const szAnnoyingEnts[][]= {"armoury_entity", "cycler_sprite", "env_render", "func_button", "multi_manager"}
+
 public plugin_init()
 {
     register_plugin("Fix:CS-HL map guns", "1.3", "SPiNX")
-    if(bPatched)
-    {
-        remove_entity_name("armoury_entity")
-        remove_entity_name("cycler_sprite")
-        remove_entity_name("env_render")
-        remove_entity_name("env_shooter")
-        remove_entity_name("func_button")
-        remove_entity_name("multi_manager")
-    }
-
 }
 public plugin_precache()
 {
     get_modname(mod_name, charsmax(mod_name));
-    static ent; ent = create_entity(ent_type)
-    if(!is_valid_ent(ent))
-        return
+    new ent; ent = create_entity(ent_type)
 
     log_amx "Attempting to partially patch Counter-Strike map for %s.", mod_name
 
-    if(bPatched)
+    if(bPatched && has_map_ent_class("ambient_generic"))
     {
         remove_entity_name("ambient_generic")
         remove_entity_name(ent_type)
@@ -45,9 +35,12 @@ public plugin_precache()
     }
     else if(equal(mod_name,"gearbox"))
     {
-        remove_entity_name("player_weaponstrip")
-        DispatchKeyValue( ent, "weapon_m249", "1" )
-        DispatchKeyValue( ent, "weapon_sniperrifle", "1" )
+        if(has_map_ent_class("player_weaponstrip"))
+        {
+            remove_entity_name("player_weaponstrip")
+            DispatchKeyValue( ent, "weapon_m249", "1" )
+            DispatchKeyValue( ent, "weapon_sniperrifle", "1" )
+        }
     }
     else if(equal(mod_name,"valve"))
     {
@@ -71,13 +64,24 @@ public plugin_precache()
     }
 
     DispatchKeyValue( ent, "targetname", "game_playerspawn")
+
     DispatchSpawn(ent);
+
+    if(bPatched)
+    {
+        for(new list;list<=sizeof(szAnnoyingEnts);list++)
+        if(has_map_ent_class(szAnnoyingEnts[list]))
+        {
+            server_print szAnnoyingEnts[list]
+            remove_entity_name(szAnnoyingEnts[list])
+        }
+    }
 }
 
 
 public pfn_keyvalue(ent)
 {
-    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+    static Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
     copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
 
     if(equali(Classname,"ambient_generic"))
@@ -86,7 +90,7 @@ public pfn_keyvalue(ent)
     if(!bHL)
     {
         bHL = true
-        static szMap[MAX_NAME_LENGTH]
+        new szMap[MAX_NAME_LENGTH]
         get_mapname(szMap, charsmax(szMap))
 
         if(equal(szMap, "vote_map_final"))
