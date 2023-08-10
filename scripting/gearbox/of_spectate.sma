@@ -366,10 +366,16 @@ public client_putinserver(id)
     OK)
     {
         is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+
+        g_spectating[id] = false
+        bAlready_shown_menu[id] = false
+        g_random_view[id] = 0
+
         if(CheckPlayerBit(g_AI, id))
             return
 
-        g_random_view[id] = 0
+        @clear_menu(id)
+
         if(!g_bFlagMap)
         {
             if(!g_startaspec)
@@ -431,7 +437,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
         //if(g_random_view[id] && !bFirstPerson[id])
         menu_additem(menu, "First Person Chase Cam^n^n", "3")
         bFirstPerson[id] && CheckPlayerBit(g_AI, g_random_view[id]) ?
-        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4"):menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
+        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4"):menu_additem(menu, "...^n^n^n^n^n", "5")
 
         menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
         //if(!g_spectating[id])
@@ -808,12 +814,11 @@ public random_view(id)
 
 public client_disconnected(id)
 {
-    if(!is_user_connected(id) && !is_user_connecting(id))
+    ///if(!is_user_connected(id) && !is_user_connecting(id))
     {
         g_spectating[id] = false
         bAlready_shown_menu[id] = false
         g_random_view[id] = 0
-        @clear_menu(id)
     }
 }
 
