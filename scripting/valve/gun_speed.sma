@@ -10,7 +10,9 @@
 #define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG
 #define VOTE_ACCESS     ADMIN_USER|ADMIN_CFG
 
-#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE| 1<<HLW_CROWBAR| 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_PENGUIN )
+#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_CROWBAR | 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_RPG |1 <<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_PENGUIN )
+
+//#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_SATCHEL | 1<<HLW_DISPLACER | 1<<HLW_GAUSS)
 
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
@@ -37,14 +39,16 @@ const LINUX_DIFF = 5;
 /* VARIABLES */
 
 new
+    bool: b_Bot[MAX_PLAYERS+1],
     cl_weapon[MAX_PLAYERS + 1],
-    gbCS ,
-    gbDod ,
-    gbSven ,
     gOldClip[ MAX_PLAYERS + 1 char ],
     gOldSpecialReload[ MAX_PLAYERS + 1 char ],
+    gbCS,
+    gbDod,
+    gbSven,
     g_counter[2],
     m_pPlayer ,
+    g_maxPlayers ,
     //m_flPumptime ,
     m_fInSpecialReload ,
     m_flNextPrimaryAttack ,
@@ -54,6 +58,7 @@ new
     m_flNextAttack,
     Float:g_Speed,
     gWeaponClassname[MAX_PLAYERS],
+    //pcvars[HLW_SPORE + 1];
     pcvars[HLW_SNIPER + 1];
 
 new const SzAmmo[][]={"ammo_9mmclip", "ammo_9mmbox", "ammo_gaussclip", "ammo_357", "ammo_crossbow", "ammo_buckshot", "ammo_556", "ammo_762"}
@@ -67,14 +72,20 @@ new bool:bAccess[MAX_PLAYERS + 1]
     return PLUGIN_HANDLED
 }
 
+public plugin_precache()
+{
+    precache_model("models/w_chainammo.mdl")
+}
+
 public plugin_init()
 {
     register_plugin( PLUGIN, VERSION, AUTHOR );
     register_concmd("vote_gunspeed","cmdVote",VOTE_ACCESS,": Vote for gun speed!")
     register_message(TE_ELIGHT, "@dim")
-    new mod_name[MAX_NAME_LENGTH]
+    static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
     server_print mod_name
+    g_maxPlayers = get_maxplayers();
     if(equal(mod_name, "cstrike") || equal(mod_name, "czero") )
     {
         gbCS = true
@@ -87,11 +98,11 @@ public plugin_init()
     {
         gbSven = true
     }
-    for (new i=HLW_GLOCK;i<=HLW_SNIPER;i++)
+    for (new i=HLW_GLOCK;i<=HLW_SNIPER;++i)
     {
         if(!(NO_RECOIL_WEAPONS_BITSUM & (1<<i)) && get_weaponname(i, gWeaponClassname, charsmax(gWeaponClassname)))
         {
-            new cvar_name[MAX_PLAYERS + 1];
+            static cvar_name[MAX_PLAYERS + 1];
             formatex(cvar_name, charsmax(cvar_name), "gunspeed_%s", gWeaponClassname)
             replace(cvar_name, charsmax(cvar_name), "weapon_", "")
             pcvars[i] = register_cvar(cvar_name,"0.0")
@@ -139,11 +150,11 @@ public plugin_init()
     }
 
     bind_pcvar_float(get_cvar_pointer("mp_gunspeed") ? get_cvar_pointer("mp_gunspeed") : register_cvar("mp_gunspeed", "0.0"), g_Speed)
-    //RegisterHam(Ham_Spawn, "player", "@spawn", 1);
-    register_event_ex ( "ResetHUD" , "@spawn", RegisterEvent_Single|RegisterEvent_OnlyAlive) //, RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
+    RegisterHam(Ham_Spawn, "player", "@spawn", 1);
+    register_event_ex ( "ResetHUD" , "@spawn", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive) //, RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
     register_event("CurWeapon", "event_active_weapon", "be")
-    RegisterHam(Ham_Killed, "player", "@death", 1);
-    for( new map;map < sizeof SzAmmo;++map)
+    RegisterHam(Ham_Killed, "player", "@death", 0);
+    for(new map;map < sizeof SzAmmo;++map)
     {
         if(has_map_ent_class(SzAmmo[map]))
         remove_entity_name(SzAmmo[map])
@@ -151,25 +162,41 @@ public plugin_init()
     register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
 }
 
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        b_Bot[id] = is_user_bot(id) ? true : false
+    }
+}
+
 public event_active_weapon(player)
 {
     if(is_user_connected(player))
     {
         cl_weapon[player] = read_data(2);
-        if(cl_weapon[player] > 0)
-            return PLUGIN_CONTINUE
+        if(cl_weapon[player])
+        {
+            //if(player > 0 && player <= g_maxPlayers)
+            if(is_user_connected(cl_weapon[player]))
+            {
+                get_user_weapon(cl_weapon[player])
+                return PLUGIN_CONTINUE
+            }
+        }
     }
     return PLUGIN_HANDLED
 }
 
 @death(victim,killer)
 {
-    @spawn(killer)
+    if(is_user_connected(killer))
+        @spawn(killer)
 }
 
 @spawn(player)
 {
-    if(is_user_connected(player) && g_Speed > 0.0 && bAccess[player] && !is_user_bot(player))
+    if(g_Speed > 0.0 && bAccess[player] && !b_Bot[player])
     {
         if(XhookPrimaryAPre)
             EnableHamForward(XhookPrimaryAPre)
@@ -200,9 +227,11 @@ public Weapon_PrimaryAttack_Pre ( const weapon )
 {
     if(g_Speed > 0.0)
     {
-        new player
-        player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-        //player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        static player
+        //player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        if(!player)
+            player = pev(weapon, pev_owner)
         gOldClip{ player } = get_pdata_int( weapon, m_iClip, LINUX_OFFSET_WEAPONS );
 
         if ( gOldClip{ player } <= 0 ||!bAccess[player])
@@ -219,27 +248,42 @@ public Weapon_PrimaryAttack_Pre ( const weapon )
 
 public Weapon_PrimaryAttack_Post ( const weapon )
 {
-    if(g_Speed > 0.0 /*&& get_pcvar_num(pcvars[0])>0*/)
+    if(g_Speed > 0.0)
     {
-        new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-        ////new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-        ///if(is_user_connected(player) && is_user_alive(player))
-        switch(get_pcvar_num(pcvars[0]) /*&& is_user_connected(player) && is_user_alive(player) && !is_user_bot(player)*/)
+        static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        static Float:fGunSpeedOffset
+        //if(is_user_connected(player) && is_user_alive(player) && pev_valid(weapon)>1)
+        if(is_user_connected(cl_weapon[player]))
+        if(pcvars[cl_weapon[player]] && get_pcvar_float(pcvars[cl_weapon[player]]))
         {
+            fGunSpeedOffset  =  get_pcvar_float(pcvars[cl_weapon[player]])
+        }
+        //new player = pev(weapon, pev_owner)
+        ////new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        //if(is_user_connected(player) && is_user_alive(player) && pev_valid(weapon)>1)
+        if(get_pcvar_num(pcvars[0]) && fGunSpeedOffset>0.0)
+        switch(get_pcvar_num(pcvars[0]))
+        {
+            case 0:
+            {
+                goto END
+            }
             case 1:
             {
-                if(pcvars[cl_weapon[player]]>0)
-                if(get_pcvar_float(pcvars[cl_weapon[player]]))
+                goto CHAOS
+                /*
+                if(is_user_alive(player))
                 {
-                    ///server_print "%n | %i %f %s", player, cl_weapon[player], pcvars[cl_weapon[player]], PLUGIN //debug there was a 0 or something being thrown on line 226
+                    server_print "%n | %i %f %s", player, cl_weapon[player], fGunSpeedOffset, PLUGIN //debug there was a 0 or something being thrown on line 226
                     goto CHAOS
                 }
                 else
                     return
+                */
             }
             case 2:
             {
-                if(get_pcvar_float(pcvars[9]))
+                if(pcvars[9] && get_pcvar_float(pcvars[9]))
                     goto CHAOS
             }
             default:
@@ -249,19 +293,20 @@ public Weapon_PrimaryAttack_Post ( const weapon )
         }
         CHAOS:
         if ( gOldClip{ player } <= 0 ||!bAccess[player])
+        //if ( gOldClip{ player } <= g_maxPlayers || !bAccess[player])
         {
             return;
         }
 
-        set_pdata_float( weapon, m_flNextPrimaryAttack,  g_Speed*5, LINUX_OFFSET_WEAPONS );
+        set_pdata_float( weapon, m_flNextPrimaryAttack,  fGunSpeedOffset*5, LINUX_OFFSET_WEAPONS );
 
         if ( get_pdata_int( weapon, m_iClip, LINUX_OFFSET_WEAPONS ) != 0 )
         {
-            set_pdata_float( weapon, m_flTimeWeaponIdle,  g_Speed*3, LINUX_OFFSET_WEAPONS );
+            set_pdata_float( weapon, m_flTimeWeaponIdle,  fGunSpeedOffset*3, LINUX_OFFSET_WEAPONS );
         }
         else
         {
-            set_pdata_float( weapon, m_flTimeWeaponIdle,  g_Speed, LINUX_OFFSET_WEAPONS );
+            set_pdata_float( weapon, m_flTimeWeaponIdle,  fGunSpeedOffset, LINUX_OFFSET_WEAPONS );
         }
 
         if(gbCS)
@@ -286,7 +331,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
 
 public Weapon_SecondaryAttack_Pre ( const weapon )
 {
-    new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+    static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
     gOldClip{ player } = get_pdata_int( weapon, m_iClip, LINUX_OFFSET_WEAPONS );
 }
 
@@ -294,7 +339,7 @@ public Weapon_SecondaryAttack_Post ( const weapon )
 {
     if(g_Speed > 0.0)
     {
-        new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
         if ( gOldClip{ player } <= 1 ||!bAccess[player])
         {
@@ -321,7 +366,7 @@ public Weapon_SecondaryAttack_Post ( const weapon )
 
 public Weapon_Reload_Pre ( const weapon )
 {
-    new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+    static player; player= get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
     gOldSpecialReload{ player } = get_pdata_int( weapon, m_fInSpecialReload, LINUX_OFFSET_WEAPONS );
 }
 
@@ -329,7 +374,7 @@ public Weapon_Reload_Post ( const weapon )
 {
     if(g_Speed > 0.0)
     {
-        new player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
 
         if(gOldSpecialReload{ player } <= 0  || !bAccess[ player ])
             return
@@ -356,22 +401,22 @@ public Weapon_Reload_Post ( const weapon )
             }
         }
     }
-    else
-        plugin_end()
+    //else
+    //    plugin_end()
 }
 
 public cmdVote(player,level,cid)
 {
     if(!cmd_access(player,level,cid,1) || task_exists(7845)) return PLUGIN_HANDLED
 
-    new keys = MENU_KEY_1|MENU_KEY_2
+    static keys; keys = MENU_KEY_1|MENU_KEY_2
     for(new i = 0; i < 2; i++)
         g_counter[i] = 0
 
-    new menu[MAX_USER_INFO_LENGTH]
+    static menu[MAX_USER_INFO_LENGTH]
 
     //new len = format(menu,charsmax(menu),"[AMX] %s Gunspeed?^n", g_Speed ? "Disable" : "Enable")
-    new len = format(menu,charsmax(menu),"[AMX] Gunspeed?^n")
+    static len; len = format(menu,charsmax(menu),"[AMX] Gunspeed?^n")
 
     len += format(menu[len],charsmax(menu),"^n1. Yes")
     len += format(menu[len],charsmax(menu),"^n2. No")
