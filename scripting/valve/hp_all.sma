@@ -2,13 +2,30 @@
 #include amxmisc
 #include fakemeta
 #define get_user_model(%1,%2,%3) engfunc( EngFunc_InfoKeyValue, engfunc( EngFunc_GetInfoKeyBuffer, %1 ), "model", %2, %3 )
+
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
 static sModel[MAX_PLAYERS];
 
 public plugin_init()
-    register_plugin("All HP","1.0","SPiNX");
+    register_plugin("All HP","1.1","SPiNX");
+
+new g_Adm, g_AI
 
 public client_putinserver(id)
-    set_task(0.1,"fw_PlayerPostThink",id,.flags="b")
+{
+    if(is_user_connected(id))
+    {
+        is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
+        is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id)
+        if(CheckPlayerBit(g_AI, id))
+            return
+        if(!CheckPlayerBit(g_AI, id))
+            set_task(0.1,"fw_PlayerPostThink",id,.flags="b")
+    }
+}
 
 public client_disconnected(id)
     remove_task(id)
@@ -27,33 +44,23 @@ public fw_PlayerPostThink(id)
         if(!ent)
             return
 
-        new health = pev(ent,pev_health)
-        new health_max = pev(ent,pev_max_health)
+        static health; health = pev(ent,pev_health)
+        static health_max; health_max = pev(ent,pev_max_health)
 
         is_user_connected(ent) ?
             get_user_name(ent,classname,charsmax(classname)) :
             pev(ent,pev_classname,classname,charsmax(classname))
 
-        new armor = pev(ent,pev_armorvalue)
+        static reclass[MAX_NAME_LENGTH], armor; armor = pev(ent,pev_armorvalue)
         if(health)
         {
-            new reclass[MAX_NAME_LENGTH]
-            if(is_user_bot(ent))
-                reclass = "^n^n(bot)"
-
-            if(is_user_alive(ent) && !is_user_bot(ent))
-                reclass = "^n^n(human)"
- 
-            get_user_model(ent, sModel, charsmax( sModel ) );
-            if(!equal(sModel,""))
-                formatex(classname,charsmax(classname), "%s%s%s" ,classname,reclass,sModel)
-            else
+            if(is_user_alive(ent) )
             {
-                pev(ent,pev_message,sModel,charsmax(sModel))
-                //new other = pev(ent,pev_waterlevel) //last number could be 4 digit, 3 is submerged,2 partial,1 surface, 0 not in water
-                //formatex(classname,charsmax(classname), "%s^n^n%s^nmax hp %i" ,classname, sModel, other)
+                reclass = CheckPlayerBit(g_AI, ent) ? "^n^n(bot)" : "^n^n(human)"
             }
- 
+
+            get_user_model(ent, sModel, charsmax( sModel ) );
+            equal(sModel,"") ? pev(ent,pev_message,sModel,charsmax(sModel)) : formatex(classname,charsmax(classname), "%s%s%s" ,classname,reclass,sModel)
 
             switch(health)
             {
@@ -67,7 +74,7 @@ public fw_PlayerPostThink(id)
 
             set_hudmessage(color[0], color[1], color[2], -1.0, 0.60, 1, 1.0, 0.4, 0.01, 0.01, -1)
             if(health_max)
-            {            
+            {
                 armor ? show_hudmessage(id,"%s^n^nhealth %i/%i^n^narmor %i",classname, health, health_max, armor)
                 :
                 show_hudmessage(id,"%s^n^nhealth %i/%i",classname, health, health_max)
@@ -83,8 +90,8 @@ public fw_PlayerPostThink(id)
         {
             color = {120,0,128}
             set_hudmessage(color[0], color[1], color[2], -1.0, 0.60, 1, 1.0, 0.4, 0.01, 0.01, -1)
-
-            if(is_user_admin(id) || get_user_time(id) > 120)
+            static iTos; iTos = get_user_time(id);
+            if(CheckPlayerBit(g_Adm, id) || iTos > 120)
                 show_hudmessage(id,"%s",classname)
         }
 
