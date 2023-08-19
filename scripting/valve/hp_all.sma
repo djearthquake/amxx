@@ -22,8 +22,7 @@ public client_putinserver(id)
         is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id)
         if(CheckPlayerBit(g_AI, id))
             return
-        if(!CheckPlayerBit(g_AI, id))
-            set_task(0.1,"fw_PlayerPostThink",id,.flags="b")
+        set_task(0.1,"fw_PlayerPostThink",id,.flags="b")
     }
 }
 
