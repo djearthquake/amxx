@@ -366,8 +366,10 @@ public Weapon_SecondaryAttack_Post ( const weapon )
 
 public Weapon_Reload_Pre ( const weapon )
 {
-    static player; player= get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
-    gOldSpecialReload{ player } = get_pdata_int( weapon, m_fInSpecialReload, LINUX_OFFSET_WEAPONS );
+    static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+
+    if(!is_user_connected(player) || player > g_maxPlayers)
+        gOldSpecialReload{ player } = get_pdata_int( weapon, m_fInSpecialReload, LINUX_OFFSET_WEAPONS );
 }
 
 public Weapon_Reload_Post ( const weapon )
@@ -375,6 +377,8 @@ public Weapon_Reload_Post ( const weapon )
     if(g_Speed > 0.0)
     {
         static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        if(!is_user_connected(player) || player > g_maxPlayers)
+            return
 
         if(gOldSpecialReload{ player } <= 0  || !bAccess[ player ])
             return
