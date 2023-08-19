@@ -9,7 +9,7 @@
 
 new bool:scope_owner[ MAX_PLAYERS + 1 ], bool:scoped[ MAX_PLAYERS + 1 ], bool:bZooming_in[ MAX_PLAYERS + 1 ], bool:bZooming_out[ MAX_PLAYERS + 1 ];
 new Float: gfFov[MAX_PLAYERS+1];
-new const SzBuyMsg[] = "Need to buy_scope!"
+new const SzBuyMsg[] = "Type buy_scope in console to give glock a scope.^nAttack2 replacement.^n Impulse 105 Zooms."
 new g_scope_zoomsound;
 new g_fscope_autotime;
 new g_Client
@@ -17,7 +17,7 @@ new buffer[MAX_RESOURCE_PATH_LENGTH];
 
 public plugin_init()
 {
-    register_plugin( "Glock Scope!", "1.0", "SPiNX" );
+    register_plugin( "Glock Scope!", "1.1", "SPiNX" );
     ///RegisterHam(Ham_Weapon_SendWeaponAnim, "weapon_9mmhandgun", "BlockAnimation")
     register_forward(FM_PlayerPreThink, "client_prethink");
     register_clcmd ( "buy_scope", "buy_scope", 0, " - Glock scope. (right-click replace)" );
@@ -80,22 +80,20 @@ public client_prethink( Client )
 public _SecondaryAttack_Pre(const gun)
 {
     g_Client = pev(gun, pev_owner)
-    return HAM_SUPERCEDE
+    if(is_user_connected(g_Client) && scope_owner[g_Client])
+        return HAM_SUPERCEDE
+    return HAM_IGNORED
 }
 
 public _SecondaryAttack_Post(const gun)
 {
-    new Client = g_Client
+    static Client; Client = g_Client
     if(is_user_connected(Client) && scope_owner[Client])
     {
         @zoom(Client)
         return HAM_SUPERCEDE
     }
-    else
-    {
-        client_print Client, print_center, SzBuyMsg
-    }
-    return HAM_SUPERCEDE
+    return HAM_IGNORED
 }
 
 public impulse_handler(Client)
@@ -195,7 +193,16 @@ public BlockAnimation(this, iAnim, skiplocal, body)
      return HAM_SUPERCEDE
 
 public client_putinserver( Client )
-    scope_owner[Client] = false;
+{
+    scope_owner[Client] = false
+    set_task 5.0, "@advert", Client
+}
+
+@advert(Client)
+{
+    if(is_user_connected(Client))
+        client_print Client, print_chat, SzBuyMsg
+}
 
 public no_scope( Client )
     scope_owner[Client] = false && @regular( Client );
