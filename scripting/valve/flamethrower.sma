@@ -311,23 +311,25 @@ public bot_interface(){
         return PLUGIN_HANDLED
 
     if(get_cvar_num("amx_flamethrower_botsnolimit") == 0){
-#if defined CSTRIKE
-        new fl_cost = get_cvar_num("amx_flamethrower_cost")
-#endif
+
+        static fl_cost;fl_cost = get_cvar_num("amx_flamethrower_cost")
+
         new freeF = get_cvar_num("amx_flamethrower_free")
         if((!csmod_running) || (freeF > 0)){
             if(flame_count[id] < 1)
                 return PLUGIN_HANDLED
             flame_count[id] -= 1
         }
-#if defined CSTRIKE
         else{
             if(get_cvar_num("amx_flamethrower_buytype") == 0){
                 new armr = get_user_armor(id)
                 if(armr < fl_cost)
                     return PLUGIN_HANDLED
                 set_user_armor(id,armr - fl_cost)
-            }else{
+            }
+            #if defined CSTRIKE
+            else
+            {
 
                 new um = cs_get_user_money(id)
                 if(um < fl_cost)
@@ -335,8 +337,9 @@ public bot_interface(){
                 else
                     cs_set_user_money(id,um - fl_cost)
             }
+            #endif
         }
-#endif
+
     }
     fire_flamethrower(id)
     return PLUGIN_HANDLED
@@ -349,20 +352,20 @@ public amx_fflame(id){
 
     new fl_cost = get_cvar_num("amx_flamethrower_cost")
     new freeF = get_cvar_num("amx_flamethrower_free")
-    if((!csmod_running) || (freeF > 0)){
+    if((csmod_running) || (freeF > 0)){
         if(flame_count[id] <= 0){
             client_print(id,print_chat,"[AMXX] Insufficient fuel. You have used all your flamethrower blasts")
             return PLUGIN_HANDLED
         }
         flame_count[id] -= 1
-        new msg[64]
+        static msg[64]
         format(msg,63,"Flamethrower Bursts Remaning: %d",flame_count[id])
         set_hudmessage(255,0,0, -1.0, 0.25, 0, 0.02, 3.0, 1.01, 1.1, 16)
         show_hudmessage(id,msg)
 
     }else{
         if(get_cvar_num("amx_flamethrower_buytype") == 0){
-            new armr = get_user_armor(id)
+            static armr; armr = get_user_armor(id)
             if(armr < fl_cost){
                 client_print(id,print_chat,"[AMXX] Insufficient fuel. Flamethrower blasts cost %d armor points each",fl_cost)
                 return PLUGIN_HANDLED
@@ -370,7 +373,7 @@ public amx_fflame(id){
             set_user_armor(id,armr - fl_cost)
 #if defined CSTRIKE
         }else{
-            new um = cs_get_user_money(id)
+            static um; um = cs_get_user_money(id)
             if(um < fl_cost){
                 client_print(id,print_chat,"[AMXX] Insufficient funds. Flamethrower bursts cost $%d each",fl_cost)
                 return PLUGIN_HANDLED
@@ -387,18 +390,18 @@ public amx_fflame(id){
 
 fire_flamethrower(id){
     emit_sound(id, CHAN_WEAPON, "ambience/flameburst1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-    new vec[3]
-    new aimvec[3]
-    new velocityvec[3]
-    new length
-    new speed = 10
+    static vec[3]
+    static aimvec[3]
+    static velocityvec[3]
+    static length
+    static speed; speed = 10
     get_user_origin(id,vec)
     get_user_origin(id,aimvec,2)
-    new dist = get_distance(vec,aimvec)
+    static dist; dist = get_distance(vec,aimvec)
 
-    new speed1 = 160
-    new speed2 = 350
-    new radius = 105
+    static speed1;speed1 = 160
+    static speed2; speed2 = 350
+    static radius; radius = 105
 
     if(dist < 50){
         radius = 0
@@ -451,7 +454,7 @@ fire_flamethrower(id){
     velocityvec[1]=velocityvec[1]*speed/length
     velocityvec[2]=velocityvec[2]*speed/length
 
-    new args[8]
+    static args[8]
     args[0] = vec[0]
     args[1] = vec[1]
     args[2] = vec[2]
@@ -485,8 +488,8 @@ public te_spray(args[]){
 
 
 public sqrt(num) {
-    new div = num
-    new result = 1
+    static div; div = num
+    static result; result = 1
     while (div > result) { // end when div == result, or just below
         div = (div + result) / 2 // take mean value as new divisor
         result = num / div
@@ -497,13 +500,13 @@ public sqrt(num) {
 check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
 {
     server_print "BURN ZONE"
-    new maxplayers = get_maxplayers()+1
-    new tid, tbody
+    static maxplayers; maxplayers = get_maxplayers()+1
+    static tid, tbody
     get_user_aiming(id,tid,tbody,550)
 
-    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+    static killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
 
-    if(cstrike_running())
+    if(csmod_running)
     {
         get_user_team(id, killers_team, charsmax(killers_team));
         get_user_team(tid, victims_team, charsmax(victims_team));
@@ -519,7 +522,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
     if((tid > 0) && (tid < maxplayers))
     {
         server_print "PLAYER IN RANGE"
-        new ffcvar = get_pcvar_num(g_teams)
+        static ffcvar; ffcvar = get_pcvar_num(g_teams)
         if(ffcvar)
         {
             if( (ffcvar == 0) || ((ffcvar == 1) && (get_cvar_num("amx_flamethrower_obeyffcvar") == 0)) )
@@ -550,7 +553,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
 
     }
 
-    new burnvec1[3],burnvec2[3],length1
+    static burnvec1[3],burnvec2[3],length1
 
     burnvec1[0]=aimvec[0]-vec[0]
     burnvec1[1]=aimvec[1]-vec[1]
@@ -570,7 +573,7 @@ check_burnzone(id,vec[],aimvec[],speed1,speed2,radius)
     burnvec2[1] += vec[1]
     burnvec2[2] += vec[2]
 
-    new origin[3]
+    static origin[3]
     for (new i=1; i<=maxplayers; i++)
     {
         new ffcvar = get_pcvar_num(g_teams)
@@ -641,7 +644,7 @@ burn_victim(id,killer,tk){
 
     emit_sound(id, CHAN_ITEM, "ambience/burning1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
 
-    new hp,args[4]
+    static hp,args[4]
     hp = get_user_health(id)
     if(hp > 250)
         hp = 250
@@ -654,16 +657,16 @@ burn_victim(id,killer,tk){
 
     if(tk == 1)
     {
-        new namea[32]
+        static namea[32]
         get_user_name(killer,namea,31)
-        new teama[32]
+        static teama[32]
         get_user_team(killer,teama,31)
-        new players[32],pNum
+        static players[32],pNum
         get_players(players,pNum,"e",teama)
         for(new i=0;i<pNum;i++)
             client_print(players[i],print_chat,"%s  attacked a teammate",namea)
-        new punish1 = get_cvar_num("amx_flamethrower_tkpunish1")
-        new punish2 = get_cvar_num("amx_flamethrower_tkpunish2")
+        static punish1; punish1 = get_cvar_num("amx_flamethrower_tkpunish1")
+        static punish2; punish2 = get_cvar_num("amx_flamethrower_tkpunish2")
         if(punish1 > 2){
             user_kill(killer,0)
             set_hudmessage(255,50,50, -1.0, 0.45, 0, 0.02, 10.0, 1.01, 1.1, 16)
@@ -675,10 +678,10 @@ burn_victim(id,killer,tk){
                 client_cmd(killer,"echo You were kicked for team killing;disconnect")
             else if(punish1 == 2 || punish1 == 4){
                 client_cmd(killer,"echo You were banned for team killing")
-                new authida[35]
+                static authida[35]
                 get_user_authid(killer,authida,34)
                 if (equal("4294967295",authida)){
-                    new ipa[32]
+                    static ipa[32]
                     get_user_ip(killer,ipa,31,1)
                     server_cmd("addip 180.0 %s;writeip",ipa)
                 }else{
@@ -692,11 +695,11 @@ burn_victim(id,killer,tk){
 
 public on_fire(args[]){
 
-    new hp,rx,ry,rz,forigin[3]
-    new id = args[0]
-    new killer = args[1]
-    new tk = args[2]
-    new headshot = args[3]
+    static hp,rx,ry,rz,forigin[3]
+    static id; id = args[0]
+    static killer; killer = args[1]
+    static tk; tk = args[2]
+    static headshot;headshot = args[3]
 
     if(isburning[id] == 0)
         return PLUGIN_CONTINUE
@@ -739,7 +742,7 @@ public on_fire(args[]){
     }
     else
     {
-        new namek[32],namev[32],authida[35],authidv[35],teama[32],teamv[32]
+        static namek[32],namev[32],authida[35],authidv[35],teama[32],teamv[32]
         get_user_name(id,namev,31)
         get_user_name(killer,namek,31)
         get_user_authid(id,authidv,34)
@@ -777,7 +780,7 @@ public on_fire(args[]){
         ewrite_byte(killer)
         ewrite_short(get_user_frags(killer))
         #define DEATHS 422
-        new living = get_pdata_int(killer, DEATHS)
+        static living; living = get_pdata_int(killer, DEATHS)
         ewrite_short(living)
         if(csmod_running)
         {
@@ -790,7 +793,7 @@ public on_fire(args[]){
         emessage_begin(MSG_BROADCAST,gmsgScoreInfo)
         ewrite_byte(id)
         ewrite_short(get_user_frags(id))
-        new dead = get_pdata_int(id, DEATHS)
+        static dead; dead = get_pdata_int(id, DEATHS)
         ewrite_short(dead)
         if(csmod_running)
         {
@@ -830,7 +833,7 @@ public stop_firesound(args[]){
 }
 
 public HandleSay(id) {
-    new Speech[192]
+    static Speech[192]
     read_args(Speech,192)
     remove_quotes(Speech)
 
@@ -889,10 +892,10 @@ public round_end() {
 
 public flamet_motd(id){
 
-    new len = 1024
-    new buffer[1025]
-    new n = 0
-    new buytype[32]
+    static len; len = 1024
+    static buffer[1025]
+    static n; n = 0
+    static buytype[32]
 
     if (get_cvar_num("amx_flamethrower_buytype") == 1)
         buytype = "dollars"
@@ -937,7 +940,7 @@ public flamet_motd(id){
 ************************************************************/
 
 public plugin_init(){
-    register_plugin("Flame Thrower","5.3.7","SPINX") //original by EJL. Port to Amxx EJL
+    register_plugin("Flame Thrower","5.3.8","SPINX") //original by EJL. Port to Amxx EJL
     register_concmd("amx_flamethrowers","amx_fl",ADMIN_LEVEL_H,"- toggles flamethrowers on and off")
     register_concmd("amx_flamethrowers_cost","amx_fl_c",ADMIN_LEVEL_H,"- sets flamethrowers cost in money or armor amount")
     register_concmd("amx_flamethrowers_buytype","amx_fl_b",ADMIN_LEVEL_H,"- toggles flamethrowers buytype between armor and money")
@@ -965,8 +968,17 @@ public plugin_init(){
         register_logevent("round_start", 2, "1=Round_Start")
         register_logevent("round_end", 2, "1=Round_End")
     }
+    else
+    {
+        @cfg()
+    }
     gmsgDeathMsg = get_user_msgid("DeathMsg")
     gmsgScoreInfo = get_user_msgid("ScoreInfo")
+}
+
+@cfg()
+{
+    round_start()
 }
 
 public plugin_precache(){
