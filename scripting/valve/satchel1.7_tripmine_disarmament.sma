@@ -6,7 +6,7 @@
 #include <hamsandwich>
 
 #define PLUGIN "Disarmable Satchel Mine"
-#define VERSION "1.6"
+#define VERSION "1.7"
 #define AUTHOR "SPiNX"
 #define MAX_PLAYERS         32
 #define MAX_NAME_LENGTH     32
@@ -17,8 +17,25 @@
 #define HLW_KNIFE           0x0019
 #define HLW_PIPEWRENCH      18
 
+#define DELAY ewrite_short(/*get_pcvar_num(g_cvar_bsod_iDelay)*/ 10*4096) //Remember 4096 is ~1-sec per 'spec unit'
+
+#define FLAGS ewrite_short(0x0001)
+
+#define ALPHA ewrite_byte(500)
+
+
+//Screenfade color.
+
+#define BLU ewrite_byte(0);ewrite_byte(0);ewrite_byte(random_num(200,255))
+
+#define GRN ewrite_byte(0);ewrite_byte(random_num(200,255));ewrite_byte(0)
+
+#define PNK ewrite_byte(255);ewrite_byte(random_num(170,200));ewrite_byte(203)
+
+#define PUR ewrite_byte(118);ewrite_byte(random_num(25,75));ewrite_byte(1
+
 new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH + 1]
-new g_Szsatchel_ring
+new g_Szsatchel_ring, g_fade
 
 new const SzSatchSfx[]="items/airtank1.wav"
 new disarmament[][]=
@@ -32,18 +49,20 @@ new disarmament[][]=
     "monster_grenade"
 }
 
-new g_enable, g_health
+new g_enable, g_health, gMaxPlayers
 new g_SzMonster_class[MAX_NAME_LENGTH];
+new g_lash_damage
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_OFFSET = 20;
 const LINUX_DIFF = 5;
 
 //tripmine data
 new iRealOwner2;
-new iBeamEnt, iRTripMineOwner;
+new iBeamEnt, iRTripMineOwner, iRPenguinOwner;
 
 public plugin_init()
 {
+    gMaxPlayers = get_maxplayers()
     register_plugin(PLUGIN, VERSION, AUTHOR);
     register_forward(FM_SetModel,"FORWARD_SET_MODEL");
 
@@ -52,9 +71,12 @@ public plugin_init()
     register_touch("monster_satchel", "player", "@touch")
     g_enable = register_cvar("hl_satchel", "1")
     g_health = register_cvar("hl_satchel_health", "15")
+    g_lash_damage = register_cvar("hl_satchel_lash", "15")
+    g_fade = get_user_msgid("ScreenFade")
 
     iBeamEnt = (find_ent_data_info("CTripmineGrenade", "m_pBeam")/LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
     iRTripMineOwner = (find_ent_data_info("CTripmineGrenade", "m_pRealOwner") - LINUX_OFFSET)
+    iRPenguinOwner = (find_ent_data_info("CPenguinGrenade", "m_hOwner") - LINUX_OFFSET)
 }
 
 public plugin_precache()
@@ -87,16 +109,16 @@ public FORWARD_SET_MODEL(iExplosive, model[])
         static iExplosives_Handler;
         iExplosives_Handler = pev(iExplosive,pev_owner);
 
-        if (iExplosives_Handler<1 || !is_user_connected(iExplosives_Handler) || is_user_connecting(iExplosives_Handler) || !is_user_alive(iExplosives_Handler) || is_user_bot(iExplosives_Handler))
+        if(iExplosives_Handler <1 || !is_user_connected(iExplosives_Handler))
             return FMRES_IGNORED;
 
-        new Float:health = get_pcvar_float(g_health)
+        static Float:health; health = get_pcvar_float(g_health)
 
         set_pev(iExplosive,pev_health,health);
         set_pev(iExplosive,pev_takedamage,DAMAGE_AIM); //aim is bullets, yes is blast
         set_pev(iExplosive,pev_solid,SOLID_SLIDEBOX);
 
-        new SziExplosive[5]
+        static SziExplosive[5]
         format(SziExplosive, charsmax(SziExplosive), "%i", iExplosive)
 
         client_cmd(iExplosives_Handler,"spk valve/sound/items/clipinsert1.wav")
@@ -109,43 +131,39 @@ public FORWARD_SET_MODEL(iExplosive, model[])
         new playercount
 
         get_players(players,playercount,"h")
-        for (new m=0; m<playercount; m++)
+        for (new m=1; m<=playercount; m++)
         {
-            new playerlocation[3]
-            if(is_user_connected(players[m]))
-            if(is_user_bot(players[m]) ||  !is_user_bot(players[m]))
+            static playerlocation[3]
+            static iPlayer; iPlayer = players[m]
+            if(is_user_connected(iPlayer))
             {
-                get_user_origin(players[m], playerlocation)
-                new resultdance = get_entity_distance(iExplosive, players[m]);
-                if (resultdance < 350)
+                get_user_origin(iPlayer, playerlocation)
+                static resultdance; resultdance = get_entity_distance(iExplosive, iPlayer);
+                if(resultdance < 350)
                 {
-                    new iExplosives_Handler = pev(iExplosive,pev_owner)
-                    if(players[m] != iExplosives_Handler)
+                    static iExplosives_Handler; iExplosives_Handler = pev(iExplosive,pev_owner)
+                    if(iPlayer != iExplosives_Handler)
                     {
-                        fakedamage(players[m],"Satchel lash",35.0,DMG_ENERGYBEAM)
-
-                        emit_sound(players[m], CHAN_BODY, SzSatchSfx, VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
+                        fakedamage(iPlayer,"Satchel lash",get_pcvar_num(g_lash_damage)*1.0,DMG_ENERGYBEAM)
+                        emit_sound(iPlayer, CHAN_BODY, SzSatchSfx, VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
                         set_pev(iExplosive,pev_effects,EF_BRIGHTFIELD);
 
-                        if(!is_user_bot(players[m]))
-                            client_cmd players[m],"spk valve/sound/common/wpn_denyselect.wav"
-
-                        emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY)
-                        ewrite_byte(TE_BEAMRING)
-                        ewrite_short(iExplosive)  //(start entity)
-                        ewrite_short(players[m])  //(end entity)
-                        ewrite_short(g_Szsatchel_ring)  //(sprite index)
-                        ewrite_byte(1)   //(starting frame)
-                        ewrite_byte(4)   //(frame rate in 0.1's)
-                        ewrite_byte(75)   //(life in 0.1's)
-                        ewrite_byte(random_num(35,75))   //(line width in 0.1's)
-                        ewrite_byte(10)   //(noise amplitude in 0.01's)
-                        ewrite_byte(random(100))   //(red)
-                        ewrite_byte(random_num(5,75))   //(green)
-                        ewrite_byte(random(75))   //(blue)
-                        ewrite_byte(100)   //(brightness)
-                        ewrite_byte(35)   //(scroll speed in 0.1's)
-                        emessage_end()
+                        if(!is_user_bot(iPlayer))
+                        {
+                            client_cmd iPlayer, "spk valve/sound/common/wpn_denyselect.wav"
+                        }
+                        else
+                        {
+                            emessage_begin(MSG_ONE_UNRELIABLE, g_fade,{0,0,0}, iPlayer);
+                            DELAY;DELAY;FLAGS;PNK;ALPHA; //This is where one can change BLU to GRN.
+                            emessage_end();
+                        }
+                        if(m == iExplosives_Handler)
+                            goto END
+                        else
+                        {
+                            @fume_blindness(iExplosive, iPlayer, iExplosives_Handler)
+                        }
                     }
 
                     if(!is_user_bot(iExplosives_Handler))
@@ -154,12 +172,34 @@ public FORWARD_SET_MODEL(iExplosive, model[])
             }
         }
     }
+    END:
     return FMRES_IGNORED;
+}
+
+@fume_blindness(iExplosive, index, iExplosives_Handler)
+{
+    client_print iExplosives_Handler, print_chat, "Got %n.", index
+    emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY)
+    ewrite_byte(TE_BEAMRING)
+    ewrite_short(iExplosive)  //(start entity)
+    ewrite_short(index)  //(end entity)
+    ewrite_short(g_Szsatchel_ring)  //(sprite index)
+    ewrite_byte(1)   //(starting frame)
+    ewrite_byte(4)   //(frame rate in 0.1's)
+    ewrite_byte(75)   //(life in 0.1's)
+    ewrite_byte(random_num(35,75))   //(line width in 0.1's)
+    ewrite_byte(10)   //(noise amplitude in 0.01's)
+    ewrite_byte(random(100))   //(red)
+    ewrite_byte(random_num(5,75))   //(green)
+    ewrite_byte(random(75))   //(blue)
+    ewrite_byte(100)   //(brightness)
+    ewrite_byte(35)   //(scroll speed in 0.1's)
+    emessage_end()
 }
 
 @test(SziExplosive[], iExplosives_Handler)
 {
-    new iBom = str_to_num(SziExplosive)
+    static iBom; iBom = str_to_num(SziExplosive)
     if(is_user_admin(iExplosives_Handler) && pev_valid(iBom) > 1)
     {
         client_print iExplosives_Handler, print_chat,"Resetting your explosive..."
@@ -181,21 +221,27 @@ stock have_tool(iExplosives_Handler)
 
 public disarm_(iExplosive, iExplosives_Handler)
 {
-    new Float:null[3];
+    static Float:null[3];
     null[0] = -5000000.0;
     null[1] = -5000000.0;
     null[2] = -5000000.0;
 
-    if( get_pcvar_num(g_enable) && pev_valid(iExplosive) && have_tool(iExplosives_Handler))
+    if(get_pcvar_num(g_enable) && pev_valid(iExplosive) && have_tool(iExplosives_Handler))
     {
         entity_get_string(iExplosive,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
         if(containi(g_SzMonster_class, "monster_") > charsmin)
             replace(g_SzMonster_class,charsmax(g_SzMonster_class),"monster_","")
 
         client_print(0, print_center,"[ %s ]^n^n%s handled a %s.", PLUGIN, ClientName[iExplosives_Handler], g_SzMonster_class );
+
+        if(containi(g_SzMonster_class, "penguin") > charsmin)
+        {
+            iRealOwner2 = get_pdata_ent(iExplosive,  iRPenguinOwner,  LINUX_OFFSET)
+            client_print 0, print_chat, "Disarmed Bird was owned by %n!",  is_user_connected(iRealOwner2) ? iRealOwner2 : 0
+        }
         if(equal(g_SzMonster_class,"tripmine"))
         {
-            new iLiveTripMine = iExplosive
+            static iLiveTripMine; iLiveTripMine = iExplosive
             if(get_pcvar_num(g_enable) == 1)
             {
                 iRealOwner2 = get_pdata_ent(iLiveTripMine,  iRTripMineOwner,  LINUX_OFFSET)
@@ -239,7 +285,7 @@ public disarm_(iExplosive, iExplosives_Handler)
         return
     }
 
-    new iBeam = get_pdata_cbase( iLiveTripMine,  iBeamEnt , LINUX_OFFSET_WEAPONS );
+    static iBeam; iBeam = get_pdata_cbase( iLiveTripMine,  iBeamEnt , LINUX_OFFSET_WEAPONS );
 
     remove_entity(iBeam)
 }
