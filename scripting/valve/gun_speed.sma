@@ -152,7 +152,8 @@ public plugin_init()
     bind_pcvar_float(get_cvar_pointer("mp_gunspeed") ? get_cvar_pointer("mp_gunspeed") : register_cvar("mp_gunspeed", "0.0"), g_Speed)
     RegisterHam(Ham_Spawn, "player", "@spawn", 1);
     register_event_ex ( "ResetHUD" , "@spawn", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive) //, RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
-    register_event("CurWeapon", "event_active_weapon", "be")
+    register_event_ex ( "CurWeapon", "event_active_weapon", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive)
+    //register_event("CurWeapon", "event_active_weapon", "be")
     RegisterHam(Ham_Killed, "player", "@death", 0);
     for(new map;map < sizeof SzAmmo;++map)
     {
@@ -172,17 +173,13 @@ public client_putinserver(id)
 
 public event_active_weapon(player)
 {
-    if(is_user_connected(player))
+    if(player  > 0 && player <= g_maxPlayers)
     {
         cl_weapon[player] = read_data(2);
         if(cl_weapon[player])
         {
-            //if(player > 0 && player <= g_maxPlayers)
-            if(is_user_connected(cl_weapon[player]))
-            {
-                get_user_weapon(cl_weapon[player])
-                return PLUGIN_CONTINUE
-            }
+            cl_weapon[player] = get_user_weapon(player)
+            return PLUGIN_CONTINUE
         }
     }
     return PLUGIN_HANDLED
@@ -253,7 +250,8 @@ public Weapon_PrimaryAttack_Post ( const weapon )
         static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         static Float:fGunSpeedOffset
         //if(is_user_connected(player) && is_user_alive(player) && pev_valid(weapon)>1)
-        if(is_user_connected(cl_weapon[player]))
+        //if(is_user_connected(cl_weapon[player]))
+        if(is_user_alive(player))
         if(pcvars[cl_weapon[player]] && get_pcvar_float(pcvars[cl_weapon[player]]))
         {
             fGunSpeedOffset  =  get_pcvar_float(pcvars[cl_weapon[player]])
