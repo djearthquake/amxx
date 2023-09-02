@@ -35,7 +35,7 @@ new g_fExperience_offset
 static Float:g_fUninhibited_Walk = 272.0;
 new g_fire
 new g_boomtime
-new g_weapon_c4_index, g_maxPlayers
+new g_weapon_c4_index, g_maxPlayers, g_debug
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
 new bool:Client_C4_adjusted_already[MAX_PLAYERS+1]
 
@@ -56,6 +56,7 @@ public plugin_init()
         register_logevent("@round_end", 2, "1=Round_End")
         register_logevent("FnPlant",3,"2=Planted_The_Bomb");
         register_event("BarTime", "fnDefusal", "be", "1=5", "1=10");
+        g_debug = register_cvar("c4_debug", "0")
 
         g_fExperience_offset = register_cvar("exp_offset",  "1.03");
         m_bIsC4 = find_ent_data_info("CGrenade", "m_bIsC4") + UNIX_DIFF
@@ -108,6 +109,7 @@ public FnPlant()
 
             static Float:fC4_factor
             fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
+            c4_from_grenade();
             g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index, cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor) : c4_from_grenade()
 
             if(g_weapon_c4_index && g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
@@ -266,6 +268,9 @@ stock c4_from_grenade()
 
 @c4_status()
 {
+    if(get_pcvar_num(g_debug))
+    if(pev_valid(g_weapon_c4_index))
+    {
         static Float:fInterval, Float:fBeep, Float:fAttn, Float:fCount
         fAttn = get_pdata_float( g_weapon_c4_index, m_fAttenu, LINUX_DIFF )
         fCount =get_pdata_float( g_weapon_c4_index, m_flDefuseCountDown, LINUX_DIFF ) //expecting instant
@@ -275,4 +280,5 @@ stock c4_from_grenade()
         for (new admin=1; admin<=g_maxPlayers; admin++)
         if (is_user_connected(admin) && has_flag(admin, ADMIN_FLAG))
             client_print admin, print_chat, "Interval:%f|Beep:%f|Attn:%f|Count:%f", fInterval, fBeep, fAttn, fCount
+    }
 }
