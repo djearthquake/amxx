@@ -432,14 +432,13 @@ public control_bot(dead_spec)
             bBotUser[dead_spec] = true
             strip_user_weapons(dead_spec)
             bIsCtrl[alive_bot] = true
-            if(cs_get_user_shield(alive_bot))give_item(dead_spec, "weapon_shield");
 
             new iHP = get_user_health(alive_bot)
             set_user_health(dead_spec, iHP)
             iBotOwned[dead_spec] = alive_bot;
+            @give_weapons(dead_spec, alive_bot)
             iBotOwner[alive_bot] = dead_spec;
             set_msg_block( g_cor, BLOCK_SET );
-            user_silentkill(alive_bot, 1);
 
             client_print(dead_spec, print_center,"You are now taking the place of %n", alive_bot);
             client_print(0, print_chat,"%n is taking the place of %n", dead_spec, alive_bot);
@@ -452,8 +451,6 @@ public control_bot(dead_spec)
             entity_set_int(dead_spec, EV_INT_bInDuck, g_Duck[alive_bot])
 
             set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
-
-            @give_weapons(dead_spec, alive_bot)
             entity_set_int(dead_spec, EV_INT_fixangle, 0)
         }
 
@@ -533,8 +530,14 @@ stock weapon_details(alive_bot)
             client_print dead_spec, print_chat,  SzWeaponClassname
         }
     }
+
+    if(cs_get_user_shield(alive_bot))
+        give_item(dead_spec, "weapon_shield");
+
     arm = get_user_armor(alive_bot);
     set_user_armor(dead_spec, arm);
+    strip_user_weapons(alive_bot)
+    user_silentkill(alive_bot, 1);
 }
 
 public stuck_timer(dead_spec)
