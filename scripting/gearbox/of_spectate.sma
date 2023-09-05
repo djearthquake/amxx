@@ -380,7 +380,9 @@ public client_putinserver(id)
         get_user_info(id,"spectate", szSpec, charsmax(szSpec))
 
         if(equali(szSpec, "1"))
+        {
             @go_spec(id)
+        }
 
         if(!g_bFlagMap)
         {
@@ -462,6 +464,12 @@ public client_connectex(id, const name[], const ip[], reason[128])
     OK && pev_valid(id)>1)
     {
         bAlready_shown_menu[id] = true
+        static szSpec[4]
+        get_user_info(id,"spectate", szSpec, charsmax(szSpec))
+
+        if(equali(szSpec, "1"))
+            g_spectating[id] = true
+
         switch(item)
         {
             case 0:
