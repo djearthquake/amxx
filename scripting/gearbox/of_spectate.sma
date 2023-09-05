@@ -6,17 +6,17 @@
 #include fun
 #include hamsandwich
 
-#define MAX_PLAYERS                                  32
-#define MAX_RESOURCE_PATH_LENGTH  64
-#define MAX_MENU_LENGTH                     512
-#define MAX_NAME_LENGTH                     32
-#define MAX_AUTHID_LENGTH                  64
-#define MAX_IP_LENGTH                             16
-#define MAX_USER_INFO_LENGTH            256
-#define charsmin                                            -1
+#define MAX_PLAYERS                    32
+#define MAX_RESOURCE_PATH_LENGTH       64
+#define MAX_MENU_LENGTH                512
+#define MAX_NAME_LENGTH                32
+#define MAX_AUTHID_LENGTH              64
+#define MAX_IP_LENGTH                  16
+#define MAX_USER_INFO_LENGTH           256
+#define charsmin                      -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.3"
+#define VERSION "1.0.4"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -374,7 +374,13 @@ public client_putinserver(id)
         if(CheckPlayerBit(g_AI, id))
             return
 
-        @clear_menu(id)
+        set_task(3.0,"@clear_menu", id)
+
+        static szSpec[4]
+        get_user_info(id,"spectate", szSpec, charsmax(szSpec))
+
+        if(equali(szSpec, "1"))
+            @go_spec(id)
 
         if(!g_bFlagMap)
         {
@@ -844,6 +850,7 @@ stock iPlayers()
         menu_additem(menu, "Server menu reset", "1");
         menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
         menu_display(id, menu, 0,1)
+        client_cmd id, "slot1"
     }
 
 }
