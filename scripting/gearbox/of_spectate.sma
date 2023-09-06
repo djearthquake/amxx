@@ -381,6 +381,7 @@ public client_putinserver(id)
 
         if(equali(szSpec, "1"))
         {
+            dllfunc(DLLFunc_ClientPutInServer, id)
             @go_spec(id)
         }
 
