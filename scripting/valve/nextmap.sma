@@ -165,58 +165,52 @@ public sayFFStatus(id)
     }
 }
 
-public delayedChange(Xdata[])
+public delayedChange(Xdata[MAX_NAME_LENGTH])
 {
     log_amx "Pushing map %s through change.", Xdata
-
-    #if AMXX_VERSION_NUM == 182
-    server_cmd("changelevel %s", Xdata)
-    #else
-    engine_changelevel(Xdata)
-    #endif
+    console_cmd(0,"changelevel %s", Xdata)
 }
 
 public changeMap()
 {
     new Xstring[MAX_RESOURCE_PATH_LENGTH]
-    get_pcvar_string(g_amx_nextmap,Xstring,charsmax(Xstring))
+    get_pcvar_string(g_amx_nextmap, Xstring, charsmax(Xstring))
     #if AMXX_VERSION_NUM == 182
     new Xchattime = get_pcvar_num(g_mp_chattime)
     #endif
+    if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
+    {
+        if(callfunc_begin("@cmd_call","safe_mode.amxx"))
+        {
+            callfunc_push_str(Xstring, true)
+            callfunc_end()
+            log_amx "Pushed map %s through safemode plugin...", Xstring
+        }
+    }
     new bool:b_one_run
     if(!b_one_run)
     {
         b_one_run = true
-        if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
-        {
-            log_amx "Pushing map %s through safemode plugin", Xstring
-            callfunc_begin("@cmd_call","safe_mode.amxx")
-            callfunc_push_str(Xstring)
-            callfunc_end()
-        }
-
         formatex(finale,charsmax(finale),"Next map is %s!",Xstring)
 
         #if AMXX_VERSION_NUM == 182
 
         set_task(float(Xchattime), "delayedChange", 0, Xstring, charsmax(Xstring))
-        server_print"%i until %s",Xchattime,Xstring
+        server_print"%i until %s",Xchattime, Xstring
 
         set_task(1.0,"@Show_Chat_time",MAX_PLAYERS,"", 0, "b")
         return
         #else
         set_task(float(g_mp_chattime), "delayedChange", 0, Xstring, charsmax(Xstring))
         server_print"%i until %s",g_mp_chattime,Xstring
-        set_task(1.0,"@Show_Chat_time",MAX_PLAYERS,"", 0, "b")
+        set_task(1.0,"@Show_Chat_time", MAX_PLAYERS, "", 0, "b")
         log_amx "Chat time"
         //Some mods do not have chat time so we make one. -SPiNX 2021
         @tunes()
         @finale(finale)
         @title()
         #endif
-
     }
-
 }
 
 @Show_Chat_time()
@@ -357,9 +351,9 @@ readMapCycle(szFileName[], szNext[], iNext)
 if(get_pcvar_num(g_finale)>1)
 {
     B_infinale = true
-    message_begin(MSG_ALL,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
+    message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
 
-    for (new client=1; client<=get_playersnum(1); client++)
+    for (new client=1; client<=get_playersnum(); ++client)
     {
         if(is_user_connected(client))
         {
