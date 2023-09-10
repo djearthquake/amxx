@@ -8,11 +8,11 @@
 #define VERSION "1.33"
 #define AUTHOR "SPiNX"
 #define charsmin                                            -1
-#define MAX_MAPS                                       64
+#define MAX_MAPS                                       2048
 
 new Xsafe, XAlready
 new SzSave[MAX_CMD_LENGTH]
-static mname[MAX_RESOURCE_PATH_LENGTH]
+new mname[MAX_RESOURCE_PATH_LENGTH]
 new Trie:g_SafeMode
 new g_cvar_debugger
 new g_szDataFromFile[ MAX_MOTD_LENGTH + MAX_MOTD_LENGTH ]
@@ -21,7 +21,7 @@ new g_szFilePathSafe[ MAX_CMD_LENGTH ]
 new g_szFilePathSafeAlready[ MAX_CMD_LENGTH ]
 new g_SzNextMap[MAX_RESOURCE_PATH_LENGTH]
 new g_SzNextMapCmd[MAX_RESOURCE_PATH_LENGTH]
-static bool:bOF_run
+new bool:bOF_run
 new bool:bCallingfromEnd
 new bool:bBackupPluginsINI
 new bool:bCMDCALL
@@ -53,6 +53,7 @@ public plugin_init()
     /*1.2 - 1.3 Enhance stability via proactive triggering of safemode on plugin_end when next map requires safemode. Also when triggered by admin command*/
 
     register_plugin(PLUGIN,VERSION, AUTHOR)
+    bOF_run  =  is_running("gearbox") || is_running("valve")
     Xsafe = register_cvar("safe_mode", "0")
     XAlready = register_cvar("safe_already", "0")
     g_cvar_debugger   = register_cvar("safemode_debug", "0");
@@ -60,12 +61,10 @@ public plugin_init()
     set_task_ex(3.5,"@clear_plugins", 61522, .flags = SetTask_BeforeMapChange)
     g_SafeMode = TrieCreate()
 
-    bOF_run  =  is_running("gearbox") || is_running("valve")
-
     //Backup file check time
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
-    static SzSafeMap_Revert[MAX_CMD_LENGTH]
-    static Sz_RevertPath[MAX_CMD_LENGTH]
+    new SzSafeMap_Revert[MAX_CMD_LENGTH]
+    new Sz_RevertPath[MAX_CMD_LENGTH]
     copy(Sz_RevertPath, charsmax(Sz_RevertPath), g_szFilePath)
 
     add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
@@ -73,7 +72,7 @@ public plugin_init()
 
     add( Sz_RevertPath, charsmax(Sz_RevertPath), SzSafeMap_Revert )
 
-    static f; f = fopen( Sz_RevertPath, "rt" )
+    new f = fopen( Sz_RevertPath, "rt" )
 
     if( f )
     {
@@ -137,11 +136,10 @@ public client_command(id)
 
 @clear_plugins()
 {
-    static SzSafeMap_Extension[MAX_NAME_LENGTH],
-    SzSafeMap_Revert[MAX_CMD_LENGTH],
-    Sz_RevertPath[MAX_CMD_LENGTH]
+    new SzSafeMap_Extension[MAX_NAME_LENGTH]
+    new SzSafeMap_Revert[MAX_CMD_LENGTH]
+    new Sz_RevertPath[MAX_CMD_LENGTH]
     bCallingfromEnd = true
-    static cvar_safe; cvar_safe = get_pcvar_num(Xsafe)
 
     server_print("Clearing plugins if needed.")
 
@@ -158,14 +156,14 @@ public client_command(id)
         formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
         add( g_szFilePathSafe, charsmax( g_szFilePathSafe ), SzSafeMap_Extension )
 
-        if(!cvar_safe)
+        if(!get_pcvar_num(Xsafe))
         {
             //Make a blanked out plugins.ini to load enough just to load the select plugins admin loads
             set_pcvar_num(Xsafe, 1) //set it to safemode in advance
 
             server_print("%s MUST preload %s.", PLUGIN, g_SzNextMap)
 
-            static g; g = fopen( g_szFilePathSafe, "rt" )
+            new g = fopen( g_szFilePathSafe, "rt" )
 
             if( g )
             {
@@ -183,7 +181,7 @@ public client_command(id)
 
             add( Sz_RevertPath, charsmax(Sz_RevertPath), SzSafeMap_Revert )
 
-            static f; f = fopen( g_szFilePath, "rt" )
+            new f = fopen( g_szFilePath, "rt" )
 
             if( f )
             {
@@ -210,17 +208,16 @@ public client_command(id)
 
 public ReadSafeModeFromFile( )
 {
-    static SzSafeMap_Extension[MAX_NAME_LENGTH]
+    new SzSafeMap_Extension[MAX_NAME_LENGTH]
     bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
     add( g_szFilePath, charsmax( g_szFilePath ), "/safe_mode.ini" )
 
-    static debugger; debugger = get_pcvar_num(g_cvar_debugger)
-    static cvar_safe; cvar_safe = get_pcvar_num(Xsafe)
+    new debugger = get_pcvar_num(g_cvar_debugger)
 
-    static f; f = fopen( g_szFilePath, "rt" )
+    new f = fopen( g_szFilePath, "rt" )
 
     if( !f )
     {
@@ -293,7 +290,7 @@ public ReadSafeModeFromFile( )
         set_pcvar_num(Xsafe, 0)
     }
 
-    if(cvar_safe && get_pcvar_num(XAlready))
+    if(get_pcvar_num(Xsafe) && get_pcvar_num(XAlready))
 
     {
        set_task(2.0,"@already_safe",1999)
@@ -307,9 +304,9 @@ public ReadSafeModeFromFile( )
 
     add( g_szFilePathSafe, charsmax( g_szFilePathSafe ), SzSafeMap_Extension )
 
-    static f2; f2 = fopen( g_szFilePathSafe, "r" )
+    new f2 = fopen( g_szFilePathSafe, "r" )
 
-    if(!f2 && cvar_safe)
+    if(!f2 && get_pcvar_num(Xsafe))
     {
         rename_file(g_szFilePath,g_szFilePathSafe,1)
         server_print "trying save^n^n%s", g_szFilePathSafe
@@ -337,11 +334,11 @@ public ReadSafeModeFromFile( )
             write_file(g_szFilePath, SzSave)
 
             //basic map pick fcn
-            formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")
+            is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
             write_file(g_szFilePath, SzSave)
 
             //Stop HPB bot over-fills. JK support also.
-            bOF_run?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("OP4 mod is NOT running.")
+            is_plugin_loaded("autoconcom.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("Autoconcom is NOT running.")
         }
 
         write_file(g_szFilePath, Data[ SzPlugin1 ])
@@ -365,15 +362,15 @@ public ReadSafeModeFromFile( )
 
     }
 
-    else if(!f2 && !cvar_safe)
+    else if(!f2 && !get_pcvar_num(Xsafe))
         server_print "File not found and safemode is off!"
-    else if(!f2 && cvar_safe && !bCallingfromEnd)
+    else if(!f2 && get_pcvar_num(Xsafe) && !bCallingfromEnd)
     {
         rename_file(g_szFilePathSafe,g_szFilePath,1)
         server_print "Renamed %s to^n%s",g_szFilePathSafe,g_szFilePath
     }
 
-    else if (f2 && !cvar_safe )
+    else if (f2 && !get_pcvar_num(Xsafe) )
     {
         server_print "%s found. Renaming...%s", g_szFilePathSafe, g_szFilePath
         rename_file(g_szFilePathSafe,g_szFilePath,1)
@@ -390,8 +387,7 @@ public ReadSafeModeFromFile( )
     server_print "Already safe function entry."
     if(get_pcvar_num(XAlready))
     {
-        static debugger; debugger = get_pcvar_num(g_cvar_debugger)
-        static cvar_safe; cvar_safe = get_pcvar_num(Xsafe)
+        new debugger = get_pcvar_num(g_cvar_debugger)
 
         server_print "Already safe mark set!"
         get_mapname(mname, charsmax(mname));
@@ -421,7 +417,7 @@ public ReadSafeModeFromFile( )
 
             add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
 
-            if(cvar_safe)
+            if(get_pcvar_num(Xsafe))
             {
                 rename_file(g_szFilePath,g_szFilePathSafeAlready,1)
                 server_print "trying save^n^n%s", g_szFilePathSafeAlready
@@ -469,7 +465,7 @@ public ReadSafeModeFromFile( )
                 write_file(g_szFilePath, Data[ SzPlugin9 ])
 
 
-                client_print 0, print_chat, "reloading %s already", mname
+                client_print 0,print_chat, "reloading %s already", mname
                 server_print"reloading %s already", mname
                 set_task(20.0,"@reload_map_already",2021,mname,charsmax(mname))
                 delete_file(g_szFilePathSafeAlready)
@@ -484,7 +480,7 @@ public ReadSafeModeFromFile( )
 @push_map()
 {
     client_print 0, print_center, "Reloading map plugins"
-    server_cmd "changelevel %s", mname
+    server_cmd "changelevel %s",mname
 }
 
 public plugin_cfg()
@@ -495,6 +491,8 @@ public plugin_cfg()
 
 public plugin_end()
 {
-    @clear_plugins()
+    static SzMapname[MAX_RESOURCE_PATH_LENGTH]
+    get_cvar_string "amx_nextmap", SzMapname, charsmax(SzMapname)
+    @cmd_call(SzMapname)
     TrieDestroy(g_SafeMode)
 }
