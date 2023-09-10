@@ -247,26 +247,14 @@ public checkVotes()
 
 @changemap(smap[MAX_NAME_LENGTH])
 {
-    if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
-    {
-        if(callfunc_begin("@cmd_call","safe_mode.amxx"))
-        {
-            callfunc_push_str(smap, true)
-            callfunc_end()
-            log_amx "Pushed map %s through safemode plugin...", smap
-        }
-    }
     server_print "Trying to change to map %s",smap
     if(ValidMap(smap))amxx_changelevel(smap)
 }
 
-//#if AMXX_VERSION_NUM == 182
 stock amxx_changelevel(smap[MAX_NAME_LENGTH])
 {
-///    server_cmd("changelevel %s", smap)
     console_cmd(0,"changelevel %s", smap)
 }
-//#endif
 
 public countVote(id, key)
 {
@@ -303,19 +291,26 @@ bool:isInMenu(id)
     new players[MAX_PLAYERS]
     new playercount
 
-    get_players(players,playercount,"di")
+    get_players(players,playercount) //"di"
 
     for (new m=0; m<playercount; ++m)
     {
         #if defined amxclient_cmd
-        amxclient_cmd(players[m],random_map_pick()) //hooks all with unknown command
+//        amxclient_cmd(players[m],random_map_pick()) //hooks all with unknown command
         #endif
+
+        new custom;
+        custom = random_num(1,5)
+        new formated[MAX_NAME_LENGTH]
+        formatex(formated,charsmax(formated),"%i", custom) //humans
+
         //server_print "Trying amxclient_cmd..."
-        //console_cmd(players[m],random_map_pick())
+///        console_cmd(players[m],"menuselect", formated) //random_map_pick())
         //server_print "Trying console_cmd..."
         client_cmd(players[m],random_map_pick()) //humans only
         //server_print "Trying client_cmd..."
-        engclient_cmd(players[m],random_map_pick()) //joke
+/////////////        engclient_cmd(players[m],random_map_pick()) //joke
+        ///engclient_cmd(players[m],"menuselect", formated)
         //server_print "Trying engclient..."
         //Trying old
     }
