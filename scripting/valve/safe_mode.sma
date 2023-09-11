@@ -301,7 +301,7 @@ public ReadSafeModeFromFile( )
         )
 
         if(debugger)
-            server_print "Read %s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s,%i^n^nfrom file",Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ], Data[ SzPlugin5 ], Data[ SzPlugin6 ], Data[ SzPlugin7 ], Data[ SzPlugin8 ], Data[ SzPlugin9 ], Data[ SzPlugin10 ], Data[ SzPlugin11 ], Data[ SzPlugin12 ]
+            server_print "Read %s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s^n%s,%i^n^nfrom file",Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ], Data[ SzPlugin5 ], Data[ SzPlugin6 ], Data[ SzPlugin7 ], Data[ SzPlugin8 ], Data[ SzPlugin9 ], Data[ SzPlugin10 ], Data[ SzPlugin11 ], Data[ SzPlugin12 ], Data[ SzPlugin13 ], Data[ SzPlugin14 ], Data[ SzPlugin15 ], Data[ SzPlugin16 ]
         Data[ SzPlugin0 ] = PLUGIN
 
         TrieSetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data )
@@ -483,7 +483,10 @@ public ReadSafeModeFromFile( )
                 write_file(g_szFilePath, Data[ SzPlugin10])
                 write_file(g_szFilePath, Data[ SzPlugin11])
                 write_file(g_szFilePath, Data[ SzPlugin12])
-
+                write_file(g_szFilePath, Data[ SzPlugin13])
+                write_file(g_szFilePath, Data[ SzPlugin14])
+                write_file(g_szFilePath, Data[ SzPlugin15])
+                write_file(g_szFilePath, Data[ SzPlugin16])
 
                 client_print 0,print_chat, "reloading %s already", mname
                 server_print"reloading %s already", mname
