@@ -716,7 +716,7 @@ public client_command(id)
 {
     OK)
     {
-        if(CheckPlayerBit(g_AI, id) || is_user_admin(id)/*dev random view*/)
+        if(CheckPlayerBit(g_AI, id))
             goto SKIP
         static szArg[MAX_PLAYERS],
         szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
