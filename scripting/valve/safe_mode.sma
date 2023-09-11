@@ -10,15 +10,14 @@
 #define charsmin                      -1
 #define MAX_MAPS                      512
 
-new Xsafe, XAlready
+new Xsafe
 new SzSave[MAX_CMD_LENGTH]
-new mname[MAX_RESOURCE_PATH_LENGTH]
+static mname[MAX_RESOURCE_PATH_LENGTH]
 new Trie:g_SafeMode
 new g_cvar_debugger
 new g_szDataFromFile[ MAX_MOTD_LENGTH + MAX_MOTD_LENGTH ]
 new g_szFilePath[ MAX_CMD_LENGTH + MAX_NAME_LENGTH ]
 new g_szFilePathSafe[ MAX_CMD_LENGTH ]
-new g_szFilePathSafeAlready[ MAX_CMD_LENGTH ]
 new g_SzNextMap[MAX_NAME_LENGTH]
 new g_SzNextMapCmd[MAX_RESOURCE_PATH_LENGTH]
 
@@ -68,10 +67,8 @@ public plugin_init()
 
     register_plugin(PLUGIN,VERSION, AUTHOR)
     Xsafe = register_cvar("safe_mode", "0")
-    XAlready = register_cvar("safe_already", "0")
     g_cvar_debugger   = register_cvar("safemode_debug", "0");
 
-    set_task_ex(3.5,"@clear_plugins", 61522, .flags = SetTask_BeforeMapChange)
     g_SafeMode = TrieCreate()
 
     //Backup file check time
@@ -100,39 +97,11 @@ public plugin_init()
     bBackupPluginsINI?server_print("Back up of PLUGINS.INI already captured."):server_print("Backing up of PLUGINS.INI")
 }
 
-@safemode_check()
-{
-    get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
-    static SzSafeMap_Already[MAX_CMD_LENGTH],
-    Sz_SafePath[MAX_CMD_LENGTH]
-    copy(Sz_SafePath, charsmax(Sz_SafePath), g_szFilePath)
-
-    add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
-    formatex(SzSafeMap_Already, charsmax( SzSafeMap_Already ), "/plugins.ini.safe")
-
-    add( Sz_SafePath, charsmax(Sz_SafePath), SzSafeMap_Already )
-
-    new f = fopen( Sz_SafePath, "rt" )
-
-    if( f )
-    {
-        set_pcvar_num(XAlready, 1)
-    }
-
-}
-
 @reload_map()
 {
     client_print 0, print_center, "Reloading map specific plugins"
     server_cmd "amx_map %s",mname
     //flushes out Amxx
-}
-
-@reload_map_already()
-{
-    client_print 0, print_center, "Reloading map specific plugins^back-to-back-safemode"
-    set_pcvar_num(XAlready, 0) //stop loop
-    server_cmd "changelevel %s",mname
 }
 
 public client_command(id)
@@ -264,13 +233,6 @@ public ReadSafeModeFromFile( )
         formatex(SzName, charsmax(SzName), "^"%s^" ^"admincmd.amxx^" ^"mapsmenu.amxx^" ^"menufront.amxx^"", SzMapname)
         copy(SzBuffer, charsmax(SzBuffer), SzName)
         @file_data(SzBuffer)
-
-        /*
-        server_print "Aborting read from: %s^nFile not found!", g_szFilePath
-        log_amx "%s %s by %s, needs config file %s to operate^n %s paused!", PLUGIN, VERSION, AUTHOR, PLUGIN
-        pause("a")
-        return
-        */
     }
     server_print "Continuing to read from: %s", g_szFilePath
     while( !feof( f ) )
@@ -346,13 +308,6 @@ public ReadSafeModeFromFile( )
     else
     {
         set_pcvar_num(Xsafe, 0)
-    }
-
-    if(get_pcvar_num(Xsafe) && get_pcvar_num(XAlready))
-
-    {
-       set_task(2.0,"@already_safe",1999)
-       return
     }
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
@@ -432,100 +387,6 @@ public ReadSafeModeFromFile( )
 
     }
     bCallingfromEnd?server_print("Exit %s %s", PLUGIN, VERSION):server_print("Init %s %s", PLUGIN, VERSION)
-}
-
-@already_safe()
-{
-    server_print "Already safe function entry."
-    if(get_pcvar_num(XAlready))
-    {
-        new debugger = get_pcvar_num(g_cvar_debugger)
-
-        server_print "Already safe mark set!"
-        get_mapname(mname, charsmax(mname));
-        //back to back safemode to assure the correct plugin set is loaded
-        log_amx "Attempt flush this file and start a fresh one"
-        set_pcvar_num(XAlready, 1)
-        bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
-
-        if(bCallingfromEnd)
-            copy(Data[ SzMaps ], charsmax(Data), g_SzNextMap)
-
-        if(!bCMDCALL && !bCallingfromEnd)
-            copy(Data[ SzMaps ], charsmax(Data), mname)
-
-        server_print "[%s]map name is %s", PLUGIN, Data[ SzMaps ] //mname
-
-        //Data[ SzMaps ] = mname
-
-        ///The work to make it unique
-        if(TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
-        {
-            TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data )
-            /////////////////////////////////////////////////////////////
-            get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
-            copy(g_szFilePathSafeAlready, charsmax(g_szFilePathSafeAlready), g_szFilePath)
-            add( g_szFilePathSafeAlready, charsmax( g_szFilePathSafeAlready ), "/plugins.ini.0" )
-
-            add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
-
-            if(get_pcvar_num(Xsafe))
-            {
-                rename_file(g_szFilePath,g_szFilePathSafeAlready,1)
-                server_print "trying save^n^n%s", g_szFilePathSafeAlready
-
-                //safemode plugin itself
-                formatex(SzSave,charsmax(SzSave),"%s.amxx debug", PLUGIN)
-                write_file(g_szFilePath, SzSave)
-
-                is_plugin_loaded("admin.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"admin.amxx")&write_file(g_szFilePath, SzSave):formatex(SzSave,charsmax(SzSave),"admin_sql.amxx")&write_file(g_szFilePath, SzSave)
-
-                //safemode needs nextmap to work
-                formatex(SzSave,charsmax(SzSave),"nextmap.amxx")
-                write_file(g_szFilePath, SzSave)
-
-                if(!debugger)  //if base file does not exist make file once instead of each instance.
-                {
-                    //basic map pick fcn
-                    is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
-                    write_file(g_szFilePath, SzSave)
-                }
-
-                write_file(g_szFilePath, SzSave)
-                write_file(g_szFilePath, Data[ SzPlugin1 ])
-                write_file(g_szFilePath, Data[ SzPlugin2 ])
-                write_file(g_szFilePath, Data[ SzPlugin3 ])
-                write_file(g_szFilePath, Data[ SzPlugin4 ])
-                write_file(g_szFilePath, Data[ SzPlugin5 ])
-                write_file(g_szFilePath, Data[ SzPlugin6 ])
-                write_file(g_szFilePath, Data[ SzPlugin7 ])
-                write_file(g_szFilePath, Data[ SzPlugin8 ])
-                write_file(g_szFilePath, Data[ SzPlugin9 ])
-                write_file(g_szFilePath, Data[ SzPlugin10])
-                write_file(g_szFilePath, Data[ SzPlugin11])
-                write_file(g_szFilePath, Data[ SzPlugin12])
-                write_file(g_szFilePath, Data[ SzPlugin13])
-                write_file(g_szFilePath, Data[ SzPlugin14])
-                write_file(g_szFilePath, Data[ SzPlugin15])
-                write_file(g_szFilePath, Data[ SzPlugin16])
-                write_file(g_szFilePath, Data[ SzPlugin17])
-                write_file(g_szFilePath, Data[ SzPlugin18])
-                write_file(g_szFilePath, Data[ SzPlugin19])
-                write_file(g_szFilePath, Data[ SzPlugin20])
-                write_file(g_szFilePath, Data[ SzPlugin21])
-                write_file(g_szFilePath, Data[ SzPlugin22])
-                write_file(g_szFilePath, Data[ SzPlugin23])
-
-                client_print 0,print_chat, "reloading %s already", mname
-                server_print"reloading %s already", mname
-                set_task(20.0,"@reload_map_already",2021,mname,charsmax(mname))
-                delete_file(g_szFilePathSafeAlready)
-            }
-
-        }
-
-    }
-    server_print "Already safe function exit.^nEverything already cleared for next map."
 }
 
 @push_map()
