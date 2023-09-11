@@ -10,11 +10,17 @@
 #define charsmin                      -1
 #define MAX_MAPS                      512
 
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
 new Xsafe
 new SzSave[MAX_CMD_LENGTH]
 static mname[MAX_RESOURCE_PATH_LENGTH]
 new Trie:g_SafeMode
 new g_cvar_debugger
+new g_Adm
+new g_maxPlayers
 new g_szDataFromFile[ MAX_MOTD_LENGTH + MAX_MOTD_LENGTH ]
 new g_szFilePath[ MAX_CMD_LENGTH + MAX_NAME_LENGTH ]
 new g_szFilePathSafe[ MAX_CMD_LENGTH ]
@@ -67,14 +73,15 @@ public plugin_init()
 
     register_plugin(PLUGIN,VERSION, AUTHOR)
     Xsafe = register_cvar("safe_mode", "0")
-    g_cvar_debugger   = register_cvar("safemode_debug", "0");
+    g_cvar_debugger  = register_cvar("safemode_debug", "0");
 
     g_SafeMode = TrieCreate()
+    g_maxPlayers = get_maxplayers()
 
     //Backup file check time
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
-    new SzSafeMap_Revert[MAX_CMD_LENGTH]
-    new Sz_RevertPath[MAX_CMD_LENGTH]
+    static SzSafeMap_Revert[MAX_CMD_LENGTH],
+    Sz_RevertPath[MAX_CMD_LENGTH]
     copy(Sz_RevertPath, charsmax(Sz_RevertPath), g_szFilePath)
 
     add( g_szFilePath, charsmax( g_szFilePath ), "/plugins.ini" )
@@ -82,7 +89,7 @@ public plugin_init()
 
     add( Sz_RevertPath, charsmax(Sz_RevertPath), SzSafeMap_Revert )
 
-    new f = fopen( Sz_RevertPath, "rt" )
+    static f; f = fopen( Sz_RevertPath, "rt" )
 
     if( f )
     {
@@ -100,7 +107,7 @@ public plugin_init()
 @reload_map()
 {
     client_print 0, print_center, "Reloading map specific plugins"
-    server_cmd "amx_map %s",mname
+    console_cmd 0, "amx_map %s", mname
     //flushes out Amxx
 }
 
@@ -109,7 +116,7 @@ public client_command(id)
     read_args(szArg, charsmax(szArg));
     read_argv(0,szArgCmd, charsmax(szArgCmd));
     read_argv(1,szArgCmd1, charsmax(szArgCmd1));
-    if(is_user_connected(id) && is_user_admin(id) && !is_str_num(szArgCmd1))
+    if(is_user_connected(id) && CheckPlayerBit(g_Adm, id) && !is_str_num(szArgCmd1))
     {
         @cmd_call(szArgCmd1)
     }
@@ -125,10 +132,10 @@ public client_command(id)
     log_amx "Validating %s", SzMapname
 
     Data[ SzMaps ] =  SzMapname
+    set_cvar_string "amx_nextmap", SzMapname
 
     if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
     {
-        set_cvar_string "amx_nextmap", SzMapname
         @clear_plugins()
     }
 
@@ -139,9 +146,9 @@ public client_command(id)
 
 @clear_plugins()
 {
-    new SzSafeMap_Extension[MAX_NAME_LENGTH]
-    new SzSafeMap_Revert[MAX_CMD_LENGTH]
-    new Sz_RevertPath[MAX_CMD_LENGTH]
+    static SzSafeMap_Extension[MAX_NAME_LENGTH],
+    SzSafeMap_Revert[MAX_CMD_LENGTH],
+    Sz_RevertPath[MAX_CMD_LENGTH]
     bCallingfromEnd = true
 
     server_print("Clearing plugins if needed.")
@@ -166,7 +173,7 @@ public client_command(id)
 
             server_print("%s MUST preload %s.", PLUGIN, g_SzNextMap)
 
-            new g = fopen( g_szFilePathSafe, "rt" )
+            static g; g = fopen( g_szFilePathSafe, "rt" )
 
             if( g )
             {
@@ -184,7 +191,7 @@ public client_command(id)
 
             add( Sz_RevertPath, charsmax(Sz_RevertPath), SzSafeMap_Revert )
 
-            new f = fopen( g_szFilePath, "rt" )
+            static f; f = fopen( g_szFilePath, "rt" )
 
             if( f )
             {
@@ -211,16 +218,16 @@ public client_command(id)
 
 public ReadSafeModeFromFile( )
 {
-    new SzSafeMap_Extension[MAX_NAME_LENGTH]
+    static SzSafeMap_Extension[MAX_NAME_LENGTH]
     bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
     add( g_szFilePath, charsmax( g_szFilePath ), "/safe_mode.ini" )
 
-    new debugger = get_pcvar_num(g_cvar_debugger)
+    static debugger; debugger = get_pcvar_num(g_cvar_debugger)
 
-    new f = fopen( g_szFilePath, "rt" )
+    static f; f = fopen( g_szFilePath, "rt" )
 
     if( !f )
     {
@@ -301,14 +308,7 @@ public ReadSafeModeFromFile( )
 
     server_print "[%s]map name is %s", PLUGIN, Data[ SzMaps ] //mname
 
-    if(TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
-    {
-        set_pcvar_num(Xsafe, 1)
-    }
-    else
-    {
-        set_pcvar_num(Xsafe, 0)
-    }
+    set_pcvar_num(Xsafe, TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ) ? 1 : 0)
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     copy(g_szFilePathSafe,charsmax(g_szFilePathSafe),g_szFilePath)
@@ -317,7 +317,7 @@ public ReadSafeModeFromFile( )
 
     add( g_szFilePathSafe, charsmax( g_szFilePathSafe ), SzSafeMap_Extension )
 
-    new f2 = fopen( g_szFilePathSafe, "r" )
+    static f2; f2 = fopen( g_szFilePathSafe, "r" )
 
     if(!f2 && get_pcvar_num(Xsafe))
     {
@@ -362,7 +362,11 @@ public ReadSafeModeFromFile( )
         write_file(g_szFilePath, Data[ SzPlugin22])
         write_file(g_szFilePath, Data[ SzPlugin23])
 
-        client_print 0, print_chat, "reloading %s^nplugins:^n%s", Data[ SzMaps ], Data[ SzPlugin1 ]
+
+        for (new admin=1; admin<=g_maxPlayers; admin++)
+            if (is_user_connected(admin) && CheckPlayerBit(g_Adm, admin))
+                client_print admin, print_chat, "reloading %s^nplugins:^n%s^n%s^n%s^n%s^n%s...", Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ],Data[ SzPlugin5 ]
+
         server_print"reloading %s", Data[ SzMaps ]
 
         set_task(20.0,"@reload_map",2021,mname,charsmax(mname))
@@ -392,7 +396,7 @@ public ReadSafeModeFromFile( )
 @push_map()
 {
     client_print 0, print_center, "Reloading map plugins"
-    server_cmd "changelevel %s",mname
+    console_cmd 0, "changelevel %s", mname
 }
 
 public plugin_cfg()
@@ -412,9 +416,24 @@ public plugin_end()
 @file_data(SzBuffer[MAX_CMD_LENGTH])
 {
     server_print "%s|trying save %s", PLUGIN, SzBuffer
-    new szFilePath[ MAX_USER_INFO_LENGTH ]
+    static szFilePath[ MAX_USER_INFO_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), SzSafeModeFileName )
 
     write_file(szFilePath, SzBuffer)
+}
+
+public client_infochanged(id)
+{
+    is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id)
+}
+
+public client_putinserver(id)
+{
+    is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id)
+}
+
+public client_disconnected(id)
+{
+    ClearPlayerBit(g_Adm, id)
 }
