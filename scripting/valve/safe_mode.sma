@@ -2,13 +2,13 @@
 ///CVAR safe_mode 0|1 Run server without Amxx or any plugins then return back to normal mode
 #include amxmodx
 #include amxmisc
-#define MAX_CMD_LENGTH                        128
-#define MAX_MOTD_LENGTH                     1536
+#define MAX_CMD_LENGTH                128
+#define MAX_MOTD_LENGTH               1536
 #define PLUGIN  "safe_mode"
 #define VERSION "1.33"
 #define AUTHOR "SPiNX"
-#define charsmin                                            -1
-#define MAX_MAPS                                       512
+#define charsmin                      -1
+#define MAX_MAPS                      512
 
 new Xsafe, XAlready
 new SzSave[MAX_CMD_LENGTH]
@@ -354,8 +354,6 @@ public ReadSafeModeFromFile( )
     {
         rename_file(g_szFilePath,g_szFilePathSafe,1)
         server_print "trying save^n^n%s", g_szFilePathSafe
-        //load base system and whatever all maps in safemode cannot live without like admins?
-        ///write_file("exec safe_mode.cfg", SzSave)
         //safemode plugin itself
         formatex(SzSave,charsmax(SzSave),"%s.amxx", PLUGIN)
         write_file(g_szFilePath, SzSave)
@@ -369,9 +367,6 @@ public ReadSafeModeFromFile( )
             //basic map pick fcn
             is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
             write_file(g_szFilePath, SzSave)
-
-            //Stop HPB bot over-fills. JK support also.
-            is_plugin_loaded("autoconcom.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("Autoconcom is NOT running.")
         }
 
         write_file(g_szFilePath, Data[ SzPlugin1 ])
@@ -458,9 +453,6 @@ public ReadSafeModeFromFile( )
                 rename_file(g_szFilePath,g_szFilePathSafeAlready,1)
                 server_print "trying save^n^n%s", g_szFilePathSafeAlready
 
-                //load base system and whatever all maps in safemode cannot live without like admins?
-               /// write_file("exec safe_mode.cfg", SzSave)
-
                 //safemode plugin itself
                 formatex(SzSave,charsmax(SzSave),"%s.amxx debug", PLUGIN)
                 write_file(g_szFilePath, SzSave)
@@ -476,9 +468,6 @@ public ReadSafeModeFromFile( )
                     //basic map pick fcn
                     is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
                     write_file(g_szFilePath, SzSave)
-
-                    //Stop HPB bot over-fills. JK support also.
-                    is_plugin_loaded("autoconcom.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"autoconcom.amxx")&write_file(g_szFilePath, SzSave):server_print("Autoconcom is NOT running.")
                 }
 
                 write_file(g_szFilePath, SzSave)
