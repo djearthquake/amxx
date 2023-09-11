@@ -20,7 +20,7 @@ static mname[MAX_RESOURCE_PATH_LENGTH]
 new Trie:g_SafeMode
 new g_cvar_debugger
 new g_Adm
-new g_maxPlayers
+static g_maxPlayers
 new g_szDataFromFile[ MAX_MOTD_LENGTH + MAX_MOTD_LENGTH ]
 new g_szFilePath[ MAX_CMD_LENGTH + MAX_NAME_LENGTH ]
 new g_szFilePathSafe[ MAX_CMD_LENGTH ]
@@ -106,9 +106,14 @@ public plugin_init()
 
 @reload_map()
 {
-    client_print 0, print_center, "Reloading map specific plugins"
-    console_cmd 0, "amx_map %s", mname
-    //flushes out Amxx
+    for (new admin=1; admin<=g_maxPlayers; admin++)
+    {
+        if (is_user_connected(admin) && CheckPlayerBit(g_Adm, admin))
+        {
+            client_print admin, print_chat, "Reloading %s specific plugins.", mname
+        }
+    }
+    console_cmd 0, "amx_map %s", mname //flushes out Amxx
 }
 
 public client_command(id)
@@ -206,8 +211,8 @@ public client_command(id)
         }
         else
         {
-                server_print("Renaming %s back to ^n%s.", SzSafeMap_Revert,g_szFilePath)
-                rename_file(SzSafeMap_Revert,g_szFilePath,1)
+            server_print("Renaming %s back to ^n%s.", SzSafeMap_Revert,g_szFilePath)
+            rename_file(SzSafeMap_Revert,g_szFilePath,1)
          }
     }
     server_print("%s needs NOT preload %s.", PLUGIN, g_SzNextMap)
@@ -241,7 +246,7 @@ public ReadSafeModeFromFile( )
         copy(SzBuffer, charsmax(SzBuffer), SzName)
         @file_data(SzBuffer)
     }
-    server_print "Continuing to read from: %s", g_szFilePath
+    server_print "Continuing to read from: %s.", g_szFilePath
     while( !feof( f ) )
     {
         fgets( f, g_szDataFromFile, charsmax( g_szDataFromFile ) )
@@ -367,7 +372,7 @@ public ReadSafeModeFromFile( )
             if (is_user_connected(admin) && CheckPlayerBit(g_Adm, admin))
                 client_print admin, print_chat, "reloading %s^nplugins:^n%s^n%s^n%s^n%s^n%s...", Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ],Data[ SzPlugin5 ]
 
-        server_print"reloading %s", Data[ SzMaps ]
+        server_print"Reloading %s.", Data[ SzMaps ]
 
         set_task(20.0,"@reload_map",2021,mname,charsmax(mname))
 
