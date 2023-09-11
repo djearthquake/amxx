@@ -48,7 +48,14 @@ enum _:Safe_Mode
     SzPlugin13[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin14[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin15[ MAX_RESOURCE_PATH_LENGTH ],
-    SzPlugin16[ MAX_RESOURCE_PATH_LENGTH ]
+    SzPlugin16[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin17[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin18[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin19[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin20[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin21[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin22[ MAX_RESOURCE_PATH_LENGTH ],
+    SzPlugin23[ MAX_RESOURCE_PATH_LENGTH ]
 }
 new Data[ Safe_Mode ]
 
@@ -296,7 +303,14 @@ public ReadSafeModeFromFile( )
             Data[ SzPlugin13 ], charsmax( Data[SzPlugin13] ),
             Data[ SzPlugin14 ], charsmax( Data[SzPlugin14] ),
             Data[ SzPlugin15 ], charsmax( Data[SzPlugin15] ),
-            Data[ SzPlugin16 ], charsmax( Data[SzPlugin16] )
+            Data[ SzPlugin16 ], charsmax( Data[SzPlugin16] ),
+            Data[ SzPlugin17 ], charsmax( Data[SzPlugin17] ),
+            Data[ SzPlugin18 ], charsmax( Data[SzPlugin18] ),
+            Data[ SzPlugin19 ], charsmax( Data[SzPlugin19] ),
+            Data[ SzPlugin20 ], charsmax( Data[SzPlugin20] ),
+            Data[ SzPlugin21 ], charsmax( Data[SzPlugin21] ),
+            Data[ SzPlugin22 ], charsmax( Data[SzPlugin22] ),
+            Data[ SzPlugin23 ], charsmax( Data[SzPlugin23] )
 
         )
 
@@ -385,6 +399,13 @@ public ReadSafeModeFromFile( )
         write_file(g_szFilePath, Data[ SzPlugin14])
         write_file(g_szFilePath, Data[ SzPlugin15])
         write_file(g_szFilePath, Data[ SzPlugin16])
+        write_file(g_szFilePath, Data[ SzPlugin17])
+        write_file(g_szFilePath, Data[ SzPlugin18])
+        write_file(g_szFilePath, Data[ SzPlugin19])
+        write_file(g_szFilePath, Data[ SzPlugin20])
+        write_file(g_szFilePath, Data[ SzPlugin21])
+        write_file(g_szFilePath, Data[ SzPlugin22])
+        write_file(g_szFilePath, Data[ SzPlugin23])
 
         client_print 0, print_chat, "reloading %s^nplugins:^n%s", Data[ SzMaps ], Data[ SzPlugin1 ]
         server_print"reloading %s", Data[ SzMaps ]
@@ -487,6 +508,13 @@ public ReadSafeModeFromFile( )
                 write_file(g_szFilePath, Data[ SzPlugin14])
                 write_file(g_szFilePath, Data[ SzPlugin15])
                 write_file(g_szFilePath, Data[ SzPlugin16])
+                write_file(g_szFilePath, Data[ SzPlugin17])
+                write_file(g_szFilePath, Data[ SzPlugin18])
+                write_file(g_szFilePath, Data[ SzPlugin19])
+                write_file(g_szFilePath, Data[ SzPlugin20])
+                write_file(g_szFilePath, Data[ SzPlugin21])
+                write_file(g_szFilePath, Data[ SzPlugin22])
+                write_file(g_szFilePath, Data[ SzPlugin23])
 
                 client_print 0,print_chat, "reloading %s already", mname
                 server_print"reloading %s already", mname
