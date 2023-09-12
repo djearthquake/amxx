@@ -120,6 +120,9 @@ public client_command(id)
 {
     read_args(szArg, charsmax(szArg));
     read_argv(0,szArgCmd, charsmax(szArgCmd));
+    if(!equali(szArgCmd, "amx_map"))
+        return
+
     read_argv(1,szArgCmd1, charsmax(szArgCmd1));
     if(is_user_connected(id) && CheckPlayerBit(g_Adm, id) && !is_str_num(szArgCmd1))
     {
