@@ -34,16 +34,22 @@
 #define MAX_USER_INFO_LENGTH       256
 
 #define PLUGIN "!Client ReNaMeR"
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define charsmin -1
+
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
+#define UTF8_LEVEL ADMIN_LEVEL_H
 
 new const SzBotFileName[]="/BotNames.ini"
 
-new Array:g_aBotNames, g_iTotalNames;
+new Array:g_aBotNames, g_iTotalNames, g_AI, g_Adm;
 
-new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
-new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
-new XCheck_Humans, XCyborgFilter, XUTF8_Strafe;
+new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH],
+ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH],
+XCheck_Admins, XCheck_Humans, XCyborgFilter, XUTF8_Strafe;
 
 static const SzInitFakeName[] = "gamer"
 new bNameCheck[MAX_PLAYERS + 1]
@@ -67,13 +73,21 @@ public client_command(id)
 }
 
 public client_putinserver(id)
+{
     client_infochanged(id)
+}
 
 public client_infochanged(id)
 {
     if(is_user_connected(id))
     {
-        if(!is_user_bot(id) && !get_pcvar_num(XCheck_Humans))
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+        get_user_flags(id) & UTF8_LEVEL ? (SetPlayerBit(g_Adm, id)) : (ClearPlayerBit(g_Adm, id))
+
+        if(!CheckPlayerBit(g_AI, id) && !get_pcvar_num(XCheck_Humans))
+            return
+
+        if(CheckPlayerBit(g_Adm, id) && !get_pcvar_num(XCheck_Admins))
             return
 
         get_user_name(id, ClientName[id], charsmax(ClientName[]))
@@ -100,7 +114,7 @@ public client_infochanged(id)
     {
         if(is_user_connected(id))
         {
-            if(is_user_bot(id) && get_pcvar_num(XCyborgFilter))
+            if(CheckPlayerBit(g_AI, id) && get_pcvar_num(XCyborgFilter))
             {
                 get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
                 if(!equali(ClientAuth[id], "BOT"))
@@ -135,7 +149,7 @@ public client_infochanged(id)
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, "SPiNX")
-
+    XCheck_Admins  = register_cvar("sv_rename_admins","0")
     XCyborgFilter   = register_cvar("sv_rename_intregrity","0") //If humans complain when sv_rename_humans 1 seldomly fails.
     XCheck_Humans      = register_cvar("sv_rename_humans","1") //This was made for bots but applied to humans also.
     XUTF8_Strafe    = register_cvar("sv_rename_utf","1") //Ever watched the flood from renaming non-utf8 CountryOnName? Not pretty.
@@ -145,15 +159,17 @@ public plugin_init()
 }
 
 public plugin_end()
+{
     ArrayDestroy(g_aBotNames)
+}
 
 ReadFile()
 {
-    new szFilename[MAX_USER_INFO_LENGTH]
+    static szFilename[MAX_USER_INFO_LENGTH]
     get_configsdir(szFilename, charsmax(szFilename))
     add(szFilename, charsmax(szFilename), SzBotFileName)
-    new iFilePointer = fopen(szFilename, "rt")
-    new szData[MAX_NAME_LENGTH]
+    static iFilePointer; iFilePointer = fopen(szFilename, "rt")
+    static szData[MAX_NAME_LENGTH]
 
     if(!iFilePointer)
     {
@@ -187,10 +203,9 @@ ReadFile()
 
 @init_fake_file()
 {
-    new rSzName[MAX_NAME_LENGTH]
-    new mod_name[MAX_NAME_LENGTH]
-
-    new SzBuffer[MAX_NAME_LENGTH]
+    static rSzName[MAX_NAME_LENGTH],
+    mod_name[MAX_NAME_LENGTH],
+    SzBuffer[MAX_NAME_LENGTH]
 
     //make name off what is in script
     copy(SzBuffer, charsmax(SzBuffer), SzInitFakeName)
@@ -233,7 +248,7 @@ ReadFile()
 @file_data(SzBuffer[MAX_NAME_LENGTH])
 {
     server_print "%s|trying save %s", PLUGIN, SzBuffer
-    new szFilePath[ MAX_USER_INFO_LENGTH ]
+    static szFilePath[ MAX_USER_INFO_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), SzBotFileName )
 
