@@ -103,13 +103,24 @@ public FnPlant()
     if(is_user_alive(id))
     {
         c4_from_grenade();
+        if(get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
         if(g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
         {
             g_weapon_c4_index ? set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50) : c4_from_grenade()
 
+            static Float:fExp
             static Float:fC4_factor
-            fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
+            fExp = get_pcvar_float(g_fExperience_offset)
+            fC4_factor = get_user_frags(id)*fExp
             c4_from_grenade();
+
+            if(floatround(cs_get_c4_explode_time(g_weapon_c4_index)-get_gametime()-fC4_factor) < 9)
+            {
+                set_pcvar_float(g_fExperience_offset, fExp/0.5)
+                fC4_factor = get_user_frags(id)*fExp
+                client_print 0, print_chat, "C4 Experience adjusted on server."
+            }
+
             g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index, cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor) : c4_from_grenade()
 
             if(g_weapon_c4_index && g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
@@ -119,6 +130,16 @@ public FnPlant()
                 iC4TimeOffset = floatround(cs_get_c4_explode_time(g_weapon_c4_index)-fC4_factor)
                 new Float:fTime
                 fTime = float(iC4TimeOffset)
+
+                static iBoom_time
+                iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+                if(cs_get_c4_explode_time(g_weapon_c4_index) <=7.0)
+                {
+                    cs_set_c4_explode_time(g_weapon_c4_index, 9.0)
+                }
+                server_print "boom time is %f seconds!", fTime
+
+               /*
                 new Float:fHuman_readable = fTime - get_gametime()
                 if(fHuman_readable <=7.0)
                     fHuman_readable = 15.0 // so does not blow up in face!
@@ -128,12 +149,10 @@ public FnPlant()
                     cs_set_c4_explode_time(g_weapon_c4_index, fTime)
                     server_print "boom time is %f seconds!", fTime
                 }
+                */
 
                 //Multi-task
                 entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
-
-                static iBoom_time
-                iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
 
                 if(iBoom_time)
                     g_boomtime = iBoom_time
@@ -141,7 +160,8 @@ public FnPlant()
                 set_task(1.0,"@count_down",5656,_,0,"b")
                 client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime, ClientName[id]
 
-                set_task(0.1,"@c4_status",3400,_,_,"b")
+                if(get_pcvar_num(g_debug))
+                    set_task(0.1,"@c4_status",3400,_,_,"b")
             }
             else
             {
@@ -250,7 +270,8 @@ stock iPlayers()
 
 stock c4_from_grenade()
 {
-    static iC4
+    new iC4
+    static szClass[MAX_NAME_LENGTH]
     {
         while ((iC4= find_ent(charsmin,"grenade")))
         {
@@ -260,7 +281,8 @@ stock c4_from_grenade()
                     g_weapon_c4_index = iC4
                 break;
             }
-            if(g_weapon_c4_index <= MaxClients || pev_valid(g_weapon_c4_index) < 2)
+            pev(pev_classname, g_weapon_c4_index, szClass, charsmax(szClass))
+            if(g_weapon_c4_index <= MaxClients || pev_valid(g_weapon_c4_index) < 2 || !equali(szClass, "grenade"))
                 c4_from_grenade()
         }
     }
@@ -268,7 +290,6 @@ stock c4_from_grenade()
 
 @c4_status()
 {
-    if(get_pcvar_num(g_debug))
     if(pev_valid(g_weapon_c4_index))
     {
         static Float:fInterval, Float:fBeep, Float:fAttn, Float:fCount
