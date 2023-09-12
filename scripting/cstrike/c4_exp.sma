@@ -116,7 +116,7 @@ public FnPlant()
 
             if(floatround(cs_get_c4_explode_time(g_weapon_c4_index)-get_gametime()-fC4_factor) < 9)
             {
-                set_pcvar_float(g_fExperience_offset, fExp/0.5)
+                set_pcvar_float(g_fExperience_offset, get_pcvar_float(g_fExperience_offset)/2)
                 fC4_factor = get_user_frags(id)*fExp
                 client_print 0, print_chat, "C4 Experience adjusted on server."
             }
