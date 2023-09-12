@@ -33,17 +33,6 @@ public sayChangeMap(id,level,cid)
             if(is_map_valid(szArg2))
             {
                 log_amx( "%n called map vote for %s.", id, szArg2 );
-
-                if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
-                {
-                    if(callfunc_begin("@cmd_call","safe_mode.amxx"))
-                    {
-                        callfunc_push_str(szArg2, true)
-                        callfunc_end()
-                        log_amx "Pushed map %s through safemode plugin...", szArg2
-                    }
-
-                }
                 console_cmd( 0, "amx_votemap ^"%s^"", szArg2 );
 
             }
