@@ -177,6 +177,7 @@ public checkVotes(id)
             * */
             new tempMap[32];
             ArrayGetString(g_mapName, g_choosed, tempMap, charsmax(tempMap));
+            set_cvar_string "amx_nextmap", tempMap
             set_task(2.0, "delayedChange", 0, tempMap, strlen(tempMap) + 1)
         }
     } else {
