@@ -112,7 +112,7 @@ public actionResult(id, key)
 */
             new tempMap[MAX_RESOURCE_PATH_LENGTH];
             ArrayGetString(g_mapName, g_choosed, tempMap, charsmax(tempMap));
-
+            set_cvar_string "amx_nextmap", tempMap
             set_task(2.0, "delayedChange", 0, tempMap, strlen(tempMap) + 1)
             log_amx("Vote: %L", "en", "RESULT_ACC")
             client_print(0, print_chat, "%L", LANG_PLAYER, "RESULT_ACC")
@@ -337,7 +337,6 @@ public cmdMapsMenu(id, level, cid)
 
 public delayedChange(mapname[])
 {
-    set_cvar_string "amx_nextmap", mapname
     engine_changelevel(mapname)
 }
 
@@ -535,6 +534,7 @@ public actionMapsMenu(id, key)
             show_activity_key("ADMIN_CHANGEL_1", "ADMIN_CHANGEL_2", name, tempMap);
 
             log_amx("Cmd: ^"%s<%d><%s><>^" changelevel ^"%s^"", name, get_user_userid(id), authid, tempMap)
+            set_cvar_string "amx_nextmap", tempMap
             set_task(2.0, "delayedChange", 0, tempMap, strlen(tempMap) + 1)
             /* displayMapsMenu(id, g_menuPosition[id]) */
         }
