@@ -98,12 +98,11 @@ public FnPlant()
 {
     //get username via log
     //g_weapon_c4_index = 0
+    c4_from_grenade();
     static id; id = get_loguser_index();
-    server_print "Is %n planting?", id
-    if(is_user_alive(id))
+    if(is_user_connected(id))
     {
-        c4_from_grenade();
-        if(get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
+        server_print "Is %n planting?", id
         if(g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
         {
             g_weapon_c4_index ? set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50) : c4_from_grenade()
@@ -112,7 +111,9 @@ public FnPlant()
             static Float:fC4_factor
             fExp = get_pcvar_float(g_fExperience_offset)
             fC4_factor = get_user_frags(id)*fExp
-            c4_from_grenade();
+
+            if(!get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
+                return
 
             if(floatround(cs_get_c4_explode_time(g_weapon_c4_index)-get_gametime()-fC4_factor) < 9)
             {
