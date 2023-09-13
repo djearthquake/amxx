@@ -201,6 +201,8 @@ public client_prethink( id )
     {
         if(!g_spectating[id])
         {
+            if(!is_user_connected(id))
+                return
             pev(id, pev_origin, g_user_origin[id]);
             entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
             entity_get_vector(id, EV_VEC_view_ofs, g_Plane[id]);
