@@ -192,7 +192,7 @@ public plugin_init()
             register_touch("rpg_rocket", "*", "HandGrenade_Attack2_Touch");
         }
         //MORTAR
-        if(has_map_ent_class("op4ctf_mortar"))
+        if(has_map_ent_class("op4mortar"))
         {
             g_mortar_think = register_think("mortar_shell", "@tracer");
             register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
@@ -272,7 +272,7 @@ public CurentWeapon(id)
 {
     if(is_user_connected(id) && is_user_alive(id))
     {
-        new temp_ent1, temp_ent2, temp_ent3, temp_ent4,/*temp_ent5,*/ temp_ent6, /*temp_ent7,*/ temp_ent8;
+        static temp_ent1, temp_ent2, temp_ent3, temp_ent4,/*temp_ent5,*/ temp_ent6, /*temp_ent7,*/ temp_ent8;
         //Standard
         temp_ent1 = find_ent(charsmin,"grenade");
         temp_ent2 = find_ent(charsmin,"ARgrenade");
@@ -359,7 +359,7 @@ public glow(g_model)
 
 public HandGrenade_Attack2_Touch(ent, id)
 {
-    new nade_owner;
+    static nade_owner;
     nade_owner = pev(ent,pev_owner);
     if(get_pcvar_num(g_cvar_neon_rad) == 1)
     {
@@ -373,7 +373,7 @@ public HandGrenade_Attack2_Touch(ent, id)
             case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
         }
 
-        new Float:End_Position[3];
+        static Float:End_Position[3];
         g_model = ent
         if(pev_valid(g_model))
         {
@@ -419,8 +419,8 @@ public HandGrenade_Attack2_Touch(ent, id)
             emessage_end();
 
             ///Actual damage
-            new location[3]
-            new Float:Vec[3]
+            static location[3]
+            static Float:Vec[3]
             IVecFVec(location, Vec)
             FVecIVec(Vec, location)
             location[2] = location[2] + 20
@@ -431,16 +431,16 @@ public HandGrenade_Attack2_Touch(ent, id)
             get_players(players,playercount,"h")
             for (new m=0; m<playercount; ++m)
             {
-                new hp = get_user_health(players[m])
-                new playerlocation[3]
+                static hp; hp = get_user_health(players[m])
+                static playerlocation[3]
                 if(is_user_alive(players[m]))
                 if(is_user_bot(players[m]) ||  !is_user_bot(players[m]) && m != nade_owner)
                 {
 
                     get_user_origin(players[m], playerlocation)
-                    new resultdance = get_entity_distance(g_model, players[m]);
+                    static result_distance; result_distance = get_entity_distance(g_model, players[m]);
 
-                    if (resultdance < get_pcvar_num(g_proximity))
+                    if (result_distance < get_pcvar_num(g_proximity))
                     {
 
                         emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
@@ -475,7 +475,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                             if(get_pcvar_num(g_debug) > 0)
                             {
                                 #if AMXX_VERSION_NUM == 182
-                                new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                                static throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
                                 get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
                                 get_user_name(players[m], victims_name, charsmax(victims_name) );
                                 client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
@@ -493,10 +493,8 @@ public HandGrenade_Attack2_Touch(ent, id)
 
                         if(hp < 30.0)
                         {
-
-
                             #if AMXX_VERSION_NUM == 182
-                            new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                            static throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
                             get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
                             get_user_name(players[m], victims_name, charsmax(victims_name) );
                             client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
@@ -580,27 +578,27 @@ public Other_Attack_Touch(ent, id)
             emessage_end();
 
             ///Actual damage
-            new location[3];
-            new Float:Vec[3];
+            static location[3],
+            Float:Vec[3];
             IVecFVec(location, Vec)
             FVecIVec(Vec, location)
             location[2] = location[2] + 20
 
             new players[MAX_PLAYERS];
-            new playercount, resultdance;
+            new playercount, result_distance ;
 
             get_players(players,playercount,"h")
             for (new m=0; m<playercount; ++m)
             {
-                new playerlocation[3];
+                static playerlocation[3];
                 if(is_user_connected(players[m]) && is_user_alive(players[m]))
                 {
                     get_user_origin(players[m], playerlocation);
-                    resultdance = get_entity_distance(g_model, players[m]);
+                    result_distance  = get_entity_distance(g_model, players[m]);
 
-                    if(resultdance < get_pcvar_num(g_proximity))
+                    if(result_distance  < get_pcvar_num(g_proximity))
                     {
-                        new hp = get_user_health(players[m])
+                        static hp; hp = get_user_health(players[m])
                         if(hp > 15.0)
                         {
                             fakedamage(players[m],"Sonic Radiation",1.0,DMG_SONIC);
@@ -625,7 +623,7 @@ public Other_Attack_Touch(ent, id)
                             entity_explosion_knockback(players[m], End_Position);
                             fakedamage(players[m],"Sonic Radiation",300.0,DMG_SONIC);
 
-                            new killer = entity_get_edict(ent,EV_ENT_owner);
+                            static killer; killer = entity_get_edict(ent,EV_ENT_owner);
 
                             log_kill(killer,players[m],"Sonic Radiation",1);
                         }
