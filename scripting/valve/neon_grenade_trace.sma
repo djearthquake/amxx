@@ -360,9 +360,9 @@ public glow(g_model)
 public HandGrenade_Attack2_Touch(ent, id)
 {
     static nade_owner;
-    nade_owner = pev(ent,pev_owner);
-    if(get_pcvar_num(g_cvar_neon_rad) == 1)
+    if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_rad) == 1)
     {
+        nade_owner = pev(ent,pev_owner);
         ///Sound FX //make a cvar lags might be reason for overflows!
         if(get_pcvar_num(g_cvar_neon_snd))
         switch(random_num(0,3))
