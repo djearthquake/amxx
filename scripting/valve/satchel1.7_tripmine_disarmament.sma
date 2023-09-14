@@ -54,7 +54,7 @@ new disarmament[][]=
 
 new g_enable, g_health, gMaxPlayers, g_Hostname
 new g_SzMonster_class[MAX_NAME_LENGTH];
-new g_lash_damage
+new g_lash_damage, g_fire
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_OFFSET = 20;
 const LINUX_DIFF = 5;
@@ -74,6 +74,7 @@ public plugin_init()
         register_touch(disarmament[list], "player", "disarm_")
     register_touch("monster_satchel", "player", "@touch")
     g_enable = register_cvar("hl_satchel", "1")
+    g_health = register_cvar("hl_satchel_health", "15")
     g_mortar_range = register_cvar("hl_satchel_mortar", "300.0")
     g_enable = register_cvar("hl_satchel", "1")
     g_lash_damage = register_cvar("hl_satchel_lash", "15")
@@ -84,13 +85,16 @@ public plugin_init()
     iRPenguinOwner = (find_ent_data_info("CPenguinGrenade", "m_hOwner") - LINUX_OFFSET)
 
     if(has_map_ent_class("op4mortar"))
+    {
         g_proximity = register_forward(FM_PlayerPreThink, "mortar_proximity")
+    }
 }
 
 public plugin_precache()
 {
     g_Szsatchel_ring = precache_model("sprites/zerogxplode.spr")
     precache_sound(SzSatchSfx)
+    g_fire = precache_model("sprites/laserbeam.spr")
 }
 
 @touch(iExplosive, iExplosives_Handler)
@@ -241,6 +245,7 @@ public mortar_proximity(id)
     {
         unregister_forward(FM_PlayerPreThink, g_proximity)
         log_amx "Disabling mortar think due to no more cannons."
+        return
     }
 
     new ent[4]
@@ -265,7 +270,7 @@ public mortar_proximity(id)
         ents = ent[3]
     }
 
-    if(ents)
+    if(ents && pev_valid(ents)>1)
     {
 
         if(entity_range(id, ents) < get_pcvar_float(g_mortar_range))
@@ -289,6 +294,29 @@ public mortar_proximity(id)
                         ewrite_short(500)//(radius)
                         ewrite_byte(random(256))
                         ewrite_byte(MAX_IP_LENGTH * 10) //(duration * 10) (will be randomized a bit)
+                        emessage_end()
+
+                        new iPlayerOrigin[3]
+                        get_user_origin(id, iPlayerOrigin, 1)
+
+                        #define TE_LIGHTNING 7          // TE_BEAMPOINTS with simplified parameters
+                        new origin[3];
+                        origin[0] = floatround(Origin[0]);
+                        origin[1] = floatround(Origin[1]);
+                        origin[2] = floatround(Origin[2]);
+
+                        emessage_begin(MSG_ALL, SVC_TEMPENTITY, {0,0,0}, 0);
+                        ewrite_byte(TE_LIGHTNING)
+                        ewrite_coord(iPlayerOrigin[0])      // end position
+                        ewrite_coord(iPlayerOrigin[1])
+                        ewrite_coord(iPlayerOrigin[2])
+                        ewrite_coord(origin[0])      // start position
+                        ewrite_coord(origin[1])
+                        ewrite_coord(origin[2])
+                        ewrite_byte(30)       // life in 0.1's
+                        ewrite_byte(50)        // width in 0.1's
+                        ewrite_byte(10) // amplitude in 0.01's
+                        ewrite_short(g_fire)     // sprite model index
                         emessage_end()
                     }
                 }
