@@ -41,7 +41,7 @@ new bool:bListening[MAX_PLAYERS + 1]
 new bool:bFirstPerson[MAX_PLAYERS + 1]
 new bool:g_bRenderApplied[MAX_PLAYERS + 1]
 new bool:g_bFlagMap
-new g_random_view[MAX_PLAYERS+1]
+new g_random_view[MAX_PLAYERS+1], g_spec_think
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ], g_cvar_nametag
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
@@ -132,6 +132,7 @@ public plugin_init()
 
     register_forward(FM_PlayerPreThink, "client_prethink", 0);
     register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
+    g_spec_think = register_forward(FM_PlayerPreThink, "spec_think")
     register_event("WeapPickup", "@strip_spec", "bef")
 
     //RegisterHam(Ham_Spawn, "player", "@play", 1); //ents can disappear on map start.
@@ -141,24 +142,12 @@ public plugin_init()
     //maxplayers = get_maxplayers()
 }
 
-/*
+
 public plugin_end()
 {
-    for(new id = 1 ; id <= maxplayers ; ++id)
-    if(containi(SzSpecName[id], "[s]") != charsmin)
-    {
-        if(containi(SzClientName[id], "[s]") == charsmin)
-        {
-            set_user_info(id, "name", SzClientName[id])
-        }
-        else
-        {
-            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
-            set_user_info(id, "name", SzClientName[id])
-        }
-    }
+    unregister_forward(FM_PlayerPreThink, g_spec_think)
 }
-*/
+
 
 public handle_say(id, blah[MAX_USER_INFO_LENGTH])
 {
@@ -195,14 +184,14 @@ public client_impulse(id)
     return PLUGIN_CONTINUE
 }
 
-public client_prethink( id )
+public spec_think( id )
 {
+    if(!pev_valid(id) || is_user_hltv(id))
+        return
     OK)
     {
         if(!g_spectating[id])
         {
-            if(!is_user_connected(id))
-                return
             pev(id, pev_origin, g_user_origin[id]);
             entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
             entity_get_vector(id, EV_VEC_view_ofs, g_Plane[id]);
@@ -269,7 +258,7 @@ public client_prethink( id )
             {
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
 
-                static effects; effects = pev(id, pev_effects)
+                new effects; effects = pev(id, pev_effects)
                 set_pev(id, pev_effects, (effects | EF_NODRAW))
 
                 g_spectating[id] = true
