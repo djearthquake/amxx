@@ -357,6 +357,7 @@ if(is_user_connected(id))
     if( para_ent[id] )
     {
         set_user_gravity(id, 1.0)
+        set_task 0.1, "@missile_cmd", id
 
         if(bOF_run && bIsBot[id])
         {
@@ -374,6 +375,9 @@ if(is_user_connected(id))
         {
             remove_entity(para_ent[id])
             para_ent[id] = 0
+
+            if(task_exists(id))
+                remove_task(id)
         }
 
     }
@@ -434,7 +438,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
             {
                 if(bMissileSet[id])
                 {
-                    set_user_info(id, "is_parachuting", "0")
+                    //set_user_info(id, "is_parachuting", "0")
                     bMissileSet[id] = false
                 }
                 if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
@@ -483,7 +487,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                 {
                     if(!bMissileSet[id])
                     {
-                        set_user_info(id, "is_parachuting", "1")
+                        //set_user_info(id, "is_parachuting", "1")
                         bMissileSet[id] = true
                     }
                     if(AUTO && !bFirstAuto[id])
@@ -585,7 +589,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                             set_user_gravity(id, 1.0)
                             if(bMissileSet[id])
                             {
-                                set_user_info(id, "is_parachuting", "0")
+                                //set_user_info(id, "is_parachuting", "0")
                                 bMissileSet[id] = false
                             }
 
@@ -603,7 +607,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                     {
                         if(bMissileSet[id])
                         {
-                            set_user_info(id, "is_parachuting", "0")
+                            //set_user_info(id, "is_parachuting", "0")
                             bMissileSet[id] = false
                         }
                         remove_entity(para_ent[id])
@@ -615,7 +619,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                 {
                     if(bMissileSet[id])
                     {
-                        set_user_info(id, "is_parachuting", "0")
+                        //set_user_info(id, "is_parachuting", "0")
                         bMissileSet[id] = false
                     }
                     remove_entity(para_ent[id])
@@ -895,4 +899,12 @@ public admin_give_parachute(id, level, cid)
         log_amx("^"%s<%d><%s><>^" gave a parachute to ^"%s<%d><%s><>^"", name,get_user_userid(id),authid,name2,get_user_userid(player),authid2)
     }
     return PLUGIN_HANDLED
+}
+
+@missile_cmd(id)
+{
+    if(is_user_connected(id))
+    {
+        set_user_info(id, "is_parachuting", bMissileSet[id] ? "1" : "0")
+    }
 }
