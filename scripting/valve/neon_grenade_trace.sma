@@ -1,776 +1,876 @@
-/*
-*
-*   SSSSSSSSSSSSSSS PPPPPPPPPPPPPPPPP     iiii  NNNNNNNN        NNNNNNNNXXXXXXX       XXXXXXX
-* SS:::::::::::::::SP::::::::::::::::P   i::::i N:::::::N       N::::::NX:::::X       X:::::X
-*S:::::SSSSSS::::::SP::::::PPPPPP:::::P   iiii  N::::::::N      N::::::NX:::::X       X:::::X
-*S:::::S     SSSSSSSPP:::::P     P:::::P        N:::::::::N     N::::::NX::::::X     X::::::X
-*S:::::S              P::::P     P:::::Piiiiiii N::::::::::N    N::::::NXXX:::::X   X:::::XXX
-*S:::::S              P::::P     P:::::Pi:::::i N:::::::::::N   N::::::N   X:::::X X:::::X
-* S::::SSSS           P::::PPPPPP:::::P  i::::i N:::::::N::::N  N::::::N    X:::::X:::::X
-*  SS::::::SSSSS      P:::::::::::::PP   i::::i N::::::N N::::N N::::::N     X:::::::::X
-*    SSS::::::::SS    P::::PPPPPPPPP     i::::i N::::::N  N::::N:::::::N     X:::::::::X
-*       SSSSSS::::S   P::::P             i::::i N::::::N   N:::::::::::N    X:::::X:::::X
-*            S:::::S  P::::P             i::::i N::::::N    N::::::::::N   X:::::X X:::::X
-*            S:::::S  P::::P             i::::i N::::::N     N:::::::::NXXX:::::X   X:::::XXX
-*SSSSSSS     S:::::SPP::::::PP          i::::::iN::::::N      N::::::::NX::::::X     X::::::X
-*S::::::SSSSSS:::::SP::::::::P          i::::::iN::::::N       N:::::::NX:::::X       X:::::X
-*S:::::::::::::::SS P::::::::P          i::::::iN::::::N        N::::::NX:::::X       X:::::X
-* SSSSSSSSSSSSSSS   PPPPPPPPPP          iiiiiiiiNNNNNNNN         NNNNNNNXXXXXXX       XXXXXXX
-*
-*──────────────────────────────▄▄
-*──────────────────────▄▄▄▄▄▄▄▄▌▐▄
-*─────────────────────█▄▄▄▄▄▄▄▄▌▐▄█
-*────────────────────█▄▄▄▄▄▄▄█▌▌▐█▄█
-*──────▄█▀▄─────────█▄▄▄▄▄▄▄▌░▀░░▀░▌
-*────▄██▀▀▀▀▄──────▐▄▄▄▄▄▄▄▐ ▌█▐░▌█▐▌
-*──▄███▀▀▀▀▀▀▀▄────▐▄▄▄▄▄▄▄▌░░░▄▄▌░▐
-*▄████▀▀▀▀▀▀▀▀▀▀▄──▐▄▄▄▄▄▄▄▌░░▄▄▄▄░▐
-*████▀▀▀▀▀▀▀▀▀▀▀▀▀▄▐▄▄▄▄▄▄▌░▄░░▀▀░░▌
-*▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▐▄▄▄▄▄▄▌░▐▀▄▄▄▄▀
-*▒▒▒▒▄▄▀▀▀▀▀▀▀▀▄▄▄▄▀▀█▄▄▄▄▄▌░░░░░▌
-*▒▄▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░▌
-*▒▌░░░░░▀▄░░░░░░░░░░░░░░░▀▄▄▄▄▄▄░▀▄▄▄▄▄
-*▒▌░░░░░░░▀▄░░░░░░░░░░░░░░░░░░░░▀▀▀▀▄░▀▀▀▄
-*▒▌░░░░░░░▄▀▀▄░░░░░░░░░░░░░░░▀▄░▄░▄░▄▌░▄░▄▌
-*▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-*
-*
-*
-*
-*
-* __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Mon Feb 20th, 2023.
-*.__)|   || \|/  \
-*    Radioactive Half-Life grenade trails.
-*
-*    Copyleft (C) 2018-2023 .sρiηX҉.
-*
-*    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU Affero General Public License as
-*    published by the Free Software Foundation, either version 3 of the
-*    License, or (at your option) any later version.
-*
-*    This program is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-#include <amxmodx>
- #include <amxmisc>
-  #include <engine>
-  #include <fakemeta>
-   #include <fakemeta_util>
-   #include <fun>
-   #define MAX_NAME_LENGTH 32
-   #define MAX_PLAYERS 32
-   #define COLOR random(256)
-   #define PITCH (random_num (10,250))
-    #define SLOW change_task(g_model,random_float(1.5,2.0),0)
+#include amxmodx
+#include amxmisc
+#include engine
+#include fakemeta
+#include fakemeta_util
+#include fun
+#include hamsandwich
 
-    #define DELAY ewrite_short(get_pcvar_num(g_cvar_bsod_iDelay)*4096) //Remember 4096 is ~1-sec per 'spec unit'
+#define MAX_PLAYERS                    32
+#define MAX_RESOURCE_PATH_LENGTH       64
+#define MAX_MENU_LENGTH                512
+#define MAX_NAME_LENGTH                32
+#define MAX_AUTHID_LENGTH              64
+#define MAX_IP_LENGTH                  16
+#define MAX_USER_INFO_LENGTH           256
+#define charsmin                      -1
 
-    #define FLAGS ewrite_short(0x0001)
+#define PLUGIN "OF spectator"
+#define VERSION "1.0.4"
+#define AUTHOR ".sρiηX҉."
 
-    #define ALPHA ewrite_byte(500)
+#define MOTD    1337
+#define RESET    1999
+#define TOGGLE 2022
 
+//heads up display char gen
+#define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
+#define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
 
-    //Screenfade color.
+#define OK if(is_user_connected(id)
 
-    #define BLU ewrite_byte(0);ewrite_byte(0);ewrite_byte(random_num(200,255))
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
-    #define GRN ewrite_byte(0);ewrite_byte(random_num(200,255));ewrite_byte(0)
+new g_AI /*,maxplayers*/
+new bool:g_spectating[MAX_PLAYERS + 1]
+new bool:bDemo[MAX_PLAYERS +1]
+new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
+new bool:bListening[MAX_PLAYERS + 1]
+new bool:bFirstPerson[MAX_PLAYERS + 1]
+new bool:g_bRenderApplied[MAX_PLAYERS + 1]
+new bool:g_bFlagMap
+new g_random_view[MAX_PLAYERS+1]
+new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ], g_cvar_nametag
+new g_motd[MAX_RESOURCE_PATH_LENGTH]
+new const DIC[] = "of_spectate.txt"
+new Float:g_user_origin[MAX_PLAYERS + 1][3]
 
-    #define PNK ewrite_byte(255);ewrite_byte(random_num(170,200));ewrite_byte(203)
+new g_iViewtype[MAX_PLAYERS + 1]
 
-    #define PUR ewrite_byte(118);ewrite_byte(random_num(25,75));ewrite_byte(137)
+new g_startaspec, cvar_gg
+new bool:g_bGunGameRunning, bool:g_bGrenadesOnlyRunning
+new bool:g_bSpecNam[MAX_PLAYERS + 1]
+new SzSpecName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
-    #define get_user_model(%1,%2,%3) engfunc( EngFunc_InfoKeyValue, engfunc( EngFunc_GetInfoKeyBuffer, %1 ), "model", %2, %3 )
+new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
+new /*Float:g_Velocity[MAX_PLAYERS + 1][3],*/ g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
 
-    #pragma dynamic 32768
+new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
-    #define charsmin                  -1
+#define IS_THERE (~(0<<IN_SCORE))
 
-    #if !defined set_ent_rendering
-    #define set_ent_rendering set_rendering
-    #endif
-
-    new g_teams, g_shake_msg;
-
-    new const SOUND_HAWK[] = "sound/ambience/hawk1.wav";
-    new const SOUND_SHIT[] = "sound/fvox/fuzz.wav";
-    new const SOUND_MAN[]  = "sound/scientist/scream19.wav";
-
-    new const SOUND_HAWK1[] = "ambience/hawk1.wav";
-    new const SOUND_SHIT1[] = "fvox/fuzz.wav";
-    new const SOUND_MAN1[]  = "scientist/scream19.wav";
-
-    new Float:Axis[3];
-    new g_model,sprite,g_ring;
-    new g_cvar_neon_all,g_cvar_neon_hull,g_cvar_neon_toss,g_cvar_neon_rad,g_cvar_neon_wid;
-    new gibs_models0, gibs_models1, gibs_models2;
-    new g_energy0,g_energy1,g_energy2;
-
-    new g_pickable, g_debug, g_cvar_neon_snd, g_proximity;
-    new g_pickerton[MAX_PLAYERS];
-    new g_cvar_bsod_iDelay;
-    new g_iLoss,g_iPing;
-    new g_hornet_think, g_bolt_think, g_rpg_think, g_mortar_think, g_tank_think, g_rocket_think;
-    new bool: bRADead[MAX_PLAYERS + 1];
-    new bool: bStrike;
-    static g_event_fade
-
-public plugin_end()
-{
-    unregister_think(g_bolt_think);
-    unregister_think(g_hornet_think);
-    unregister_think(g_mortar_think);
-    unregister_think(g_rocket_think);
-    unregister_think(g_rpg_think);
-    unregister_think(g_tank_think);
-}
 public plugin_init()
 {
-    register_plugin("Neon Grenade Trace","A","SPiNX");
-    bStrike = cstrike_running() == 1 ? true : false
+    register_plugin(PLUGIN, VERSION, AUTHOR)
+    if(!lang_exists(DIC))
 
-    g_event_fade = get_user_msgid("ScreenFade")
-    g_pickable = register_cvar("neon_pick", "func_button")
+        register_dictionary(DIC);
 
-    get_pcvar_string(g_pickable, g_pickerton, charsmax(g_pickerton));
-
-    g_debug = register_cvar("neon_debug", "0")
-
-    register_touch("grenade","","HandGrenade_Attack2_Touch") //engine method
-    g_cvar_neon_all    = register_cvar("sv_neon_all",  "1");
-    g_cvar_neon_hull   = register_cvar("sv_neon_hull", "1");
-    g_cvar_neon_toss   = register_cvar("sv_neon_toss", "1");
-    g_cvar_neon_rad    = register_cvar("sv_neon_rad",  "1");
-    g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
-    g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
-    g_proximity             = register_cvar("sv_neon_range",  "500"); //max range
-    g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
-    clamp(g_cvar_neon_wid,1,150);
-    g_shake_msg = get_user_msgid("ScreenShake")
-    g_cvar_bsod_iDelay = register_cvar("neon_flashbang_time", "2");
-
-
-    //HAND GRENADES
-    if(has_map_ent_class("weapon_handgrenade"))
+    else
     {
-        register_think("grenade","@tracer");
+        log_amx("%s %s by %s paused to prevent data key leakage from missing %s.", PLUGIN, VERSION, AUTHOR, DIC);
+        pause "a";
     }
-    //AR GRENADES
-    if(has_map_ent_class("ammo_ARgrenades"))
+    if(is_plugin_loaded("gungame.amxx",true)!=charsmin)
     {
-        register_think("ARgrenade","@tracer");
-        register_touch("ARgrenade", "*", "HandGrenade_Attack2_Touch");
+        g_bGunGameRunning = true
+        //pause "a";
     }
-    //HORNET
-    if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
+    if(is_plugin_loaded("grenades_only.amxx",true)!=charsmin)
     {
-        if(has_map_ent_class("weapon_hornetgun"))
-            register_touch("hornet", "*", "Other_Attack_Touch");
+        g_bGrenadesOnlyRunning = true
     }
-    //BOW
-    if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
+    new mname[MAX_NAME_LENGTH]
+    get_mapname(mname, charsmax(mname));
+    g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
+
+    server_print("Loading %s.", PLUGIN)
+    register_clcmd("!spec", "@menu", 0, "- Spectator Menu")
+    register_concmd("say !spec","@go_spec",0,"spectate|rejoin")
+    register_concmd("say !spec_switch","@switch_views",0,"spectate random")
+    register_clcmd("!spec_switch", "@switch_views", 0, "- Spectator Menu")
+
+    //g_startaspec = register_cvar("sv_spectate_spawn", "0")  //how many sec afk goes into spec mode
+
+    bind_pcvar_num( create_cvar("sv_spectate_spawn", "0", FCVAR_NONE, "OF SPEC",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 60.0),  g_startaspec )
+    bind_pcvar_num( create_cvar("mp_spectag", "1", FCVAR_NONE, "SPEC TAG",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar_nametag )
+    g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
+
+    register_forward(FM_PlayerPreThink, "client_prethink", 0);
+    register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
+    register_event("WeapPickup", "@strip_spec", "bef")
+
+    //RegisterHam(Ham_Spawn, "player", "@play", 1); //ents can disappear on map start.
+    register_event("ResetHUD", "@play", "b")
+    register_clcmd("say", "handle_say")
+    ///set_task_ex(11.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
+    //maxplayers = get_maxplayers()
+}
+
+/*
+public plugin_end()
+{
+    for(new id = 1 ; id <= maxplayers ; ++id)
+    if(containi(SzSpecName[id], "[s]") != charsmin)
     {
-        if(has_map_ent_class("weapon_crossbow"))
+        if(containi(SzClientName[id], "[s]") == charsmin)
         {
-            g_bolt_think = register_think("bolt","@tracer");
-
-            register_touch("bolt", "*", "HandGrenade_Attack2_Touch");
+            set_user_info(id, "name", SzClientName[id])
+        }
+        else
+        {
+            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+            set_user_info(id, "name", SzClientName[id])
         }
     }
-    if(get_pcvar_num(g_cvar_neon_all) > 9 )
+}
+*/
+
+public handle_say(id, blah[MAX_USER_INFO_LENGTH])
+{
+    OK && g_cvar_nametag)
     {
-        //RPG
-        if(has_map_ent_class("weapon_rpg"))
+        static reblah[MAX_USER_INFO_LENGTH]
+        read_args(blah,charsmax(blah))
+        remove_quotes(blah)
+
+        if(g_spectating[id])
         {
-            register_touch("rpg_rocket", "*", "HandGrenade_Attack2_Touch");
+            format(reblah, charsmax(reblah), "[Spectator]%n: %s", id, blah)
+            client_print 0, print_chat, "%s", reblah
+            return PLUGIN_HANDLED
         }
-        //MORTAR
-        if(has_map_ent_class("op4mortar"))
+
+    }
+    return PLUGIN_CONTINUE
+}
+
+@strip_spec(id)
+{
+    OK && bFirstPerson[id] && g_spectating[id] )
+    {
+        fm_strip_user_weapons(id)
+    }
+}
+
+public client_impulse(id)
+{
+    if(g_spectating[id])
+        return PLUGIN_HANDLED
+
+    return PLUGIN_CONTINUE
+}
+
+public client_prethink( id )
+{
+    OK)
+    {
+        if(!g_spectating[id])
         {
-            g_mortar_think = register_think("mortar_shell", "@tracer");
-            register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
+            pev(id, pev_origin, g_user_origin[id]);
+            entity_get_vector(id, EV_VEC_angles, g_Angles[id]);
+            entity_get_vector(id, EV_VEC_view_ofs, g_Plane[id]);
+            entity_get_vector(id, EV_VEC_punchangle, g_Punch[id]);
+            entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
+            entity_get_vector(id, EV_VEC_movedir, g_Mdir[id]);
+
+            if(CheckPlayerBit(g_AI, id))
+                return
         }
-        //TANK MORTAR (can't isolate the shell from the cannon)
+        else
+        {
+            //Remember!
+            #define OBS_NONE                        0
+            #define OBS_CHASE_LOCKED                1           // Locked Chase Cam
+            #define OBS_CHASE_FREE                  2           // Free Chase Cam
+            #define OBS_ROAMING                     3           // Free Look
+            #define OBS_IN_EYE                      4           // First Person //attach_view(id,id)
+            #define OBS_MAP_FREE                    5           // Free Overview
+            #define OBS_MAP_CHASE                   6           // Chase Overview
+
+            if(pev(id, pev_button) & IN_SCORE)
+            {
+                static iTOS; iTOS = get_user_time(id)
+                if(iTOS > 30 && iTOS < 120 )
+                {
+                    entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
+                    client_print id, print_center, "%f|%f|%f^n^n%f|%f", g_user_origin[id][0], g_user_origin[id][1], g_user_origin[id][2], g_Vangle[id][0], g_Vangle[id][1]
+                }
+            }
+/*
+            if( pev(id, pev_button) & IN_RELOAD && is_user_admin(id))
+            {
+                //helps unsticking
+                set_pev(id, pev_iuser1, g_iViewtype[id]) //not op4
+                {
+                    client_print id, print_center, "Trying spec %d.", g_iViewtype[id]
+                    g_iViewtype[id]++  //cycle through the 6
+
+                    //reset back to one
+                    if(g_iViewtype[id] > 6 )
+                    {
+                         client_print id, print_chat, "Reset spec counter %i.", g_iViewtype[id]
+                         g_iViewtype[id]  = 0
+                    }
+                }
+            }
+*/
+            if(g_bGunGameRunning)
+            {
+                cvar_gg = get_cvar_pointer("gg_enabled")
+                if(cvar_gg)
+                {
+                    //set_view(id, CAMERA_NONE)
+                    fm_strip_user_weapons(id)
+                    //entity_set_float(id, EV_FL_fov, 100.0)
+                }
+            }
+
+            if(g_random_view[id])
+            {
+                set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
+
+                static effects; effects = pev(id, pev_effects)
+                set_pev(id, pev_effects, (effects | EF_NODRAW))
+                fm_strip_user_weapons(id)
+
+                g_spectating[id] = true
+
+                if(bFirstPerson[id])
+                {
+                    static iTarget; iTarget = g_random_view[id]
+                    if(is_user_connected(iTarget)) //needs checked here as index was made up!
+                    {
+                        //attach_view(id, iTarget);
+                        set_view(id, CAMERA_NONE)
+                        entity_set_float(id, EV_FL_fov, 100.0)
+
+                        entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
+                        entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
+                        entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
+                        entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
+                        entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+
+                        //trace_line(0, g_Plane[id], g_Plane[iTarget], g_Velocity[iTarget])
+                        entity_set_int( id, EV_INT_fixangle, 1 )
+                        if(loss() > 2) //MAKE CVAR
+                        {
+                            bFirstPerson[id] = false
+                        }
+                        else
+                        {
+                            g_bRenderApplied[iTarget] = true
+                        }
+                    }
+                }
+                else
+                {
+                    attach_view(id, id);
+                    set_view(id, CAMERA_3RDPERSON)
+                    entity_set_int( id, EV_INT_fixangle, 0 )
+                    entity_set_float(id, EV_FL_fov, 150.0)
+                }
+
+            }
+        }
+    }
+}
+
+public fwdAddToFullPack_Post( es_handle, e, ent, host, hostflags, player, pset )
+{
+    if (!player)
+        return FMRES_IGNORED;
+
+    if( bFirstPerson[host] && host != ent )
+    {
+        if( ent == g_random_view[host]  && g_bRenderApplied[ent])
+        {
+            set_es(es_handle, ES_Effects, get_es(es_handle, ES_Effects) | EF_NODRAW)
+        }
+
+    }
+    return FMRES_IGNORED;
+}
+
+stock loss()
+{
+    static iPing,iLoss
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"i")
+
+    for(new lot;lot < sizeof players;lot++)
+        get_user_ping(players[lot],iPing,iLoss)
+
+    return iLoss
+}
+
+@play(id)
+{
+    OK)
+    {
+        if(CheckPlayerBit(g_AI, id))
+            return
+        //server_print "%n spectator mode is resetting.", id
+
+        client_cmd id,"spk valve/sound/UI/buttonclick.wav"
+
+        if(g_startaspec)
+            set_task(2.0,"@reset", id+RESET)
+
+        if(task_exists(id+MOTD))
+            remove_task(id + MOTD)
+
+        if(task_exists(id + TOGGLE))
+            remove_task(id + TOGGLE)
+
+        if(g_bSpecNam[id])
+        {
+            set_user_info(id, "name", SzClientName[id])
+            g_bSpecNam[id] = false
+        }
+        set_view(id, CAMERA_NONE)
+    }
+}
+
+@reset(Tsk)
+{
+    static id; id = Tsk - RESET
+    OK)
+    if(g_spectating[id])
+    {
+        set_user_godmode(id,false)
+        server_print "Spec mode reset for ^n%n",id
+
+        if(task_exists(id+MOTD))
+            remove_task(id + MOTD)
+
+        if(task_exists(id))
+            remove_task(id)
+
+        g_spectating[id] = false
+        set_view(id, CAMERA_NONE)
+        entity_set_float(id, EV_FL_fov, 100.0)
+
+        static effects; effects = pev(id, pev_effects)
+        set_pev(id, pev_effects, (effects | ~EF_NODRAW))
+
+        static flags; flags = pev(id, pev_flags)
+        set_pev(id, pev_flags, (flags | ~FL_SPECTATOR | ~FL_NOTARGET | ~FL_PROXY  | ~FL_PROXY | ~FL_CUSTOMENTITY))
+        //set_pev(id, pev_flags, (flags | ~FL_SPECTATOR))
+    }
+}
+
+public client_putinserver(id)
+{
+    OK)
+    {
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+
+        g_spectating[id] = false
+        bAlready_shown_menu[id] = false
+        g_random_view[id] = 0
+
+        if(CheckPlayerBit(g_AI, id))
+            return
+
+        set_task(3.0,"@clear_menu", id)
+
+        static szSpec[4]
+        get_user_info(id,"spectate", szSpec, charsmax(szSpec))
+
+        if(equali(szSpec, "1"))
+        {
+            dllfunc(DLLFunc_ClientPutInServer, id)
+            @go_spec(id)
+        }
+
+        if(!g_bFlagMap)
+        {
+            if(!g_startaspec)
+            {
+                if(g_spectating[id])
+                {
+                    g_spectating[id] = false
+                }
+
+            }
+            else
+            {
+                set_task(g_startaspec*1.0,"@go_check",id)
+            }
+        }
+    }
+}
+
+public client_connectex(id, const name[], const ip[], reason[128])
+{
+    copy(SzClientName[id],charsmax(SzClientName[]), name)
+    if(containi(name, "[s]") > charsmin)
+    {
+        replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+        set_user_info(id, "name", SzClientName[id])
+    }
+    g_spectating[id] = false
+    return PLUGIN_CONTINUE
+}
+
+@go_check(id)
+{
+    OK)
+    {
+        server_print("spec check %n if AFK...", id)
+
+        if(pev(id, pev_button) & IS_THERE & pev(id, pev_oldbuttons) & IS_THERE)
+            return PLUGIN_HANDLED
+
+        //@go_spec(id)
+        if(!g_spectating[id])
+        {
+            set_task(10.0,"@go_spec",id)
+            server_print("spec check %n IS AFK...", id)
+        }
+    }
+    return PLUGIN_CONTINUE
+}
+
+@menu(id)
+{
+    OK && pev_valid(id)>1)
+    {
+        static menu; menu = menu_create ("Spectate", "@spec_menu");
+
+        menu_additem(menu, "PLAY/WATCH^n", "1");
+        //if(g_spectating[id])
+        menu_additem(menu, "Chase Cam/Free-look^n^n", "2")
+        //if(g_random_view[id] && !bFirstPerson[id])
+        menu_additem(menu, "First Person Chase Cam^n^n", "3")
+        bFirstPerson[id] && CheckPlayerBit(g_AI, g_random_view[id]) ?
+        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4"):menu_additem(menu, "...^n^n^n^n^n", "5")
+
+        menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
+        //if(!g_spectating[id])
+        //menu_additem(menu, "New Map^n^n^n", "6")
+        menu_additem(menu, "Toggle views^n^n^n", "6")
+        menu_additem(menu, "LEAVE SERVER!^n", "7")
+        menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
+        menu_display(id, menu, 0, 9);
+        return PLUGIN_HANDLED
+    }
+    return PLUGIN_CONTINUE
+}
+
+@spec_menu(id, menu, item)
+{
+    OK && pev_valid(id)>1)
+    {
+        bAlready_shown_menu[id] = true
         /*
-        if(has_map_ent_class("weapon_snark"))
-        {
-            g_tank_think = register_think("monster_snark", "@tracer");
-            register_touch("monster_snark", "player", "HandGrenade_Attack2_Touch");
-        }
+        static szSpec[4]
+        get_user_info(id,"spectate", szSpec, charsmax(szSpec))
+
+        if(equali(szSpec, "1"))
+            g_spectating[id] = true
         */
-        //MISSILES //affecting spec mode
-        if(is_plugin_loaded("spinx_missiles.amxx",true)!=charsmin)
+
+        switch(item)
         {
-            g_rocket_think = register_think("func_rocket", "@tracer");
-            register_touch("func_rocket", "*", "HandGrenade_Attack2_Touch");
-        }
-    }
-    if(bStrike)
-    {
-        register_logevent("plugin_save", 3, "2=Planted_The_Bomb")
-    }
-}
-
-public plugin_precache()
-{
-    sprite       = precache_model("sprites/smoke.spr");
-    precache_generic("sprites/smoke.spr");
-    g_energy0    = precache_model("models/bleachbones.mdl");precache_generic("models/bleachbones.mdl");
-    g_energy1    = precache_model("models/bskull_template1.mdl");precache_generic("models/bskull_template1.mdl");
-    g_energy2    = precache_model("models/sphere.mdl");precache_generic("models/sphere.mdl");
-
-    g_ring       = precache_model("sprites/ballsmoke.spr");precache_generic("sprites/ballsmoke.spr");
-    gibs_models0 = precache_model("models/cindergibs.mdl");precache_generic("models/cindergibs.mdl")
-    gibs_models1 = precache_model("models/chromegibs.mdl");precache_generic("models/chromegibs.mdl")
-    //also needed for breakable randomly using them
-    gibs_models2 = precache_model("models/glassgibs.mdl");precache_generic("models/glassgibs.mdl");
-    precache_sound(SOUND_HAWK1);
-    precache_sound(SOUND_MAN1);
-    precache_sound(SOUND_SHIT1);
-    precache_generic(SOUND_HAWK);
-    precache_generic(SOUND_MAN);
-    precache_generic(SOUND_SHIT);
-}
- /*
-public hull_glow(model)
-{
-    if(get_pcvar_num(g_cvar_neon_hull) !=1 && pev_valid(model) > 1)
-    {
-        switch(random_num(0,1))
-        {
-            case 0: set_ent_rendering(model, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(model,1000));
-            case 1: set_ent_rendering(model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
-        }
-    }
-    return PLUGIN_CONTINUE;
-}
- */
-
-@tracer(s)
-{
-    if(pev_valid(s) && get_pcvar_num(g_cvar_neon_hull) == 1){
-
-      switch(random_num(0,1))
-       {
-        case 0: set_ent_rendering(s, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(s,1000));
-        case 1: set_ent_rendering(s, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
-       }
-
-    }
-    if(get_pcvar_num(g_cvar_neon_toss) == 1)
-        Trail_me(s)
-}
-
-public CurentWeapon(id)
-{
-    if(is_user_connected(id) && is_user_alive(id))
-    {
-        static temp_ent1, temp_ent2, temp_ent3, temp_ent4,/*temp_ent5,*/ temp_ent6, /*temp_ent7,*/ temp_ent8;
-        //Standard
-        temp_ent1 = find_ent(charsmin,"grenade");
-        temp_ent2 = find_ent(charsmin,"ARgrenade");
-
-        //Make hivehand into vorpal weapon.
-        if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
-            temp_ent3 = find_ent(charsmin,"hornet");
-        //Magic Missile variant.
-        if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
-            temp_ent4 =  find_ent(charsmin,"bolt");
-        //Baby nuke tipped RPG and alike.
-        if(get_pcvar_num(g_cvar_neon_all) > 9)
-        {
-//            temp_ent5 = find_ent(charsmin,"gib"); //rpg_rocket
-            temp_ent6 = find_ent(charsmin,"mortar_shell");
-//            temp_ent7 = find_ent(charsmin,"func_tank");
-            temp_ent8 = find_ent(charsmin,"func_rocket"); //spinx_missile fork of lud's
-        }
-
-        if(pev_valid(temp_ent1) )
-            g_model = temp_ent1;
-
-        if(pev_valid(temp_ent2) )
-            g_model = temp_ent2;
-
-        if(pev_valid(temp_ent3) )
-            g_model = temp_ent3;
-
-        if(pev_valid(temp_ent4) )
-            g_model = temp_ent4;
-
- //       if(pev_valid(temp_ent5) )
- //           g_model = temp_ent5;
-
-        if(pev_valid(temp_ent6) )
-            g_model = temp_ent6;
-
- //       if(pev_valid(temp_ent7) )
- //           g_model = temp_ent7;
-
-        if(pev_valid(temp_ent8) )
-            g_model = temp_ent8;
-
-        new s = g_model
-        @tracer(s)
-    }
-
-}
-
-public Trail_me(g_model)
-{
-    if(get_pcvar_num(g_cvar_neon_toss) !=1)return;
-    new lums = random_num(100,2000);new time = random_num(18,40);new width = random_num(1,get_pcvar_num(g_cvar_neon_wid));
-    emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 );
-    ewrite_byte(TE_BEAMFOLLOW);
-    ewrite_short(g_model);ewrite_short(sprite);
-    ewrite_byte(time);ewrite_byte(width);
-    ewrite_byte(COLOR);ewrite_byte(COLOR);ewrite_byte(COLOR);
-    ewrite_byte(lums);emessage_end();
-}
-
-public plugin_save(g_model)
-{
-    if(task_exists(g_model))
-        SLOW &&
-        remove_task(g_model);
-
-    if(task_exists(g_model))
-        switch(0,1)
-        {
-          case 0: return PLUGIN_HANDLED_MAIN;
-          case 1: plugin_save(g_model);
-        }
-    return PLUGIN_CONTINUE;
-}
-
-public glow(g_model)
-{
-    if(pev_valid(g_model)>1)
-    {
-        set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
-    }
-}
-
-public HandGrenade_Attack2_Touch(ent, id)
-{
-    static nade_owner;
-    if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_rad) == 1)
-    {
-        nade_owner = pev(ent,pev_owner);
-        ///Sound FX //make a cvar lags might be reason for overflows!
-        if(get_pcvar_num(g_cvar_neon_snd))
-        switch(random_num(0,3))
-        {
-            case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0, PITCH);
-            case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
-            case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-            case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-        }
-
-        static Float:End_Position[3];
-        g_model = ent
-        if(pev_valid(g_model))
-        {
-            entity_get_vector(g_model,EV_VEC_origin,End_Position);
-            entity_get_vector(g_model,EV_VEC_angles,Axis);
-
-            ///explode models on explode or touch.
-            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() )
-            ewrite_byte(TE_EXPLODEMODEL)
-            ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)))      // XYZ (start)
-            ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)))
-            ewrite_coord(floatround(End_Position[2]+random_float(1.0,75.0)))
-            ewrite_coord(random_num(-350,400))       // velocity
-            switch(random_num(0,2))
+            case 0:
             {
-                case 0: ewrite_short(gibs_models0);
-                case 1: ewrite_short(gibs_models1);
-                case 2: ewrite_short(gibs_models2);
+                @go_spec(id)
+                if(g_spectating[id])
+                    menu_display(id, menu, 0, 10);
             }
-            ewrite_short(random_num(5,15))               //(count)
-            ewrite_byte(random_num(8,20))              //(life in 0.1's)
-            emessage_end()
-
-            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() );
-            ewrite_byte(random_num(19,21));
-            ewrite_coord(floatround(End_Position[0]));
-            ewrite_coord(floatround(End_Position[1]));
-            ewrite_coord(floatround(End_Position[2]));
-            ewrite_coord(floatround(Axis[0]));
-            ewrite_coord(floatround(Axis[1]));
-            ewrite_coord(floatround(Axis[2]));
-            ewrite_short(g_ring);
-            ewrite_byte(100); //fr
-            ewrite_byte(255); // fr rate
-            ewrite_byte(random_num(8,15));  //life
-            ewrite_byte(random_num(8,80));  //width
-            ewrite_byte(random_num(0,50));   //amp
-            ewrite_byte(random_num(30,255));  //r
-            ewrite_byte(random_num(0,200));  //g
-            ewrite_byte(random_num(40,190)); //b
-            ewrite_byte(random_num(100,500)); //bright
-            ewrite_byte(0);
-            emessage_end();
-
-            ///Actual damage
-            static location[3]
-            static Float:Vec[3]
-            IVecFVec(location, Vec)
-            FVecIVec(Vec, location)
-            location[2] = location[2] + 20
-
-            new players[ MAX_PLAYERS ]
-            new playercount
-
-            get_players(players,playercount,"h")
-            for (new m=0; m<playercount; ++m)
+            case 1:
             {
-                static hp; hp = get_user_health(players[m])
-                static playerlocation[3]
-                if(is_user_alive(players[m]))
-                if(is_user_bot(players[m]) ||  !is_user_bot(players[m]) && m != nade_owner)
+                if(g_spectating[id])
                 {
-
-                    get_user_origin(players[m], playerlocation)
-                    static result_distance; result_distance = get_entity_distance(g_model, players[m]);
-
-                    if (result_distance < get_pcvar_num(g_proximity))
+                    random_view(id)
+                    bFirstPerson[id] = false
+                    menu_display(id, menu, 0,15);
+                }
+                else
+                {
+                    client_print id, print_chat, "Must be spectating!"
+                }
+            }
+            case 2:
+            {
+                if(g_spectating[id])
+                {
+                    bFirstPerson[id] = true
+                    ///menu_display(id, menu, 0,15);
+                }
+                else
+                {
+                    client_print id, print_chat, "Must be spectating!"
+                }
+            }
+            case 3:
+            {
+                if(g_spectating[id])
+                {
+                    static iTarget; iTarget = g_random_view[id]
+                    if(bFirstPerson[id] && is_user_connected(iTarget)) //add take over AFK human next
                     {
-
-                        emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
-                        ewrite_byte( TE_PLAYERSPRITES)
-                        ewrite_short(players[m])//ewrite_short(m)  //(playernum)
-                        switch(random_num(0,2))
+                        if(CheckPlayerBit(g_AI, iTarget) || pev(iTarget, pev_button) & ~IS_THERE)
                         {
-                            case 0: ewrite_short(g_energy0);
-                            case 1: ewrite_short(g_energy1);
-                            case 2: ewrite_short(g_energy2);
+                            server_print "TAKING OVER BOT/ AFK PLAYER!"
+                            g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
+                            dllfunc(DLLFunc_ClientPutInServer, id)
+                            dllfunc(DLLFunc_SpectatorDisconnect, id)
+                            g_iViewtype[id]  = 0
+                            g_spectating[id] = false
+                            g_random_view[id] = 0
+                            set_user_info(id, "_spec", "0")
+
+                            entity_set_float(id, EV_FL_fov, 100.0)
+                            change_task(id, 60.0) //less spam
+                            remove_task(id+MOTD)
+                            entity_set_int(id, EV_INT_bInDuck, g_Duck[iTarget]);
+                            entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
+                            entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
+                            entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
+                            entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
+                            entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+
+                            g_BackPack[iTarget] = entity_get_int(iTarget, EV_INT_weapons)
+                            entity_set_int(id, EV_INT_weapons, g_BackPack[iTarget])
+
+
+                            client_print id, print_chat, "%n took control of %n.", id, iTarget
+                            set_pev(id, pev_origin, g_user_origin[iTarget]);
+                            server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
+
+                            set_user_godmode(id,false)
+                            client_cmd 0, "spk debris/beamstart6.wav"
                         }
-                        ewrite_byte(5)     //(count)
-                        ewrite_byte(75) // (variance) (0 = no variance in size) (10 = 10% variance in size)
-                        emessage_end()
+                    }
+                    else
+                    {
+                        client_print id, print_chat, "Must be in First Person view!"
+                        menu_display(id, menu, 0,900);
+                    }
+                }
+                else
+                {
+                    client_print id, print_chat, "Must be in First Person view!"
+                }
+            }
+            case 4:
+            {
+                new Loop, iTrack; iTrack = random_num(1,27)
+                menu_display(id, menu, 0,300);
+                if( bListening[id] )
+                {
+                    client_cmd id, "mp3 stop"
+                    bListening[id] = false
+                }
+                else
+                {
+                    emessage_begin(MSG_ONE_UNRELIABLE,SVC_CDTRACK,{0,0,0},id);ewrite_byte(iTrack);ewrite_byte(Loop);emessage_end();
+                    bListening[id] = true
+                }
+
+            }
+            case 5:
+            {
+                //client_print id, print_chat, "Say rtv"
+                @switch_views(id)
+                menu_display(id, menu, 0,900);
+            }
+            case 6:
+            {
+                server_cmd "kick #%i", get_user_userid(id)
+            }
+        }
+    }
+    return PLUGIN_HANDLED
+}
 
 
-                        emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0},players[m]);
-                        ewrite_short(25000); //amp
-                        ewrite_short(8000); //dur //4096 is~1sec
-                        ewrite_short(30000); //freq
-                        emessage_end();
+public client_infochanged(id)
+{
+    //name sync
+    OK && !g_bSpecNam[id])
+    {
+        get_user_name(id, SzClientName[id], charsmax(SzClientName[]));
+    }
+}
 
-                        if(hp >= 30.0)
+
+@go_spec(id)
+{
+    static cvar_gg; cvar_gg = get_cvar_num("gg_enabled")
+    OK)
+    {
+        if(~CheckPlayerBit(g_AI, id) || !is_user_hltv(id))
+        {
+            //if(pev(id, pev_button) & ~IS_THERE)
+            {
+                if(!g_spectating[id])
+                {
+                    //if(/*!g_bGunGameRunning*/)
+                    {
+                        if(!g_bSpecNam[id] && g_cvar_nametag > 1)
                         {
-                            fakedamage(players[m],"Grenade Radiation",15.0,DMG_RADIATION)
-
-
-                            emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},players[m]);
-                            DELAY;DELAY;FLAGS;PUR;ALPHA; //This is where one can change BLU to GRN.
-                            emessage_end();
-
-                            if(get_pcvar_num(g_debug) > 0)
+                            if(containi(SzClientName[id], "[s]") == charsmin)
                             {
-                                #if AMXX_VERSION_NUM == 182
-                                static throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
-                                get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                                get_user_name(players[m], victims_name, charsmax(victims_name) );
-                                client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
-                                #endif
-
-
-                                #if AMXX_VERSION_NUM != 182
-                                    client_print( 0, print_center,"%n blinded %n!", nade_owner, players[m] );
-                                #endif
+                                format(SzSpecName[id], charsmax(SzSpecName[]), "[S]%s",SzClientName[id]);
+                                set_user_info(id, "name", SzSpecName[id])
+                                g_bSpecNam[id] = true
                             }
-
                         }
+                        g_spectating[id] = true
+                        static effects; effects = pev(id, pev_effects)
 
-                        else
+                        set_pev(id, pev_effects, (effects | EF_NODRAW))
+                        static flags; flags = pev(id, pev_flags)
+                        set_pev(id, pev_flags, (flags | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_CUSTOMENTITY))
 
-                        if(hp < 30.0)
+                        dllfunc(DLLFunc_SpectatorConnect, id)
+
+                        fm_strip_user_weapons(id)
+
+                        server_print "%s GOING TO SPEC", SzClientName[id]
+
+                        if(!bAlready_shown_menu[id])
+                            @menu(id)
+
+                        set_user_info(id, "_spec", "1")
+
+                        entity_set_float(id, EV_FL_fov, 150.0)
+                        get_pcvar_string(g_spec_msg, g_motd, charsmax(g_motd))
+                        set_user_godmode(id,true) //specs can be killed otherwise
+                        set_task(10.0,"@show_motd", id+MOTD) // too late comes up as they start playing which is off
+                        //inform client they are in spec
+                        set_task(10.0,"@update_player",id,_,_,"b")
+
+                        #define HUD_RAN 0,0,random_num(0,255)
+                        #if AMXX_VERSION_NUM != 182
+                        set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                        #endif
+                        set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                        show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
+
+                        if(g_bGrenadesOnlyRunning || g_bGunGameRunning)
                         {
-                            #if AMXX_VERSION_NUM == 182
-                            static throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
-                            get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                            get_user_name(players[m], victims_name, charsmax(victims_name) );
-                            client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
-                            #endif
-
-
-                            #if AMXX_VERSION_NUM != 182
-                            if( is_user_connected(nade_owner))
+                            if(g_spectating[id])
                             {
-                                client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
+                                fm_strip_user_weapons(id)
+                                if(cvar_gg)
+                                    set_view(id, CAMERA_NONE)
                             }
-                            #endif
-
-                            if(bStrike)
-                                set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-                            if(!bStrike)
-                            set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
-
-                            fakedamage(players[m],"Grenade Radiation",300.0,DMG_RADIATION|DMG_NEVERGIB)
-
-                            new Float:fExpOrigin[3];
-                            fExpOrigin = End_Position;
-                            new killer = entity_get_edict(ent,EV_ENT_owner);
-
-                            log_kill(killer,players[m],"Grenade Radiation",1);
                         }
                     }
                 }
-            }
-        }
-    }
-    return PLUGIN_CONTINUE;
-}
-
-public Other_Attack_Touch(ent, id)
-{
-    new Float:Axis[3], Float:End_Position[3];
-    if(is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
-    {
-
-        if(get_pcvar_num(g_cvar_neon_all))
-        {
-
-            ///Sound FX
-            if(get_pcvar_num(g_cvar_neon_snd))
-            {
-                switch(random_num(0,5))
+                else
                 {
-                    case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0,PITCH);
-                    case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
-                    case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                    case 3:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, 0,PITCH);
-                    case 4:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                    case 5:emit_sound(ent, CHAN_AUTO, SOUND_MAN1,  VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                }
-            }
-            g_model = ent;
-
-            entity_get_vector(g_model,EV_VEC_origin,End_Position);
-            entity_get_vector(g_model,EV_VEC_angles,Axis);
-
-            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0}, 0); //players_who_see_effects() );
-            ewrite_byte(random_num(19,21));
-            ewrite_coord(floatround(End_Position[0]));
-            ewrite_coord(floatround(End_Position[1]));
-            ewrite_coord(floatround(End_Position[2]));
-            ewrite_coord(floatround(Axis[0]));
-            ewrite_coord(floatround(Axis[1]));
-            ewrite_coord(floatround(Axis[2]));
-            ewrite_short(g_ring);
-            ewrite_byte(100); //fr
-            ewrite_byte(255); // fr rate
-            ewrite_byte(random_num(1,3));  //life
-            ewrite_byte(random_num(8,80));  //width
-            ewrite_byte(random_num(0,50));   //amp
-            ewrite_byte(random_num(30,255));  //r
-            ewrite_byte(random_num(0,200));  //g
-            ewrite_byte(random_num(40,190)); //b
-            ewrite_byte(random_num(100,500)); //bright
-            ewrite_byte(0);
-            emessage_end();
-
-            ///Actual damage
-            static location[3],
-            Float:Vec[3];
-            IVecFVec(location, Vec)
-            FVecIVec(Vec, location)
-            location[2] = location[2] + 20
-
-            new players[MAX_PLAYERS];
-            new playercount, result_distance ;
-
-            get_players(players,playercount,"h")
-            for (new m=0; m<playercount; ++m)
-            {
-                static playerlocation[3];
-                if(is_user_connected(players[m]) && is_user_alive(players[m]))
-                {
-                    get_user_origin(players[m], playerlocation);
-                    result_distance  = get_entity_distance(g_model, players[m]);
-
-                    if(result_distance  < get_pcvar_num(g_proximity))
+                    if(containi(SzSpecName[id], "[s]") != charsmin)
                     {
-                        static hp; hp = get_user_health(players[m])
-                        if(hp > 15.0)
+                        if(containi(SzClientName[id], "[s]") == charsmin)
                         {
-                            fakedamage(players[m],"Sonic Radiation",1.0,DMG_SONIC);
-                            {
-                                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() )
-                                ewrite_byte( TE_PLAYERSPRITES);
-                                ewrite_short(players[m])  //(playernum)
-                                switch(random_num(0,2))
-                                {
-                                    case 0: ewrite_short(g_energy0);
-                                    case 1: ewrite_short(g_energy1);
-                                    case 2: ewrite_short(g_energy2);
-                                }
-                                ewrite_byte(random_num(1,5));     //(count)
-                                ewrite_byte(random_num(5,15)); // (variance) (0 = no variance in size) (10 = 10% variance in size)
-                                emessage_end();
-                            }
+                            set_user_info(id, "name", SzClientName[id])
                         }
                         else
                         {
-                            set_msg_block(get_user_msgid("DeathMsg"), bStrike ? BLOCK_SET : BLOCK_ONCE);
-                            entity_explosion_knockback(players[m], End_Position);
-                            fakedamage(players[m],"Sonic Radiation",300.0,DMG_SONIC);
-
-                            static killer; killer = entity_get_edict(ent,EV_ENT_owner);
-
-                            log_kill(killer,players[m],"Sonic Radiation",1);
+                            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+                            set_user_info(id, "name", SzClientName[id])
                         }
                     }
+                    server_print "%s EXITING SPEC", SzClientName[id]
+                    dllfunc(DLLFunc_ClientPutInServer, id)
+                    dllfunc(DLLFunc_SpectatorDisconnect, id)
+                    g_iViewtype[id]  = 0
+                    set_user_godmode(id,false)
+                    g_spectating[id] = false
+                    g_random_view[id] = 0
+                    set_user_info(id, "_spec", "0")
+                    entity_set_float(id, EV_FL_fov, 100.0)
+                    change_task(id, 60.0) //less spam
+                    remove_task(id+MOTD)
+
                 }
             }
         }
     }
-    return PLUGIN_CONTINUE;
 }
 
-stock Fn_etwork(id) {get_user_ping(id, g_iPing, g_iLoss);return g_iLoss,g_iPing;}
-
-stock log_kill(killer, victim, weapon[], headshot)
+@show_motd(value)
 {
-
-    if (containi(weapon,"Radiation") > -1)
-        set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-
-    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
-    get_user_team(killer, killers_team, charsmax(killers_team));
-    get_user_team(victim, victims_team, charsmax(victims_team));
-
-    if(is_user_connected(killer))
+    static id; id = value - MOTD
+    OK)
     {
-       //Scoring
-        if(get_pcvar_num(g_teams) == 1 || bStrike )
-        {
+        show_motd(id, g_motd, "SPECTATOR MODE")
+        client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
+        set_task(30.0,"random_view", id)
+    }
+}
 
-            if(!equal(killers_team,victims_team))
+@update_player(id)
+OK && ~CheckPlayerBit(g_AI, id))
+    g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
+
+
+public client_command(id)
+{
+    OK)
+    {
+        if(CheckPlayerBit(g_AI, id))
+            goto SKIP
+        static szArg[MAX_PLAYERS],
+        szArgCmd[MAX_IP_LENGTH], szArgCmd1[MAX_IP_LENGTH];
+
+        read_args(szArg, charsmax(szArg));
+        read_argv(0,szArgCmd, charsmax(szArgCmd));
+        read_argv(1,szArgCmd1, charsmax(szArgCmd1));
+
+        if(g_random_view[id] && !g_spectating[id])
+            g_spectating[id] = true
+
+        if(g_spectating[id])
+            if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
             {
-                set_user_frags(killer,get_user_frags(killer) +1)
+                set_user_godmode(id,true)
+                fm_strip_user_weapons(id)
+
+                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "!spec_switch") || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
+                    goto SKIP
+                return PLUGIN_HANDLED_MAIN
             }
-            else //if(equal(killers_team,victims_team))
+        SKIP:
+        return PLUGIN_CONTINUE
+    }
+    return PLUGIN_HANDLED
+}
+public random_view(id)
+{
+    OK && g_spectating[id] && ~CheckPlayerBit(g_AI, id))
+    {
+        if(!g_random_view[id])
+        {
+            set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
+            if(!bDemo[id])
             {
-                set_user_frags(killer,get_user_frags(killer) -1);
+                client_cmd id, "spk holo/tr_ba_use.wav"
             }
         }
-
         else
-
-        fm_set_user_frags(killer,get_user_frags(killer) +1);
-        ///////////////////////////////////////////////////
-
-        set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-
-        set_msg_block(get_user_msgid("DeathMsg"), BLOCK_NOT);
-
-
-        emessage_begin(MSG_BROADCAST, get_user_msgid("DeathMsg"), {0,0,0}, 0);
-        ewrite_byte(killer);
-        ewrite_byte(victim);
-
-        if(bStrike)
-            ewrite_byte(headshot);
-        if( (get_pcvar_num(g_teams) == 1 || bStrike)
-        &&
-        equal(killers_team,victims_team))
-            ewrite_string("teammate");
-        else
-            ewrite_string(weapon)
-        emessage_end();
-
-        //Logging the message as seen on console.
-        new kname[MAX_PLAYERS+1], vname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1], vauthid[MAX_PLAYERS+1], kteam[10], vteam[10]
-
-        get_user_name(killer, kname, charsmax(kname))
-        get_user_team(killer, kteam, charsmax(kteam))
-        get_user_authid(killer, kauthid, charsmax(kauthid))
-
-        get_user_name(victim, vname, charsmax(vname))
-        get_user_team(victim, vteam, charsmax(vteam))
-        get_user_authid(victim, vauthid, charsmax(vauthid))
-
-        log_message("^"%s<%d><%s><%s>^" killed ^"%s<%d><%s><%s>^" with ^"%s^"",
-        kname, get_user_userid(killer), kauthid, kteam,
-        vname, get_user_userid(victim), vauthid, vteam, weapon)
-        pin_scoreboard(killer);
-    }
-
-}
-
-public pin_scoreboard(killer)
-{
-    if(is_user_connected(killer))
-    {
-        emessage_begin(MSG_BROADCAST,get_user_msgid("ScoreInfo"))
-        ewrite_byte(killer);
-        ewrite_short(get_user_frags(killer));
-        //ewrite_short(get_user_deaths(killer));
-        #define DEATHS 422
-        new dead = get_pdata_int(killer, DEATHS)
-        ewrite_short(dead);
-
-        if(bStrike)
         {
-            ewrite_short(0); //TFC CLASS
-            ewrite_short(get_user_team(killer));
+            g_random_view[id] = 0
+            remove_task(id+TOGGLE)
+            client_print(id, print_console,"Stopping spectator follow.")
+            client_cmd id,"spk valve/sound/misc/talk.wav"
+            client_print(id,print_center, "%L", LANG_PLAYER,"OF_SPEC_HELO")
+            client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC")
         }
-        emessage_end();
     }
+    return PLUGIN_HANDLED;
+}
+
+@switch_views(id)
+{
+    OK && g_spectating[id] && ~CheckPlayerBit(g_AI, id))
+    {
+        task_exists(id+TOGGLE) ? change_task(id+TOGGLE, 0.3)
+        :
+        set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
+    }
+    return PLUGIN_HANDLED;
+}
+
+@random_view(Tsk)
+{
+    static id; id = Tsk - TOGGLE
+    OK && g_spectating[id])
+    {
+        new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
+        get_players(players,playercount,"i");
+
+        for (viewable=0; viewable < playercount; ++viewable)
+        if(playercount > 1 && !g_random_view[viewable])
+        {
+            iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
+            if(is_user_connected(iViewPlayer))
+            if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) )
+            {
+                set_view(id, CAMERA_3RDPERSON)
+                client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
+                if(!bDemo[id])
+                {
+                    bDemo[id] = true
+                    client_cmd(id,"spk fvox/targetting_system.wav")
+                }
+                if(task_exists(id + TOGGLE))
+                    remove_task(id + TOGGLE)
+                client_print(id, print_chat, "Say !spec_switch to change perspectives.")
+                //otherwise switches players randomly
+
+                g_random_view[id] = iViewPlayer
+                return PLUGIN_CONTINUE;
+            }
+        }
+        else
+        {
+            set_pev(id, pev_origin, g_user_origin[g_random_view[id]]);
+        }
+
+    }
+    else
+    {
+        if(task_exists(id + TOGGLE))
+            remove_task(id + TOGGLE)
+    }
+    return PLUGIN_HANDLED
 
 }
 
-@spawn(id)
+#if !defined client_disconnected
+#define client_disconnect client_disconnected
+#endif
+
+public client_disconnected(id)
 {
-    bRADead[id] = false
+    ///if(!is_user_connected(id) && !is_user_connecting(id))
+    {
+        g_spectating[id] = false
+        bAlready_shown_menu[id] = false
+        g_random_view[id] = 0
+    }
 }
 
 stock players_who_see_effects()
 {
-    //CPU client safeguard attempt.
-    new players[MAX_PLAYERS], playercount, SEE;
-    get_players(players,playercount,"ch");
-
-    for (SEE=0; SEE<playercount; SEE++)
+    iPlayers()
+    for (new SEE; SEE<g_iHeadcount; SEE++)
         return SEE;
-
     return PLUGIN_CONTINUE;
 }
 
-
-#include <xs>
-public entity_explosion_knockback(victim, Float:fExpOrigin[3])
+stock iPlayers()
 {
-    if(is_user_connected(victim))
+    get_players(g_players, g_iHeadcount,"ch")
+    return g_iHeadcount
+}
+
+@clear_menu(id)
+{
+    OK)
     {
-        new Float:fExpShockwaveRadius=300.0, Float:fExpShockwavePower=75.0;
-        new Float:fOrigin[3], Float:fDistVec[3];
-        pev(victim, pev_origin, fOrigin);
+        static menu; menu = menu_create ("Menu cleaner", "@menu2");
+        menu_additem(menu, "Server menu reset", "1");
+        menu_setprop(menu, MPROP_EXIT, MEXIT_ALL);
+        menu_display(id, menu, 0,1)
+        client_cmd id, "slot1"
+    }
 
-        xs_vec_sub(fOrigin, fExpOrigin, fDistVec);
-        new Float:g_fTemp;
+}
 
-        if((g_fTemp=xs_vec_len(fDistVec)) <= fExpShockwaveRadius)
-        {
-            new Float:fPower = fExpShockwavePower * ( 1.0 - ( g_fTemp / floatmin(fExpShockwaveRadius, 1.0) ) ), Float:fVelo[3], Float:fKnockBackVelo[3];
-            pev(victim, pev_velocity, fVelo);
-            xs_vec_normalize(fDistVec, fKnockBackVelo);
-            xs_vec_mul_scalar(fKnockBackVelo, fPower, fKnockBackVelo);
-            xs_vec_add(fVelo, fKnockBackVelo, fVelo);
-            if(fVelo[0] != 0.0 && fVelo[1] != 0.0 && fVelo[2] != 0.0)
-            {
-                set_pev(victim, pev_velocity, fVelo);
-                server_print "%n | %f %f %f | neon_push", victim, fVelo[0], fVelo[1], fVelo[2]
-            }
-        }
+@menu2(id, menu, item)
+{
+    OK)
+    {
+        menu_destroy(menu)
     }
     return PLUGIN_HANDLED
 }
