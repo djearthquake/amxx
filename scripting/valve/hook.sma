@@ -104,6 +104,7 @@ new bool:bHOokUser[MAX_PLAYERS + 1]
 
 new g_monsters
 static gCStrike
+static mod_name[MAX_NAME_LENGTH]
 
 new const SzRope[][]={
     "models/hvr.mdl",
@@ -158,15 +159,11 @@ public plugin_init()
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
     //assign to glock attack2
 
-    new mod_name[MAX_NAME_LENGTH]
-    get_modname(mod_name, charsmax(mod_name))
-
     if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
     {
         gCStrike = true
     }
 
-    bOF_run  = equal(mod_name, "gearbox") ? true : false
     if(bOF_run)
     {
         RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
@@ -368,6 +365,9 @@ public plugin_precache()
     precache_sound("weapons/xbow_hit2.wav")
     precache_sound("weapons/xbow_hitbod1.wav")
     precache_sound("weapons/xbow_fire1.wav")
+
+    get_modname(mod_name, charsmax(mod_name))
+    bOF_run  = equal(mod_name, "gearbox") ? true : false
 
     if(bOF_run)
     {
