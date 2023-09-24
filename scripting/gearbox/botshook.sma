@@ -20,6 +20,8 @@
 
 #define ALLOW_BOTS_TO_HOOK
 
+#define UFO_LEVEL  ADMIN_LEVEL_H
+
 #include <amxmodx>
 #include <amxmisc>
 #include <engine>
@@ -45,7 +47,7 @@ new g_Money
 new g_debug
 new g_freq
 
-new g_Adm, g_AI, g_hookmod, g_planefun
+new g_Adm, g_AI, g_hookmod, g_force, g_planefun, g_Adm_highlander
 
 new bool:bPlane_made[MAX_PLAYERS+1]
 new grabbedorigin2[MAX_PLAYERS + 1][3]
@@ -73,7 +75,7 @@ public plugin_init()
     g_debug = register_cvar("hook_debug", "0")
     g_hookmod = register_cvar("sv_hook","1")
     g_planefun = register_cvar("sv_hookplane","0")
-    register_cvar("sv_hookforce","2000")
+    g_force = register_cvar("sv_hookforce","2000")
     register_clcmd("+hook","hookgrab")
     register_clcmd("-hook","unhook")
     register_clcmd("say /hook","help_motd")
@@ -101,37 +103,45 @@ public plugin_precache()
 {
     precache_model(apache_model);
     precache_model(osprey_model);
-    precache_model(szSprite)
-    new ent = create_entity(ent_type)
 
-    {
-        DispatchKeyValue( ent, "origin", "0 0 0" )
-        DispatchKeyValue( ent, "scale", ".3" )
-        DispatchKeyValue( ent, "renderamt", "255" )
-        DispatchKeyValue( ent, "rendermode", "5" )
-        DispatchKeyValue( ent, "model", szSprite )
-        DispatchKeyValue( ent, "framerate", "10.0" )
-        DispatchKeyValue( ent, "angles", "0 0 0" )
-        DispatchKeyValue( ent, "rendercolor", "0 0 0" )
-        DispatchKeyValue( ent, "spawnflags", "1" )
-        DispatchKeyValue( ent, "targetname", "ufo_skin" )
-        DispatchSpawn(ent);
-    }
+    precache_model(szSprite)
+
+    new ent = create_entity(ent_type)
+    DispatchKeyValue( ent, "origin", "0 0 0" )
+    DispatchKeyValue( ent, "scale", ".3" )
+    DispatchKeyValue( ent, "renderamt", "255" )
+    DispatchKeyValue( ent, "rendermode", "5" )
+    DispatchKeyValue( ent, "model", szSprite )
+    DispatchKeyValue( ent, "framerate", "10.0" )
+    DispatchKeyValue( ent, "angles", "0 0 0" )
+    DispatchKeyValue( ent, "rendercolor", "0 0 0" )
+    DispatchKeyValue( ent, "spawnflags", "1" )
+    DispatchKeyValue( ent, "targetname", "ufo_skin" )
+    DispatchSpawn(ent);
+
     g_Money = precache_model("sprites/vp_parallel_oriented.spr");
 }
-
 
 #if defined ALLOW_BOTS_TO_HOOK
 #define HOLDTIME 1
 #define SEED 10
 #define FREQUENCY 25 //how many times a minute to call task
 
+public client_infochanged(id)
+{
+    if(is_user_connected(id))
+    {
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+        get_user_flags(id) & UFO_LEVEL ? (SetPlayerBit(g_Adm, id)) : (ClearPlayerBit(g_Adm, id))
+    }
+}
+
 public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
         is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id);
-        is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id);
+        get_user_flags(id) & UFO_LEVEL ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id);
 
         tEnt[id]=create_entity("info_target")
         DispatchSpawn(tEnt[id])
@@ -149,7 +159,7 @@ public client_putinserver(id)
         if(CheckPlayerBit(g_AI, id))
         {
             new sid[3]
-            num_to_str(id,sid,2)
+            num_to_str(id,sid,charsmax(sid))
             set_task( 60/FREQUENCY+random_float(0.0,Float:SEED),"hook_loop",id,sid,charsmax(sid),"b")
         }
         set_task(15.0, "notify_hook_status", 2023)
@@ -158,6 +168,9 @@ public client_putinserver(id)
 
 public client_disconnected(id)
 {
+    if(id == g_Adm_highlander)
+        g_Adm_highlander = 0;
+
     ClearPlayerBit(g_AI, id);
     ClearPlayerBit(g_Adm, id);
 
@@ -219,6 +232,12 @@ public hookgrab(id)
 {
     if(is_user_alive(id)&&!grabbed[id])
         set_hookgrabbed(id);
+
+    if(get_pcvar_num(g_planefun) && CheckPlayerBit(g_Adm, id))
+    {
+        if(!g_Adm_highlander)
+            g_Adm_highlander = id
+    }
 }
 
 public notify_hook_status()
@@ -269,10 +288,7 @@ public simulatefollow(parm[])
     if(grabbed[parm[5]])
     {
         new Float:vector[3], neworigin[3]
-        if(is_entity_brush(parm[1]))
-            get_brush_entity_origin(parm[1],vector)
-        else
-            entity_get_vector(parm[1],EV_VEC_origin,vector)
+        is_entity_brush(parm[1]) ? get_brush_entity_origin(parm[1],vector) : entity_get_vector(parm[1],EV_VEC_origin,vector)
         FVecIVec(vector,neworigin)
         for( new a; a<=2; a++) parm[a+2] = neworigin[a]
         set_task( DELTA_T, "simulatefollow", 101+parm[5], parm, 5)
@@ -307,17 +323,17 @@ if(is_user_connected(id))
     entity_set_vector(tEnt[id],EV_VEC_angles,vector)
     entity_get_vector(tEnt[id],EV_VEC_origin,vector)
 
-    message_begin(MSG_BROADCAST,23);
-    write_byte(TE_BEAMFOLLOW);
-    write_short(id);  //(entity:attachment to follow)
-    write_short(g_Money);
-    write_byte(random_num(2,10)); //(life in 0.1's) was 2-
-    write_byte(random_num(5,30)); //(line width in 0.1's)
-    write_byte(random_num(75,255));  //(red) 67     (67 25 67 are pink!) 255 150 1 nice afterburner
-    write_byte(random_num(50,255)); //(green) 25    (129 109 111 wht)
-    write_byte(random_num(11,255)); //(blue)  67
-    write_byte(random_num(10,30)); //(brightness)
-    message_end();
+    emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0}, 0);
+    ewrite_byte(TE_BEAMFOLLOW);
+    ewrite_short(id);  //(entity:attachment to follow)
+    ewrite_short(g_Money);
+    ewrite_byte(random_num(2,10)); //(life in 0.1's) was 2-
+    ewrite_byte(random_num(5,30)); //(line width in 0.1's)
+    ewrite_byte(random_num(75,255));  //(red) 67     (67 25 67 are pink!) 255 150 1 nice afterburner
+    ewrite_byte(random_num(50,255)); //(green) 25    (129 109 111 wht)
+    ewrite_byte(random_num(11,255)); //(blue)  67
+    ewrite_byte(random_num(10,30)); //(brightness)
+    emessage_end();
 }
 
 public hookgrabtask(parm[])
@@ -342,7 +358,7 @@ public hookgrabtask(parm[])
             //avoid division by zero and possible tossing
             if( length <= TOSS_PREVENTION_LENGTH  )
                 return PLUGIN_CONTINUE
-            new speed = get_cvar_num("sv_hookforce")
+            new speed = get_pcvar_num(g_force)
             for( new a; a<=2; a++ ) velocity[a]=(origin[a]+look2[id][a]-origin[a]\
                         *speed/length-grabbedorigin2[id][a])
             if(  length <= 7*TOSS_PREVENTION_LENGTH  )
@@ -373,7 +389,7 @@ public unhook(id)
 
         set_user_maxspeed(id,maxspeed[id])
         entity_set_vector(id,EV_FL_gravity,grav[id])
-        if(!is_user_bot(id) && is_user_alive(id))
+        if(!CheckPlayerBit(g_AI, id) && is_user_connected(id))
         {
             console_cmd(id, "default_fov 100");
             set_view(id, CAMERA_NONE);
@@ -405,12 +421,13 @@ if(is_user_alive(id))
                 if(get_pcvar_num(g_debug))server_print"Trying add model for %n",id
                 set_pev(plane_ent[id],pev_classname,"amx_bot_apache")
 
-
-                is_user_bot(id) ? entity_set_model(plane_ent[id], osprey_model):entity_set_model(plane_ent[id], apache_model)
+                CheckPlayerBit(g_AI, id) ? entity_set_model(plane_ent[id], osprey_model):entity_set_model(plane_ent[id], apache_model)
 
                 set_pev(plane_ent[id],pev_origin,plane_origin[id])
                 set_pev(plane_ent[id],pev_angles,plane_angles[id])
-                set_entity_visibility(plane_ent[id],1)
+
+                if(!CheckPlayerBit(g_Adm, id))
+                    set_entity_visibility(plane_ent[id],1)
             }
 
         }
@@ -427,7 +444,7 @@ if(is_user_alive(id))
             }
         }
     }
-    if(CheckPlayerBit(g_Adm, id))
+    if(id == g_Adm_highlander && is_user_outside(id))
     {
         new ent
         ent = find_ent_by_tname(charsmin, "ufo_skin")
