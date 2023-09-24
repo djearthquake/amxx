@@ -123,9 +123,9 @@ public plugin_precache()
 }
 
 #if defined ALLOW_BOTS_TO_HOOK
-#define HOLDTIME 1
+#define HOLDTIME random_num(1,5)
 #define SEED 10
-#define FREQUENCY 25 //how many times a minute to call task
+#define FREQUENCY random_num(20,90) //how many times a minute to call task
 
 public client_infochanged(id)
 {
@@ -203,6 +203,7 @@ public hook_loop(sid[3])
         if(get_pcvar_num(g_debug))server_print("Hooking %n", id)
     }
 }
+
 public hook_bot(sid[3])
 {
     new id = str_to_num(sid)
@@ -214,6 +215,7 @@ public hook_bot(sid[3])
     set_task( float(HOLDTIME), "unhook_bot", id, sid,charsmax(sid));
     return PLUGIN_CONTINUE
 }
+
 public unhook_bot(sid[])
 {
     new id = str_to_num(sid)
@@ -236,7 +238,10 @@ public hookgrab(id)
     if(get_pcvar_num(g_planefun) && CheckPlayerBit(g_Adm, id))
     {
         if(!g_Adm_highlander)
+        {
             g_Adm_highlander = id
+            set_entity_visibility(plane_ent[id],0)
+        }
     }
 }
 
@@ -389,7 +394,7 @@ public unhook(id)
 
         set_user_maxspeed(id,maxspeed[id])
         entity_set_vector(id,EV_FL_gravity,grav[id])
-        if(!CheckPlayerBit(g_AI, id) && is_user_connected(id))
+        if(!CheckPlayerBit(g_AI, id))
         {
             console_cmd(id, "default_fov 100");
             set_view(id, CAMERA_NONE);
@@ -407,7 +412,7 @@ public new_round(id)
 
 public fw_PlayerPostThink(id,{Float,_}:...)
 if(get_pcvar_num( g_planefun ))
-if(is_user_alive(id))
+if(is_user_alive(id) && grabbed[id])
 {
     pev(id, pev_angles, plane_angles[id]);
     pev(id, pev_origin, plane_origin[id]);
@@ -426,7 +431,7 @@ if(is_user_alive(id))
                 set_pev(plane_ent[id],pev_origin,plane_origin[id])
                 set_pev(plane_ent[id],pev_angles,plane_angles[id])
 
-                if(!CheckPlayerBit(g_Adm, id))
+                if(id != g_Adm_highlander)
                     set_entity_visibility(plane_ent[id],1)
             }
 
