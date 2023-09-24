@@ -48,6 +48,7 @@ new g_debug
 new g_freq
 
 new g_Adm, g_AI, g_hookmod, g_force, g_planefun, g_Adm_highlander
+new bool:bHaveHooked[MAX_PLAYERS +1]
 
 new bool:bPlane_made[MAX_PLAYERS+1]
 new grabbedorigin2[MAX_PLAYERS + 1][3]
@@ -140,6 +141,7 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
+        bHaveHooked[id] = false
         is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id);
         get_user_flags(id) & UFO_LEVEL ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id);
 
@@ -162,7 +164,6 @@ public client_putinserver(id)
             num_to_str(id,sid,charsmax(sid))
             set_task( 60/FREQUENCY+random_float(0.0,Float:SEED),"hook_loop",id,sid,charsmax(sid),"b")
         }
-        set_task(15.0, "notify_hook_status", 2023)
     }
 }
 
@@ -196,6 +197,7 @@ public hook_loop(sid[3])
 {
     new id = str_to_num(sid);
     if(is_user_connected(id))
+    bHaveHooked[id] = true
     if(CheckPlayerBit(g_AI, id))
     {
         if(!grabbed[id])
@@ -233,7 +235,10 @@ public unhook_bot(sid[])
 public hookgrab(id)
 {
     if(is_user_alive(id)&&!grabbed[id])
+    {
         set_hookgrabbed(id);
+        bHaveHooked[id] = true
+    }
 
     if(get_pcvar_num(g_planefun) && CheckPlayerBit(g_Adm, id))
     {
@@ -412,7 +417,7 @@ public new_round(id)
 
 public fw_PlayerPostThink(id,{Float,_}:...)
 if(get_pcvar_num( g_planefun ))
-if(is_user_alive(id) && grabbed[id])
+if(is_user_alive(id) && bHaveHooked[id])
 {
     pev(id, pev_angles, plane_angles[id]);
     pev(id, pev_origin, plane_origin[id]);
