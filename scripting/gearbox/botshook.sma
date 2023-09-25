@@ -124,9 +124,9 @@ public plugin_precache()
 }
 
 #if defined ALLOW_BOTS_TO_HOOK
-#define HOLDTIME random_num(1,5)
+#define HOLDTIME random_num(1,2)
 #define SEED 10
-#define FREQUENCY random_num(20,90) //how many times a minute to call task
+#define FREQUENCY random_num(20,40) //how many times a minute to call task
 
 public client_infochanged(id)
 {
@@ -198,7 +198,7 @@ public hook_loop(sid[3])
     new id = str_to_num(sid);
     if(is_user_connected(id))
     bHaveHooked[id] = true
-    if(CheckPlayerBit(g_AI, id))
+    if(CheckPlayerBit(g_AI, id) && is_user_outside(id))
     {
         if(!grabbed[id])
             hook_bot(sid)
@@ -252,7 +252,7 @@ public hookgrab(id)
 
 public notify_hook_status()
 {
-    new players[32], playercount;
+    new players[MAX_PLAYERS], playercount;
     get_players(players,playercount,"c");
     for (new m=0; m<playercount; ++m)
         client_print(players[m],print_chat,"[AMX] HookGrab mod is active!  say /hook for more info.");
