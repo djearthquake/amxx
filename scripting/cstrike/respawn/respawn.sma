@@ -173,7 +173,7 @@ public plugin_init()
 
 @died(id)
 {
-    if(!cool_down_active && !bIsBound[id])
+    if(is_user_connected(id) && !cool_down_active && !bIsBound[id])
         client_print id, print_chat, get_pcvar_num(g_humans) ? SzAdvertAll : SzAdvert
 }
 
@@ -194,13 +194,14 @@ public CS_OnBuy(id, item)
 
 @BotSpawn(bot)
 {
-    if(bIsCtrl[bot])
+    if(is_user_connected(bot) && bIsCtrl[bot])
     {
         g_iTempCash[bot] = cs_get_user_money(bot)
         cs_set_user_money(bot, 0, 0)
         strip_user_weapons(bot)
     }
 }
+
 @PlayerSpawn(id)
 {
     if(is_user_connected(id))
@@ -214,12 +215,12 @@ public CS_OnBuy(id, item)
 
 @ReSpawn(id)
 {
-    new iDefaultTeamPack;
-    new SzParaphrase[128];
-    g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
-    new iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
+    static iDefaultTeamPack,
+    SzParaphrase[128], iDust, iKeep, iSound;
+    iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
     if(is_user_connected(id))
     {
+        g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
             if(is_user_alive(id))
@@ -289,7 +290,7 @@ public CS_OnBuy(id, item)
 
                         for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
                         {
-                            if( g_BackPack[id] & 1<<iArms )
+                            if(g_BackPack[id] & 1<<iArms)
                             if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
                             {
                                 if(equal(SzWeaponClassname, "weapon_c4"))
@@ -358,42 +359,46 @@ public round_end()
 
 @buy_bot(dead_spec)
 {
-    alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
-    if(!bIsBound[dead_spec])
+    if(is_user_connected(dead_spec))
     {
-        bIsBound[dead_spec] = true
-        client_print dead_spec, print_chat, "You have bot control set up!"
-    }
-
-    if ( !cool_down_active )
-    if(is_user_connected(dead_spec) && !bIsVip[alive_bot])
-    {
-        if(!bIsBot[dead_spec] && !is_user_alive(dead_spec))
+        alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
+        if(!bIsBound[dead_spec])
         {
-            if(is_user_connected(alive_bot))
-            if(get_user_team(dead_spec) == get_user_team(alive_bot))
+            bIsBound[dead_spec] = true
+            client_print dead_spec, print_chat, "You have bot control set up!"
+        }
+
+        if ( !cool_down_active )
+        if(is_user_connected(dead_spec) && !bIsVip[alive_bot])
+        {
+            if(!bIsBot[dead_spec] && !is_user_alive(dead_spec))
             {
-                if(!bIsCtrl[alive_bot])
+                if(is_user_connected(alive_bot))
+                if(get_user_team(dead_spec) == get_user_team(alive_bot))
                 {
-                    get_user_name(alive_bot,bots_name,charsmax(bots_name))
-                    client_print(dead_spec, print_center,"Ready to control %s.", bots_name);
+                    if(!bIsCtrl[alive_bot])
+                    {
+                        get_user_name(alive_bot,bots_name,charsmax(bots_name))
+                        client_print(dead_spec, print_center,"Ready to control %s.", bots_name);
 
-                    entity_get_vector(alive_bot, EV_VEC_angles, g_Angles[alive_bot]);
-                    entity_get_vector(alive_bot, EV_VEC_view_ofs, g_Plane[alive_bot]);
-                    entity_get_vector(alive_bot, EV_VEC_punchangle, g_Punch[alive_bot]);
-                    entity_get_vector(alive_bot, EV_VEC_v_angle, g_Vangle[alive_bot]);
-                    entity_get_vector(alive_bot, EV_VEC_movedir, g_Mdir[alive_bot]);
+                        entity_get_vector(alive_bot, EV_VEC_angles, g_Angles[alive_bot]);
+                        entity_get_vector(alive_bot, EV_VEC_view_ofs, g_Plane[alive_bot]);
+                        entity_get_vector(alive_bot, EV_VEC_punchangle, g_Punch[alive_bot]);
+                        entity_get_vector(alive_bot, EV_VEC_v_angle, g_Vangle[alive_bot]);
+                        entity_get_vector(alive_bot, EV_VEC_movedir, g_Mdir[alive_bot]);
 
-                    g_Duck[alive_bot] = entity_get_int(alive_bot, EV_INT_bInDuck);
+                        g_Duck[alive_bot] = entity_get_int(alive_bot, EV_INT_bInDuck);
 
-                    pev(alive_bot, pev_oldorigin, g_Ouser_origin[alive_bot]);
-                    pev(alive_bot, pev_origin, g_user_origin[alive_bot]);
+                        pev(alive_bot, pev_oldorigin, g_Ouser_origin[alive_bot]);
+                        pev(alive_bot, pev_origin, g_user_origin[alive_bot]);
+                    }
+                    control_bot(dead_spec);
                 }
-                control_bot(dead_spec);
             }
         }
+        return PLUGIN_CONTINUE;
     }
-    return PLUGIN_CONTINUE;
+    return PLUGIN_HANDLED
 }
 
 @_weaponbox(iNofreelunch)
@@ -414,7 +419,6 @@ public control_bot(dead_spec)
     if(!is_user_alive(dead_spec))
     {
         alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
-        get_user_velocity(alive_bot, vec);
 
         #define IS_THERE (~(1<<IN_SCORE))
 
@@ -422,8 +426,8 @@ public control_bot(dead_spec)
 
         if(get_user_team(dead_spec) == get_user_team(alive_bot))
         get_user_velocity(alive_bot, vec)
-        if(pev(alive_bot, pev_button) &~IN_ATTACK)
-        if(bIsBot[alive_bot] || (get_pcvar_num(g_humans) && !bIsBot[alive_bot] && vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0 && (pev(alive_bot, pev_button) & IS_THERE == 0))){
+        if(bIsBot[alive_bot]  && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) && pev(alive_bot, pev_flags) & FL_ONGROUND)
+        {
             set_user_rendering(alive_bot, kRenderFxNone, 0, 0, 0, kRenderTransTexture,0)
             entity_set_int(dead_spec, EV_INT_fixangle, 1)
             g_JustTook[dead_spec] = true
@@ -460,119 +464,132 @@ public control_bot(dead_spec)
 
 stock weapon_details(alive_bot)
 {
-    wpnid = get_user_weapon(alive_bot, magazine, ammo);
-    get_weaponname(wpnid, SzWeaponClassname, charsmax(SzWeaponClassname))
-    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
-    return wpnid, magazine, ammo, SzWeaponClassname;
+    if(is_user_connected(alive_bot))
+    {
+        wpnid = get_user_weapon(alive_bot, magazine, ammo);
+        get_weaponname(wpnid, SzWeaponClassname, charsmax(SzWeaponClassname))
+        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+        return wpnid, magazine, ammo, SzWeaponClassname;
+    }
+    return wpnid=0,magazine=0,ammo=0,SzWeaponClassname;
 }
 
 @give_weapons(dead_spec, alive_bot)
 {
-    weapon_details(alive_bot)
-    strip_user_weapons(dead_spec) //double-pistols otherwise
-    if(wpnid != CSW_KNIFE)
+    if(is_user_connected(dead_spec) && is_user_alive(alive_bot))
     {
-        cs_set_user_bpammo(dead_spec, wpnid, ammo)
-    }
-
-    client_print(dead_spec, print_chat, "%n took control of %n's %s. %i in mag, %i bullets total and %i armor.", dead_spec, alive_bot, SzWeaponClassname, magazine, ammo, arm);
-
-    set_task(get_pcvar_num(g_stuck)*1.0, "stuck_timer", dead_spec)
-
-    #define CSW_LAST_WEAPON     CSW_P90
-    #define CSI_DEFUSER             33              // Custom
-    #define CSI_NVGS                34              // Custom
-    #define OTHER_SCOUT              35              // Custom - The value passed by the forward, more convenient for plugins.
-    #define CSW_VESTHELM2             36              // Custom
-    #define CSI_SECAMMO             37              // Custom
-
-    if( g_BackPack[alive_bot]  & 1<<CSI_NVGS)
-    {
-        client_print dead_spec, print_chat, "Night Vision..."
-        cs_set_user_nvg(dead_spec, 1)
-    }
-
-    if( g_BackPack[alive_bot]  & 1<<CSW_VESTHELM2)
-    {
-        give_item(dead_spec, SzSuit)
-        client_print dead_spec, print_chat, SzSuit
-    }
-
-    if( g_BackPack[alive_bot]  & 1<<CSI_DEFUSER)
-    {
-        give_item(dead_spec, "item_thighpack")
-        client_print dead_spec, print_chat, "Possible defuser..."
-    }
-    if( g_BackPack[alive_bot]  & 1<<CSI_SECAMMO)
-    {
-        for (new mag; mag < sizeof SzCsAmmo; ++mag)
+        weapon_details(alive_bot)
+        strip_user_weapons(dead_spec) //double-pistols otherwise
+        if(wpnid != CSW_KNIFE)
         {
-            give_item(dead_spec, SzCsAmmo[mag]);
-            client_print dead_spec, print_chat, "Possible shells showing..."
+            cs_set_user_bpammo(dead_spec, wpnid, ammo)
         }
-    }
-    if( g_BackPack[alive_bot]  & 1<<CSI_PRIAMMO) //often never scout
-    {
-        client_print dead_spec, print_chat, "Extra ammo showing."
-    }
-    if( g_BackPack[alive_bot]  & 1<< OTHER_SCOUT) //scout only
-    {
-        client_print dead_spec, print_chat, "Scout.."
-    }
-    for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
-    {
-        if(g_BackPack[alive_bot]  & 1<<iArms )
-        if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
+
+        client_print(dead_spec, print_chat, "%n took control of %n's %s. %i in mag, %i bullets total and %i armor.", dead_spec, alive_bot, SzWeaponClassname, magazine, ammo, arm);
+
+        set_task(get_pcvar_num(g_stuck)*1.0, "stuck_timer", dead_spec)
+
+        #define CSW_LAST_WEAPON     CSW_P90
+        #define CSI_DEFUSER             33              // Custom
+        #define CSI_NVGS                34              // Custom
+        #define OTHER_SCOUT              35              // Custom - The value passed by the forward, more convenient for plugins.
+        #define CSW_VESTHELM2             36              // Custom
+        #define CSI_SECAMMO             37              // Custom
+
+        if( g_BackPack[alive_bot]  & 1<<CSI_NVGS)
         {
-            give_item(dead_spec, SzWeaponClassname)
-            if(equal(SzWeaponClassname, "weapon_c4"))
-                cs_set_user_plant(dead_spec, 1, 1)
-            client_print dead_spec, print_chat,  SzWeaponClassname
+            client_print dead_spec, print_chat, "Night Vision..."
+            cs_set_user_nvg(dead_spec, 1)
         }
+
+        if( g_BackPack[alive_bot]  & 1<<CSW_VESTHELM2)
+        {
+            give_item(dead_spec, SzSuit)
+            client_print dead_spec, print_chat, SzSuit
+        }
+
+        if( g_BackPack[alive_bot]  & 1<<CSI_DEFUSER)
+        {
+            give_item(dead_spec, "item_thighpack")
+            client_print dead_spec, print_chat, "Possible defuser..."
+        }
+        if( g_BackPack[alive_bot]  & 1<<CSI_SECAMMO)
+        {
+            for (new mag; mag < sizeof SzCsAmmo; ++mag)
+            {
+                give_item(dead_spec, SzCsAmmo[mag]);
+                client_print dead_spec, print_chat, "Possible shells showing..."
+            }
+        }
+        if( g_BackPack[alive_bot]  & 1<<CSI_PRIAMMO) //often never scout
+        {
+            client_print dead_spec, print_chat, "Extra ammo showing."
+        }
+        if( g_BackPack[alive_bot]  & 1<< OTHER_SCOUT) //scout only
+        {
+            client_print dead_spec, print_chat, "Scout.."
+        }
+        for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
+        {
+            if(g_BackPack[alive_bot]  & 1<<iArms )
+            if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
+            {
+                give_item(dead_spec, SzWeaponClassname)
+                if(equal(SzWeaponClassname, "weapon_c4"))
+                    cs_set_user_plant(dead_spec, 1, 1)
+                client_print dead_spec, print_chat,  SzWeaponClassname
+            }
+        }
+
+        if(cs_get_user_shield(alive_bot))
+            give_item(dead_spec, "weapon_shield");
+
+        arm = get_user_armor(alive_bot);
+        set_user_armor(dead_spec, arm);
+        strip_user_weapons(alive_bot)
+        user_silentkill(alive_bot, 1);
     }
-
-    if(cs_get_user_shield(alive_bot))
-        give_item(dead_spec, "weapon_shield");
-
-    arm = get_user_armor(alive_bot);
-    set_user_armor(dead_spec, arm);
-    strip_user_weapons(alive_bot)
-    user_silentkill(alive_bot, 1);
 }
 
 public stuck_timer(dead_spec)
 {
-    pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
-    if(g_Velocity[dead_spec][0] == 0.0 || g_Velocity[dead_spec][1] == 0.0 )
+    if(is_user_connected(dead_spec))
     {
-        @stuck(dead_spec)
-        if(g_counter[dead_spec] >= MAX_PLAYERS)
+        pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
+        if(g_Velocity[dead_spec][0] == 0.0 || g_Velocity[dead_spec][1] == 0.0 )
         {
-            ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
-            g_counter[dead_spec] = 0
-            remove_task(dead_spec)
-        }
+            @stuck(dead_spec)
+            if(g_counter[dead_spec] >= MAX_PLAYERS)
+            {
+                ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
+                g_counter[dead_spec] = 0
+                remove_task(dead_spec)
+            }
 
-    }
-    else
-    {
-        remove_task(dead_spec)
-        entity_set_float(dead_spec, EV_FL_friction, FRICTION_NOT);
+        }
+        else
+        {
+            remove_task(dead_spec)
+            entity_set_float(dead_spec, EV_FL_friction, FRICTION_NOT);
+        }
     }
 }
 
 @stuck(dead_spec)
 {
-    pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
-    pev(dead_spec, pev_origin, g_Ouser_origin[dead_spec])
-
-    if(g_Velocity[dead_spec][0] == 0.0 && g_Velocity[dead_spec][1] == 0.0 && g_Velocity[dead_spec][2] == 0.0 )
+    if(is_user_connected(dead_spec))
     {
-        unstick(dead_spec, get_pcvar_float(g_stuck))
-        entity_set_float(dead_spec, EV_FL_friction, FRICTION_ICE);
-        client_cmd(dead_spec, "spk common/menu1.wav")
-        g_counter[dead_spec]++
-    }
+        pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
+        pev(dead_spec, pev_origin, g_Ouser_origin[dead_spec])
 
-    set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
+        if(g_Velocity[dead_spec][0] == 0.0 && g_Velocity[dead_spec][1] == 0.0 && g_Velocity[dead_spec][2] == 0.0 )
+        {
+            unstick(dead_spec, get_pcvar_float(g_stuck))
+            entity_set_float(dead_spec, EV_FL_friction, FRICTION_ICE);
+            client_cmd(dead_spec, "spk common/menu1.wav")
+            g_counter[dead_spec]++
+        }
+
+        set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
+    }
 }
