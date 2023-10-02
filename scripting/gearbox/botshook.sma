@@ -152,12 +152,6 @@ public client_putinserver(id)
             plane_ent[id] = create_entity("info_target")
             if(get_pcvar_num(g_debug))server_print"Created plane for %n",id
         }
-
-        if(!bPlane_made[id])
-        {
-            bPlane_made[id] = true
-            dllfunc( DLLFunc_Spawn, plane_ent[id])
-        }
         if(CheckPlayerBit(g_AI, id))
         {
             new sid[3]
@@ -202,7 +196,17 @@ public hook_loop(sid[3])
     {
         if(!grabbed[id])
             hook_bot(sid)
-        if(get_pcvar_num(g_debug))server_print("Hooking %n", id)
+        if(get_pcvar_num(g_debug))
+            server_print("Hooking %n", id)
+
+        if(get_pcvar_num(g_planefun))
+        {
+            if(!bPlane_made[id])
+            {
+                bPlane_made[id] = true
+                dllfunc( DLLFunc_Spawn, plane_ent[id])
+            }
+        }
     }
 }
 
@@ -240,12 +244,20 @@ public hookgrab(id)
         bHaveHooked[id] = true
     }
 
-    if(get_pcvar_num(g_planefun) && CheckPlayerBit(g_Adm, id))
+    if(get_pcvar_num(g_planefun))
     {
-        if(!g_Adm_highlander)
+        if(!bPlane_made[id])
         {
-            g_Adm_highlander = id
-            set_entity_visibility(plane_ent[id],0)
+            bPlane_made[id] = true
+            dllfunc( DLLFunc_Spawn, plane_ent[id])
+        }
+        if(CheckPlayerBit(g_Adm, id))
+        {
+            if(!g_Adm_highlander)
+            {
+                g_Adm_highlander = id
+                set_entity_visibility(plane_ent[id],0)
+            }
         }
     }
 }
@@ -419,6 +431,10 @@ public fw_PlayerPostThink(id,{Float,_}:...)
 if(get_pcvar_num( g_planefun ))
 if(is_user_alive(id) && bHaveHooked[id])
 {
+    new flags = get_entity_flags(id)
+    if(flags & FL_SPECTATOR)
+        return
+
     pev(id, pev_angles, plane_angles[id]);
     pev(id, pev_origin, plane_origin[id]);
 
