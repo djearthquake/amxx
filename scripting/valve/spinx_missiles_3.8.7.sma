@@ -1322,6 +1322,7 @@ public amr_pay(args[]) {
 
 //make_rocket(userindex,commandtype,missilespeed,model,nofake,admincommand,antimissleid)
 make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
+    new target;
 
     if(!is_user_alive(id)) return PLUGIN_CONTINUE
 
@@ -1344,13 +1345,13 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
         new dist1 = 1000
 
         new players[ MAX_PLAYERS ], inum
-        get_players(players,inum,"ah")
+        get_players(players,inum,"a")
 
         for(new i = 0 ;i < inum ;++i)
 
         if(players[i] != id)
         {
-            new SzTag[MAX_IP_LENGTH], szRunawayHeatSignature[MAX_IP_LENGTH];
+            new SzTag[MAX_NAME_LENGTH], szRunawayHeatSignature[MAX_NAME_LENGTH];
             new playername[MAX_NAME_LENGTH],output;
             get_user_info(players[i],"name",playername,charsmax(playername))
             get_user_info(id,"heat",szRunawayHeatSignature, charsmax(szRunawayHeatSignature))
@@ -1432,8 +1433,10 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
         {
             if(players[i] != id)
             {
-                get_user_info(players[i],"is_parachuting",parachute_check,charsmax(parachute_check))
-                if(str_to_num(parachute_check))
+                //get_user_info(players[i],"is_parachuting",parachute_check,charsmax(parachute_check))
+                //if(str_to_num(parachute_check))
+                target = find_ent(charsmin, "parachute")
+                if(target)
                 {
                     output = 1;
                     if(output == 1)
@@ -1446,7 +1449,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
                         {
                             dist = dist1
                             found = 1
-                            if(players[i] != id)
+                            if(players[i] != id && pev(target, pev_owner) == players[i])
                             {
                                 args[6] = players[i]
                             }
