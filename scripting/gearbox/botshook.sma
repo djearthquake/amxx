@@ -178,7 +178,7 @@ public client_disconnected(id)
         remove_task(id)
     if(pev_valid(tEnt[id] && tEnt[id] > 0))
         remove_entity(tEnt[id])
-    if( (plane_ent[id] > 0) && pev_valid(plane_ent[id]) )
+    if( (plane_ent[id] > 0) && pev_valid(plane_ent[id])> 1 )
     {
         if(get_pcvar_num(g_debug))server_print"Attempting ent removal for %n post diso",id
         remove_entity(plane_ent[id])
@@ -190,21 +190,23 @@ public client_disconnected(id)
 public hook_loop(sid[3])
 {
     new id = str_to_num(sid);
-    if(is_user_connected(id))
-    bHaveHooked[id] = true
-    if(CheckPlayerBit(g_AI, id) && is_user_outside(id))
+    if(is_user_connected(id) && is_user_alive(id))
     {
-        if(!grabbed[id])
-            hook_bot(sid)
-        if(get_pcvar_num(g_debug))
-            server_print("Hooking %n", id)
-
-        if(get_pcvar_num(g_planefun))
+        bHaveHooked[id] = true
+        if(CheckPlayerBit(g_AI, id) && is_user_outside(id))
         {
-            if(!bPlane_made[id])
+            if(!grabbed[id])
+                hook_bot(sid)
+            if(get_pcvar_num(g_debug))
+                server_print("Hooking %n", id)
+
+            if(get_pcvar_num(g_planefun))
             {
-                bPlane_made[id] = true
-                dllfunc( DLLFunc_Spawn, plane_ent[id])
+                if(!bPlane_made[id])
+                {
+                    bPlane_made[id] = true
+                    dllfunc( DLLFunc_Spawn, plane_ent[id])
+                }
             }
         }
     }
@@ -216,9 +218,12 @@ public hook_bot(sid[3])
 
     if(!is_user_connected(id) && !is_user_alive(id) && !CheckPlayerBit(g_AI, id))
         return PLUGIN_CONTINUE
-    if(get_pcvar_num(g_debug))server_print "Hooking %n", id
-    hookgrab(id)
-    set_task( float(HOLDTIME), "unhook_bot", id, sid,charsmax(sid));
+    if(is_user_alive(id))
+    {
+        if(get_pcvar_num(g_debug))server_print "Hooking %n", id
+        hookgrab(id)
+        set_task( float(HOLDTIME), "unhook_bot", id, sid,charsmax(sid));
+    }
     return PLUGIN_CONTINUE
 }
 
@@ -227,10 +232,12 @@ public unhook_bot(sid[])
     new id = str_to_num(sid)
     if(!is_user_connected(id) && !is_user_alive(id) &&  !CheckPlayerBit(g_AI, id))
     return PLUGIN_CONTINUE
-
-    unhook(id)
-    if(get_pcvar_num(g_debug))server_print "Un_Hooking %n", id
-    set_pev(id, pev_effects,  0)
+    if(is_user_alive(id))
+    {
+        unhook(id)
+        if(get_pcvar_num(g_debug))server_print "Un_Hooking %n", id
+        set_pev(id, pev_effects,  0)
+    }
     return PLUGIN_CONTINUE
 }
 
@@ -238,25 +245,28 @@ public unhook_bot(sid[])
 
 public hookgrab(id)
 {
-    if(is_user_alive(id)&&!grabbed[id])
+    if(is_user_connected(id))
     {
-        set_hookgrabbed(id);
-        bHaveHooked[id] = true
-    }
-
-    if(get_pcvar_num(g_planefun))
-    {
-        if(!bPlane_made[id])
+        if(is_user_alive(id)&&!grabbed[id])
         {
-            bPlane_made[id] = true
-            dllfunc( DLLFunc_Spawn, plane_ent[id])
+            set_hookgrabbed(id);
+            bHaveHooked[id] = true
         }
-        if(CheckPlayerBit(g_Adm, id))
+
+        if(get_pcvar_num(g_planefun))
         {
-            if(!g_Adm_highlander)
+            if(!bPlane_made[id])
             {
-                g_Adm_highlander = id
-                set_entity_visibility(plane_ent[id],0)
+                bPlane_made[id] = true
+                dllfunc( DLLFunc_Spawn, plane_ent[id])
+            }
+            if(CheckPlayerBit(g_Adm, id))
+            {
+                if(!g_Adm_highlander)
+                {
+                    g_Adm_highlander = id
+                    set_entity_visibility(plane_ent[id],0)
+                }
             }
         }
     }
@@ -267,7 +277,10 @@ public notify_hook_status()
     new players[MAX_PLAYERS], playercount;
     get_players(players,playercount,"c");
     for (new m=0; m<playercount; ++m)
+    if(is_user_connected(players[m]) && !CheckPlayerBit(g_AI, players[m]))
+    {
         client_print(players[m],print_chat,"[AMX] HookGrab mod is active!  say /hook for more info.");
+    }
     set_task(180.0,"notify_hook_status");
     return PLUGIN_CONTINUE;
 }
@@ -307,13 +320,14 @@ public set_hookgrabbed(id)
 }
 public simulatefollow(parm[])
 {
-    if(grabbed[parm[5]])
+    static id; id = parm[5]
+    if(is_user_alive(id) && grabbed[id])
     {
-        new Float:vector[3], neworigin[3]
+        static Float:vector[3], neworigin[3]
         is_entity_brush(parm[1]) ? get_brush_entity_origin(parm[1],vector) : entity_get_vector(parm[1],EV_VEC_origin,vector)
         FVecIVec(vector,neworigin)
         for( new a; a<=2; a++) parm[a+2] = neworigin[a]
-        set_task( DELTA_T, "simulatefollow", 101+parm[5], parm, 5)
+        set_task( DELTA_T, "simulatefollow", 101+id, parm, 5)
         for( new a; a<=2; a++) neworigin[a]-=parm[a+2]
         new targorigin[3];entity_get_vector(parm[0],EV_VEC_origin,vector)
         FVecIVec(vector,targorigin)
@@ -360,42 +374,45 @@ if(is_user_connected(id))
 
 public hookgrabtask(parm[])
 {
-    new id = str_to_num(parm)
-    if(!grabbed[id]) return PLUGIN_CONTINUE
-
-    if(!is_user_alive(grabbed[id]))
-        unhook(id)
-    else
+    static id; id = str_to_num(parm)
+    if(is_user_connected(id) && is_user_alive(id))
     {
-        new Float:vector[3]
-        if(is_valid_ent(tEnt[id]))
+        if(!grabbed[id]) return PLUGIN_CONTINUE
+
+        if(!is_user_alive(grabbed[id]))
+            unhook(id)
+        else
         {
-            call_think(tEnt[id])
-            entity_get_vector(tEnt[id],EV_VEC_origin,vector)
-            FVecIVec(vector,look2[id])
-            new origin[3], velocity[3], length
-            get_user_origin(grabbed[id], origin, 1)
-            get_user_origin(grabbed[id], grabbedorigin2[id])
-            length = get_distance(look2[id],origin)
-            //avoid division by zero and possible tossing
-            if( length <= TOSS_PREVENTION_LENGTH  )
+            new Float:vector[3]
+            if(is_valid_ent(tEnt[id]))
+            {
+                call_think(tEnt[id])
+                entity_get_vector(tEnt[id],EV_VEC_origin,vector)
+                FVecIVec(vector,look2[id])
+                new origin[3], velocity[3], length
+                get_user_origin(grabbed[id], origin, 1)
+                get_user_origin(grabbed[id], grabbedorigin2[id])
+                length = get_distance(look2[id],origin)
+                //avoid division by zero and possible tossing
+                if( length <= TOSS_PREVENTION_LENGTH  )
+                    return PLUGIN_CONTINUE
+                new speed = get_pcvar_num(g_force)
+                for( new a; a<=2; a++ ) velocity[a]=(origin[a]+look2[id][a]-origin[a]\
+                            *speed/length-grabbedorigin2[id][a])
+                if(  length <= 7*TOSS_PREVENTION_LENGTH  )
+                    for( new a; a <= 2; a++) velocity[a]/=2
+                else if(  length <= 6*TOSS_PREVENTION_LENGTH  )
+                    for( new a; a <= 2; a++) velocity[a]/=4
+                else if(  length <= 5*TOSS_PREVENTION_LENGTH  )
+                    for( new a; a <= 2; a++) velocity[a]/=6
+                else if(  length <= 3*TOSS_PREVENTION_LENGTH  )
+                    for( new a; a <= 2; a++) velocity[a]/=8
+                else if(  length <= 2*TOSS_PREVENTION_LENGTH  )
+                    for( new a; a <= 2; a++) velocity[a]/=10
+                IVecFVec(velocity,vector)
+                entity_set_vector(grabbed[id], EV_VEC_velocity, vector)
                 return PLUGIN_CONTINUE
-            new speed = get_pcvar_num(g_force)
-            for( new a; a<=2; a++ ) velocity[a]=(origin[a]+look2[id][a]-origin[a]\
-                        *speed/length-grabbedorigin2[id][a])
-            if(  length <= 7*TOSS_PREVENTION_LENGTH  )
-                for( new a; a <= 2; a++) velocity[a]/=2
-            else if(  length <= 6*TOSS_PREVENTION_LENGTH  )
-                for( new a; a <= 2; a++) velocity[a]/=4
-            else if(  length <= 5*TOSS_PREVENTION_LENGTH  )
-                for( new a; a <= 2; a++) velocity[a]/=6
-            else if(  length <= 3*TOSS_PREVENTION_LENGTH  )
-                for( new a; a <= 2; a++) velocity[a]/=8
-            else if(  length <= 2*TOSS_PREVENTION_LENGTH  )
-                for( new a; a <= 2; a++) velocity[a]/=10
-            IVecFVec(velocity,vector)
-            entity_set_vector(grabbed[id], EV_VEC_velocity, vector)
-            return PLUGIN_CONTINUE
+            }
         }
     }
     return PLUGIN_HANDLED
