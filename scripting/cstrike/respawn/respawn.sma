@@ -198,7 +198,7 @@ public CS_OnBuy(id, item)
     {
         g_iTempCash[bot] = cs_get_user_money(bot)
         cs_set_user_money(bot, 0, 0)
-        strip_user_weapons(bot)
+        if(is_user_alive(bot))strip_user_weapons(bot)
     }
 }
 
@@ -268,7 +268,7 @@ public CS_OnBuy(id, item)
 
                 iDefaultTeamPack = get_user_team(id) == 1 ? iSpawnBackpackT :  iSpawnBackpackCT
                 g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
-                strip_user_weapons(id)
+                if(is_user_alive(id))strip_user_weapons(id)
                 for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
                 {
                     if(iDefaultTeamPack & 1<<iArms)
@@ -434,7 +434,7 @@ public control_bot(dead_spec)
             ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
             g_BackPack[alive_bot] = entity_get_int(alive_bot, EV_INT_weapons)
             bBotUser[dead_spec] = true
-            strip_user_weapons(dead_spec)
+            if(is_user_alive(dead_spec))strip_user_weapons(dead_spec)
             bIsCtrl[alive_bot] = true
 
             new iHP = get_user_health(alive_bot)
@@ -479,7 +479,7 @@ stock weapon_details(alive_bot)
     if(is_user_connected(dead_spec) && is_user_alive(alive_bot))
     {
         weapon_details(alive_bot)
-        strip_user_weapons(dead_spec) //double-pistols otherwise
+        if(is_user_alive(dead_spec))strip_user_weapons(dead_spec)
         if(wpnid != CSW_KNIFE)
         {
             cs_set_user_bpammo(dead_spec, wpnid, ammo)
@@ -487,7 +487,12 @@ stock weapon_details(alive_bot)
 
         client_print(dead_spec, print_chat, "%n took control of %n's %s. %i in mag, %i bullets total and %i armor.", dead_spec, alive_bot, SzWeaponClassname, magazine, ammo, arm);
 
-        set_task(get_pcvar_num(g_stuck)*1.0, "stuck_timer", dead_spec)
+        get_user_velocity(dead_spec, vec)
+
+        if(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0)
+        {
+            set_task(get_pcvar_num(g_stuck)*1.0, "stuck_timer", dead_spec)
+        }
 
         #define CSW_LAST_WEAPON     CSW_P90
         #define CSI_DEFUSER             33              // Custom
@@ -546,14 +551,14 @@ stock weapon_details(alive_bot)
 
         arm = get_user_armor(alive_bot);
         set_user_armor(dead_spec, arm);
-        strip_user_weapons(alive_bot)
+        if(is_user_alive(dead_spec))strip_user_weapons(alive_bot)
         user_silentkill(alive_bot, 1);
     }
 }
 
 public stuck_timer(dead_spec)
 {
-    if(is_user_connected(dead_spec))
+    if(is_user_connected(dead_spec) && is_user_alive(dead_spec))
     {
         pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
         if(g_Velocity[dead_spec][0] == 0.0 || g_Velocity[dead_spec][1] == 0.0 )
@@ -562,6 +567,7 @@ public stuck_timer(dead_spec)
             if(g_counter[dead_spec] >= MAX_PLAYERS)
             {
                 ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
+                client_print dead_spec, print_chat, "Respawned due to being stuck!"
                 g_counter[dead_spec] = 0
                 remove_task(dead_spec)
             }
