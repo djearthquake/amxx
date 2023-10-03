@@ -270,6 +270,7 @@ public hookgrab(id)
             }
         }
     }
+    return PLUGIN_HANDLED
 }
 
 public notify_hook_status()
@@ -433,7 +434,6 @@ public unhook(id)
             console_cmd(id, "default_fov 100");
             set_view(id, CAMERA_NONE);
         }
-        return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
 }
