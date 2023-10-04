@@ -1322,7 +1322,6 @@ public amr_pay(args[]) {
 
 //make_rocket(userindex,commandtype,missilespeed,model,nofake,admincommand,antimissleid)
 make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
-    new target;
 
     if(!is_user_alive(id)) return PLUGIN_CONTINUE
 
@@ -1423,7 +1422,6 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
         get_user_origin(id,aimvec,3)
         new dist = get_distance(notFloat_vOrigin,aimvec)
         new found
-        new parachute_check[MAX_IP_LENGTH];
         new dist1 = 200000
         new players[ MAX_PLAYERS ], inum
 
@@ -1433,10 +1431,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
         {
             if(players[i] != id)
             {
-                //get_user_info(players[i],"is_parachuting",parachute_check,charsmax(parachute_check))
-                //if(str_to_num(parachute_check))
-                target = find_ent(charsmin, "parachute")
-                if(target)
+                if(get_user_gravity(players[i]) == 0.1)
                 {
                     output = 1;
                     if(output == 1)
@@ -1449,7 +1444,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
                         {
                             dist = dist1
                             found = 1
-                            if(players[i] != id && pev(target, pev_owner) == players[i])
+                            if(players[i] != id)
                             {
                                 args[6] = players[i]
                             }
