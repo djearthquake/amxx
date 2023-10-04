@@ -291,31 +291,35 @@ public set_hookgrabbed(id)
     if(is_user_alive(id))
     {
         if(!get_pcvar_num(g_hookmod)) return PLUGIN_CONTINUE
+
         grabbed[id] = id
-        beam_ent(grabbed[id])
-        new origin1[3], origin2[3]
-        get_user_origin(grabbed[id], origin1)
-        get_user_origin(grabbed[id], origin2,3)
-        entity_get_vector(id,EV_FL_gravity,grav[id])
-        new Float:nograv[3]
-        IVecFVec({0,0,0},nograv)
-        entity_set_vector(id,EV_FL_gravity,nograv)
-        maxspeed[id] = get_user_maxspeed(id)
-        set_user_maxspeed(id, 0.001)
-
-        new irView;
-        irView = random_num(29, 150);
-
-        if(!CheckPlayerBit(g_AI, id))
+        if(is_user_connected(grabbed[id]))
         {
-            console_cmd(id, "default_fov %i", irView);
-            set_view(id, CAMERA_3RDPERSON);
-        }
+            beam_ent(grabbed[id])
+            new origin1[3], origin2[3]
+            get_user_origin(grabbed[id], origin1)
+            get_user_origin(grabbed[id], origin2,3)
+            entity_get_vector(id,EV_FL_gravity,grav[id])
+            new Float:nograv[3]
+            IVecFVec({0,0,0},nograv)
+            entity_set_vector(id,EV_FL_gravity,nograv)
+            maxspeed[id] = get_user_maxspeed(id)
+            set_user_maxspeed(id, 0.001)
 
-        static parm[3]
-        num_to_str(id,parm,2)
-        set_task(DELTA_T, "hookgrabtask", 101+id, parm, 1, "b")
-        return PLUGIN_CONTINUE
+            new irView;
+            irView = stock_random()
+
+            if(!CheckPlayerBit(g_AI, id))
+            {
+                console_cmd(id, "default_fov %i", irView);
+                set_view(id, CAMERA_3RDPERSON);
+            }
+
+            static parm[3]
+            num_to_str(id,parm,2)
+            set_task(DELTA_T, "hookgrabtask", 101+id, parm, 1, "b")
+            return PLUGIN_CONTINUE
+        }
     }
     return PLUGIN_HANDLED
 }
@@ -337,7 +341,7 @@ public simulatefollow(parm[])
     return PLUGIN_HANDLED
 }
 public beam_ent(id)
-if(is_user_connected(id))
+if(is_user_connected(id)/* && is_user_alive(grabbed[id])*/ && pev_valid(tEnt[id])>1)
 {
     new hooktarget, body
     get_user_aiming(grabbed[id],hooktarget,body)
@@ -536,4 +540,9 @@ stock is_entity_brush(ent)
     if(equal(mdl,"*"))
         return 1
     return 0
+}
+
+stock stock_random()
+{
+    return random_num(29, 150);
 }
