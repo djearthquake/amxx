@@ -285,6 +285,7 @@ public CS_OnBuy(id, item)
                     TRADE:
                     if(bIsCtrl[id])
                     {
+                        strip_user_weapons(id) //double-pistol bugfix
                         new Float:fBuyOrigin[3];
                         pev(id, pev_origin, fBuyOrigin)
 
@@ -434,7 +435,7 @@ public control_bot(dead_spec)
             ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
             g_BackPack[alive_bot] = entity_get_int(alive_bot, EV_INT_weapons)
             bBotUser[dead_spec] = true
-            if(is_user_alive(dead_spec))strip_user_weapons(dead_spec)
+            strip_user_weapons(dead_spec)
             bIsCtrl[alive_bot] = true
 
             new iHP = get_user_health(alive_bot)
@@ -479,7 +480,7 @@ stock weapon_details(alive_bot)
     if(is_user_connected(dead_spec) && is_user_alive(alive_bot))
     {
         weapon_details(alive_bot)
-        if(is_user_alive(dead_spec))strip_user_weapons(dead_spec)
+        strip_user_weapons(dead_spec)
         if(wpnid != CSW_KNIFE)
         {
             cs_set_user_bpammo(dead_spec, wpnid, ammo)
