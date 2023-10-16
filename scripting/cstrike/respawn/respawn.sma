@@ -465,7 +465,7 @@ public control_bot(dead_spec)
 
 stock weapon_details(alive_bot)
 {
-    if(is_user_connected(alive_bot))
+    if(is_user_connected(alive_bot) && is_user_alive(alive_bot))
     {
         wpnid = get_user_weapon(alive_bot, magazine, ammo);
         get_weaponname(wpnid, SzWeaponClassname, charsmax(SzWeaponClassname))
