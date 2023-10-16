@@ -376,6 +376,7 @@ public ReadSafeModeFromFile( )
                 client_print admin, print_chat, "reloading %s^nplugins:^n%s^n%s^n%s^n%s^n%s...", Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ],Data[ SzPlugin5 ]
 
         server_print"Reloading %s.", Data[ SzMaps ]
+        set_cvar_string "amx_nextmap", Data[ SzMaps ] //end loop
 
         set_task(20.0,"@reload_map",2021,mname,charsmax(mname))
 
