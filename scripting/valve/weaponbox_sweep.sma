@@ -37,7 +37,6 @@ new const ent_type[]="weaponbox"
 
 new g_Adm, g_box_debug, g_ent_count, g_box_lim
 new Picked[MAX_PLAYERS+1]
-static g_maxplayers
 
 public plugin_init()
 {
@@ -52,15 +51,14 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     g_box_lim =  register_cvar("weaponbox_sweep", "10") //Box limit.
     g_box_debug =  register_cvar("weaponbox_debug", "0"); //Show count.
-    g_maxplayers = get_maxplayers()
 }
 
 public minus_hook()
 {
-    static ent; ent = g_maxplayers;
+    static ent; ent = MaxClients;
     g_ent_count = 0;
-    while( (ent = find_ent(ent, ent_type) ) > g_maxplayers )
-    if(pev_valid(ent) && pev(ent, pev_owner) > 0 && pev(ent, pev_owner) <= g_maxplayers)
+    while( (ent = find_ent(ent, ent_type) ) > MaxClients )
+    if(pev_valid(ent) && pev(ent, pev_owner) > 0 && pev(ent, pev_owner) <= MaxClients)
     {
         g_ent_count++
     }
@@ -113,9 +111,37 @@ public end_clamp(player)
 
 ent_limiter()
 {
-    static ent; ent = g_maxplayers
-    while( (ent = find_ent(ent, ent_type) ) > g_maxplayers )
-    pev_valid(ent) ? (set_pev(ent, pev_flags, FL_KILLME) & g_ent_count--) : (g_ent_count--);
+    #define OVERFLOW MAX_MOTD_LENGTH
+
+    static ent, ent_debug, iThinking_ent;
+    ent_debug = get_pcvar_num(g_box_debug);
+    new bool:bChanged
+
+    ent = MaxClients
+    while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent) )
+    {
+        iThinking_ent = pev(ent, pev_nextthink);
+
+        if(ent_debug)
+        {
+            static iEnts, iEntMax;
+            iEnts = engfunc(EngFunc_NumberOfEntities)
+            iEntMax = global_get(glb_maxEntities)
+            server_print("%d/%d ents/max...|Index (to be removed):%d: \%s/ (next think):%i", iEnts, iEntMax, ent, ent_type, iThinking_ent);
+        }
+
+        iThinking_ent ? remove_entity(ent)  :  set_pev(ent, pev_flags, FL_KILLME);
+
+        g_ent_count--;
+
+        if(ent > OVERFLOW && !bChanged)
+        {
+            bChanged = true
+            static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
+            log_amx("Reloading map due to ent limit reached.")
+            console_cmd 0,  "changelevel %s", mapname
+        }
+    }
 }
 
 public client_putinserver(id)
@@ -138,7 +164,7 @@ box_status()
     if(!box_debug)
         return;
 
-    for (new admin=1; admin<=g_maxplayers; ++admin)
+    for (new admin=1; admin<=MaxClients; ++admin)
     if (is_user_connected(admin) && CheckPlayerBit(g_Adm, admin))
         client_print admin, print_center, "%s:%d", ent_type, g_ent_count
 }
