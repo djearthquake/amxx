@@ -1,6 +1,7 @@
 #include amxmodx
 #include amxmisc
 #include engine
+#include engine_stocks
 #include fakemeta
 
 new const medkit[]   = "models/w_medkit.mdl"
@@ -30,8 +31,8 @@ public plugin_init()
 
 @clear_medkits()
 {
-    new med;
-    while ((med = find_ent_by_class(-1, "item_healthkit")) > 0)
+    static med; med = MaxClients
+    while ((med = find_ent(med, "item_healthkit")) > MaxClients)
         remove_entity(med)
 }
 
