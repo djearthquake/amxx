@@ -100,7 +100,7 @@ public FnPlant()
     //g_weapon_c4_index = 0
     c4_from_grenade();
     static id; id = get_loguser_index();
-    if(is_user_connected(id))
+    if(is_user_alive(id))
     {
         server_print "Is %n planting?", id
         if(g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
@@ -179,65 +179,97 @@ public FnPlant()
 
 public fnDefusal(id)
 {
-    if(is_user_alive(id) && !Client_C4_adjusted_already[id] /*&& cs_get_c4_defusing(g_weapon_c4_index)*/)
+    if(is_user_alive(id))
     {
-        c4_from_grenade();
-        static Float:fC4_factor
-        fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
-        g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
+        if(!Client_C4_adjusted_already[id])
+        {
+            c4_from_grenade();
+            static Float:fC4_factor
+            fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
+            g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
 
-        static iBoom_time
-        iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
-        if(iBoom_time > 0)
-            g_boomtime = iBoom_time
-        else
-            return
-        static Float:fplayervector[3];
-        entity_get_vector(id, EV_VEC_origin, fplayervector);
-        client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
+            static iBoom_time
+            iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
+            if(iBoom_time > 0)
+            {
+                g_boomtime = iBoom_time
+            }
 
-        if(!is_user_bot(id))
-            entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+            static Float:fplayervector[3];
+            entity_get_vector(id, EV_VEC_origin, fplayervector);
+            client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
 
-        set_task(1.0, "nice", id+911);
-        Client_C4_adjusted_already[id] = true
+            set_task(0.1, "nice", id+911, _, _, "b");
+            Client_C4_adjusted_already[id] = true;
+
+            if(!is_user_bot(id))
+            {
+                entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
+            }
+        }
+        else if(!task_exists(id+911))
+        {
+            set_task(0.1, "nice", id+911, _, _, "b");
+        }
     }
-    return;
+    return PLUGIN_HANDLED
 }
 
 @count_down()
-if(get_playersnum())g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+{
+    if(get_playersnum())g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+}
 
 public nice(show)
 {
-    static ct_defusing,
-    iPlayerOrigin[3],
-    Float:C4_origin[3];
-    ct_defusing = show - 911
+    static ct_defusing
+    if(pev_valid(g_weapon_c4_index))
+    {
 
-    fm_get_brush_entity_origin(g_weapon_c4_index, C4_origin)
-    get_user_origin(ct_defusing, iPlayerOrigin, 3)
+        if(pev(ct_defusing,pev_button) & ~IN_USE)
+            remove_task(ct_defusing+911)
 
-    #define TE_LIGHTNING 7          // TE_BEAMPOINTS with simplified parameters
+        static iPlayerOrigin[3],
+        Float:C4_origin[3];
+        ct_defusing = show - 911
+        if(is_user_alive(ct_defusing))
+        {
 
-    static iC4_origin[3];
-    iC4_origin[0] = floatround(C4_origin[0]);
-    iC4_origin[1] = floatround(C4_origin[1]);
-    iC4_origin[2] = floatround(C4_origin[2]);
+            fm_get_brush_entity_origin(g_weapon_c4_index, C4_origin)
+            get_user_origin(ct_defusing, iPlayerOrigin, 3)
 
-    message_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, 0);
-    write_byte(TE_LIGHTNING)
-    write_coord(iC4_origin[0])      // start position
-    write_coord(iC4_origin[1])
-    write_coord(iC4_origin[2])
-    write_coord(iPlayerOrigin[0])      // end position
-    write_coord(iPlayerOrigin[1])
-    write_coord(iPlayerOrigin[2])
-    write_byte(g_boomtime*60)       // life in 0.1's
-    write_byte(35)        // width in 0.1's
-    write_byte(75) // amplitude in 0.01's
-    write_short(g_fire)     // sprite model index
-    message_end()
+            #define TE_LIGHTNING 7          // TE_BEAMPOINTS with simplified parameters
+
+            static iC4_origin[3];
+            iC4_origin[0] = floatround(C4_origin[0]);
+            iC4_origin[1] = floatround(C4_origin[1]);
+            iC4_origin[2] = floatround(C4_origin[2]);
+
+            emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, 0);
+            ewrite_byte(TE_LIGHTNING)
+            ewrite_coord(iC4_origin[0])      // start position
+            ewrite_coord(iC4_origin[1])
+            ewrite_coord(iC4_origin[2])
+            ewrite_coord(iPlayerOrigin[0])      // end position
+            ewrite_coord(iPlayerOrigin[1])
+            ewrite_coord(iPlayerOrigin[2])
+            //write_byte(g_boomtime*60)       // life in 0.1's
+            ewrite_byte(1)       // life in 0.1's
+            ewrite_byte(35)        // width in 0.1's
+            ewrite_byte(16) // amplitude in 0.01's
+            ewrite_short(g_fire)     // sprite model index
+            emessage_end()
+        }
+        else
+        {
+            remove_task(ct_defusing+911)
+        }
+    }
+    else
+    {
+        c4_from_grenade()
+        remove_task(ct_defusing+911)
+    }
 }
 
 @round_start()
@@ -271,7 +303,7 @@ stock iPlayers()
 
 stock c4_from_grenade()
 {
-    new iC4
+    static iC4; iC4 = MaxClients;
     static szClass[MAX_NAME_LENGTH]
     {
         while ((iC4= find_ent(charsmin,"grenade")))
@@ -283,7 +315,7 @@ stock c4_from_grenade()
                 break;
             }
             pev(pev_classname, g_weapon_c4_index, szClass, charsmax(szClass))
-            if(g_weapon_c4_index <= MaxClients || pev_valid(g_weapon_c4_index) < 2 || !equali(szClass, "grenade"))
+            if(g_weapon_c4_index <= MaxClients || !pev_valid(g_weapon_c4_index) || !equali(szClass, "grenade") || containi(szClass, "smoke") > charsmin || containi(szClass, "flash") > charsmin )
                 c4_from_grenade()
         }
     }
