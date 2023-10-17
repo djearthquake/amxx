@@ -11,7 +11,8 @@ new const smallkit2[] = "items/smallmedkit2.wav"
 public plugin_init()
 {
         register_plugin("Breakable Medical", "1.0", ".sρiηX҉.")
-        register_touch("player", "func_breakable", "@ent_changing_function")
+        //register_touch("player", "func_breakable", "@ent_changing_function")
+        register_touch("", "func_breakable", "@ent_changing_function")
 
         if(is_running("cstrike_running"))
             register_event("SendAudio", "@clear_medkits", "a", "2&%!MRAD_terwin", "2&%!MRAD_ctwin", "2&%!MRAD_rounddraw")
@@ -21,10 +22,11 @@ public plugin_init()
 {
     if(pev_valid(entity_we_touched) ==2)
     {
-        DispatchKeyValue(entity_we_touched, "explodemagnitude", "100") //make it hurt
+        DispatchKeyValue(entity_we_touched, "explodemagnitude", "10") //make it hurt
         DispatchKeyValue(entity_we_touched, "spawnobject", "2") //make medkit
         //DispatchKeyValue(entity_we_touched, "classname", "Explodable")
         DispatchKeyValue(entity_we_touched,"gibmodel", medkit)
+        DispatchKeyValue(entity_we_touched,"spawnflags", "256")
         DispatchSpawn(entity_we_touched); //make gib work
     }
 }
