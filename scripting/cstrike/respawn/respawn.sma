@@ -218,12 +218,12 @@ public CS_OnBuy(id, item)
     static iDefaultTeamPack,
     SzParaphrase[128], iDust, iKeep, iSound;
     iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
-    if(is_user_connected(id))
+    if(is_user_alive(id))
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
-            if(is_user_alive(id))
+            ///if(is_user_alive(id))
             {
                 static iTeam; iTeam = get_user_team(id)
                 if(iTeam == 1 && !iSpawnBackpackT && !user_has_weapon(id, CSW_C4))
@@ -238,7 +238,7 @@ public CS_OnBuy(id, item)
         }
         if(bIsCtrl[id])
         {
-            if(is_user_connected(iBotOwner[id]))
+            if(is_user_alive(iBotOwner[id]))
                 g_BackPack[id] = g_BackPack[iBotOwner[id]]
             fm_set_kvd(id, "zhlt_lightflags", "0")
             set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255)
@@ -420,45 +420,50 @@ public control_bot(dead_spec)
     if(!is_user_alive(dead_spec))
     {
         alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
+        if(alive_bot <= 0)
+            return PLUGIN_HANDLED_MAIN
 
-        #define IS_THERE (~(1<<IN_SCORE))
-
-        if(!bIsVip[alive_bot])
-
-        if(get_user_team(dead_spec) == get_user_team(alive_bot))
-        get_user_velocity(alive_bot, vec)
-        if(bIsBot[alive_bot]  && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) && pev(alive_bot, pev_flags) & FL_ONGROUND)
+        if(is_user_alive(alive_bot))
         {
-            set_user_rendering(alive_bot, kRenderFxNone, 0, 0, 0, kRenderTransTexture,0)
-            entity_set_int(dead_spec, EV_INT_fixangle, 1)
-            g_JustTook[dead_spec] = true
-            ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
-            g_BackPack[alive_bot] = entity_get_int(alive_bot, EV_INT_weapons)
-            bBotUser[dead_spec] = true
-            strip_user_weapons(dead_spec)
-            bIsCtrl[alive_bot] = true
+            #define IS_THERE (~(1<<IN_SCORE))
 
-            new iHP = get_user_health(alive_bot)
-            set_user_health(dead_spec, iHP)
-            iBotOwned[dead_spec] = alive_bot;
-            @give_weapons(dead_spec, alive_bot)
-            iBotOwner[alive_bot] = dead_spec;
-            set_msg_block( g_cor, BLOCK_SET );
+            if(!bIsVip[alive_bot])
 
-            client_print(dead_spec, print_center,"You are now taking the place of %n", alive_bot);
-            client_print(0, print_chat,"%n is taking the place of %n", dead_spec, alive_bot);
-            entity_set_vector(dead_spec, EV_VEC_angles, g_Angles[alive_bot]);
-            entity_set_vector(dead_spec, EV_VEC_view_ofs, g_Plane[alive_bot]);
-            entity_set_vector(dead_spec, EV_VEC_punchangle, g_Punch[alive_bot]);
-            entity_set_vector(dead_spec, EV_VEC_v_angle, g_Vangle[alive_bot]);
-            entity_set_vector(dead_spec, EV_VEC_movedir, g_Mdir[alive_bot]);
-            set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
-            entity_set_int(dead_spec, EV_INT_bInDuck, g_Duck[alive_bot])
+            if(get_user_team(dead_spec) == get_user_team(alive_bot))
+            get_user_velocity(alive_bot, vec)
+            if(bIsBot[alive_bot]  && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) && pev(alive_bot, pev_flags) & FL_ONGROUND)
+            {
+                set_user_rendering(alive_bot, kRenderFxNone, 0, 0, 0, kRenderTransTexture,0)
+                entity_set_int(dead_spec, EV_INT_fixangle, 1)
+                g_JustTook[dead_spec] = true
+                ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
+                g_BackPack[alive_bot] = entity_get_int(alive_bot, EV_INT_weapons)
+                bBotUser[dead_spec] = true
+                strip_user_weapons(dead_spec)
+                bIsCtrl[alive_bot] = true
 
-            set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
-            entity_set_int(dead_spec, EV_INT_fixangle, 0)
+                new iHP = get_user_health(alive_bot)
+                set_user_health(dead_spec, iHP)
+                iBotOwned[dead_spec] = alive_bot;
+                @give_weapons(dead_spec, alive_bot)
+                iBotOwner[alive_bot] = dead_spec;
+                set_msg_block( g_cor, BLOCK_SET );
+
+                client_print(dead_spec, print_center,"You are now taking the place of %n", alive_bot);
+                client_print(0, print_chat,"%n is taking the place of %n", dead_spec, alive_bot);
+                entity_set_vector(dead_spec, EV_VEC_angles, g_Angles[alive_bot]);
+                entity_set_vector(dead_spec, EV_VEC_view_ofs, g_Plane[alive_bot]);
+                entity_set_vector(dead_spec, EV_VEC_punchangle, g_Punch[alive_bot]);
+                entity_set_vector(dead_spec, EV_VEC_v_angle, g_Vangle[alive_bot]);
+                entity_set_vector(dead_spec, EV_VEC_movedir, g_Mdir[alive_bot]);
+                set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
+                entity_set_int(dead_spec, EV_INT_bInDuck, g_Duck[alive_bot])
+
+                set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
+                entity_set_int(dead_spec, EV_INT_fixangle, 0)
+            }
         }
-
+        return PLUGIN_CONTINUE;
     }
     return PLUGIN_HANDLED;
 }
