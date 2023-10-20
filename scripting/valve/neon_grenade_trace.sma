@@ -114,7 +114,7 @@
 
     new Float:Axis[3];
     new g_model,sprite,g_ring;
-    new g_cvar_neon_all,g_cvar_neon_hull,g_cvar_neon_toss,g_cvar_neon_rad,g_cvar_neon_wid;
+    new g_cvar_neon_all,g_cvar_neon_c4,g_cvar_neon_hull,g_cvar_neon_toss,g_cvar_neon_rad,g_cvar_neon_wid;
     new gibs_models0, gibs_models1, gibs_models2;
     new g_energy0,g_energy1,g_energy2;
 
@@ -126,6 +126,12 @@
     new bool: bRADead[MAX_PLAYERS + 1];
     new bool: bStrike, g_AI;
     static g_event_fade, g_deathmsg
+
+    const LINUX_OFFSET_WEAPONS = 4;
+    const LINUX_DIFF = 5;
+    const UNIX_DIFF = 20;
+
+    static m_bIsC4
 
 public plugin_end()
 {
@@ -143,6 +149,12 @@ public plugin_init()
     static modname[MAX_PLAYERS];
     get_modname(modname, charsmax(modname))
     bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
+
+    if(bStrike)
+    {
+        m_bIsC4 = find_ent_data_info("CGrenade", "m_bIsC4") + UNIX_DIFF
+        g_cvar_neon_c4  = register_cvar("sv_neon_c4",  "0");
+    }
 
     g_event_fade = get_user_msgid("ScreenFade")
     g_shake_msg = get_user_msgid("ScreenShake")
@@ -368,7 +380,11 @@ public glow(g_model)
 
 public HandGrenade_Attack2_Touch(ent, id)
 {
-    new nade_owner;
+    static nade_owner;
+
+    if(bStrike && g_cvar_neon_c4 && !get_pcvar_num(g_cvar_neon_c4) && get_pdata_bool(ent, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
+        return PLUGIN_HANDLED
+
     if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_rad) == 1)
     {
         nade_owner = pev(ent,pev_owner);
