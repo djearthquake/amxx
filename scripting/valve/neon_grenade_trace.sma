@@ -564,7 +564,7 @@ public Other_Attack_Touch(ent, id)
 {
     new Float:Axis[3], Float:End_Position[3];
     static killer; killer = entity_get_edict(ent,EV_ENT_owner);
-    if( id != kill && is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
+    if(id != killer && is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
     {
 
         if(get_pcvar_num(g_cvar_neon_all))
