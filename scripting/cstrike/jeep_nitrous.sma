@@ -15,11 +15,11 @@
 new const prefix[] = { "!g[!tGarage!g]!n" }
 
 new iArmor[MAX_PLAYERS +1], g_mod_car[MAX_PLAYERS + 1],
-g_owned_car[MAX_PLAYERS][4], iMaxplayers, g_price_fuel,
+g_owned_car[MAX_PLAYERS][4], g_price_fuel, g_saytxt,
 bool:bSet[MAX_PLAYERS + 1], bool:bRegisteredCar[MAX_PLAYERS + 1], iVehicular[MAX_PLAYERS + 1]
 
 new const CARS[]= "func_vehicle"
-new m_acceleration, m_speed,m_flVolume;
+static m_acceleration, m_speed, m_flVolume;
 
 //Stages
 #define IDLE_SPEED 250.0
@@ -41,17 +41,16 @@ public plugin_init()
 {
     register_plugin("Jeep Nitrous", "1.6", ".sρiηX҉.");
 
-    if(!find_ent(charsmin, CARS))
+    if(!find_ent(MaxClients, CARS))
     {
         pause "d"
     }
-
+    g_saytxt = get_user_msgid("SayText")
     register_touch("player","func_vehicle","fn_shield_proximity2")
 
     register_clcmd("say /nos", "@nos", 0, "- say /nos for Car Mods!" , 0)
     register_clcmd("say_team /nos", "@nos")
 
-    iMaxplayers = get_maxplayers()
     register_event("ScoreInfo", "plugin_log", "bc", "1=committed suicide with", "2=vehicle");
     register_logevent("round_start", 2, "1=Round_Start")
     g_iNitrous = register_cvar("jeep_nitrous", "1")
@@ -63,12 +62,12 @@ public plugin_init()
 
 public pfn_touch(ptr, ptd)
 {
-    new iCar = get_pcvar_num(g_iNitrous)
+    static iCar; iCar = get_pcvar_num(g_iNitrous)
     if(g_iNitrous && iCar)
     {
-        if(is_user_connected(ptr) && pev_valid(ptd) > 1)
+        if(is_user_alive(ptr) && pev_valid(ptd) > 1)
         {
-            new iPlayer = ptr
+            static iPlayer;iPlayer = ptr
             if(is_driving(iPlayer))
             {
                 g_mod_car[iPlayer] = ptd
@@ -115,7 +114,7 @@ return get_user_index(name);
 
 public round_start()
 {
-    for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
+    for(new iPlayer = 1 ; iPlayer <= MaxClients ; ++iPlayer)
     {
         if(is_user_connected(iPlayer))
         {
@@ -159,18 +158,18 @@ public driving_think()
         remove_task(JEEP)
     }
 
-    for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
+    for(new iPlayer = 1 ; iPlayer <= MaxClients ; ++iPlayer)
     {
         ///if(bRegisteredCar[iPlayer])
         {
-            if(is_user_connected(iPlayer) && g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
+            if(is_user_alive(iPlayer) && g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
             {
                 new iRColor1 = random(255), iRColor2 = random(255), iRColor3 = random(255)
 
                 iArmor[iPlayer] = get_user_armor(iPlayer);
                 if(is_driving(iPlayer))
                 {
-                    new tmp_money = cs_get_user_money(iPlayer)
+                    static tmp_money; tmp_money = cs_get_user_money(iPlayer)
                     if(tmp_money > g_price_fuel)
                     {
                         if(iArmor[iPlayer] < 200.0)
@@ -179,15 +178,15 @@ public driving_think()
                             entity_set_float(iPlayer, EV_FL_armorvalue, float(iArmor[iPlayer])+1.0);
                             if(is_user_alive(iPlayer))
                             {
-                                set_ent_rendering(iPlayer, kRenderFxGlowShell, iRColor1, iRColor2, iRColor3, kRenderGlow, 5);
+                                set_ent_rendering(iPlayer, kRenderFxGlowShell, iRColor2, iRColor3, iRColor1, kRenderGlow, 5);
                                 if(g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
                                 {
                                     set_ent_rendering(g_mod_car[iPlayer], kRenderFxNone, iRColor1, iRColor2, iRColor3, kRenderTransColor, 75);
                                     if(is_user_admin(iPlayer))
                                     {
-                                        new Accel = get_pdata_int(g_mod_car[iPlayer], m_acceleration, LINUX_DIFF);
-                                        new fSpeed = get_pdata_int(g_mod_car[iPlayer], m_speed, LINUX_DIFF);
-                                        new Float:fVol = get_pdata_float(g_mod_car[iPlayer], m_flVolume, LINUX_DIFF);
+                                        static Accel; Accel = get_pdata_int(g_mod_car[iPlayer], m_acceleration, LINUX_DIFF);
+                                        static fSpeed; fSpeed = get_pdata_int(g_mod_car[iPlayer], m_speed, LINUX_DIFF);
+                                        static Float:fVol; fVol = get_pdata_float(g_mod_car[iPlayer], m_flVolume, LINUX_DIFF);
 
                                         client_print iPlayer, print_center, "%f|%i|%f", fSpeed, Accel, fVol //max
                                     }
@@ -203,11 +202,13 @@ public driving_think()
                         client_print iPlayer, print_center, "LOW ON FUEL!"
                     }
                 }
-                else if(!is_driving(iPlayer) && iArmor[iPlayer] > 100.0)
+                else if(!is_driving(iPlayer))
                 {
-                    entity_set_float(iPlayer, EV_FL_armorvalue, float(iArmor[iPlayer])-1.0);
+                    if(iArmor[iPlayer] > 100.0)
+                        entity_set_float(iPlayer, EV_FL_armorvalue, float(iArmor[iPlayer])-1.0);
+
                     set_ent_rendering(iPlayer, kRenderNormal, 0, 0, 0, kRenderNormal, 0)
-                    if(g_mod_car[iPlayer]  && pev_valid(g_mod_car[iPlayer] > 1))
+                    if(g_mod_car[iPlayer] && pev_valid(g_mod_car[iPlayer] > 1))
                     {
                         set_ent_rendering(g_mod_car[iPlayer], kRenderNormal, 0, 0, 0, kRenderNormal, 0)
                     }
@@ -225,7 +226,6 @@ stock is_driving(iPlayer)
     }
     return PLUGIN_HANDLED
 }
-
 
 @Nitrous(id)
 {
@@ -269,7 +269,7 @@ stock is_driving(iPlayer)
 
 public fn_shield_proximity2(iPlayer,iCar)
 {
-    if(is_user_connected(iPlayer) && is_user_bot(iPlayer))
+    if(is_user_alive(iPlayer) && is_user_bot(iPlayer))
     {
         iVehicular[iPlayer] = iCar
         message_begin(0,23);
@@ -464,10 +464,10 @@ stock client_printc(const id, const input[], any:...)
 
     for (new i = 0; i < count; i++)
     {
-        message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("SayText"), _, players[i]);
-        write_byte(players[i]);
-        write_string(msg);
-        message_end();
+        emessage_begin(MSG_ONE_UNRELIABLE, g_saytxt, _, players[i]);
+        ewrite_byte(players[i]);
+        ewrite_string(msg);
+        emessage_end();
     }
 }
 
