@@ -41,7 +41,7 @@ new bool:bListening[MAX_PLAYERS + 1]
 new bool:bFirstPerson[MAX_PLAYERS + 1]
 new bool:g_bRenderApplied[MAX_PLAYERS + 1]
 new bool:g_bFlagMap
-new g_random_view[MAX_PLAYERS+1], g_spec_think
+new g_random_view[MAX_PLAYERS+1]
 new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ], g_cvar_nametag
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
@@ -60,38 +60,6 @@ new /*Float:g_Velocity[MAX_PLAYERS + 1][3],*/ g_Duck[MAX_PLAYERS + 1], g_BackPac
 new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
 #define IS_THERE (~(0<<IN_SCORE))
-
-@play(id)
-{
-    OK)
-    {
-        if(CheckPlayerBit(g_AI, id))
-            return
-        //server_print "%n spectator mode is resetting.", id
-
-        client_cmd id,"spk valve/sound/UI/buttonclick.wav"
-
-        server_print "%i", pev(id,pev_weapons)
-
-        if(!g_startaspec)
-        {
-            set_task(2.0,"@reset", id+RESET)
-        }
-
-        if(task_exists(id+MOTD))
-            remove_task(id + MOTD)
-
-        if(task_exists(id + TOGGLE))
-            remove_task(id + TOGGLE)
-
-        if(g_bSpecNam[id])
-        {
-            set_user_info(id, "name", SzClientName[id])
-            g_bSpecNam[id] = false
-        }
-        set_view(id, CAMERA_NONE)
-    }
-}
 
 public plugin_init()
 {
@@ -114,7 +82,7 @@ public plugin_init()
     {
         g_bGrenadesOnlyRunning = true
     }
-    static mname[MAX_NAME_LENGTH]
+    new mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
     g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
 
@@ -132,7 +100,6 @@ public plugin_init()
 
     register_forward(FM_PlayerPreThink, "client_prethink", 0);
     register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
-    g_spec_think = register_forward(FM_PlayerPreThink, "spec_think")
     register_event("WeapPickup", "@strip_spec", "bef")
 
     //RegisterHam(Ham_Spawn, "player", "@play", 1); //ents can disappear on map start.
@@ -142,12 +109,24 @@ public plugin_init()
     //maxplayers = get_maxplayers()
 }
 
-
+/*
 public plugin_end()
 {
-    unregister_forward(FM_PlayerPreThink, g_spec_think)
+    for(new id = 1 ; id <= maxplayers ; ++id)
+    if(containi(SzSpecName[id], "[s]") != charsmin)
+    {
+        if(containi(SzClientName[id], "[s]") == charsmin)
+        {
+            set_user_info(id, "name", SzClientName[id])
+        }
+        else
+        {
+            replace(SzClientName[id], charsmax(SzClientName[]), "[s]", "")
+            set_user_info(id, "name", SzClientName[id])
+        }
+    }
 }
-
+*/
 
 public handle_say(id, blah[MAX_USER_INFO_LENGTH])
 {
@@ -170,7 +149,7 @@ public handle_say(id, blah[MAX_USER_INFO_LENGTH])
 
 @strip_spec(id)
 {
-    OK && /*bFirstPerson[id] &&*/ g_spectating[id])
+    OK && bFirstPerson[id] && g_spectating[id] )
     {
         fm_strip_user_weapons(id)
     }
@@ -184,10 +163,8 @@ public client_impulse(id)
     return PLUGIN_CONTINUE
 }
 
-public spec_think( id )
+public client_prethink( id )
 {
-    if(!pev_valid(id) || is_user_hltv(id))
-        return
     OK)
     {
         if(!g_spectating[id])
@@ -204,10 +181,6 @@ public spec_think( id )
         }
         else
         {
-            if(CheckPlayerBit(g_AI, id))
-                g_spectating[id] = false
-
-            @strip_spec(id)
             //Remember!
             #define OBS_NONE                        0
             #define OBS_CHASE_LOCKED                1           // Locked Chase Cam
@@ -250,6 +223,7 @@ public spec_think( id )
                 if(cvar_gg)
                 {
                     //set_view(id, CAMERA_NONE)
+                    fm_strip_user_weapons(id)
                     //entity_set_float(id, EV_FL_fov, 100.0)
                 }
             }
@@ -258,8 +232,9 @@ public spec_think( id )
             {
                 set_pev(id, pev_origin, g_user_origin[g_random_view[id]])
 
-                new effects; effects = pev(id, pev_effects)
+                static effects; effects = pev(id, pev_effects)
                 set_pev(id, pev_effects, (effects | EF_NODRAW))
+                fm_strip_user_weapons(id)
 
                 g_spectating[id] = true
 
@@ -330,6 +305,34 @@ stock loss()
     return iLoss
 }
 
+@play(id)
+{
+    OK)
+    {
+        if(CheckPlayerBit(g_AI, id))
+            return
+        //server_print "%n spectator mode is resetting.", id
+
+        client_cmd id,"spk valve/sound/UI/buttonclick.wav"
+
+        if(g_startaspec)
+            set_task(2.0,"@reset", id+RESET)
+
+        if(task_exists(id+MOTD))
+            remove_task(id + MOTD)
+
+        if(task_exists(id + TOGGLE))
+            remove_task(id + TOGGLE)
+
+        if(g_bSpecNam[id])
+        {
+            set_user_info(id, "name", SzClientName[id])
+            g_bSpecNam[id] = false
+        }
+        set_view(id, CAMERA_NONE)
+    }
+}
+
 @reset(Tsk)
 {
     static id; id = Tsk - RESET
@@ -378,7 +381,6 @@ public client_putinserver(id)
 
         if(equali(szSpec, "1"))
         {
-            @strip_spec(id)
             dllfunc(DLLFunc_ClientPutInServer, id)
             @go_spec(id)
         }
@@ -620,7 +622,6 @@ public client_infochanged(id)
                             }
                         }
                         g_spectating[id] = true
-                        @strip_spec(id)
                         static effects; effects = pev(id, pev_effects)
 
                         set_pev(id, pev_effects, (effects | EF_NODRAW))
@@ -629,7 +630,7 @@ public client_infochanged(id)
 
                         dllfunc(DLLFunc_SpectatorConnect, id)
 
-                        ///fm_strip_user_weapons(id)
+                        fm_strip_user_weapons(id)
 
                         server_print "%s GOING TO SPEC", SzClientName[id]
 
@@ -656,8 +657,7 @@ public client_infochanged(id)
                         {
                             if(g_spectating[id])
                             {
-                                //fm_strip_user_weapons(id)
-                                @strip_spec(id)
+                                fm_strip_user_weapons(id)
                                 if(cvar_gg)
                                     set_view(id, CAMERA_NONE)
                             }
