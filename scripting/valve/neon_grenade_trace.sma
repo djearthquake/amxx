@@ -161,7 +161,7 @@ public plugin_init()
     g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
     g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
     g_proximity             = register_cvar("sv_neon_range",  "500"); //max range
-    g_teams            = !bStrike ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
+    g_teams            =  bStrike ? get_cvar_pointer("mp_friendlyfire") : get_cvar_pointer("mp_teamplay")
     clamp(g_cvar_neon_wid,1,150);
     g_cvar_bsod_iDelay = register_cvar("neon_flashbang_time", "2");
 
@@ -231,15 +231,15 @@ public plugin_precache()
 {
     sprite       = precache_model("sprites/smoke.spr");
     precache_generic("sprites/smoke.spr");
-    g_energy0    = precache_model("models/bleachbones.mdl");precache_generic("models/bleachbones.mdl");
-    g_energy1    = precache_model("models/bskull_template1.mdl");precache_generic("models/bskull_template1.mdl");
-    g_energy2    = precache_model("models/sphere.mdl");precache_generic("models/sphere.mdl");
+    g_energy0    = precache_model("models/bleachbones.mdl");
+    g_energy1    = precache_model("models/bskull_template1.mdl");
+    g_energy2    = precache_model("models/sphere.mdl");
 
-    g_ring       = precache_model("sprites/ballsmoke.spr");precache_generic("sprites/ballsmoke.spr");
-    gibs_models0 = precache_model("models/cindergibs.mdl");precache_generic("models/cindergibs.mdl")
-    gibs_models1 = precache_model("models/chromegibs.mdl");precache_generic("models/chromegibs.mdl")
+    g_ring       = precache_model("sprites/ballsmoke.spr");
+    gibs_models0 = precache_model("models/cindergibs.mdl");
+    gibs_models1 = precache_model("models/chromegibs.mdl");
     //also needed for breakable randomly using them
-    gibs_models2 = precache_model("models/glassgibs.mdl");precache_generic("models/glassgibs.mdl");
+    gibs_models2 = precache_model("models/glassgibs.mdl");
     precache_sound(SOUND_HAWK1);
     precache_sound(SOUND_MAN1);
     precache_sound(SOUND_SHIT1);
@@ -441,16 +441,33 @@ public HandGrenade_Attack2_Touch(ent, id)
             for (new m=0; m<playercount; ++m)
             {
                 new hp; hp = get_user_health(players[m])
-                new playerlocation[3]
-                if(is_user_alive(players[m]))
-                if(CheckPlayerBit(g_AI,players[m]) ||  !CheckPlayerBit(g_AI,players[m]) && m != nade_owner)
+                static playerlocation[3]
+                if(is_user_alive(players[m]) && players[m] != nade_owner)
                 {
-
                     get_user_origin(players[m], playerlocation)
                     new result_distance; result_distance = get_entity_distance(g_model, players[m]);
 
-                    if (result_distance < get_pcvar_num(g_proximity))
+                    if(result_distance < get_pcvar_num(g_proximity))
                     {
+                        new Cvar = get_pcvar_num(g_teams)
+                        if(Cvar || bStrike)
+                        {
+                            if(bStrike)
+                            {
+                                if(!Cvar && get_user_team(nade_owner) == get_user_team(players[m]))
+                                    return PLUGIN_HANDLED
+                            }
+                            else
+                            {
+                                new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+                                get_user_team(nade_owner, killers_team, charsmax(killers_team));
+                                get_user_team(players[m], victims_team, charsmax(victims_team))
+
+                                if(Cvar && !equal(killers_team,victims_team))
+                                    return PLUGIN_CONTINUE
+                            }
+
+                        }
 
                         emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
                         ewrite_byte( TE_PLAYERSPRITES)
@@ -632,7 +649,7 @@ public Other_Attack_Touch(ent, id)
                             entity_explosion_knockback(players[m], End_Position);
                             fakedamage(players[m],"Sonic Radiation",300.0,DMG_SONIC);
 
-                            new killer; killer = entity_get_edict(ent,EV_ENT_owner);
+                            static killer; killer = entity_get_edict(ent,EV_ENT_owner);
 
                             log_kill(killer,players[m],"Sonic Radiation",1);
                         }
@@ -652,7 +669,7 @@ stock log_kill(killer, victim, weapon[], headshot)
     if (containi(weapon,"Radiation") > -1)
         set_msg_block(g_deathmsg, BLOCK_SET);
 
-    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+    static killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
     get_user_team(killer, killers_team, charsmax(killers_team));
     get_user_team(victim, victims_team, charsmax(victims_team));
 
