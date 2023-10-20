@@ -22,18 +22,19 @@
 */
 
 /*
-    Changelog: Jul 7 2022 11:00 (last)
+    Changelog: Oct 20 2023 08:00 (last)
     1.0: Alka made https://forums.alliedmods.net/showpost.php?p=682429&postcount=4
     1.0-1.5: add outside and update script
-    1.5-1.6: Bind with existing cvar. Mapcheck. Spaces not tabs! 
+    1.5-1.6: Bind with existing cvar. Mapcheck. Spaces not tabs!
+    1.6-1.7: Automatically set the snowsteps CVAR on maps with snow with plugin_cfg.
     CVAR:: "mp_footsteps" "3" //is snowstepping
  */
- 
+
 #include <amxmodx>
 #include <fakemeta>
 
 #define PLUGIN "Footsteps, custom"
-#define VERSION "1.6"
+#define VERSION "1.7"
 #define AUTHOR "SPiNX"
 
 #define STEP_DELAY 0.5
@@ -71,13 +72,16 @@ public plugin_precache()
         precache_sound(g_szStepSound[i]);
 
     ////checking maps with snow backdrop but now snow to match
-    new mname[MAX_NAME_LENGTH];
+    static mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
 
     if(equali(mname, "as_tundra") || containi(mname, "fy_") != charsmin )
         fm_create_entity("env_snow");
+}
 
-
+public plugin_cfg()
+{
+    g_SnowFeet = has_map_ent_class("env_snow") ? 3 : 1
 }
 
 public fwd_PlayerPreThink(id)
@@ -86,21 +90,21 @@ public fwd_PlayerPreThink(id)
     {
         if(!is_user_alive(id))
             return FMRES_IGNORED;
-    
+
         if(!is_user_outside(id))
             return FMRES_IGNORED;
 
         set_pev(id, pev_flTimeStepSound, 999);
-    
+
         #define STOP_SOUND emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, SND_STOP, PITCH_NORM)
         if(fm_get_ent_speed(id) < 175.0 )
             STOP_SOUND;
-    
+
         if(g_fNextStep[id] < get_gametime())
         {
             if(fm_get_ent_speed(id) && (pev(id, pev_flags) & FL_ONGROUND) && is_user_outside(id))
                 emit_sound(id, CHAN_BODY, g_szStepSound[random(MAX_SOUNDS)], VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
-    
+
             g_fNextStep[id] = get_gametime() + STEP_DELAY;
         }
 
