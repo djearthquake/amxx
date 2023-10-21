@@ -5,7 +5,7 @@
 #define MAX_CMD_LENGTH                128
 #define MAX_MOTD_LENGTH               1536
 #define PLUGIN  "safe_mode"
-#define VERSION "1.33"
+#define VERSION "1.34"
 #define AUTHOR "SPiNX"
 #define charsmin                      -1
 #define MAX_MAPS                      512
@@ -16,7 +16,7 @@
 
 new Xsafe
 new SzSave[MAX_CMD_LENGTH]
-static mname[MAX_RESOURCE_PATH_LENGTH]
+static g_mname[MAX_RESOURCE_PATH_LENGTH]
 new Trie:g_SafeMode
 new g_cvar_debugger
 new g_Adm
@@ -30,9 +30,9 @@ new g_SzNextMapCmd[MAX_RESOURCE_PATH_LENGTH]
 new bool:bCallingfromEnd
 new bool:bBackupPluginsINI
 new bool:bCMDCALL
-new bool:bStrike
-new szArg[MAX_CMD_LENGTH];
-new szArgCmd[MAX_NAME_LENGTH], szArgCmd1[MAX_NAME_LENGTH];
+new bool:bReloading
+new szArg[MAX_RESOURCE_PATH_LENGTH];
+new szArgCmd[MAX_RESOURCE_PATH_LENGTH], szArgCmd1[MAX_RESOURCE_PATH_LENGTH];
 new const SzSafeModeFileName[]="/safe_mode.ini"
 
 enum _:Safe_Mode
@@ -103,13 +103,6 @@ public plugin_init()
     }
 
     bBackupPluginsINI?server_print("Back up of PLUGINS.INI already captured."):server_print("Backing up of PLUGINS.INI")
-    static mod_name[MAX_NAME_LENGTH]
-    get_modname(mod_name, charsmax(mod_name))
-
-    if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
-    {
-        bStrike = true
-    }
 }
 
 @reload_map()
@@ -118,10 +111,11 @@ public plugin_init()
     {
         if (is_user_connected(admin) && CheckPlayerBit(g_Adm, admin))
         {
-            client_print admin, print_chat, "Reloading %s specific plugins.", mname
+            client_print admin, print_chat, "Reloading %s specific plugins.", g_mname
         }
     }
-    console_cmd 0, "amx_map %s", mname //flushes out Amxx
+    bReloading = true
+    console_cmd 0, "amx_map %s", g_mname //flushes out Amxx
 }
 
 public client_command(id)
@@ -138,7 +132,7 @@ public client_command(id)
     }
 }
 
-@cmd_call(SzMapname[MAX_NAME_LENGTH])
+@cmd_call(SzMapname[MAX_RESOURCE_PATH_LENGTH])
 {
     bCMDCALL = true
 
@@ -235,7 +229,7 @@ public client_command(id)
 public ReadSafeModeFromFile( )
 {
     static SzSafeMap_Extension[MAX_NAME_LENGTH]
-    bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
+    bCMDCALL ? copy(Data[ SzMaps ] , charsmax(Data[]), g_SzNextMapCmd) : get_mapname(g_mname, charsmax(g_mname))
 
     get_configsdir( g_szFilePath, charsmax( g_szFilePath ) )
     formatex(SzSafeMap_Extension, charsmax( SzSafeMap_Extension ), "/plugins.ini.safe")
@@ -312,17 +306,17 @@ public ReadSafeModeFromFile( )
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     if(bCallingfromEnd)
-        copy(mname, charsmax(mname), g_SzNextMap)
+        copy(g_mname, charsmax(g_mname), g_SzNextMap)
 
 
-    bCMDCALL ? copy(Data[ SzMaps ], charsmax(Data), g_SzNextMapCmd) : get_mapname(mname, charsmax(mname))
+    bCMDCALL ? copy(Data[ SzMaps ], charsmax(Data), g_SzNextMapCmd) : get_mapname(g_mname, charsmax(g_mname))
 
     if(bCallingfromEnd)
         copy(Data[ SzMaps ], charsmax(Data), g_SzNextMap)
     if(!bCMDCALL && !bCallingfromEnd)
-        copy(Data[ SzMaps ], charsmax(Data), mname)
+        copy(Data[ SzMaps ], charsmax(Data), g_mname)
 
-    server_print "[%s]map name is %s", PLUGIN, Data[ SzMaps ] //mname
+    server_print "[%s]map name is %s", PLUGIN, Data[ SzMaps ] //g_mname
 
     set_pcvar_num(Xsafe, TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ) ? 1 : 0)
 
@@ -384,12 +378,7 @@ public ReadSafeModeFromFile( )
                 client_print admin, print_chat, "reloading %s^nplugins:^n%s^n%s^n%s^n%s^n%s...", Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ],Data[ SzPlugin5 ]
 
         server_print"Reloading %s.", Data[ SzMaps ]
-
-        if(bStrike)
-            set_cvar_string "amx_nextmap", Data[ SzMaps ] //end loop
-
-        set_task(20.0,"@reload_map",2021,mname,charsmax(mname))
-
+        set_task(10.0,"@reload_map",2021,g_mname,charsmax(g_mname))
     }
 
     else if(!f2 && !get_pcvar_num(Xsafe))
@@ -406,8 +395,7 @@ public ReadSafeModeFromFile( )
         rename_file(g_szFilePathSafe,g_szFilePath,1)
 
         log_amx ("Keeping Safemode off of unintended map.")
-        set_task(10.0,"@push_map",2021,mname,charsmax(mname))
-
+        set_task(10.0,"@push_map",2021,g_mname,charsmax(g_mname))
     }
     bCallingfromEnd?server_print("Exit %s %s", PLUGIN, VERSION):server_print("Init %s %s", PLUGIN, VERSION)
 }
@@ -415,20 +403,23 @@ public ReadSafeModeFromFile( )
 @push_map()
 {
     client_print 0, print_center, "Reloading map plugins"
-    console_cmd 0, "changelevel %s", mname
+    console_cmd 0, "changelevel %s", g_mname
 }
 
 public plugin_cfg()
 {
     bCallingfromEnd = false
+    bReloading = false
     ReadSafeModeFromFile( )
 }
 
 public plugin_end()
 {
-    static SzMapname[MAX_NAME_LENGTH]
-    get_cvar_string "amx_nextmap", SzMapname, charsmax(SzMapname)
-    @cmd_call(SzMapname)
+    static SzMapname[MAX_RESOURCE_PATH_LENGTH]
+
+    get_cvar_string( "amx_nextmap", SzMapname, charsmax(SzMapname))
+
+    bReloading ?  @cmd_call(g_mname) : @cmd_call(SzMapname)
     TrieDestroy(g_SafeMode)
 }
 
