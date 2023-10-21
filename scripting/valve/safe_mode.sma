@@ -30,6 +30,7 @@ new g_SzNextMapCmd[MAX_RESOURCE_PATH_LENGTH]
 new bool:bCallingfromEnd
 new bool:bBackupPluginsINI
 new bool:bCMDCALL
+new bool:bStrike
 new szArg[MAX_CMD_LENGTH];
 new szArgCmd[MAX_NAME_LENGTH], szArgCmd1[MAX_NAME_LENGTH];
 new const SzSafeModeFileName[]="/safe_mode.ini"
@@ -102,6 +103,13 @@ public plugin_init()
     }
 
     bBackupPluginsINI?server_print("Back up of PLUGINS.INI already captured."):server_print("Backing up of PLUGINS.INI")
+    static mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name))
+
+    if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
+    {
+        bStrike = true
+    }
 }
 
 @reload_map()
@@ -376,7 +384,9 @@ public ReadSafeModeFromFile( )
                 client_print admin, print_chat, "reloading %s^nplugins:^n%s^n%s^n%s^n%s^n%s...", Data[ SzMaps ], Data[ SzPlugin1 ], Data[ SzPlugin2 ], Data[ SzPlugin3 ], Data[ SzPlugin4 ],Data[ SzPlugin5 ]
 
         server_print"Reloading %s.", Data[ SzMaps ]
-        set_cvar_string "amx_nextmap", Data[ SzMaps ] //end loop
+
+        if(bStrike)
+            set_cvar_string "amx_nextmap", Data[ SzMaps ] //end loop
 
         set_task(20.0,"@reload_map",2021,mname,charsmax(mname))
 
