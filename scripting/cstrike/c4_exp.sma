@@ -179,9 +179,9 @@ public FnPlant()
 
 public fnDefusal(id)
 {
-    if(is_user_alive(id))
+    if(is_user_connected(id) && is_user_alive(id))
     {
-        if(!Client_C4_adjusted_already[id])
+        if(!Client_C4_adjusted_already[id] && is_user_alive(id))
         {
             c4_from_grenade();
             static Float:fC4_factor
@@ -226,7 +226,7 @@ public nice(show)
     if(pev_valid(g_weapon_c4_index))
     {
 
-        if(pev(ct_defusing,pev_button) & ~IN_USE)
+        if(!is_user_bot(ct_defusing) && pev(ct_defusing,pev_button) & ~IN_USE)
             remove_task(ct_defusing+911)
 
         static iPlayerOrigin[3],
