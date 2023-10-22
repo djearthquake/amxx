@@ -35,7 +35,7 @@
 
 new const ent_type[]="weaponbox"
 
-new g_Adm, g_box_debug, g_ent_count, g_box_lim
+new g_Adm, g_box_debug, g_ent_count, g_master_count, g_box_lim
 new Picked[MAX_PLAYERS+1]
 
 public plugin_init()
@@ -97,7 +97,7 @@ public end_clamp(player)
 
 @_weaponbox(iloot_crate)
 {
-    g_ent_count++
+    g_ent_count++;g_master_count++
     static box_limit; box_limit = get_pcvar_num(g_box_lim)
 
     if(g_ent_count >= box_limit)
@@ -113,7 +113,7 @@ ent_limiter()
 {
     #define OVERFLOW MAX_MOTD_LENGTH
 
-    static ent, ent_debug, iThinking_ent;
+    static ent, ent_debug, iThinking_ent; iThinking_ent = 0;
     ent_debug = get_pcvar_num(g_box_debug);
     new bool:bChanged
 
@@ -127,7 +127,7 @@ ent_limiter()
             static iEnts, iEntMax;
             iEnts = engfunc(EngFunc_NumberOfEntities)
             iEntMax = global_get(glb_maxEntities)
-            server_print("%d/%d ents/max...|Index (to be removed):%d: \%s/ (next think):%i", iEnts, iEntMax, ent, ent_type, iThinking_ent);
+            server_print("%d spawned --%d/%d ents/max...|Index (to be removed):%d: \%s/ (next think):%i", g_master_count, iEnts, iEntMax, ent, ent_type, iThinking_ent);
         }
 
         iThinking_ent ? remove_entity(ent)  :  set_pev(ent, pev_flags, FL_KILLME);
