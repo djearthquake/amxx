@@ -115,7 +115,6 @@ public plugin_init()
         }
     }
     bReloading = true
-    TrieDestroy(g_SafeMode)
     console_cmd 0, "amx_map %s", g_mname //flushes out Amxx
 }
 
@@ -148,6 +147,7 @@ public client_command(id)
     if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
     {
         @clear_plugins()
+        return
     }
 
     server_print("%s MUST preload %s via command", PLUGIN, SzMapname)
@@ -160,7 +160,7 @@ public client_command(id)
     static SzSafeMap_Extension[MAX_NAME_LENGTH],
     SzSafeMap_Revert[MAX_CMD_LENGTH],
     Sz_RevertPath[MAX_CMD_LENGTH]
-    bCallingfromEnd = true
+    //bCallingfromEnd = true
 
     server_print("Clearing plugins if needed.")
 
@@ -398,7 +398,7 @@ public ReadSafeModeFromFile( )
         log_amx ("Keeping Safemode off of unintended map.")
         set_task(10.0,"@push_map",2021,g_mname,charsmax(g_mname))
     }
-    bCallingfromEnd?server_print("Exit %s %s", PLUGIN, VERSION):server_print("Init %s %s", PLUGIN, VERSION)
+    bCallingfromEnd?server_print("Exit %s %s", PLUGIN, VERSION) & TrieDestroy(g_SafeMode):server_print("Init %s %s", PLUGIN, VERSION)
 }
 
 @push_map()
