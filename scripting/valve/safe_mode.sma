@@ -115,6 +115,7 @@ public plugin_init()
         }
     }
     bReloading = true
+    TrieDestroy(g_SafeMode)
     console_cmd 0, "amx_map %s", g_mname //flushes out Amxx
 }
 
@@ -420,7 +421,8 @@ public plugin_end()
     get_cvar_string( "amx_nextmap", SzMapname, charsmax(SzMapname))
 
     bReloading ?  @cmd_call(g_mname) : @cmd_call(SzMapname)
-    TrieDestroy(g_SafeMode)
+    bCallingfromEnd = true
+    //TrieDestroy(g_SafeMode)
 }
 
 @file_data(SzBuffer[MAX_CMD_LENGTH])
