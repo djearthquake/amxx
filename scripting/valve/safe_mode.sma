@@ -5,7 +5,7 @@
 #define MAX_CMD_LENGTH                128
 #define MAX_MOTD_LENGTH               1536
 #define PLUGIN  "safe_mode"
-#define VERSION "1.34"
+#define VERSION "1.35"
 #define AUTHOR "SPiNX"
 #define charsmin                      -1
 #define MAX_MAPS                      512
@@ -147,6 +147,7 @@ public client_command(id)
     if(!TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ))
     {
         @clear_plugins()
+        ReadSafeModeFromFile( )
         return
     }
 
