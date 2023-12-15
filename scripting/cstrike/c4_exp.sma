@@ -8,7 +8,7 @@
 #include fakemeta
 #include fakemeta_util
 
-#define IDENTIFY register_plugin("c4 Experience","1.22","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.23","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -96,8 +96,6 @@ stock bool:get_pdata_bool(ent, charbased_offset, intbase_linuxdiff = 5)
 
 public FnPlant()
 {
-    //get username via log
-    //g_weapon_c4_index = 0
     c4_from_grenade();
     static id; id = get_loguser_index();
     if(is_user_alive(id))
@@ -115,7 +113,7 @@ public FnPlant()
             if(!get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
                 return
 
-            if(floatround(cs_get_c4_explode_time(g_weapon_c4_index)-get_gametime()-fC4_factor) < 9)
+            if((cs_get_c4_explode_time(g_weapon_c4_index)-get_gametime()-fC4_factor) < 9.0)
             {
                 set_pcvar_float(g_fExperience_offset, get_pcvar_float(g_fExperience_offset)/2)
                 fC4_factor = get_user_frags(id)*fExp
@@ -139,18 +137,6 @@ public FnPlant()
                     cs_set_c4_explode_time(g_weapon_c4_index, 9.0)
                 }
                 server_print "boom time is %f seconds!", fTime
-
-               /*
-                new Float:fHuman_readable = fTime - get_gametime()
-                if(fHuman_readable <=7.0)
-                    fHuman_readable = 15.0 // so does not blow up in face!
-
-                if(fHuman_readable >= 7.0)
-                {
-                    cs_set_c4_explode_time(g_weapon_c4_index, fTime)
-                    server_print "boom time is %f seconds!", fTime
-                }
-                */
 
                 //Multi-task
                 entity_set_float(id, EV_FL_maxspeed, g_fUninhibited_Walk);
@@ -315,7 +301,7 @@ stock c4_from_grenade()
                 break;
             }
             pev(pev_classname, g_weapon_c4_index, szClass, charsmax(szClass))
-            if(g_weapon_c4_index <= MaxClients || !pev_valid(g_weapon_c4_index) || !equali(szClass, "grenade") || containi(szClass, "smoke") > charsmin || containi(szClass, "flash") > charsmin )
+            if(g_weapon_c4_index <= MaxClients || !pev_valid(g_weapon_c4_index) || !equali(szClass, "grenade"))
                 c4_from_grenade()
         }
     }
