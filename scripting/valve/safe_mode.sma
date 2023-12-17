@@ -5,7 +5,7 @@
 #define MAX_CMD_LENGTH                128
 #define MAX_MOTD_LENGTH               1536
 #define PLUGIN  "safe_mode"
-#define VERSION "1.35"
+#define VERSION "1.36"
 #define AUTHOR "SPiNX"
 #define charsmin                      -1
 #define MAX_MAPS                      512
@@ -318,7 +318,7 @@ public ReadSafeModeFromFile( )
     if(!bCMDCALL && !bCallingfromEnd)
         copy(Data[ SzMaps ], charsmax(Data), g_mname)
 
-    server_print "[%s]map name is %s", PLUGIN, Data[ SzMaps ] //g_mname
+    server_print "[%s]map name is %s", PLUGIN, g_mname //Data[ SzMaps ] //g_mname
 
     set_pcvar_num(Xsafe, TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ) ? 1 : 0)
 
@@ -347,7 +347,7 @@ public ReadSafeModeFromFile( )
         {
             //basic map pick fcn
             is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
-            write_file(g_szFilePath, SzSave)
+            //write_file(g_szFilePath, SzSave) //was making doubles sometimes
         }
 
         write_file(g_szFilePath, Data[ SzPlugin1 ])
@@ -421,7 +421,7 @@ public plugin_end()
 
     get_cvar_string( "amx_nextmap", SzMapname, charsmax(SzMapname))
 
-    bReloading ?  @cmd_call(g_mname) : @cmd_call(SzMapname)
+    bReloading ? @cmd_call(SzMapname) : @cmd_call(g_mname)
     bCallingfromEnd = true
     //TrieDestroy(g_SafeMode)
 }
