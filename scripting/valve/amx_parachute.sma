@@ -192,7 +192,7 @@ public plugin_init()
 
     RegisterHam(Ham_Killed, "player", "death_event", 1);
 
-    register_forward(FM_PlayerPreThink, "parachute_prethink", 0)
+    register_forward(FM_PlayerPreThink, "parachute_prethink", true)
 }
 
 public plugin_natives()
@@ -335,14 +335,14 @@ public parachute_reset(id)
 
 @chute_touch(chute,whatever)
 {
-    new id = pev(chute, pev_owner)
-    if(is_user_connected(id))
+    static id; id = pev(chute, pev_owner)
+    if(is_user_alive(id))
     {
         server_print "Adjusting %n parachute...", id
 
         if(para_ent[id] && is_user_connected(id))
         {
-             if(is_valid_ent(para_ent[id]))
+             if(is_valid_ent(para_ent[id])>1)
              {
                 set_pev(para_ent[id], pev_solid, SOLID_NOT)
                 server_print "Adjusted %n parachute!", id
