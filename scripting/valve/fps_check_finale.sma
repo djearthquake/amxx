@@ -64,7 +64,7 @@ new iFps_kick
 public plugin_init()
 {
     iFps_kick = register_cvar("fps_kick","200");
-    register_forward(FM_CmdStart, "CmdStart");
+    register_forward(FM_CmdStart, "CmdStart", true);
 }
 #endif
 
