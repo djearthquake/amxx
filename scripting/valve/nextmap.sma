@@ -38,22 +38,22 @@ new finale[MAX_CMD_LENGTH]
 new g_mp_friendlyfire, g_teamplay, g_map_ent, g_frags, g_frags_remaining, g_captures_remaining
 new g_mp_chattime
 new g_amx_nextmap, g_finale
-new bool:B_infinale
+new bool:B_infinale, maxplayers
 
 #if AMXX_VERSION_NUM != 182
 new const CvarChatTimeDesc[]="Added by nextmap to include end game chat time."
 #endif
 public client_putinserver(client)
 {
-    if(is_user_connected(client))
+    if(is_user_connected(client) && !is_user_hltv(client))
     {
-        if(B_infinale)
+        if(B_infinale && is_user_alive(client))
         {
             set_pev(client,pev_flags,pev(client,pev_flags) | FL_FROZEN);
             fm_strip_user_weapons(client)
             if(!is_user_bot(client))
             {
-                new XstringF[MAX_RESOURCE_PATH_LENGTH]
+                static XstringF[MAX_RESOURCE_PATH_LENGTH]
                 get_pcvar_string(g_amx_nextmap,XstringF,charsmax(XstringF))
                 formatex(finale,charsmax(finale),"Next map is %s!",XstringF)
                 client_print client, print_chat, XstringF
@@ -138,6 +138,7 @@ public plugin_init()
     set_localinfo("lastmapcycle", szString)
 
     g_finale = register_cvar("amx_nextmap_finale", "3") /*0- no end game finale | 1-tunes | 2-finale,tunes | 3-finale,tunes,gametitle*/
+    maxplayers = get_maxplayers()
 }
 
 public sayNextMap(id)
@@ -178,6 +179,7 @@ public changeMap()
     #if AMXX_VERSION_NUM == 182
     new Xchattime = get_pcvar_num(g_mp_chattime)
     #endif
+
     if(is_plugin_loaded("safe_mode.amxx",true)!=charsmin)
     {
         if(callfunc_begin("@cmd_call","safe_mode.amxx"))
@@ -187,6 +189,7 @@ public changeMap()
             log_amx "Pushed map %s through safemode plugin...", Xstring
         }
     }
+
     new bool:b_one_run
     if(!b_one_run)
     {
@@ -348,14 +351,14 @@ readMapCycle(szFileName[], szNext[], iNext)
 #endif
 
 @finale(finale[])
-if(get_pcvar_num(g_finale)>1)
+if(get_pcvar_num(g_finale)>1 && get_playersnum())
 {
     B_infinale = true
     message_begin(MSG_BROADCAST,SVC_FINALE,{0,0,0},0);write_string(finale);message_end()
 
-    for (new client=1; client<=get_playersnum(); ++client)
+    for (new client=1; client<=maxplayers; ++client)
     {
-        if(is_user_connected(client))
+        if(is_user_connected(client) && !is_user_hltv(client) && is_user_alive(client))
         {
             set_pev(client,pev_flags,pev(client,pev_flags) | FL_FROZEN);
             fm_strip_user_weapons(client)
@@ -365,7 +368,7 @@ if(get_pcvar_num(g_finale)>1)
 }
 
 @title()
-if(get_pcvar_num(g_finale)>2)
+if(get_pcvar_num(g_finale)>2 && get_playersnum())
 {
     emessage_begin(MSG_BROADCAST,get_user_msgid("GameTitle"),{0,0,0},0)
     ewrite_byte(1)
@@ -373,9 +376,9 @@ if(get_pcvar_num(g_finale)>2)
 }
 
 @tunes()
-if(get_pcvar_num(g_finale))
+if(get_pcvar_num(g_finale) && get_playersnum())
 {
-    new iTrack = random_num(2,27) //1 is blank
+    static iTrack; iTrack = random_num(2,27) //1 is blank
     emessage_begin(MSG_BROADCAST, SVC_CDTRACK, _, 0 );
     ewrite_byte(iTrack);
     ewrite_byte(1);
