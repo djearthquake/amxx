@@ -67,7 +67,7 @@ public plugin_init()
 {
     gMaxPlayers = get_maxplayers()
     register_plugin(PLUGIN, VERSION, AUTHOR);
-    register_forward(FM_SetModel,"FORWARD_SET_MODEL");
+    register_forward(FM_SetModel,"FORWARD_SET_MODEL", true);
     g_Hostname      =       get_cvar_pointer("hostname");
 
     for( new list; list < sizeof disarmament; list++)
@@ -86,7 +86,7 @@ public plugin_init()
 
     if(has_map_ent_class("op4mortar"))
     {
-        g_proximity = register_forward(FM_PlayerPreThink, "mortar_proximity")
+        g_proximity = register_forward(FM_PlayerPreThink, "mortar_proximity", true)
     }
 }
 
@@ -150,7 +150,7 @@ public FORWARD_SET_MODEL(iExplosive, model[])
         for (new m=1; m<=playercount; ++m)
         {
             static playerlocation[3]
-            static iPlayer; iPlayer = players[m]
+            new iPlayer; iPlayer = players[m]
             if(is_user_connected(iPlayer))
             {
                 get_user_origin(iPlayer, playerlocation)
