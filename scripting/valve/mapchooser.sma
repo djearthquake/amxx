@@ -371,7 +371,7 @@ public voteNextmap()
         return
     }
 
-    if(Pcvar_captures && get_pcvar_num(Pcvar_captures)) //bind it?
+    if(bOF_run && get_pcvar_num(Pcvar_captures)) //bind it?
     {
         if(get_pcvar_num(Pcvar_captures) <2)
         {
@@ -401,7 +401,7 @@ public voteNextmap()
             return
         }
     }
-    else if(get_pcvar_num(Pcvar_captures))
+    else if(bOF_run && get_pcvar_num(Pcvar_captures))
     {
         if( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) )
         {
