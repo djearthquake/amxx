@@ -189,23 +189,26 @@ public client_disconnected(id)
 
 public hook_loop(sid[3])
 {
-    new id = str_to_num(sid);
-    if(is_user_connected(id) && is_user_alive(id))
+    if(get_pcvar_num(g_hookmod))
     {
-        bHaveHooked[id] = true
-        if(CheckPlayerBit(g_AI, id) && is_user_outside(id))
+        new id = str_to_num(sid);
+        if(is_user_connected(id) && is_user_alive(id))
         {
-            if(!grabbed[id])
-                hook_bot(sid)
-            if(get_pcvar_num(g_debug))
-                server_print("Hooking %n", id)
-
-            if(get_pcvar_num(g_planefun))
+            bHaveHooked[id] = true
+            if(CheckPlayerBit(g_AI, id) && is_user_outside(id))
             {
-                if(!bPlane_made[id])
+                if(!grabbed[id])
+                    hook_bot(sid)
+                if(get_pcvar_num(g_debug))
+                    server_print("Hooking %n", id)
+
+                if(get_pcvar_num(g_planefun))
                 {
-                    bPlane_made[id] = true
-                    dllfunc( DLLFunc_Spawn, plane_ent[id])
+                    if(!bPlane_made[id])
+                    {
+                        bPlane_made[id] = true
+                        dllfunc( DLLFunc_Spawn, plane_ent[id])
+                    }
                 }
             }
         }
@@ -258,14 +261,16 @@ public hookgrab(id)
             if(!bPlane_made[id])
             {
                 bPlane_made[id] = true
-                dllfunc( DLLFunc_Spawn, plane_ent[id])
+                if(pev_valid(plane_ent[id]))
+                    dllfunc( DLLFunc_Spawn, plane_ent[id])
             }
             if(CheckPlayerBit(g_Adm, id))
             {
                 if(!g_Adm_highlander)
                 {
                     g_Adm_highlander = id
-                    set_entity_visibility(plane_ent[id],0)
+                    if(pev_valid(plane_ent[id]))
+                        set_entity_visibility(plane_ent[id],0)
                 }
             }
         }
@@ -438,6 +443,7 @@ public unhook(id)
             console_cmd(id, "default_fov 100");
             set_view(id, CAMERA_NONE);
         }
+
     }
     return PLUGIN_HANDLED
 }
@@ -449,56 +455,61 @@ public new_round(id)
 }
 
 public fw_PlayerPostThink(id,{Float,_}:...)
-if(get_pcvar_num( g_planefun ))
-if(is_user_alive(id) && bHaveHooked[id])
 {
-    new flags = get_entity_flags(id)
-    if(flags & FL_SPECTATOR)
-        return
-
-    pev(id, pev_angles, plane_angles[id]);
-    pev(id, pev_origin, plane_origin[id]);
-
-    if(get_pcvar_float(g_freq))
+    if(get_pcvar_num(g_hookmod))
     {
-        if(is_user_outside(id))
+        if(get_pcvar_num( g_planefun ))
+        if(is_user_alive(id) && bHaveHooked[id])
         {
-            if(pev_valid(plane_ent[id]) && plane_ent[id] > 0)
+            new flags = get_entity_flags(id)
+            if(flags & FL_SPECTATOR)
+                return
+
+            pev(id, pev_angles, plane_angles[id]);
+            pev(id, pev_origin, plane_origin[id]);
+
+            if(get_pcvar_float(g_freq))
             {
-                if(get_pcvar_num(g_debug))server_print"Trying add model for %n",id
-                set_pev(plane_ent[id],pev_classname,"amx_bot_apache")
+                if(is_user_outside(id))
+                {
+                    if(pev_valid(plane_ent[id]) && plane_ent[id] > 0)
+                    {
+                        if(get_pcvar_num(g_debug))server_print"Trying add model for %n",id
+                        set_pev(plane_ent[id],pev_classname,"amx_bot_apache")
 
-                CheckPlayerBit(g_AI, id) ? entity_set_model(plane_ent[id], osprey_model):entity_set_model(plane_ent[id], apache_model)
+                        CheckPlayerBit(g_AI, id) ? entity_set_model(plane_ent[id], osprey_model):entity_set_model(plane_ent[id], apache_model)
 
-                set_pev(plane_ent[id],pev_origin,plane_origin[id])
-                set_pev(plane_ent[id],pev_angles,plane_angles[id])
+                        set_pev(plane_ent[id],pev_origin,plane_origin[id])
+                        set_pev(plane_ent[id],pev_angles,plane_angles[id])
 
-                if(id != g_Adm_highlander)
-                    set_entity_visibility(plane_ent[id],1)
+                        if(id != g_Adm_highlander)
+                            set_entity_visibility(plane_ent[id],1)
+                    }
+
+                }
+
+                if(plane_ent[id])
+                {
+                    //fail safe
+                    new iEnts; iEnts = engfunc(EngFunc_NumberOfEntities)
+                    if(iEnts > 1541)
+                    {
+                        if(get_pcvar_num(g_debug))
+                            server_print"Attempting ent removal for %n", id
+                        remove_entity(plane_ent[id])
+                    }
+                }
             }
-
-        }
-
-        if(plane_ent[id])
-        {
-            //fail safe
-            new iEnts; iEnts = engfunc(EngFunc_NumberOfEntities)
-            if(iEnts > 1541)
+            if(id == g_Adm_highlander && is_user_outside(id))
             {
-                if(get_pcvar_num(g_debug))
-                    server_print"Attempting ent removal for %n", id
-                remove_entity(plane_ent[id])
+                new ent
+                ent = find_ent_by_tname(charsmin, "ufo_skin")
+                if(ent)
+                {
+                    new Float:uOrigin[3]; pev(id,pev_origin, uOrigin)
+                    set_pev(ent, pev_origin, uOrigin)
+                }
             }
-        }
-    }
-    if(id == g_Adm_highlander && is_user_outside(id))
-    {
-        new ent
-        ent = find_ent_by_tname(charsmin, "ufo_skin")
-        if(ent)
-        {
-            new Float:uOrigin[3]; pev(id,pev_origin, uOrigin)
-            set_pev(ent, pev_origin, uOrigin)
         }
     }
 }
