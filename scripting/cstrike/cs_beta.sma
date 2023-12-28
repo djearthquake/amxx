@@ -61,7 +61,7 @@ public plugin_init()
     register_touch("player","hostage_entity","hostage_push")
     register_touch("player","monster_scientist","hostage_push")
 
-    register_forward(FM_EmitSound, "forward_emitsound")
+    register_forward(FM_EmitSound, "forward_emitsound", true)
     register_message(get_user_msgid("HudTextArgs"), "hook_hudtext")
     g_Speed = get_cvar_pointer("sv_maxspeed")
     set_pcvar_float(g_Speed, 450.0)
