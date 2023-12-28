@@ -35,7 +35,7 @@ public plugin_init()
     register_cvar("Vote_Map_Plugin",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
     map_limit = register_cvar("vote_map_limit", "5")
     set_cvar_string("Vote_Map_Plugin",VERSION)
-    register_forward(FM_Touch,"entity_touch")
+    register_forward(FM_Touch,"entity_touch", true)
     set_task(5.0,"check_map")
     changed = false
 }
