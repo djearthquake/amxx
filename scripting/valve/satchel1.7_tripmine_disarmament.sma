@@ -52,7 +52,7 @@ new disarmament[][]=
     "monster_grenade"
 }
 
-new g_enable, g_health, gMaxPlayers, g_Hostname
+new g_enable, g_health, g_Hostname
 new g_SzMonster_class[MAX_NAME_LENGTH];
 new g_lash_damage, g_fire
 const LINUX_OFFSET_WEAPONS = 4;
@@ -65,12 +65,11 @@ new iBeamEnt, iRTripMineOwner, iRPenguinOwner;
 
 public plugin_init()
 {
-    gMaxPlayers = get_maxplayers()
     register_plugin(PLUGIN, VERSION, AUTHOR);
     register_forward(FM_SetModel,"FORWARD_SET_MODEL", true);
     g_Hostname      =       get_cvar_pointer("hostname");
 
-    for( new list; list < sizeof disarmament; list++)
+    for( new list; list < sizeof disarmament; ++list)
         register_touch(disarmament[list], "player", "disarm_")
     register_touch("monster_satchel", "player", "@touch")
     g_enable = register_cvar("hl_satchel", "1")
@@ -113,7 +112,7 @@ public FORWARD_SET_MODEL(iExplosive, model[])
 {
     if(get_pcvar_num(g_enable))
     {
-        if(pev_valid(iExplosive) < 2
+        if(pev_valid(iExplosive)
         || !equal(model,"models/w_satchel.mdl")
         //|| !equal(model,"models/w_rpg.mdl")
         //|| !equal(model,"models/w_argrenade.mdl")
@@ -124,66 +123,69 @@ public FORWARD_SET_MODEL(iExplosive, model[])
 
         static iExplosives_Handler;
         iExplosives_Handler = pev(iExplosive,pev_owner);
-
-        if(iExplosives_Handler <1 || !is_user_connected(iExplosives_Handler))
-            return FMRES_IGNORED;
-
-        static Float:health; health = get_pcvar_float(g_health)
-
-        set_pev(iExplosive,pev_health,health);
-        set_pev(iExplosive,pev_takedamage,DAMAGE_AIM); //aim is bullets, yes is blast
-        set_pev(iExplosive,pev_solid,SOLID_SLIDEBOX);
-
-        static SziExplosive[5]
-        format(SziExplosive, charsmax(SziExplosive), "%i", iExplosive)
-
-        client_cmd(iExplosives_Handler,"spk valve/sound/items/clipinsert1.wav")
-        #if defined TEST
-        if(is_user_admin(iExplosives_Handler) && !task_exists(iExplosives_Handler))
-            set_task(35.0, "@test", iExplosives_Handler, SziExplosive, charsmax(SziExplosive))
-        #endif
-
-        new players[ MAX_PLAYERS ]
-        new playercount
-
-        get_players(players,playercount,"h")
-        for (new m=1; m<=playercount; ++m)
+        if(is_user_alive(iExplosives_Handler))
         {
-            static playerlocation[3]
-            new iPlayer; iPlayer = players[m]
-            if(is_user_connected(iPlayer))
+
+            if(iExplosives_Handler <1 || !is_user_connected(iExplosives_Handler))
+                return FMRES_IGNORED;
+
+            static Float:health; health = get_pcvar_float(g_health)
+
+            set_pev(iExplosive,pev_health,health);
+            set_pev(iExplosive,pev_takedamage,DAMAGE_AIM); //aim is bullets, yes is blast
+            set_pev(iExplosive,pev_solid,SOLID_SLIDEBOX);
+
+            static SziExplosive[5]
+            format(SziExplosive, charsmax(SziExplosive), "%i", iExplosive)
+
+            client_cmd(iExplosives_Handler,"spk valve/sound/items/clipinsert1.wav")
+            #if defined TEST
+            if(is_user_admin(iExplosives_Handler) && !task_exists(iExplosives_Handler))
+                set_task(35.0, "@test", iExplosives_Handler, SziExplosive, charsmax(SziExplosive))
+            #endif
+
+            new players[ MAX_PLAYERS ]
+            new playercount
+
+            get_players(players,playercount,"h")
+            for (new m=1; m<=playercount; ++m)
             {
-                get_user_origin(iPlayer, playerlocation)
-                static resultdance; resultdance = get_entity_distance(iExplosive, iPlayer);
-                if(resultdance < 350)
+                static playerlocation[3]
+                new iPlayer; iPlayer = players[m]
+                if(is_user_connected(iPlayer))
                 {
-                    static iExplosives_Handler; iExplosives_Handler = pev(iExplosive,pev_owner)
-                    if(iPlayer != iExplosives_Handler)
+                    get_user_origin(iPlayer, playerlocation)
+                    static resultdance; resultdance = get_entity_distance(iExplosive, iPlayer);
+                    if(resultdance < 350)
                     {
-                        fakedamage(iPlayer,"Satchel lash",get_pcvar_num(g_lash_damage)*1.0,DMG_ENERGYBEAM)
-                        emit_sound(iPlayer, CHAN_BODY, SzSatchSfx, VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
-                        set_pev(iExplosive,pev_effects,EF_BRIGHTFIELD);
+                        static iExplosives_Handler; iExplosives_Handler = pev(iExplosive,pev_owner)
+                        if(iPlayer != iExplosives_Handler)
+                        {
+                            fakedamage(iPlayer,"Satchel lash",get_pcvar_num(g_lash_damage)*1.0,DMG_ENERGYBEAM)
+                            emit_sound(iPlayer, CHAN_BODY, SzSatchSfx, VOL_NORM, ATTN_STATIC, 0, PITCH_NORM);
+                            set_pev(iExplosive,pev_effects,EF_BRIGHTFIELD);
 
-                        if(!is_user_bot(iPlayer))
-                        {
-                            client_cmd iPlayer, "spk valve/sound/common/wpn_denyselect.wav"
+                            if(!is_user_bot(iPlayer))
+                            {
+                                client_cmd iPlayer, "spk valve/sound/common/wpn_denyselect.wav"
+                            }
+                            else
+                            {
+                                emessage_begin(MSG_ONE_UNRELIABLE, g_fade,{0,0,0}, iPlayer);
+                                DELAY;DELAY;FLAGS;PNK;ALPHA; //This is where one can change BLU to GRN.
+                                emessage_end();
+                            }
+                            if(iPlayer == iExplosives_Handler)
+                                goto END
+                            else
+                            {
+                                @fume_blindness(iExplosive, iPlayer, iExplosives_Handler)
+                            }
                         }
-                        else
-                        {
-                            emessage_begin(MSG_ONE_UNRELIABLE, g_fade,{0,0,0}, iPlayer);
-                            DELAY;DELAY;FLAGS;PNK;ALPHA; //This is where one can change BLU to GRN.
-                            emessage_end();
-                        }
-                        if(iPlayer == iExplosives_Handler)
-                            goto END
-                        else
-                        {
-                            @fume_blindness(iExplosive, iPlayer, iExplosives_Handler)
-                        }
+
+                        if(!is_user_bot(iExplosives_Handler))
+                            client_cmd iExplosives_Handler,"spk valve/sound/plats/elevbell1.wav"
                     }
-
-                    if(!is_user_bot(iExplosives_Handler))
-                        client_cmd iExplosives_Handler,"spk valve/sound/plats/elevbell1.wav"
                 }
             }
         }
@@ -231,17 +233,14 @@ public client_putinserver(iExplosives_Handler)
 
 stock have_tool(iExplosives_Handler)
 {
-    if(get_user_weapon(iExplosives_Handler) == HLW_KNIFE || get_user_weapon(iExplosives_Handler) == HLW_CROWBAR || get_user_weapon(iExplosives_Handler) == HLW_PIPEWRENCH)
-        return 1
-    else
-        return 0
+    return (get_user_weapon(iExplosives_Handler) == HLW_KNIFE || get_user_weapon(iExplosives_Handler) == HLW_CROWBAR || get_user_weapon(iExplosives_Handler) == HLW_PIPEWRENCH) ? 1 : 0;
 }
 
 public mortar_proximity(id)
 {
     if(!have_tool(id) || !is_user_alive(id))
         return
-    if(!find_ent(charsmin, "op4mortar"))
+    if(!find_ent(MaxClients, "op4mortar"))
     {
         unregister_forward(FM_PlayerPreThink, g_proximity)
         log_amx "Disabling mortar think due to no more cannons."
@@ -251,7 +250,7 @@ public mortar_proximity(id)
     new ent[4]
     static ents
 
-    ent[0] = find_ent(charsmin, "mortar_shell")
+    ent[0] = find_ent(MaxClients, "mortar_shell")
 
     if(ent[0])
     {
@@ -270,12 +269,12 @@ public mortar_proximity(id)
         ents = ent[3]
     }
 
-    if(ents && pev_valid(ents)>1)
+    if(ents && pev_valid(ents))
     {
 
         if(entity_range(id, ents) < get_pcvar_float(g_mortar_range))
         {
-            if(pev_valid(ents)>1)
+            if(pev_valid(ents))
             {
                 static Float:Origin[3]
                 pev(ents, pev_origin, Origin)
@@ -286,7 +285,7 @@ public mortar_proximity(id)
                     client_cmd(id,"spk controller/con_die1.wav");
                     {
                         //emessage_begin( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, {0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
-                        emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY, {0,0,0}, 0 );
+                        emessage_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, 0 );
                         ewrite_byte(TE_PARTICLEBURST)
                         ewrite_coord_f(Origin[0])
                         ewrite_coord_f(Origin[1])
@@ -305,7 +304,7 @@ public mortar_proximity(id)
                         origin[1] = floatround(Origin[1]);
                         origin[2] = floatround(Origin[2]);
 
-                        emessage_begin(MSG_ALL, SVC_TEMPENTITY, {0,0,0}, 0);
+                        emessage_begin(MSG_PVS, SVC_TEMPENTITY, {0,0,0}, 0);
                         ewrite_byte(TE_LIGHTNING)
                         ewrite_coord(iPlayerOrigin[0])      // end position
                         ewrite_coord(iPlayerOrigin[1])
@@ -336,7 +335,7 @@ public disarm_(iExplosive, iExplosives_Handler)
     if(get_pcvar_num(g_enable) && pev_valid(iExplosive) && have_tool(iExplosives_Handler))
     {
         entity_get_string(iExplosive,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
-        if(containi(g_SzMonster_class, "monster_") > charsmin)
+        if(containi(g_SzMonster_class, "monster_") > MaxClients)
             replace(g_SzMonster_class,charsmax(g_SzMonster_class),"monster_","")
 
         client_print(0, print_center,"[ %s ]^n^n%n handled a %s.", PLUGIN, iExplosives_Handler/*ClientName[iExplosives_Handler]*/, g_SzMonster_class );
@@ -346,7 +345,7 @@ public disarm_(iExplosive, iExplosives_Handler)
             remove_entity(iExplosive);
         }
 
-        if(containi(g_SzMonster_class, "penguin") > charsmin)
+        if(containi(g_SzMonster_class, "penguin") > MaxClients)
         {
             iRealOwner2 = get_pdata_ent(iExplosive,  iRPenguinOwner,  LINUX_OFFSET)
             ///client_print 0, print_chat, "Disarmed Bird was owned by %n!",  is_user_connected(iRealOwner2) ? iRealOwner2 : 0
