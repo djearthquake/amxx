@@ -98,7 +98,7 @@ public plugin_init()
     bind_pcvar_num( create_cvar("mp_spectag", "1", FCVAR_NONE, "SPEC TAG",.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar_nametag )
     g_spec_msg = register_cvar("sv_spectate_motd", "motd.txt")
 
-    register_forward(FM_PlayerPreThink, "client_prethink", 0);
+    register_forward(FM_PlayerPreThink, "client_prethink", true);
     register_forward(FM_AddToFullPack, "fwdAddToFullPack_Post", 1)
     register_event("WeapPickup", "@strip_spec", "bef")
 
