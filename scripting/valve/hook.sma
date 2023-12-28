@@ -104,7 +104,6 @@ new bool:bHOokUser[MAX_PLAYERS + 1]
 
 new g_monsters
 static gCStrike
-static mod_name[MAX_NAME_LENGTH]
 
 new const SzRope[][]={
     "models/hvr.mdl",
@@ -159,11 +158,15 @@ public plugin_init()
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
     //assign to glock attack2
 
+    static mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name))
+
     if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
     {
         gCStrike = true
     }
 
+    bOF_run  = equal(mod_name, "gearbox") ? true : false
     if(bOF_run)
     {
         RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
@@ -214,7 +217,7 @@ public plugin_init()
     pSegments       =  register_cvar("sv_hooksegments", "1")
 
     // Touch forward
-    register_forward(FM_Touch, "fwTouch")
+    register_forward(FM_Touch, "fwTouch", true)
 
     // Get maxplayers
     gMaxPlayers = get_maxplayers()
@@ -365,9 +368,6 @@ public plugin_precache()
     precache_sound("weapons/xbow_hit2.wav")
     precache_sound("weapons/xbow_hitbod1.wav")
     precache_sound("weapons/xbow_fire1.wav")
-
-    get_modname(mod_name, charsmax(mod_name))
-    bOF_run  = equal(mod_name, "gearbox") ? true : false
 
     if(bOF_run)
     {
@@ -612,17 +612,18 @@ public ResetHUD(id)
 
 public fwTouch(ptr, ptd)
 {
-    new szPtdClass[MAX_NAME_LENGTH]
-    static ent, Float:fOrigin[3], szentClass[MAX_NAME_LENGTH]
+    static szPtdClass[MAX_NAME_LENGTH],
+    ent, Float:fOrigin[3], szentClass[MAX_NAME_LENGTH];
+    ent = MaxClients
 
     if(!pev_valid(ptr))
         return FMRES_IGNORED
 
-    new id = pev(ptr, pev_owner)
-    if(is_user_connected(id))
+    static id; id = pev(ptr, pev_owner)
+    if(is_user_alive(id))
     {
         // Get classname
-        new szPtrClass[MAX_NAME_LENGTH]
+        static szPtrClass[MAX_NAME_LENGTH]
         pev(ptr, pev_classname, szPtrClass, charsmax(szPtrClass))
 
         if (containi(szPtrClass, "Hook")> charsmin || get_pcvar_num(pPlayers) > 2 && containi(szPtrClass, "grapple") > charsmin)
@@ -647,9 +648,9 @@ public fwTouch(ptr, ptd)
                     // Pick up weapons..
                     else if(get_pcvar_num(pWeapons))
                     {
-                        for (new toget; toget < sizeof grabable_goodies;toget++)
+                        for (new toget; toget < sizeof grabable_goodies;++toget)
 
-                        if (containi(szentClass, grabable_goodies[toget]) != charsmin || bsatch_crash_fix && containi(szentClass, "satchel") == charsmin)
+                        if(containi(szentClass, grabable_goodies[toget]) != charsmin || bsatch_crash_fix && containi(szentClass, "satchel") == charsmin)
                         {
                             if(get_pcvar_num(Xdebug))
                             {
@@ -663,32 +664,19 @@ public fwTouch(ptr, ptd)
                 {
                     pev(ptd, pev_classname, szPtdClass, charsmax(szPtdClass))
 
-                    if(!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
-                    {
-                        // Hit a player
-                        if (get_pcvar_num(pSound))
-                        {
-                            emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
-                            remove_hook(id)
-                        }
-                        return FMRES_HANDLED
-                    }
-                    else if (get_pcvar_num(pPlayers) && equali(szPtdClass, "player"))  goto damage
-
-                    if (get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin)
+                    if(get_pcvar_num(pPlayers) && containi(szPtdClass, "monster") > charsmin || get_pcvar_num(pPlayers) && equali(szPtdClass,"hostage_entity") )
                     {
                         if (containi(szPtdClass, "ally") > charsmin || containi(szPtdClass, "human") > charsmin || containi(szPtdClass, "turret") > charsmin || containi(szPtdClass, "sentry") > charsmin ||  equali(szPtdClass, "monster_barney")
-                        ||  equali(szPtdClass, "monster_otis") || containi(szPtdClass, "nuke") >  charsmin || containi(szPtdClass,"scientist") > charsmin )
+                        ||  equali(szPtdClass, "monster_otis") || containi(szPtdClass, "nuke") >  charsmin || containi(szPtdClass,"scientist") > charsmin)
                         {
+                            dllfunc(DLLFunc_Use, ptd, id)
                             // Makes an hostage follow
-                            if (get_pcvar_num(pHostage))
+                            if(containi(szPtdClass,"scientist") > charsmin || containi(szPtdClass,"hostage") > charsmin && pHostage & get_pcvar_num(pHostage) == 1)
                             {
                                 dllfunc(DLLFunc_Use, ptd, id)
                             }
-
                         }
-                        else
-                        goto damage
+                        else goto damage
                     }
                     if (containi(szPtdClass, "able") > charsmin && get_pcvar_num(pHook_break))
                     {
@@ -703,7 +691,17 @@ public fwTouch(ptr, ptd)
                         remove_hook(id)
                         return FMRES_HANDLED
                     }
-
+                    if(!get_pcvar_num(pPlayers) && equali(szPtdClass, "player") && is_user_alive(ptd))
+                    {
+                        // Hit a player
+                        if (get_pcvar_num(pSound))
+                        {
+                            emit_sound(ptr, CHAN_STATIC, "weapons/xbow_hitbod1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM)
+                            remove_hook(id)
+                        }
+                        return FMRES_HANDLED
+                    }
+                    else if (get_pcvar_num(pPlayers) && equali(szPtdClass, "player"))  goto damage
                     if (get_pcvar_num(pOpenDoors) && containi(szPtdClass, "door") > charsmin)
                     {
                         DOORS:
