@@ -107,6 +107,7 @@ public plugin_init()
 
 @reload_map()
 {
+    get_cvar_string( "amx_nextmap", g_mname, charsmax(g_mname))
     for (new admin=1; admin<=g_maxPlayers; admin++)
     {
         if (is_user_connected(admin) && CheckPlayerBit(g_Adm, admin))
@@ -115,7 +116,11 @@ public plugin_init()
         }
     }
     bReloading = true
-    console_cmd 0, "amx_map %s", g_mname //flushes out Amxx
+    Data[ SzMaps ] =  g_mname
+    set_cvar_string( "amx_nextmap", g_mname)
+
+    TrieGetArray( g_SafeMode, Data[ SzMaps ], Data, sizeof Data ) && bCallingfromEnd ?
+    console_cmd( 0, "changelevel %s", g_mname) : console_cmd( 0, "amx_map %s", g_mname)
 }
 
 public client_command(id)
@@ -346,7 +351,7 @@ public ReadSafeModeFromFile( )
         if(!debugger)
         {
             //basic map pick fcn
-            is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
+            is_plugin_loaded("mapchooser.amxx",true)!=charsmin?formatex(SzSave,charsmax(SzSave),"mapchooser.amxx debug")&write_file(g_szFilePath, SzSave):server_print("Be wary of 3rd party map choosers.")
             //write_file(g_szFilePath, SzSave) //was making doubles sometimes
         }
 
@@ -405,7 +410,9 @@ public ReadSafeModeFromFile( )
 @push_map()
 {
     client_print 0, print_center, "Reloading map plugins"
-    console_cmd 0, "changelevel %s", g_mname
+    console_cmd 0, "amx_map %s", g_mname
+    //console_cmd 0, "map %s", g_mname
+    //console_cmd 0, "reload"
 }
 
 public plugin_cfg()
@@ -420,20 +427,22 @@ public plugin_end()
     static SzMapname[MAX_RESOURCE_PATH_LENGTH]
 
     get_cvar_string( "amx_nextmap", SzMapname, charsmax(SzMapname))
+    @cmd_call(SzMapname)
 
-    bReloading ? @cmd_call(SzMapname) : @cmd_call(g_mname)
     bCallingfromEnd = true
-    //TrieDestroy(g_SafeMode)
 }
 
 @file_data(SzBuffer[MAX_CMD_LENGTH])
 {
-    server_print "%s|trying save %s", PLUGIN, SzBuffer
-    static szFilePath[ MAX_USER_INFO_LENGTH ]
-    get_configsdir( szFilePath, charsmax( szFilePath ) )
-    add( szFilePath, charsmax( szFilePath ), SzSafeModeFileName )
+    if(!equali(SzBuffer, ""))
+    {
+        server_print "%s|trying save %s", PLUGIN, SzBuffer
+        static szFilePath[ MAX_USER_INFO_LENGTH ]
+        get_configsdir( szFilePath, charsmax( szFilePath ) )
+        add( szFilePath, charsmax( szFilePath ), SzSafeModeFileName )
 
-    write_file(szFilePath, SzBuffer)
+        write_file(szFilePath, SzBuffer)
+    }
 }
 
 public client_infochanged(id)
