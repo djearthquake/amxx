@@ -8,7 +8,7 @@ new Xcvar_access
 
 public plugin_init()
 {
-    register_plugin( "Map say!", "1.0", "SPiNX" );
+    register_plugin( "Map say!", "1.1", "SPiNX" );
 
     Xcvar_access = register_cvar("admins_votemap_only", "0")
     new iPick = get_pcvar_num(Xcvar_access)
@@ -29,8 +29,10 @@ public sayChangeMap(id,level,cid)
         {
             replace(szArgs, charsmax(szArgs), "!", "");
             parse(szArgs, szArg2, charsmax(szArg2));
+            strtolower(szArg2)
             if(is_map_valid(szArg2))
             {
+
                 set_cvar_string "amx_nextmap", szArg2
                 log_amx( "%n called map vote for %s.", id, szArg2 );
                 console_cmd( 0, "amx_votemap ^"%s^"", szArg2 );
