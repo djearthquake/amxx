@@ -38,8 +38,8 @@ const bad_time_to_scope = ( 1<<CSW_HEGRENADE | 1<<CSW_SMOKEGRENADE | 1<<CSW_FLAS
 public plugin_init()
 {
     register_plugin( "Buy a Colt Scope!", "1.0", "SPiNX" );
-    register_forward( FM_CmdStart , "fw_CmdStart" );
-    register_forward(FM_PlayerPreThink, "client_prethink");
+    register_forward( FM_CmdStart , "fw_CmdStart", true );
+    register_forward(FM_PlayerPreThink, "client_prethink", true);
     register_clcmd ( "buy_scope", "buy_scope", 0, " - universal scope." );
     RegisterHam(Ham_Killed, "player", "no_scope");
     RegisterHam(Ham_TakeDamage, "player", "@PostTakeDamage", 1);
