@@ -25,16 +25,15 @@ public sayChangeMap(id,level,cid)
             return PLUGIN_HANDLED;
 
         read_args(szArgs, charsmax(szArgs));replace(szArgs, charsmax(szArgs), "^"", "");
-        if(containi(szArgs, "!")>-1)
+        if(containi(szArgs, "!")>charsmin)
         {
             replace(szArgs, charsmax(szArgs), "!", "");
             parse(szArgs, szArg2, charsmax(szArg2));
-
             if(is_map_valid(szArg2))
             {
+                set_cvar_string "amx_nextmap", szArg2
                 log_amx( "%n called map vote for %s.", id, szArg2 );
                 console_cmd( 0, "amx_votemap ^"%s^"", szArg2 );
-
             }
 
         }
