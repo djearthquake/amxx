@@ -75,7 +75,7 @@ public plugin_precache()
     precache_model("sprites/b-tele1.spr"); ///teleport model
 
     Graphic = precache_model("sprites/zbeam1.spr");
-    register_forward(FM_PlayerPreThink,"forward_PreThink");
+    register_forward(FM_PlayerPreThink,"forward_PreThink", true);
 }
 
 public teleport_init_function()
