@@ -64,7 +64,7 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR);
     bind_pcvar_num(get_cvar_pointer("mp_footsteps"), g_SnowFeet)
 
-    register_forward(FM_PlayerPreThink, "fwd_PlayerPreThink", 0);
+    register_forward(FM_PlayerPreThink, "fwd_PlayerPreThink", true);
 }
 public plugin_precache()
 {
