@@ -116,11 +116,16 @@ public client_disconnected(id)
             //set_task_ex(5.0, "on_exit", 56, .flags = SetTask_RepeatTimes, .repeat = 1 );
             set_task(5.0, "on_exit", 56)
         }
-        else
-        if (numplayers > 1 && numplayers < 5)
+        else if (numplayers > 1 && numplayers < 5)
+        {
             if(!task_exists(340043))
                 //set_task_ex(10.0, "on_join", 340043, .flags = SetTask_RepeatTimes, .repeat = 1 );
                 set_task(10.0, "on_join", 340043)
+        }
+        else
+        {
+            @zero_bots()
+        }
     }
 }
 
