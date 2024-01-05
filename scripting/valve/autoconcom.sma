@@ -1,9 +1,9 @@
-//updated NOV 15 2023
+//updated JAN 4 2024
 #include <amxmodx>
 #include <amxmisc>
 
 #define PLUGIN "Autoconcom"
-#define VERSION "I" //Make sure bots can be zeroed automatically with players and admin command.
+#define VERSION "J" //Make sure bots can be zeroed automatically with players and admin command.
 #define AUTHOR "SPINX"
 
 #define NUKE "amx_leave *"
