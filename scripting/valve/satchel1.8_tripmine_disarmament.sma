@@ -6,7 +6,7 @@
 #include <hamsandwich>
 
 #define PLUGIN "Disarmable Satchel Mine"
-#define VERSION "1.8"
+#define VERSION "1.9"
 #define AUTHOR "SPiNX"
 #define MAX_PLAYERS         32
 #define MAX_NAME_LENGTH     32
@@ -49,7 +49,18 @@ new disarmament[][]=
     "monster_tripmine",
     "monster_penguin",
     "monster_babycrab",
-    "monster_grenade"
+    "monster_grenade",
+    "Hook_rope",
+    "Hook_wire",
+    "Hook_rope_barnacle",
+    "Hook_rope_push",
+    "Hook_rope_mine",
+    "Hook_rope_guin",
+    "Hook_rope_leech",
+    "Hook_rope_crab",
+    "Hook_rope_snark",
+    "Hook_illuminati",
+    "Hook_displacer"
 }
 
 new g_enable, g_health, g_Hostname
