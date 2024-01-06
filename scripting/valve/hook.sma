@@ -63,6 +63,7 @@
 #define charsmin                    -1
 #define PENGUIN                    2022
 
+#pragma dynamic 9600000
 
 //new const RPG[]         = "models/flag.mdl" //fun. makes the xbow sound effect seems more realistic. Need a decent harpoon model please.
 new const RPG[]         = "models/hvr.mdl" //need to pin that to weapons pick up and dmg_crush to humans. Thanks Sierra, Valve, OLO DLEJ. Many names. From DJEQ!
@@ -157,21 +158,6 @@ public plugin_init()
     register_concmd("amx_givehook", "give_hook", ADMINLEVEL, "<Username> - Give somebody access to the hook")
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
     //assign to glock attack2
-
-    static mod_name[MAX_NAME_LENGTH]
-    get_modname(mod_name, charsmax(mod_name))
-
-    if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
-    {
-        gCStrike = true
-    }
-
-    bOF_run  = equal(mod_name, "gearbox") ? true : false
-    if(bOF_run)
-    {
-        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
-        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
-    }
 
     if(gCStrike)
     {
@@ -357,6 +343,20 @@ public _SecondaryAttack_Post(const gun)
 
 public plugin_precache()
 {
+    static mod_name[MAX_NAME_LENGTH]
+    get_modname(mod_name, charsmax(mod_name))
+
+    if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
+    {
+        gCStrike = true
+    }
+
+    bOF_run  = equal(mod_name, "gearbox") ? true : false
+    if(bOF_run)
+    {
+        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
+        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
+    }
     // Hook Model
     precache_model(RPG)
 
