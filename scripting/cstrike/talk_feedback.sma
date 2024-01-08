@@ -48,10 +48,14 @@ public plugin_end()
 {
     if(g_cvar_con)
     {
-        static SzMsg[3];read_args(SzMsg, charsmax(SzMsg));
-        if(containi(SzMsg, "/") < 0)
+        static SzMsg[2];read_args(SzMsg, charsmax(SzMsg));
+        ///if(contain(SzMsg, "/") < 0
+        if(SzMsg[0] != '/')
         {
-            client_cmd 0, "spk %s", SzTalkSnd
+            if(SzMsg[1] != '/')
+            {
+                client_cmd 0, "spk %s", SzTalkSnd
+            }
         }
     }
 }
