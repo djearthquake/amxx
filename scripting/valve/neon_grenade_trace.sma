@@ -639,7 +639,8 @@ public Other_Attack_Touch(ent, id)
             for (new m=0; m<playercount; ++m)
             {
                 new playerlocation[3];
-                if(is_user_connected(players[m]) && is_user_alive(players[m]))
+                ///if(is_user_connected(players[m]) && is_user_alive(players[m]))
+                if(is_user_connected(players[m]) && is_user_alive(players[m]) && players[m] != killer)
                 {
                     get_user_origin(players[m], playerlocation);
                     result_distance  = get_entity_distance(g_model, players[m]);
