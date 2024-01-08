@@ -64,6 +64,7 @@
 #define PENGUIN                    2022
 
 #pragma dynamic 9600000
+new bool:bToggled
 
 //new const RPG[]         = "models/flag.mdl" //fun. makes the xbow sound effect seems more realistic. Need a decent harpoon model please.
 new const RPG[]         = "models/hvr.mdl" //need to pin that to weapons pick up and dmg_crush to humans. Thanks Sierra, Valve, OLO DLEJ. Many names. From DJEQ!
@@ -85,14 +86,10 @@ new sprBeam
 // Players hook entity
 new Hook[MAX_NAME_LENGTH + 1]
 
-// MaxPlayers
-new gMaxPlayers
-
 // some booleans
 new bool:gHooked[MAX_NAME_LENGTH + 1]
 new bool:canThrowHook[MAX_NAME_LENGTH + 1]
 new bool:rndStarted
-new bool:bHotWire
 new bool:bOF_run
 
 // Player Spawn
@@ -103,9 +100,9 @@ new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
 new bool:bHOokUser[MAX_PLAYERS + 1]
 
-new g_monsters
 static gCStrike
 
+/*
 new const SzRope[][]={
     "models/hvr.mdl",
     "models/wire_copper32.mdl",
@@ -113,6 +110,7 @@ new const SzRope[][]={
     "models/rope16.mdl",
     "models/rope32.mdl"
 }
+*/
 
  /*
 new const debris1[]  = "sound/debris/pushbox1.wav"
@@ -140,8 +138,7 @@ enum _:Client_hookgrab
     bHookplayers[MAX_PLAYERS+1],
 }
 
-new HookParameters[ Client_hookgrab ]
-
+///new HookParameters[ Client_hookgrab ]
 
 public plugin_init()
 {
@@ -154,6 +151,7 @@ public plugin_init()
     register_clcmd("+hook", "make_hook")
     register_clcmd("-hook", "del_hook")
     register_concmd("rope", "@rope_control", ADMINLEVEL, "- Re-Enable limp ropes.")
+    register_concmd("wire", "@wire_control", ADMINLEVEL, "- Toggle electrical current.")
 
     register_concmd("amx_givehook", "give_hook", ADMINLEVEL, "<Username> - Give somebody access to the hook")
     register_concmd("amx_takehook", "take_hook", ADMINLEVEL, "<UserName> - Take away somebody his access to the hook")
@@ -205,9 +203,6 @@ public plugin_init()
     // Touch forward
     register_forward(FM_Touch, "fwTouch", true)
 
-    // Get maxplayers
-    gMaxPlayers = get_maxplayers()
-
     get_mapname(g_mapname, charsmax(g_mapname))
 
     if(equali(g_mapname,"beach_head"))bsatch_crash_fix=true
@@ -250,93 +245,65 @@ public _SecondaryAttack_Post(const gun)
     return HAM_SUPERCEDE
 }
 
-/*
+
 @rope_control(id)
 {
-    new iRope = find_ent(charsmin, "env_rope") > charsmin
-    new iWire = find_ent(charsmin, "env_electrified_wire") > charsmin
-    if(iRope|iWire)
+    #define TOGGLE "3"
+    if(is_user_connected(id))
     {
-        if(iRope)
+        bToggled = bToggled ? false : true
+        static iRope; iRope = find_ent_by_class(MaxClients, "env_rope")
+
+        if(iRope && pev_valid(iRope))
         {
-            client_print id, print_chat, "Rope found!"
-            fm_set_kvd(iRope, "disable", "0")
+            client_print(id, print_chat, "Toggling rope.")
+            bToggled ? fm_set_kvd(iRope, "disable", "1") :  fm_set_kvd(iRope, "disable", "0")
         }
-        else
+        static iRope2; iRope2 = find_ent_by_class(iRope, "env_rope")
+        if(iRope2 && pev_valid(iRope2))
         {
-            client_print id, print_chat, "Wire found!"
-            fm_set_kvd(iWire, "disable", "0")
+            client_print(id, print_chat, "Toggling 2nd wire.")
+            bToggled ? fm_set_kvd(iRope, "disable", "1") :  fm_set_kvd(iRope, "disable", "0")
         }
+
+        static iRope3; iRope3 = find_ent_by_class(iRope2, "env_rope")
+        if(iRope3 != iRope && pev_valid(iRope3))
+        {
+            client_print(id, print_chat, "Toggling 3rd rope.")
+            bToggled ? fm_set_kvd(iRope, "disable", "1") :  fm_set_kvd(iRope, "disable", "0")
+        }
+
     }
     return PLUGIN_HANDLED
 }
-*/
-@rope_control(id)
+
+@wire_control(id)
 {
+    #define TOGGLE "3"
     if(is_user_connected(id))
     {
-        //new one_time = create_entity("multi_manager")
-        //new amxx_button = create_entity("func_button")
 
-        //fm_set_kvd(one_time, "rope_wire", "0.1")
-        //fm_set_kvd(one_time, "targetname", "mgr")
-        //if(pev_valid(one_time>1))
-         //   dllfunc( DLLFunc_Spawn, one_time )
+        static iWire; iWire = find_ent_by_class(MaxClients, "env_electrified_wire")
 
-        //fm_set_kvd(amxx_button, "target", "rope_wire")
-        //fm_set_kvd(amxx_button, "targetname", "elec_co")
-        //fm_set_kvd(amxx_button, "targetname", "spinx_hook_wirebutton")
-
-        //if(pev_valid(amxx_button>1))
-        //    dllfunc( DLLFunc_Spawn, amxx_button )
-
-        bHotWire = bHotWire ? false : true
-        for(new s;s < sizeof SzRope;s++)
+        if(iWire && pev_valid(iWire))
         {
-            //new iClean = SzRope[s]
-            //new iSweep = find_ent_by_model(charsmin, "rope_wire", SzRope[s])
-            new iSweep = find_ent_by_model(charsmin, "rope_wire", SzRope[s])
-            if(pev_valid(iSweep))
-            {
-                client_print id, print_chat, SzRope[s]
-                remove_entity(iSweep)
-            }
+            client_print(id, print_chat, "Toggling wire.")
+            ExecuteHam(Ham_Use, iWire, id, 0, TOGGLE, 2.0)
         }
-        new iWire = find_ent_by_tname(charsmin, "hooks_wire") > charsmin
-        if(iWire>0) /*&& iWire>gMaxPlayers*/
+        static iWire2; iWire2 = find_ent_by_class(iWire, "env_electrified_wire")
+        if(iWire2 && pev_valid(iWire2))
         {
-            //iWire = 0
-            //set_pev(iWire, pev_owner, 0)
-            client_print id, print_chat, "Wire found!"
-            //fm_set_kvd(iWire, "disable", "0")
-            //fm_set_kvd(iWire, "disable", bHotWire ? "0" : "1")
-            //fm_set_kvd(iWire, "disable", "1")
-            //remove_entity(iWire)
-            //set_pev(iWire, pev_flags, FL_KILLME);
-            //iWire = 0
-            //new ent  = find_ent_by_tname(charsmin, "rope_wire") > charsmin
-            //////new iWired = find_ent(charsmin, "env_electrified_wire") > charsmin
-            #define TOGGLE 3
-            //f(pev_valid(iWired))
-            ExecuteHam(Ham_Use, iWire, id, 0, 3, 2.0) //toggle current
-            //return PLUGIN_CONTINUE
+            client_print(id, print_chat, "Toggling 2nd wire.")
+            ExecuteHam(Ham_Use, iWire2, id, 0, TOGGLE, 2.0)
         }
-/*
-        new iRope = find_ent(charsmin, "env_rope") > charsmin
-        //if(pev_valid(iRope)>1)
+
+        static iWire3; iWire3 = find_ent_by_class(iWire2, "env_electrified_wire")
+        if(iWire3 != iWire && pev_valid(iWire3))
         {
-            //iRope = 0
-            //set_pev(iRope, pev_owner, 0)
-            client_print id, print_chat, "Rope found!"
-            ExecuteHam(Ham_Use, iRope, id, 0, TOGGLE, 2.0) //toggle current
-            //set_pev(Hook[id], pev_owner, 0)
-           // fm_set_kvd(iRope, "disable", bHotWire ? "0" : "1")
-            //remove_entity(iRope)
-            //set_pev(iRope, pev_flags, FL_KILLME);
-            ///remove_entity_name("env_rope")
-            //return PLUGIN_CONTINUE
+            client_print(id, print_chat, "Toggling 3rd wire.")
+            ExecuteHam(Ham_Use, iWire3, id, 0, TOGGLE, 2.0)
         }
-*/
+
     }
     return PLUGIN_HANDLED
 }
@@ -484,10 +451,10 @@ public del_hook(id)
                 remove_hook(id)
             if(is_user_connected(id))
             {
-                message_begin(MSG_ONE, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
-                write_byte(99) // TE_KILLBEAM
-                write_short(id) // entity
-                message_end()
+                emessage_begin(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, {0,0,0}, id) //leashed monsters/pets
+                ewrite_byte(99) // TE_KILLBEAM
+                ewrite_short(id) // entity
+                emessage_end()
             }
             return PLUGIN_HANDLED
             //return PLUGIN_CONTINUE
@@ -517,7 +484,7 @@ public round_bstart()
         rndStarted = false
 
     // Remove all hooks
-    for (new i = 1; i <= gMaxPlayers; ++i)
+    for (new i = 1; i <= MaxClients; ++i)
     {
         if(is_user_connected(i))
         {
@@ -548,7 +515,7 @@ public rndStartDelay()
 
 public Restart()
 {
-    for (new id = 1; id <= gMaxPlayers; ++id)
+    for (new id = 1; id <= MaxClients; ++id)
     {
         if (is_user_connected(id))
             gRestart[id] = true
@@ -707,7 +674,7 @@ public fwTouch(ptr, ptd)
                         DOORS:
                         dllfunc(DLLFunc_Use, ptd, ptr) //ok for grap
                         dllfunc(DLLFunc_Touch, ptd, ptr) //ok for grap
-                        if(!get_pcvar_num(pHook_break) && get_pcvar_num(pColor) > 2 && ptd > gMaxPlayers)
+                        if(!get_pcvar_num(pHook_break) && get_pcvar_num(pColor) > 2 && ptd > MaxClients)
                         {
                             set_pev(ptd, pev_rendermode, kRenderTransColor);
                             set_pev(ptd, pev_renderamt, random_float(15.0,200.0))
@@ -985,6 +952,12 @@ public throw_hook(id)
             env_electrified_wire bodymodel models/wire_copper32.mdl
             env_electrified_wire endingmodel models/wire_red32.mdl
             */
+            ///classname env_rope
+            if(get_pcvar_num(pHead) == 0)
+            {
+                //fm_set_kvd(Hook[id], "spawnflags", "1");
+                fm_set_kvd(Hook[id], "disable", "0");
+            }
             ///classname env_electrified_wire
             if(get_pcvar_num(pHead) == 1)
             {
@@ -996,7 +969,7 @@ public throw_hook(id)
                 fm_set_kvd(Hook[id], "yforce", "30000");
                 fm_set_kvd(Hook[id], "zforce", "10000");
                 fm_set_kvd(Hook[id], "disable", "1");
-                //fm_set_kvd(Hook[id], "targetname", "rope_wire") ghet overidden later
+                //fm_set_kvd(Hook[id], "targetname", "rope_wire") //over-write later
             }
 
             engfunc(EngFunc_SetModel, Hook[id], RPG)
