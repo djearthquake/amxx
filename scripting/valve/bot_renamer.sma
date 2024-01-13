@@ -41,7 +41,7 @@
 #define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
 #define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
-#define UTF8_LEVEL ADMIN_LEVEL_H
+#define UTF8_LEVEL ADMIN_LEVEL_F
 
 new const SzBotFileName[]="/BotNames.ini"
 
@@ -53,7 +53,6 @@ XCheck_Admins, XCheck_Humans, XCyborgFilter, XUTF8_Strafe;
 
 static const SzInitFakeName[] = "gamer"
 new bNameCheck[MAX_PLAYERS + 1]
-
 
 public client_command(id)
 {
@@ -77,6 +76,12 @@ public client_putinserver(id)
     client_infochanged(id)
 }
 
+public client_connect(id)
+{
+    ClearPlayerBit(g_Adm, id);
+    ClearPlayerBit(g_AI, id);
+}
+
 public client_infochanged(id)
 {
     if(is_user_connected(id))
@@ -92,7 +97,7 @@ public client_infochanged(id)
 
         get_user_name(id, ClientName[id], charsmax(ClientName[]))
 
-        static Szcheck[2], Output
+        static Szcheck[MAX_NAME_LENGTH], Output
         copy(Szcheck, charsmax(Szcheck), ClientName[id])
 
         if(get_pcvar_num(XUTF8_Strafe))
