@@ -13,6 +13,8 @@
 
 #define charsmin                  -1
 
+//#define TEST
+
 //HL OF
 #define HLW_KNIFE           0x0019
 #define HLW_PIPEWRENCH      18
@@ -39,17 +41,18 @@ new g_Szsatchel_ring, g_fade, g_mortar_range, g_proximity
 
 new const SzSatchSfx[]="items/airtank1.wav"
 
-new const satchel_sound[][]={"sound/player/geiger1.wav", "sound/player/geiger2.wav", "sound/player/geiger3.wav", "sound/player/geiger4.wav", "sound/player/geiger5.wav", "sound/player/geiger6.wav"}
+///new const satchel_sound[][]={"sound/player/geiger1.wav", "sound/player/geiger2.wav", "sound/player/geiger3.wav", "sound/player/geiger4.wav", "sound/player/geiger5.wav", "sound/player/geiger6.wav"}
 
 new disarmament[][]=
 {
-    "monster_satchel",
+    ///"monster_satchel",
     "mortar_shell",
     "monster_snark",
     "monster_tripmine",
     "monster_penguin",
     "monster_babycrab",
     "monster_grenade",
+    ///if plugin
     "Hook_rope",
     "Hook_wire",
     "Hook_rope_barnacle",
@@ -63,7 +66,7 @@ new disarmament[][]=
     "Hook_displacer"
 }
 
-new g_enable, g_health, g_Hostname
+new g_enable, g_health, g_Hostname, g_satchel
 new g_SzMonster_class[MAX_NAME_LENGTH];
 new g_lash_damage, g_fire
 const LINUX_OFFSET_WEAPONS = 4;
@@ -77,12 +80,14 @@ new iBeamEnt, iRTripMineOwner, iRPenguinOwner;
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
-    register_forward(FM_SetModel,"FORWARD_SET_MODEL", true);
+
     g_Hostname      =       get_cvar_pointer("hostname");
 
     for( new list; list < sizeof disarmament; ++list)
         register_touch(disarmament[list], "player", "disarm_")
+
     register_touch("monster_satchel", "player", "@touch")
+
     g_enable = register_cvar("hl_satchel", "1")
     g_health = register_cvar("hl_satchel_health", "15")
     g_mortar_range = register_cvar("hl_satchel_mortar", "300.0")
@@ -100,6 +105,17 @@ public plugin_init()
     }
 }
 
+public plugin_cfg()
+{
+    if(get_pcvar_num(g_enable))
+        g_satchel = register_forward(FM_SetModel,"FORWARD_SET_MODEL", 1);
+}
+
+public plugin_end()
+{
+    unregister_forward(FM_SetModel, g_satchel, 1)
+}
+
 public plugin_precache()
 {
     g_Szsatchel_ring = precache_model("sprites/zerogxplode.spr")
@@ -109,10 +125,11 @@ public plugin_precache()
 
 @touch(iExplosive, iExplosives_Handler)
 {
-    for(new list=0; list < sizeof satchel_sound; list++)
+//    for(new list=0; list < sizeof satchel_sound; list++)
     {
         //client_cmd(iExplosives_Handler,"spk valve/sound/weapons/dryfire1.wav")
-        client_cmd(iExplosives_Handler, "%A", satchel_sound[list])
+        client_cmd(iExplosives_Handler,"spk common/menu1.wav")
+        //client_cmd(iExplosives_Handler, "%A", satchel_sound[list])
     }
 
     if(have_tool(iExplosives_Handler))
@@ -121,9 +138,9 @@ public plugin_precache()
 
 public FORWARD_SET_MODEL(iExplosive, model[])
 {
-    if(get_pcvar_num(g_enable))
+    ///
     {
-        if(pev_valid(iExplosive)
+        if(!pev_valid(iExplosive)
         || !equal(model,"models/w_satchel.mdl")
         //|| !equal(model,"models/w_rpg.mdl")
         //|| !equal(model,"models/w_argrenade.mdl")
@@ -132,7 +149,7 @@ public FORWARD_SET_MODEL(iExplosive, model[])
     )
         return FMRES_IGNORED;
 
-        static iExplosives_Handler;
+        new iExplosives_Handler;
         iExplosives_Handler = pev(iExplosive,pev_owner);
         if(is_user_alive(iExplosives_Handler))
         {
@@ -140,13 +157,13 @@ public FORWARD_SET_MODEL(iExplosive, model[])
             if(iExplosives_Handler <1 || !is_user_connected(iExplosives_Handler))
                 return FMRES_IGNORED;
 
-            static Float:health; health = get_pcvar_float(g_health)
+            new Float:health; health = get_pcvar_float(g_health)
 
             set_pev(iExplosive,pev_health,health);
             set_pev(iExplosive,pev_takedamage,DAMAGE_AIM); //aim is bullets, yes is blast
             set_pev(iExplosive,pev_solid,SOLID_SLIDEBOX);
 
-            static SziExplosive[5]
+            new  SziExplosive[5];
             format(SziExplosive, charsmax(SziExplosive), "%i", iExplosive)
 
             client_cmd(iExplosives_Handler,"spk valve/sound/items/clipinsert1.wav")
@@ -161,15 +178,15 @@ public FORWARD_SET_MODEL(iExplosive, model[])
             get_players(players,playercount,"h")
             for (new m=1; m<=playercount; ++m)
             {
-                static playerlocation[3]
+                new playerlocation[3]
                 new iPlayer; iPlayer = players[m]
                 if(is_user_connected(iPlayer))
                 {
                     get_user_origin(iPlayer, playerlocation)
-                    static resultdance; resultdance = get_entity_distance(iExplosive, iPlayer);
+                    new resultdance; resultdance = get_entity_distance(iExplosive, iPlayer);
                     if(resultdance < 350)
                     {
-                        static iExplosives_Handler; iExplosives_Handler = pev(iExplosive,pev_owner)
+                        new iExplosives_Handler; iExplosives_Handler = pev(iExplosive,pev_owner)
                         if(iPlayer != iExplosives_Handler)
                         {
                             fakedamage(iPlayer,"Satchel lash",get_pcvar_num(g_lash_damage)*1.0,DMG_ENERGYBEAM)
@@ -229,7 +246,7 @@ public FORWARD_SET_MODEL(iExplosive, model[])
 @test(SziExplosive[], iExplosives_Handler)
 {
     static iBom; iBom = str_to_num(SziExplosive)
-    if(is_user_admin(iExplosives_Handler) && pev_valid(iBom) > 1)
+    if(is_user_admin(iExplosives_Handler) && pev_valid(iBom))
     {
         client_print iExplosives_Handler, print_chat,"Resetting your explosive..."
         set_pev(iBom,pev_owner, 0)
