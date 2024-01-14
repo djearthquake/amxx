@@ -167,8 +167,6 @@ public client_prethink( id )
 {
     OK)
     {
-        if(CheckPlayerBit(g_AI, id))
-            return
         if(!g_spectating[id])
         {
             pev(id, pev_origin, g_user_origin[id]);
@@ -180,6 +178,8 @@ public client_prethink( id )
         }
         else
         {
+            if(CheckPlayerBit(g_AI, id))
+                return
             //Remember!
             #define OBS_NONE                        0
             #define OBS_CHASE_LOCKED                1           // Locked Chase Cam
@@ -795,7 +795,7 @@ public random_view(id)
         if(playercount > 1 && !g_random_view[viewable])
         {
             iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
-            if(is_user_connected(iViewPlayer))
+            if(is_user_connected(iViewPlayer) && pev(iViewPlayer, pev_button) & IS_THERE)
             if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) )
             {
                 set_view(id, CAMERA_3RDPERSON)
