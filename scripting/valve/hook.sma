@@ -100,7 +100,7 @@ new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
 new bool:bHOokUser[MAX_PLAYERS + 1]
 
-static gCStrike
+static gCStrike, bool:bAllCached, g_safemode
 
 /*
 new const SzRope[][]={
@@ -136,7 +136,7 @@ enum _:Client_hookgrab
     iHookhead[MAX_PLAYERS+1],
     bHookInstant[MAX_PLAYERS+1],
     bHookplayers[MAX_PLAYERS+1],
-}
+};
 
 ///new HookParameters[ Client_hookgrab ]
 
@@ -310,6 +310,7 @@ public _SecondaryAttack_Post(const gun)
 
 public plugin_precache()
 {
+    g_safemode = get_cvar_pointer("safe_mode")
     static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
 
@@ -336,7 +337,7 @@ public plugin_precache()
     precache_sound("weapons/xbow_hitbod1.wav")
     precache_sound("weapons/xbow_fire1.wav")
 
-    if(bOF_run)
+    if(bOF_run && !g_safemode)
     {
         precache_model("models/barnacle.mdl")
 
@@ -387,6 +388,7 @@ public plugin_precache()
         precache_sound("barnacle/bcl_die1.wav")
         precache_sound("barnacle/bcl_die3.wav")
         precache_sound("barnacle/bcl_tongue1.wav")
+        bAllCached = true
     }
 }
 
@@ -887,20 +889,29 @@ public throw_hook(id)
         // Make the hook!
         //Hook[id] = create_entity("env_smoker")
         //////////////////////////HOOKHEADS/////////////////////////////////////////////////////////////////////
-        switch(get_pcvar_num(pHead))
+        if(bAllCached)
         {
-            case  0: Hook[id] = create_entity("env_rope")
-            case  1: Hook[id] = create_entity("env_electrified_wire")
-            case  2: Hook[id] = create_entity("monster_barnacle")
-            case  3: Hook[id] = create_entity("trigger_push")
-            case  4: Hook[id] = create_entity("monster_tripmine")
-            case  5: Hook[id] = create_entity("monster_penguin")
-            case  6: Hook[id] = create_entity("monster_leech")
-            case  7: Hook[id] = create_entity("monster_headcrab")
-            case  8: Hook[id] = create_entity("monster_snark")
-            case  9: Hook[id] = create_entity("light") ///"light" "cycler_prdroid"
-            case 10: Hook[id] = create_entity("displacer_ball")
+            switch(get_pcvar_num(pHead))
+            {
+                case  0: Hook[id] = create_entity("env_rope")
+                case  1: Hook[id] = create_entity("env_electrified_wire")
+                case  2: Hook[id] = create_entity("monster_barnacle")
+                case  3: Hook[id] = create_entity("trigger_push")
+                case  4: Hook[id] = create_entity("monster_tripmine")
+                case  5: Hook[id] = create_entity("monster_penguin")
+                case  6: Hook[id] = create_entity("monster_leech")
+                case  7: Hook[id] = create_entity("monster_headcrab")
+                case  8: Hook[id] = create_entity("monster_snark")
+                case  9: Hook[id] = create_entity("light") ///"light" "cycler_prdroid"
+                case 10: Hook[id] = create_entity("displacer_ball")
+            }
         }
+        else
+        {
+            set_pcvar_num(pHead, 9)
+            Hook[id] = create_entity("light")
+        }
+
         //if using certain hooks they need set up just so to work as expected
         if(get_pcvar_num(pHead) <= 5)
         {
