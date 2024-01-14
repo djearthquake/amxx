@@ -82,7 +82,7 @@ public plugin_init()
     {
         g_bGrenadesOnlyRunning = true
     }
-    new mname[MAX_NAME_LENGTH]
+    static mname[MAX_NAME_LENGTH]
     get_mapname(mname, charsmax(mname));
     g_bFlagMap = containi(mname,"op4c") > charsmin?true:false
 
@@ -167,6 +167,8 @@ public client_prethink( id )
 {
     OK)
     {
+        if(CheckPlayerBit(g_AI, id))
+            return
         if(!g_spectating[id])
         {
             pev(id, pev_origin, g_user_origin[id]);
@@ -175,9 +177,6 @@ public client_prethink( id )
             entity_get_vector(id, EV_VEC_punchangle, g_Punch[id]);
             entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
             entity_get_vector(id, EV_VEC_movedir, g_Mdir[id]);
-
-            if(CheckPlayerBit(g_AI, id))
-                return
         }
         else
         {
@@ -376,13 +375,15 @@ public client_putinserver(id)
 
         set_task(3.0,"@clear_menu", id)
 
-        static szSpec[4]
+        static szSpec[2]
         get_user_info(id,"spectate", szSpec, charsmax(szSpec))
 
-        if(equali(szSpec, "1"))
+        //if(equali(szSpec, "1"))
+        if(szSpec[0] == '1')
         {
             dllfunc(DLLFunc_ClientPutInServer, id)
-            @go_spec(id)
+            ///@go_spec(id)
+            set_task(1.0, "@go_spec", id)
         }
 
         if(!g_bFlagMap)
@@ -604,7 +605,7 @@ public client_infochanged(id)
     static cvar_gg; cvar_gg = get_cvar_num("gg_enabled")
     OK)
     {
-        if(~CheckPlayerBit(g_AI, id) || !is_user_hltv(id))
+        if(~CheckPlayerBit(g_AI, id) && !is_user_hltv(id) && is_user_connected(id) && !is_user_connecting(id))
         {
             //if(pev(id, pev_button) & ~IS_THERE)
             {
@@ -628,6 +629,7 @@ public client_infochanged(id)
                         static flags; flags = pev(id, pev_flags)
                         set_pev(id, pev_flags, (flags | FL_SPECTATOR | FL_NOTARGET | FL_PROXY | FL_CUSTOMENTITY))
 
+                        server_print"About to reconnect %N", id
                         dllfunc(DLLFunc_SpectatorConnect, id)
 
                         fm_strip_user_weapons(id)
@@ -708,8 +710,10 @@ public client_infochanged(id)
 }
 
 @update_player(id)
-OK && ~CheckPlayerBit(g_AI, id))
-    g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
+{
+    OK && ~CheckPlayerBit(g_AI, id))
+        g_spectating[id] ? client_print(id,print_chat, "%L", LANG_PLAYER,"OF_SPEC_SPEC") : client_print(id, print_chat, "%L", LANG_PLAYER,"OF_SPEC_NORM")
+}
 
 
 public client_command(id)
@@ -795,6 +799,7 @@ public random_view(id)
             if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) )
             {
                 set_view(id, CAMERA_3RDPERSON)
+                server_print("%N Trying random view on %N", id, iViewPlayer)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
                 if(!bDemo[id])
                 {
