@@ -310,7 +310,9 @@ public _SecondaryAttack_Post(const gun)
 
 public plugin_precache()
 {
-    g_safemode = get_cvar_pointer("safe_mode")
+    //g_safemode = get_cvar_pointer("safe_mode")
+    bind_pcvar_num(get_cvar_pointer("safe_mode"),g_safemode)
+
     static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
 
@@ -889,7 +891,7 @@ public throw_hook(id)
         // Make the hook!
         //Hook[id] = create_entity("env_smoker")
         //////////////////////////HOOKHEADS/////////////////////////////////////////////////////////////////////
-        if(bAllCached)
+        if(bAllCached && !g_safemode)
         {
             switch(get_pcvar_num(pHead))
             {
