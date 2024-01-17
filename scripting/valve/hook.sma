@@ -100,7 +100,8 @@ new gHooksUsed[MAX_NAME_LENGTH + 1] // Used with sv_hookmax
 new bool:g_bHookAllowed[MAX_NAME_LENGTH + 1] // Used with sv_hookadminonly
 new bool:bHOokUser[MAX_PLAYERS + 1]
 
-static gCStrike, bool:bAllCached, g_safemode
+static gCStrike, bool:bAllCached
+new g_safemode;
 
 /*
 new const SzRope[][]={
@@ -311,7 +312,9 @@ public _SecondaryAttack_Post(const gun)
 public plugin_precache()
 {
     //g_safemode = get_cvar_pointer("safe_mode")
-    bind_pcvar_num(get_cvar_pointer("safe_mode"),g_safemode)
+
+    if(g_safemode)
+        bind_pcvar_num(get_cvar_pointer("safe_mode"), g_safemode)
 
     static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
