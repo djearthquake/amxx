@@ -274,7 +274,7 @@ public cmdVoteMap(id, level, cid)
     {
         keys = MENU_KEY_0
         len = format(menu_msg, charsmax(menu_msg), g_coloredMenus ? "\y%L: \w^n^n" : "%L: ^n^n", LANG_SERVER, "CHOOSE_MAP")
-        new temp[128]
+        new temp[256]
 
         for (new a = 0; a < g_validMaps; ++a)
         {
@@ -286,12 +286,12 @@ public cmdVoteMap(id, level, cid)
         format(menu_msg[len], charsmax(menu_msg) - len, "^n0.  %L", LANG_SERVER, "NONE")
         g_yesNoVote = 0
     } else {
-        new lChangeMap[32], lYes[16], lNo[16]
+        new lChangeMap[64], lYes[16], lNo[16]
 
         format(lChangeMap, charsmax(lChangeMap), "%L", LANG_SERVER, "CHANGE_MAP_TO")
         format(lYes, charsmax(lYes), "%L", LANG_SERVER, "YES")
         format(lNo, charsmax(lNo), "%L", LANG_SERVER, "NO")
-        format(menu_msg, charsmax(menu_msg), g_coloredMenus ? "\y%s %s?\w^n^n1.  %s^n2.  %s" : "%s %s?^n^n1.  %s^n2.  %s", lChangeMap, g_optionName[0], lYes, lNo)
+        format(menu_msg, charsmax(menu_msg), g_coloredMenus ? "\y%s %s?\w^n^n1.  %s^n2.  %s" : "%s ^n%s?^n^n1.  %s^n2.  %s", lChangeMap, g_optionName[0], lYes, lNo)
         keys = MENU_KEY_1|MENU_KEY_2
         g_yesNoVote = 1
     }
