@@ -62,7 +62,8 @@ enum _:Safe_Mode
     SzPlugin21[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin22[ MAX_RESOURCE_PATH_LENGTH ],
     SzPlugin23[ MAX_RESOURCE_PATH_LENGTH ]
-}
+};
+
 new Data[ Safe_Mode ]
 
 public plugin_init()
@@ -73,7 +74,7 @@ public plugin_init()
     /*1.3 - 1.33  Optimize by moving plugins.ini creation to plugin_end instead of function calls on other map related plugins. Generate missing safe_mode.ini file instead of pausing.*/
 
     register_plugin(PLUGIN,VERSION, AUTHOR)
-    Xsafe = register_cvar("safe_mode", "0")
+
     g_cvar_debugger  = register_cvar("safemode_debug", "0");
 
     g_SafeMode = TrieCreate()
@@ -103,6 +104,11 @@ public plugin_init()
     }
 
     bBackupPluginsINI?server_print("Back up of PLUGINS.INI already captured."):server_print("Backing up of PLUGINS.INI")
+}
+
+public plugin_precache()
+{
+    Xsafe = register_cvar("safe_mode", "0")
 }
 
 @reload_map()
