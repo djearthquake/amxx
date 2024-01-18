@@ -46,7 +46,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Thu 11th Jan 2024
+    *(__ [__)*|\ | >< Thu 18th Jan 2024
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -69,14 +69,13 @@
     #include <amxmisc>
     #include <geoip>
     #include <sockets>
-    #include <nvault>
 
     #if !defined SOCK_NON_BLOCKING
      #error Go make a new script or post and wait on forums/Discord if you are not autodidactic.
     #endif
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.8.9"
+    #define VERSION "1.9.0"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -152,12 +151,15 @@
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
 
 
-    new g_constring[GLOBAL_SOCKET_BUFFER_SIZE][MAX_PLAYERS + 1]
+    ///new g_constring[GLOBAL_SOCKET_BUFFER_SIZE][MAX_PLAYERS + 1]
 
     new g_buffer[ GLOBAL_SOCKET_BUFFER_SIZE ]//[MAX_PLAYERS + 1] //otherwise meshing of data can occur
-    new g_api_buffer[ MAX_MOTD_LENGTH ]
 
+    new g_api_buffer[ MAX_MOTD_LENGTH ]
     new g_api[ MAX_CMD_LENGTH + MAX_IP_WITH_PORT_LENGTH + 1 ]
+
+    ///new bool:g_testingip[MAX_IP_LENGTH][MAX_PLAYERS +1]
+    new bool:g_testingip[MAX_PLAYERS +1]
 
 
     new token[MAX_PLAYERS + 1]
@@ -264,7 +266,7 @@ public plugin_init()
 
     register_clcmd("!temp","@temp_test",ADMIN_SLAY,"Check temp specified IP.");
 
-    set_task(300.0, "@the_queue",iQUEUE,"",0,"b"); //makes sure all players temp is read minimal socket hang
+    set_task(60.0, "@the_queue",iQUEUE,"",0,"b"); //makes sure all players temp is read minimal socket hang
 
     g_task         = 5.0;
     g_q_weight     = 1
@@ -282,26 +284,33 @@ public plugin_init()
         b_DoD = true
     }
 
-    /*
-    g_vault = nvault_open("clientemp");
-   #define TWO_HR_VAULT_PRUNE nvault_prune(g_vault, 0, get_systime() - (60 * 60 * 2));
-    TWO_HR_VAULT_PRUNE
-    */
-
-    //g_last = nvault_get(g_vault, "iTimeLast");
-    //nvault_get(g_vault, "iTimeLast", g_last, charsmax(g_last));
-    //nvault_set(g_vault, "iTimeLast", time);
 }
 
 public plugin_end()
 {
     TrieDestroy(g_client_temp);
-    ///nvault_close(g_vault);
 }
 
-@temp_test(id)
+@temp_test(id,level,cid)
 {
-    server_print("Work in progress")
+    static iArg1[MAX_IP_LENGTH]
+    if( !cmd_access ( id, level, cid, 1 ) || !is_user_connected(id))
+        return PLUGIN_HANDLED;
+
+    g_testingip[id] = true
+    gotatemp[id] = false
+
+    read_argv(1,iArg1,charsmax(iArg1));
+    ClientIP[id] = iArg1
+    server_print("Copied IP as %s", ClientIP[id])
+    copy(Data[SzAddress] , charsmax(Data[SzAddress]), ClientIP[id])
+
+    client_print(id,print_chat,"Testing temp on IP %s",iArg1)
+    server_print("%N testing %s", id, iArg1)
+    @get_user_data(id)
+
+    return PLUGIN_HANDLED;
+
 }
 
 public plugin_precache()
@@ -357,21 +366,31 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
+        server_print("%N being put in server clientemp", id)
         b_Bot[id] = is_user_bot(id) ? true : false
         b_Admin[id] = is_user_admin(id) ? true : false
+
         if(b_Bot[id] || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
             return PLUGIN_HANDLED_MAIN
-        if( is_user_connected(id) && !b_Bot[id] && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
+
+        if(!b_Bot[id] && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
         {
+            if(b_Admin[id] && !get_pcvar_num(g_debug))
+            {
+                gotatemp[id] = true;
+                return PLUGIN_HANDLED;
+            }
             get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
             if (equali(ClientIP[id], "127.0.0.1"))
             {
-                server_print "%s IP shows as 127.0.0.1, stopping %s script!", ClientName[id], PLUGIN
+                server_print "%N IP shows as 127.0.0.1, stopping %s script!", id, PLUGIN
                 server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
                 return PLUGIN_HANDLED;
             }
             else
+            {
                 client_putinserver_now(id)
+            }
         }
         return PLUGIN_CONTINUE
     }
@@ -380,20 +399,22 @@ public client_putinserver(id)
 
 @country_finder(Tsk)
 {
-    new mask = Tsk - WEATHER;
+    new mask; mask = Tsk - WEATHER;
 
-    static Float:task_expand;task_expand = random_num(5,10)*1.0
+    new Float:task_expand;task_expand = random_num(5,10)*1.0
     if(is_user_connected(mask))
     {
-        if(equal(ClientIP[mask],""))
+        if(equal(ClientIP[mask],"") || b_Admin[mask] && !g_testingip[mask])
         {
             server_print"We did not have the network address captured right."
             get_user_ip( mask, ClientIP[mask], charsmax( ClientIP[] ), WITHOUT_PORT );
         }
 
         Data[SzAddress] = ClientIP[mask]
+        server_print("%N shows %s on country_finder", mask, ClientIP[mask])
 
-        TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
+        if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
+            TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
 
         if(equal(ClientCountry[mask],""))
         {
@@ -473,7 +494,7 @@ public client_putinserver(id)
 
 @speakit(id)
 {
-    new new_temp
+    static new_temp;
     if(is_user_connected(id))
     {
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], ""))
@@ -501,7 +522,10 @@ public Speak(id)
             client_putinserver_now(id)
 
         if(b_Admin[id])
-            get_pcvar_num(g_admins) ? @speakit(id) : @fixadmins(id)
+        {
+            if(!g_testingip[id])
+                get_pcvar_num(g_admins) ? @speakit(id) : @fixadmins(id)
+        }
 
         if(gotatemp[id]) //remind them otherwise fetch it
         {
@@ -517,15 +541,19 @@ public Speak(id)
 
 public client_temp_cmd(id)
 {
-    //if(is_user_connected(id))
     if(id>0 && id <= MaxClients && got_coords[id])
     {
         server_print "client_temp_cmd for slot:%d|%s", id, ClientName[id]
-        set_task(random_num(8,16)*1.0,"client_temp_filter", id)
-        server_print "Making a filter task for %s", ClientName[id]
+        if(!task_exists(id))
+        {
+            get_playersnum() > 2 ? set_task(random_num(8,16)*1.0,"client_temp_filter", id) : set_task(1.0,"client_temp_filter", id)
+            server_print "Making a filter task for %s", ClientName[id]
+        }
     }
     else
+    {
         @country_finder(id)
+    }
 }
 
 @que_em_up(m)
@@ -540,12 +568,16 @@ public client_temp_cmd(id)
     {
         server_print "%s is still connected at moment.", ClientName[m]
 
-        if(b_Admin[m] && get_pcvar_num(g_admins) == 0)
+        if(b_Admin[m] && get_pcvar_num(g_admins) == 0 && !g_testingip[m])
             gotatemp[m] = true;
 
         else if(!gotatemp[m] && m > 0)
         {
-            set_task(random_num(5,12)*1.0,"client_temp_cmd",m)
+            get_playersnum() > 2 ? set_task(random_num(5,12)*1.0,"client_temp_cmd",m) :
+
+            set_task(1.0,"client_temp_cmd",m)
+
+            server_print("q temp que em up cmd tsk made %s", ClientIP[m])
             ////////////////////////////////////////////////////////////////////////////////
             server_print "We do not have %s's temp yet.",ClientName[m]
 
@@ -553,6 +585,7 @@ public client_temp_cmd(id)
             {
                 change_task(iQUEUE, 30.0)
                 server_print "Resuming queue per %s connected.",ClientName[m]
+                @get_user_data(m)
             }
 
         }
@@ -579,11 +612,14 @@ public client_remove(id)
 
 public client_temp_filter(id)
 {
-    if(is_user_connected(id) && id > 0)
+    if( id > 0 && id <= MaxClients )     //still get temp post disco
     {
         server_print "CLIENT TEMP FILTER FUNCTION"
+        if(b_Admin[id] && g_testingip[id])
+            goto JUMP
         if (b_Bot[id] || b_Admin[id] && !get_pcvar_num(g_admins) )
             return PLUGIN_HANDLED_MAIN;
+        JUMP:
         server_print "Temp task will be accessed soon"
         if(!gotatemp[id])
         {
@@ -591,15 +627,19 @@ public client_temp_filter(id)
             {
                 if(equali(ClientIP[id], ""))
                     get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
-
+                server_print("Filter %s", ClientIP[id])
                 client_temp(id)
             }
             else
             {
-                server_print "Socket shows in use."
                 g_in_use++
-                if(g_in_use>5)
+                server_print "Socket shows in use. Pass(%d)", g_in_use
+                if(!somebody_is_being_help)
+                    goto RESET
+
+                if(g_in_use>3)
                 {
+                    RESET:
                     IS_SOCKET_IN_USE = false
                     g_in_use = 0
                 }
@@ -611,13 +651,11 @@ public client_temp_filter(id)
                 }
                 else
                     change_task(id,random_num(7,11)*1.0)
-                /*
-                if(task_exists(id+WEATHER))
+                if(get_playersnum() > 3 && task_exists(id+WEATHER))
                 {
                     change_task(id+WEATHER,random_num(20,30)*1.0);
                     server_print "Queuing %s's weather socket for %f to prevent lag", ClientName[id], get_pcvar_num(g_timeout)*3.0/1.5
                 }
-                */
 
             }
 
@@ -630,15 +668,14 @@ public client_temp_filter(id)
 
 public client_temp(id)
 {
-
-    //if(is_user_connected(id) && !gotatemp[id]  && !is_user_hltv(id))
-    if(!gotatemp[id])
+    if(!gotatemp[id] && !is_user_hltv(id))
     {
         server_print "client_temp function"
         Data[ SzAddress ] = ClientIP[id]
+        server_print("client_temp %s", ClientIP[id])
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
-            new country[ 4 ];
+            static country[ 4 ];
 
             #if AMXX_VERSION_NUM == 182
                 geoip_code3( ClientIP[id], country );
@@ -651,15 +688,12 @@ public client_temp(id)
             if(equali(country, faren_country[heit]))
             {
                 set_pcvar_string(g_cvar_units, "imperial")
-                Data[ifaren] = 1
-
-                //copy( Data[ifaren], charsmax(Data[ifaren]), "1" )
+                Data[ifaren] = "1"
             }
             else
             {
                 set_pcvar_string(g_cvar_units, "metric")
-                Data[ifaren] = 0
-                //copy( Data[ifaren], charsmax(Data[ifaren]), "0" )
+                Data[ifaren] = "0"
             }
 
             TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
@@ -687,10 +721,10 @@ public client_temp(id)
                 pause("a")
             }
             ///////////////////////////////////////////////////////////////////////
-            if (task_exists(id+WEATHER))
-                return PLUGIN_HANDLED;
+            //if (task_exists(id+WEATHER))
+             //   return PLUGIN_HANDLED;
 
-            if (containi(ClientIP[id], "127.0.0.1") != charsmin)
+            if(containi(ClientIP[id], "127.0.0.1") != charsmin)
             {
                 server_print "%s IP shows as 127.0.0.1, stopping script!", ClientName[id]
                 return PLUGIN_HANDLED;
@@ -699,16 +733,17 @@ public client_temp(id)
             ///Amxx module w/ Maxmind geoip database
             ///g_lat[id] = geoip_latitude(ClientIP[id]);
             ///g_lon[id] = geoip_longitude(ClientIP[id]);
-            new Float:timing;
+            static Float:timing;
             timing = g_task+5.0;
 
-            new ping, loss;
+            static ping, loss;
 
             get_user_ping(id,ping,loss);
-            new Float:timing2;
+            static Float:timing2;
             timing2 = tickcount() * (ping * (0.7)) + power(loss,4);
 
             set_task( timing+timing2, "Weather_Feed", id+WEATHER, ClientIP[id], charsmax(ClientIP[]) );
+            server_print("Client temp IP %s", ClientIP[id])
 
             g_task = timing;
 
@@ -716,15 +751,24 @@ public client_temp(id)
 
 
             #if defined LOG
-            //log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], ClientCountry[id], ClientCity[id], ClientRegion[id], str_to_float(ClientLAT[id]), str_to_float(ClientLON[id]) // g_lat[id], g_lon[id]);
-            log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion], str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]) // g_lat[id], g_lon[id]);
+            if(/*(equal(ClientName[id],"") && */g_testingip[id])
+            {
+                //reformat name with test
+                copy(ClientName[id],charsmax(ClientName[]), "TEST");
+            }
+
+            get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
+
+            log_amx "Name: %s, ID: %s, Country: %s, City: %s, Region: %s joined. |lat:%f lon:%f|", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion], str_to_float(Data[fLatitude]), str_to_float(Data[fLongitude]);
             #endif
 
             if(get_pcvar_num(g_debug) && b_Admin[id] )
                 set_task(float(get_pcvar_num(g_timeout)), "needan", id+ADMIN);
         }
         else
+        {
             client_putinserver(id)
+        }
 
     }
     return PLUGIN_CONTINUE;
@@ -820,7 +864,8 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             log_amx("Client_Temperature:Starting the sockets routine...");
 
         static Soc_O_ErroR2, uplink[27], units[9];
-        new constring[GLOBAL_SOCKET_BUFFER_SIZE]
+        static constring[MAX_MENU_LENGTH]
+
         get_pcvar_string(g_cvar_uplink, uplink, charsmax(uplink) );
         get_pcvar_string(g_cvar_token, token, charsmax(token) );
         /*
@@ -897,7 +942,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
 }
 
-@write_web(text[GLOBAL_SOCKET_BUFFER_SIZE], Task)
+@write_web(text[MAX_MENU_LENGTH], Task)
 //@write_web(Task)
 {
     static id; id = Task - WEATHER
@@ -947,6 +992,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 @read_web(feeding)
 {
     static id; id = feeding - WEATHER
+    static iBugger; iBugger=get_pcvar_num(g_debug)
     ///static iTime; iTime = get_systime();
     ///if(!IS_SOCKET_IN_USE)
     if(!b_Bot[id] && id > 0)
@@ -956,6 +1002,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
         //if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ) && !equali(Data[ iTemp ], "")) //~20 min exp date instead. works across maps
+        static iFaren; iFaren = str_to_num(Data[ifaren]);
 
         if(equal(ClientCity[id], ""))
         {
@@ -966,7 +1013,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
         if(IS_SOCKET_IN_USE && !gotatemp[id])
         {
-            if(get_pcvar_num(g_debug))
+            if(iBugger)
                 server_print "Socket in use for %s", ClientName[id]
         }
 
@@ -976,7 +1023,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             callfunc_begin("@lock_socket",PROXY_SCRIPT) ? callfunc_end() : log_amx("Be sure to download and install %s!", PROXY_SCRIPT);
         }
 
-        if(get_pcvar_num(g_debug))
+        if(iBugger)
             server_print "%s:reading %s temp",PLUGIN, ClientName[id]  ///looping
         IS_SOCKET_IN_USE = true;
 
@@ -991,9 +1038,9 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
             if (get_timeleft() > 30) ///Refrain from running sockets on map change!
             {
-                if(get_pcvar_num(g_debug))
+                if(iBugger)
                     server_print "%s:Ck temp",PLUGIN
-                new out[8];
+                static out[8];
                 copyc(out, 6, g_buffer[containi(g_buffer, "temp") + 6], '"');
                 replace(out, 6, ":", "");
                 replace(out, 6, ",", "");
@@ -1002,23 +1049,12 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 emit_sound(id, CHAN_STATIC, SOUND_GOTATEMP, 5.0, ATTN_NORM, 0, PITCH);
                 gotatemp[id] = true;
 
-                new Float:Real_Temp = floatstr(out);
+                static Float:Real_Temp; Real_Temp = floatstr(out);
 
                 formatex(g_ClientTemp[id], charsmax (g_ClientTemp[]), "%i",floatround(Real_Temp));
                 static new_temp; new_temp = str_to_num(g_ClientTemp[id])
 
-                if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
-                {
-                    server_print("Units saved correctly into Trie.")
-                }
-                else
-                {
-                    static g_bufferck[8];
-                    get_pcvar_string(g_cvar_units,g_bufferck,charsmax(g_bufferck));
-                    Data[ifaren] = equali(g_bufferck, "imperial") ? 1 : 0
-                }
-
-                if(Data[ifaren] == 1)
+                if(iFaren)
                 {
                     iRED_TEMP =  70;
                     iBLU_TEMP =  45;
@@ -1043,7 +1079,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 #define HUD_PLACE1 random_float(-0.75,-1.10),random_float(0.25,0.50)
                 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
                 ////////////////////////////////
-                if(get_pcvar_num(g_debug))
+                if(iBugger)
                     server_print "New Temp is %i", str_to_num(Data[iTemp]) //new_temp
                 ////////////////////////////////
 
@@ -1094,7 +1130,9 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 //Speak the temperature.
                 num_to_word(new_temp, g_word_buffer, charsmax(g_word_buffer))
 
-                if(Data[ifaren] == 1)
+                if(iBugger)
+                    server_print("Faren before speak = %i",str_to_num(Data[ifaren]) )
+                if(iFaren)
                 {
                     if(new_temp < 0)
                         client_cmd(0, "spk ^"temperature right now is %s degrees sub zero^"", g_word_buffer );
@@ -1114,13 +1152,13 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 }
                 if(equali(ClientCity[id],"") && containi(g_buffer, "name") > charsmin) //city blank from Geodat?
                 {
-                    new out[MAX_NAME_LENGTH];
+                    static out[MAX_NAME_LENGTH];
                     copyc(out, charsmax(out), g_buffer[containi(g_buffer, "name") + 6], '"');
                     replace(out, charsmax(out), ":", "");
                     replace(out, charsmax(out), ",", "");
                     log_amx "%s city is %s was missing on local geoip", ClientName[id], out
                     copy(ClientCity[id],charsmax(ClientCity[]),out)
-                    if(get_pcvar_num(g_debug))
+                    if(iBugger)
                         server_print "%s city is %s",ClientName[id], out
                 }
                 #if defined MOTD
@@ -1129,7 +1167,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 #endif
                 if(socket_close(g_Weather_Feed) == 1)
                 {
-                    if(get_pcvar_num(g_debug))
+                    if(iBugger)
                         server_print "%s finished %s reading",PLUGIN, ClientName[id]
                     set_task(5.0, "@mark_socket_client", id);
 
@@ -1153,6 +1191,11 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 IS_SOCKET_IN_USE = false
                 return PLUGIN_CONTINUE;
             }
+            else
+            {
+                set_cvar_num("mp_timelimit", get_cvar_num("mp_timelimit")+60)
+                client_print 0, print_chat, "Adding time to finish pending admin temp task."
+            }
         }
         else if(!gotatemp[id])
             set_task(0.1, "@read_web",id+WEATHER);
@@ -1164,6 +1207,11 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             socket_close(g_Weather_Feed);
             bAssisted = false
             @mark_socket_client(id);
+        }
+        if(g_testingip[id])
+        {
+            g_testingip[id] = false
+            gotatemp[id] = false
         }
     }
     return PLUGIN_HANDLED
@@ -1187,6 +1235,13 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
     bServer = false //unbusy for next in queue
     somebody_is_being_help = false
     is_user_connected(id) || is_user_connecting(id) ? server_print("Socket is being freed up from %s", ClientName[id]) : server_print("Socket is being freed up from client.")
+
+    if(g_testingip[id])
+    {
+        g_testingip[id] = false
+        gotatemp[id] = false
+        got_coords[id] = false
+    }
 }
 
 @lock_socket()
@@ -1220,10 +1275,10 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
         new client = g_players[player];
         //Make array of non-bot connected players who need their temp still.
         //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
-        if(!gotatemp[client] /*&& !bAssisted*/)
+        if(!gotatemp[client] /* && !bAssisted */)
         {
             //ATTEMPT STOP TASKS FROM BEING BACK-TO-BACK
-            //bAssisted = true
+            ////bAssisted = true
 
             server_print "%s queued for %s",ClientName[client],PLUGIN
             //task spread formula
@@ -1236,7 +1291,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             get_user_name(client,ClientName[client],charsmax(ClientName[]))
             server_print "We STILL need %s's temp already.",ClientName[client]
             server_print "QUEUE NEXT::ID:%d %s",client, ClientName[client]
-            change_task(iQUEUE, 30.0)
+            change_task(iQUEUE, 3.0)
 
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             if(get_pcvar_num(g_long) > 0 && !got_coords[client] && !task_exists(client + WEATHER))
@@ -1312,10 +1367,29 @@ public client_putinserver_now(id)
     ///static iTime; iTime = get_systime();
     if(is_user_connected(id))
     {
-        get_user_name(id, ClientName[id], charsmax(ClientName[]))
-        get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT )
 
-        copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
+        if(g_testingip[id])
+        {
+            //reformat name with test
+            copy(ClientName[id],charsmax(ClientName[]), "TEST");
+        }
+        else
+        {
+            get_user_name(id, ClientName[id], charsmax(ClientName[]))
+        }
+
+        if(!g_testingip[id])
+        {
+            get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT)
+            copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
+            server_print("%N is not testing this ip", id)
+        }
+        else
+        {
+            server_print("%N test on %s precopy", id, ClientIP[id])
+            copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
+            server_print("%N test on %s postcopy", id, ClientIP[id])
+        }
 
         if(get_pcvar_num(g_debug))
             server_print "%s,%s",ClientName[id],ClientIP[id]
@@ -1341,7 +1415,10 @@ public client_putinserver_now(id)
 
             got_coords[id] = true
 
-            @country_finder(id+WEATHER)
+            ///////////////////@country_finder(id+WEATHER)
+            ///set_task(1.0,"@que_em_up", id) //looping
+            if(b_Admin[id] && get_pcvar_num(g_admins) || g_testingip[id] || !b_Admin[id])
+                @the_queue(id)
         }
         else if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
@@ -1417,7 +1494,7 @@ public client_putinserver_now(id)
 
             if(containi(msg, "latitude") > charsmin && containi(msg, "longitude") > charsmin)
             {
-                new float:lat[8],float:lon[8];
+                static float:lat[8],float:lon[8];
                 copyc(lat, 6, msg[containi(msg, "latitude") + 10], '"');
                 replace(lat, 6, ":", "");
                 replace(lat, 6, ",", "");
@@ -1461,7 +1538,7 @@ public client_putinserver_now(id)
                 server_print "EXTRACTED %s", country
                 copy(ClientCountry[id],charsmax(ClientCountry[]),country)
             }
-
+            IS_SOCKET_IN_USE = false
             if(socket_close(ip_api_socket) == 1)
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
             else
@@ -1479,6 +1556,7 @@ public client_putinserver_now(id)
 
             g_socket_pass[id]++
             server_print "pass:%i",g_socket_pass[id]
+
         }
         else if(!got_coords[id] && g_socket_pass[id] >= 3)
         {
