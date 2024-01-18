@@ -1455,7 +1455,7 @@ public client_putinserver_now(id)
             if(containi(msg, "^"country^"") > charsmin)
             {
                 static country[MAX_RESOURCE_PATH_LENGTH]
-                copyc(country, charsmax(country), msg[containi(msg, "^"country^"") + 10], '"')
+                copyc(country, charsmax(country), msg[containi(msg, "^"country^"") + 11], '"')
                 replace(country, charsmax(country), ":", "");
                 replace(country, charsmax(country), ",", "");
                 server_print "EXTRACTED %s", country
