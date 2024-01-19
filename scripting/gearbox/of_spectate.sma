@@ -4,7 +4,7 @@
 #include fakemeta
 #include fakemeta_util
 #include fun
-#include hamsandwich
+//#include hamsandwich
 
 #define MAX_PLAYERS                    32
 #define MAX_RESOURCE_PATH_LENGTH       64
@@ -239,7 +239,7 @@ public client_prethink( id )
 
                 if(bFirstPerson[id])
                 {
-                    static iTarget; iTarget = g_random_view[id]
+                    static iTarget; iTarget = g_random_view[id];
                     if(is_user_connected(iTarget)) //needs checked here as index was made up!
                     {
                         //attach_view(id, iTarget);
@@ -404,6 +404,7 @@ public client_putinserver(id)
     }
 }
 
+/*
 public client_connectex(id, const name[], const ip[], reason[128])
 {
     copy(SzClientName[id],charsmax(SzClientName[]), name)
@@ -415,6 +416,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
     g_spectating[id] = false
     return PLUGIN_CONTINUE
 }
+*/
 
 @go_check(id)
 {
@@ -705,7 +707,8 @@ public client_infochanged(id)
     {
         show_motd(id, g_motd, "SPECTATOR MODE")
         client_cmd id,"spk ../../valve/sound/UI/buttonrollover.wav"
-        set_task(30.0,"random_view", id)
+
+        ///set_task(30.0,"random_view", id) //neat but too expensive.
     }
 }
 
@@ -747,8 +750,9 @@ public client_command(id)
     }
     return PLUGIN_HANDLED
 }
-public random_view(id)
+public random_view(Tsk)
 {
+    static id; id = Tsk - TOGGLE;
     OK && g_spectating[id] && ~CheckPlayerBit(g_AI, id))
     {
         if(!g_random_view[id])
@@ -786,13 +790,14 @@ public random_view(id)
 @random_view(Tsk)
 {
     static id; id = Tsk - TOGGLE
+    if(get_playersnum()>3)
     OK && g_spectating[id])
     {
         new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
         get_players(players,playercount,"i");
 
         for (viewable=0; viewable < playercount; ++viewable)
-        if(playercount > 1 && !g_random_view[viewable])
+        if(playercount > 1 && !g_spectating[viewable])
         {
             iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
             if(is_user_connected(iViewPlayer) && pev(iViewPlayer, pev_button) & IS_THERE)
