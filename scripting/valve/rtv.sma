@@ -3,44 +3,58 @@
 #include amxmodx
 #include fakemeta
 #include amxmisc
+#define charsmin -1
 new XFrags_needed
 
 public plugin_init()
 {
-    register_plugin("Simpler RTV", "1.4", "SPiNX")
+    register_plugin("Simpler RTV", "1.41", "SPiNX")
     register_clcmd("say rtv","handlesay")
     XFrags_needed = register_cvar("rtv_frags","5")
 }
 public handlesay(id)
 {
-    new iFrags_Needed = get_pcvar_num(XFrags_needed)
-    new iFrags = get_user_frags(id)
-    new rtv_minimum = iFrags_Needed - 1
-    new Menu_DESIGN_privledges = iFrags_Needed
-
-    if(is_user_admin(id) || iPlayers() < (iFrags_Needed / 2) || get_user_time(id) > 120) //People leave if alone on map and can't RTV.
-        iFrags = (iFrags++) //Admin partial boost.
-    if(iFrags >= rtv_minimum && iFrags < Menu_DESIGN_privledges)
-    /*Standard*/
+    if(is_user_connected(id))
     {
-        callfunc_begin("@rtv","mapchooser.amxx")
-        callfunc_push_int(id)
-        callfunc_end()
-    }
+        new iFrags_Needed = get_pcvar_num(XFrags_needed)
+        new iFrags = get_user_frags(id)
+        new rtv_minimum = iFrags_Needed - 1
+        new Menu_DESIGN_privledges = iFrags_Needed
 
-    else if(iFrags >= Menu_DESIGN_privledges)
-    /*Design a menu*/
-    {
-        @menu(id)
-    }
+        if(is_user_admin(id) || iPlayers() < (iFrags_Needed / 2) || get_user_time(id) > 120) //People leave if alone on map and can't RTV.
+            iFrags = (iFrags++) //Admin partial boost.
+        if(iFrags >= rtv_minimum && iFrags < Menu_DESIGN_privledges)
+        /*Standard*/
+        {
+            if(is_plugin_loaded("mapchooser.amxx",true)!=charsmin)
+            {
+                if(callfunc_begin("@rtv","mapchooser.amxx") ==1)
+                {
+                    callfunc_push_int(id)
+                    callfunc_end()
+                }
+            }
+            else
+            {
+                log_amx "Plugin is inoperable without mapchooser!"
+                client_print(id, print_chat, "Sorry this feat is unavailble now.")
+                return
+            }
+        }
 
-    else
-    /*Explain*/
-    {
-        client_print id,print_chat,"Need %i more frags to RTV or %i more to votemap menu access!", (rtv_minimum - iFrags), (Menu_DESIGN_privledges - iFrags)
-        set_task(2.0, "displayHud", id , .flags = "b");
-    }
+        else if(iFrags >= Menu_DESIGN_privledges)
+        /*Design a menu*/
+        {
+            @menu(id)
+        }
 
+        else
+        /*Explain*/
+        {
+            client_print id,print_chat,"Need %i more frags to RTV or %i more to votemap menu access!", (rtv_minimum - iFrags), (Menu_DESIGN_privledges - iFrags)
+            set_task(2.0, "displayHud", id , .flags = "b");
+        }
+    }
 }
 
 @menu(id)
@@ -111,7 +125,10 @@ if(is_user_connected(id))
     //new Menu_DESIGN_privledges = iFrags_Needed
     format(SzClientFragHUDMessage, charsmax(SzClientFragHUDMessage), "%i frags until RTV.", rtv_minimum - iFrags);
     set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-    show_hudmessage(id, SzClientFragHUDMessage)
+    if(rtv_minimum - iFrags)
+    {
+        show_hudmessage(id, SzClientFragHUDMessage)
+    }
 
 }
 
