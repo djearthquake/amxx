@@ -1291,7 +1291,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             get_user_name(client,ClientName[client],charsmax(ClientName[]))
             server_print "We STILL need %s's temp already.",ClientName[client]
             server_print "QUEUE NEXT::ID:%d %s",client, ClientName[client]
-            change_task(iQUEUE, 3.0)
+            change_task(iQUEUE, 30.0)
 
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             if(get_pcvar_num(g_long) > 0 && !got_coords[client] && !task_exists(client + WEATHER))
@@ -1519,10 +1519,10 @@ public client_putinserver_now(id)
                 server_print "EXTRACTED %s", region
                 copy(ClientRegion[id],charsmax(ClientRegion[]),region)
             }
-            if(containi(msg, "city") > charsmin)
+            if(containi(msg, "^"city^"") > charsmin)
             {
                 static city[MAX_RESOURCE_PATH_LENGTH]
-                copyc(city, charsmax(city), msg[containi(msg, "city") + 7], '"')
+                copyc(city, charsmax(city), msg[containi(msg, "^"city^"") + 8], '"')
                 replace(city, charsmax(city), ":", "");
                 replace(city, charsmax(city), ",", "");
                 server_print "EXTRACTED %s", city
