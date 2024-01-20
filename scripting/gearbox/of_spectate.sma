@@ -490,18 +490,24 @@ public client_connectex(id, const name[], const ip[], reason[128])
                 {
                     if(g_random_view[id])
                     {
-                        g_random_view[id] = 0
+                        remove_task(id + TOGGLE)
                         bFirstPerson[id] = false
+                        g_random_view[id] = 0
+                        client_print id, print_chat, "Already in \Random View/^n Stopping..."
                     }
                     else
                     {
+                        client_print id, print_chat, "Trying Random VIew if enough players."
                         @switch_views(id)
                     }
                     menu_display(id, menu, 0,15);
                 }
                 else
                 {
-                    client_print id, print_chat, "Must be spectating!"
+                    client_print id, print_chat, "Must be spectating!^nTransferring you there now."
+                    @go_spec(id)
+                    bFirstPerson[id] = true
+                    set_task(0.5, "@switch_views", id)
                 }
             }
             case 2:
@@ -586,6 +592,12 @@ public client_connectex(id, const name[], const ip[], reason[128])
             case 5:
             {
                 //client_print id, print_chat, "Say rtv"
+                if(!g_spectating[id])
+                {
+                    @go_spec(id)
+                    set_task(0.5, "@random_view", id+TOGGLE)
+                }
+                else
                 @switch_views(id)
                 menu_display(id, menu, 0,900);
             }
@@ -730,6 +742,8 @@ public client_command(id)
 {
     OK)
     {
+        if(!g_random_view[id] && !g_spectating[id])
+            return PLUGIN_CONTINUE
         if(CheckPlayerBit(g_AI, id))
             goto SKIP
         static szArg[MAX_PLAYERS],
@@ -739,8 +753,8 @@ public client_command(id)
         read_argv(0,szArgCmd, charsmax(szArgCmd));
         read_argv(1,szArgCmd1, charsmax(szArgCmd1));
 
-        if(g_random_view[id] && !g_spectating[id])
-            g_spectating[id] = true
+        //if(g_random_view[id] && !g_spectating[id])
+        //    g_spectating[id] = true
 
         if(g_spectating[id])
             if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
@@ -789,7 +803,7 @@ public random_view(Tsk)
     {
         task_exists(id+TOGGLE) ? change_task(id+TOGGLE, 0.3)
         :
-        set_task(0.5,"@random_view",id+TOGGLE,.flags = "b")
+        set_task(1.0,"@random_view",id+TOGGLE,.flags = "b")
     }
     return PLUGIN_HANDLED;
 }
@@ -797,18 +811,18 @@ public random_view(Tsk)
 @random_view(Tsk)
 {
     static id; id = Tsk - TOGGLE
-    if(get_playersnum()>3)
+    if(get_playersnum()>1)
     OK && g_spectating[id])
     {
         new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
         get_players(players,playercount,"i");
 
-        for (viewable=0; viewable < playercount; ++viewable)
-        if(playercount > 1 && !g_spectating[viewable])
+        for (viewable=1; viewable <= playercount; ++viewable)
+        if(playercount > 1)
         {
             iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
-            if(is_user_connected(iViewPlayer) && pev(iViewPlayer, pev_button) & IS_THERE)
-            if( id != iViewPlayer && (pev(iViewPlayer, pev_button) & IS_THERE) && (pev(iViewPlayer, pev_oldbuttons) & IS_THERE) )
+            if(is_user_connected(iViewPlayer) && !g_spectating[iViewPlayer])
+            if( id != iViewPlayer)
             {
                 set_view(id, CAMERA_3RDPERSON)
                 server_print("%N Trying random view on %N", id, iViewPlayer)
