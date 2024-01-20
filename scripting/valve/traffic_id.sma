@@ -1,11 +1,10 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <fakemeta>
-#include <hamsandwich>
 #include <geoip>
 
 #define PLUGIN "TrafficID"
-#define VERSION "B2"
+#define VERSION "B3"
 #define AUTHOR "SPiNX"
 #define WITHOUT_PORT    1
 
@@ -34,13 +33,13 @@ new bool: b_Bot[MAX_PLAYERS+1], bool:b_Admin[MAX_PLAYERS + 1], bool: b_CS
 new g_iHeadcount,g_players[ MAX_PLAYERS ]
 new bNameCheck[MAX_PLAYERS + 1]
 
-static const SzBotTag[]="BOT"
-//static const szSearch[]="[s]"
+static const SzBotTag[]="BOT";
 
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
-    RegisterHam(Ham_Killed, "player", "client_death", 1);
+
+    register_event("DeathMsg","death_event","a")
     static SzModName[MAX_NAME_LENGTH]
     get_modname(SzModName, charsmax(SzModName));
     if(equal(SzModName, "cstrike") || equal(SzModName, "czero") )
@@ -48,17 +47,9 @@ public plugin_init()
 }
 public client_connectex(id, const name[], const ip[], reason[128])
 {
-    //if(is_user_connected(id))
     copyc(ClientIP[id], charsmax(ClientIP[]), ip, ':')
     reason = (containi(ip, local) > charsmin) ? "IP address misread!" : "Bad STEAMID!"
     copy(ClientName[id],charsmax(ClientName[]), name)
-/*
-    if(containi(ip, local) != charsmin)
-    {
-        log_amx("Localhost blocked...%s, %s, %s",name, ip)
-        return PLUGIN_HANDLED_MAIN
-    }
-*/
     return PLUGIN_CONTINUE
 }
 
@@ -153,7 +144,6 @@ public client_infochanged(id)
         static szBuffer[MAX_NAME_LENGTH]
         get_user_name(id, szBuffer, charsmax(szBuffer))
 
-        //if(contain(szBuffer, szSearch) == charsmin)
         copy(ClientName[id], charsmax(ClientName[]), szBuffer)
         b_Admin[id] = is_user_admin(id) ? true : false
         bNameCheck[id] = false
@@ -162,8 +152,10 @@ public client_infochanged(id)
     return PLUGIN_HANDLED
 }
 
-public client_death(victim, killer, shouldgib)
+public death_event()
 {
+    static killer,victim;
+    victim = read_data(2); killer = get_user_attacker(victim);
     static ClientVicName[MAX_PLAYERS+1][MAX_NAME_LENGTH], ClientKilName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
     ///filter out mortars etc!
     if(is_user_connected(killer) && is_user_connected(victim))
@@ -173,12 +165,7 @@ public client_death(victim, killer, shouldgib)
 
         if(!equal(ClientVicName[victim],"") && !equal(ClientKilName[killer],"") )
         {
-            b_CS
-            ?
-            client_print( 0, print_chat, "%s killed %s", ClientVicName[victim], ClientKilName[killer])
-            :
             client_print( 0, print_chat, "%s killed %s", ClientKilName[killer], ClientVicName[victim])
-
         }
     }
 }
