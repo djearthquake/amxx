@@ -488,8 +488,15 @@ public client_connectex(id, const name[], const ip[], reason[128])
             {
                 if(g_spectating[id])
                 {
-                    random_view(id)
-                    bFirstPerson[id] = false
+                    if(g_random_view[id])
+                    {
+                        g_random_view[id] = 0
+                        bFirstPerson[id] = false
+                    }
+                    else
+                    {
+                        @switch_views(id)
+                    }
                     menu_display(id, menu, 0,15);
                 }
                 else
