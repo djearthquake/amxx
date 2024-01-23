@@ -24,10 +24,10 @@ new g_yesNoVote
 new g_coloredMenus
 new g_voteCaller
 new g_Execute[256]
-new g_execLen
+new g_execLen;
 
-new bool:g_execResult
-new Float:g_voteRatio
+new bool:g_execResult;
+new Float:g_voteRatio;
 
 public plugin_init()
 {
@@ -47,7 +47,7 @@ public plugin_init()
     register_concmd("amx_vote", "cmdVote", ADMIN_VOTE, "<question> <answer#1> <answer#2>")
     register_concmd("amx_cancelvote", "cmdCancelVote", ADMIN_VOTE, "- cancels last vote")
 
-    g_coloredMenus = colored_menus()
+    g_coloredMenus = colored_menus();
 }
 
 public cmdCancelVote(id, level, cid)
@@ -87,9 +87,34 @@ public cmdCancelVote(id, level, cid)
 
     return PLUGIN_HANDLED
 }
-
+/*
 public delayedExec(cmd[])
+{
     server_cmd("%s", cmd)
+}
+*/
+public delayedExec(cmd[])
+{
+    //static szCheck;
+    //if(g_Answer = "changelevel %s")
+    if(containi(g_Answer, "changelevel") > charsmin)
+    {
+        if(is_plugin_loaded("spectate.amxx",true)!=charsmin)
+        {
+            @op4_spec()
+        }
+    }
+    server_cmd("%s", cmd)
+}
+
+@op4_spec()
+{
+    if(callfunc_begin("plugin_end","spectate.amxx"))
+    {
+        callfunc_end()
+        log_amx "Checking for spectators."
+    }
+}
 
 public autoRefuse()
 {
