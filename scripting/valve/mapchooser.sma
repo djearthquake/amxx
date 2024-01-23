@@ -178,7 +178,7 @@ public checkVotes()
     if (g_voteCount[SELECTMAPS] > g_voteCount[b]
         && g_voteCount[SELECTMAPS] > g_voteCount[SELECTMAPS+1])
     {
-        new mapname[MAX_NAME_LENGTH]
+        static mapname[MAX_NAME_LENGTH]
         get_mapname(mapname, charsmax(mapname))
 
         new Float:steptime = get_pcvar_float(g_step)
@@ -225,7 +225,7 @@ public checkVotes()
 
     }
 
-    new smap[MAX_NAME_LENGTH]
+    static smap[MAX_NAME_LENGTH]
     if (g_voteCount[b] && g_voteCount[SELECTMAPS + 1] <= g_voteCount[b])
     {
         ArrayGetString(g_mapName, g_nextName[b], smap, charsmax(smap));
@@ -239,16 +239,32 @@ public checkVotes()
     if(g_rtv)
     {
         remove_task(987456)
-        if(g_mp_chattime < 2)g_mp_chattime = 5
-        set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
+        if(g_mp_chattime < 2)
+        {
+            g_mp_chattime = 5
+            set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
+            if(is_plugin_loaded("spectate.amxx",true)!=charsmin)
+            {
+                @op4_spec()
+            }
+        }
     }
-
 }
 
 @changemap(smap[MAX_NAME_LENGTH])
 {
     server_print "Trying to change to map %s",smap
     if(ValidMap(smap))amxx_changelevel(smap)
+
+}
+
+@op4_spec()
+{
+    if(callfunc_begin("plugin_end","spectate.amxx"))
+    {
+        callfunc_end()
+        log_amx "Checking for spectators."
+    }
 }
 
 stock amxx_changelevel(smap[MAX_NAME_LENGTH])
@@ -569,7 +585,7 @@ loadSettings(filename[])
 
 public team_score()
 {
-    new team[2]
+    static team[2]
 
     read_data(1, team, charsmax(team))
     g_teamScore[(team[0]=='C') ? 0 : 1] = read_data(2)
@@ -577,7 +593,7 @@ public team_score()
 
 public plugin_end()
 {
-    new current_map[MAX_NAME_LENGTH]
+    static current_map[MAX_NAME_LENGTH]
 
     get_mapname(current_map, charsmax(current_map))
     set_localinfo("lastMap", current_map)
