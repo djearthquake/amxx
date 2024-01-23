@@ -16,7 +16,7 @@
 #define charsmin                      -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.4"
+#define VERSION "1.0.5"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -105,7 +105,7 @@ public plugin_init()
     //RegisterHam(Ham_Spawn, "player", "@play", 1); //ents can disappear on map start.
     register_event("ResetHUD", "@play", "b")
     register_clcmd("say", "handle_say")
-    ///set_task_ex(11.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
+    set_task_ex(3.0,"plugin_end", 84151, .flags = SetTask_BeforeMapChange)
     //maxplayers = get_maxplayers()
 }
 
@@ -620,6 +620,18 @@ public client_infochanged(id)
     }
 }
 
+public plugin_end()
+{
+
+     for (new client=1; client<=MaxClients; ++client)
+    {
+        if(is_user_connected(client) && g_spectating[client])
+        {
+            log_amx("Attemping to stop %N from having ents missing in case next map disabled spec!", client)
+            @go_spec(client)
+        }
+    }
+}
 
 @go_spec(id)
 {
