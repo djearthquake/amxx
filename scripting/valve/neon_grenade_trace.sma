@@ -183,11 +183,31 @@ public plugin_init()
     {
         register_think("grenade","@tracer");
     }
+
+    //FLYING MELEE MODS
+    if(is_plugin_loaded("fly_crowbar.amxx",true)!=charsmin)
+    {
+        register_think("fly_crowbar","@tracer");
+        register_touch("fly_crowbar", "*", "HandGrenade_Attack2_Touch");
+    }
+    if(is_plugin_loaded("flying_knife.amxx",true)!=charsmin)
+    {
+        register_think("fly_knife","@tracer");
+        register_touch("fly_knife", "*", "HandGrenade_Attack2_Touch");
+    }
+    if(is_plugin_loaded("flying_wrench.amxx",true)!=charsmin)
+    {
+        register_think("fly_pipewrench","@tracer");
+        register_touch("fly_pipewrench", "*", "HandGrenade_Attack2_Touch");
+    }
+
     //AR GRENADES
-    if(has_map_ent_class("ammo_ARgrenades"))
+    ///if(has_map_ent_class("ammo_ARgrenades")) //some maps spawn player with them then this does not trigegr
     {
         register_think("ARgrenade","@tracer");
         register_touch("ARgrenade", "*", "HandGrenade_Attack2_Touch");
+        register_touch("Hook_illuminati", "*", "Other_Attack_Touch");
+        register_touch("Hook_illuminati", "*", "HandGrenade_Attack2_Touch") //"Other_Attack_Touch");
     }
     //HORNET
     if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
@@ -219,13 +239,23 @@ public plugin_init()
             register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
         }
         //TANK MORTAR (can't isolate the shell from the cannon)
-        /*
-        if(has_map_ent_class("weapon_snark"))
+
+        if(has_map_ent_class("func_tankmortar"))  //xfire
         {
-            g_tank_think = register_think("monster_snark", "@tracer");
-            register_touch("monster_snark", "player", "HandGrenade_Attack2_Touch");
+            g_mortar_think = register_think("mortar_shell", "@tracer");
+            register_touch("mortar_shell", "*", "HandGrenade_Attack2_Touch");
+
+            log_amx("func_tankmortar found!")
+
+            g_tank_think = register_think("env_explosion", "@tracer");
+            register_touch("env_explosion", "", "HandGrenade_Attack2_Touch");
         }
-        */
+        if(has_map_ent_class("func_tankrocket"))
+        {
+            log_amx("func_tankrocket found!")
+            g_tank_think = register_think("mortar_shell", "@tracer");
+            register_touch("mortar_shell", "", "HandGrenade_Attack2_Touch");
+        }
         //MISSILES //affecting spec mode
         if(is_plugin_loaded("spinx_missiles.amxx",true)!=charsmin)
         {
@@ -380,6 +410,9 @@ public glow(g_model)
 
 public HandGrenade_Attack2_Touch(ent, id)
 {
+
+    static szClass[MAX_NAME_LENGTH]
+    pev(ent,pev_classname, szClass, charsmax(szClass))
     static nade_owner;
 
     if(bStrike && g_cvar_neon_c4 && !get_pcvar_num(g_cvar_neon_c4) && get_pdata_bool(ent, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
@@ -421,6 +454,10 @@ public HandGrenade_Attack2_Touch(ent, id)
             ewrite_short(random_num(5,15))               //(count)
             ewrite_byte(random_num(8,20))              //(life in 0.1's)
             emessage_end()
+
+
+            if(equali(szClass, "Hook_illuminati"))
+            goto END
 
             emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() );
             ewrite_byte(random_num(19,21));
@@ -487,6 +524,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                         //spec no fx
                         static flags
                         flags = pev(players[m], pev_flags)
+
                         if(flags &~ FL_SPECTATOR)
                         {
                             emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
@@ -566,6 +604,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 new killer = entity_get_edict(ent,EV_ENT_owner);
 
                                 log_kill(killer,players[m],"Grenade Radiation",1);
+                                END:
                             }
                         }
                     }
@@ -639,8 +678,7 @@ public Other_Attack_Touch(ent, id)
             for (new m=0; m<playercount; ++m)
             {
                 new playerlocation[3];
-                ///if(is_user_connected(players[m]) && is_user_alive(players[m]))
-                if(is_user_connected(players[m]) && is_user_alive(players[m]) && players[m] != killer)
+                if(is_user_connected(players[m]) && is_user_alive(players[m]))
                 {
                     get_user_origin(players[m], playerlocation);
                     result_distance  = get_entity_distance(g_model, players[m]);
@@ -786,7 +824,7 @@ stock players_who_see_effects()
     new players[MAX_PLAYERS], playercount, SEE;
     get_players(players,playercount,"ch");
 
-    for (SEE=0; SEE<playercount; SEE++)
+i    for (SEE=0; SEE<playercount; SEE++)
         return SEE;
 
     return PLUGIN_CONTINUE;
