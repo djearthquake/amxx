@@ -240,13 +240,12 @@ public checkVotes()
     {
         remove_task(987456)
         if(g_mp_chattime < 2)
-        {
             g_mp_chattime = 5
-            set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
-            if(is_plugin_loaded("spectate.amxx",true)!=charsmin)
-            {
-                @op4_spec()
-            }
+
+        set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
+        if(is_plugin_loaded("spectate.amxx",true)!=charsmin)
+        {
+            @op4_spec()
         }
     }
 }
