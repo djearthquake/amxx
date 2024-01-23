@@ -25,7 +25,6 @@
 #include <hamsandwich>
 #include <engine>
 #include <fakemeta_util>
-#include <gearbox>
 #include <xs>
 
 #define CROW "fly_crowbar"
@@ -57,7 +56,7 @@ new const SzClass[][] =
 
         if(is_user_alive(iAttacker))
         {
-            if(get_user_weapon(iAttacker) != HLW_CROWBAR || get_user_weapon(iAttacker) != HLW_KNIFE)
+            if(get_user_weapon(iAttacker) != HLW_CROWBAR)
                 return PLUGIN_HANDLED;
         }
 
