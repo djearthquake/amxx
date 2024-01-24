@@ -102,6 +102,7 @@ new g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE;
 new bool:g_has_been_checked[MAX_PLAYERS + 1];
 new bool:g_processing[MAX_PLAYERS + 1];
+new bool:g_testing[MAX_PLAYERS + 1];
 
 new Trie:g_already_checked;
 new g_clientemp_version;
@@ -120,6 +121,7 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
     ///hPattern = regex_compile(PATTERN, iReturnValue, szError, charsmax(szError), "is");
+    register_clcmd("!proxy","@proxy_test",ADMIN_SLAY,"- <x.x.x.x> Check VPN of specified IP."); //JAN 24th 2024
     g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
     g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
@@ -205,6 +207,29 @@ public client_putinserver(id)
     }
     return PLUGIN_HANDLED
 }
+
+@proxy_test(id,level,cid)
+{
+    static iArg1[MAX_IP_LENGTH]
+    static SzLoopback[] = "127.0.0.1"
+
+    if( !cmd_access ( id, level, cid, 1 ) || !is_user_connected(id) || equali(ip,SzLoopback) )
+        return PLUGIN_HANDLED;
+
+    g_has_been_checked[id] = false
+    g_processing[id] = true
+    g_testing[id] = true
+
+    read_argv(1,iArg1,charsmax(iArg1));
+
+    client_print(id,print_chat,"Snorting proxy on IP %s",iArg1)
+    server_print("%N is testing for VPN on %s", id, iArg1)
+    client_proxycheck(iArg1, id)
+    set_pcvar_num(g_cvar_debugger, 3)
+
+    return PLUGIN_HANDLED;
+}
+
 public client_proxycheck(Ip[], id)
 {
     if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id] && g_processing[id])
@@ -240,7 +265,7 @@ public client_proxycheck(Ip[], id)
         }
         */
         get_pcvar_string(g_cvar_token, token, charsmax (token));
-        new Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
+        static Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
         if ( equal(token, "null") || equal(token, "") && is_user_admin(id) )
             set_task(40.0, "@needan", id+ADMIN);
         if(get_pcvar_num(g_cvar_debugger) > 1)
@@ -268,7 +293,7 @@ public client_proxycheck(Ip[], id)
 }
 @write_web(text[MAX_CMD_LENGTH], reader)
 {
-    new id = reader - USERWRITE;
+    static id; id = reader - USERWRITE;
     if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
@@ -318,43 +343,47 @@ stock get_user_profile(id)
 }
 @handle_proxy_user(id)
 {
-    get_user_profile(id)
-    new iAction = get_pcvar_num(g_cvar_iproxy_action)
-    static const SzMsg[]="Anonymizing is NOT allowed!"
-
-    bright_message()
-    log_amx "Proxy found! Action is %d", iAction
-    if (iAction <= 4)
+    if(!g_testing[id])
     {
-        for (new admin=1; admin<=MaxClients; ++admin)
-            if (is_user_connected(admin) && is_user_admin(admin))
-                client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+        get_user_profile(id)
+        new iAction = get_pcvar_num(g_cvar_iproxy_action)
+        static const SzMsg[]="Anonymizing is NOT allowed!"
 
-        client_cmd( 0,"spk ^"bad entry detected^"" )
-    }
-
-    if(is_user_connected(id))
-    {
-
-        switch(iAction)
+        bright_message()
+        log_amx "Proxy found! Action is %d", iAction
+        if (iAction <= 4)
         {
-            case 0:   set_user_info(id, "name", "Anon")
-            case 1:   server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
-            case 2:   server_cmd( "amx_addban ^"%s^" ^"0^" ^"%s^"", Ip, SzMsg)
-            case 3:   server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", authid, SzMsg)
-            default:  server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg)
+            for (new admin=1; admin<=MaxClients; ++admin)
+                if (is_user_connected(admin) && is_user_admin(admin))
+                    client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+
+            client_cmd( 0,"spk ^"bad entry detected^"" )
         }
 
-    }
-    else if(is_user_connecting(id))
-    {
-        server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
-        server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg) //test kick downloaders
+        if(is_user_connected(id))
+        {
+
+            switch(iAction)
+            {
+                case 0:   set_user_info(id, "name", "Anon")
+                case 1:   server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
+                case 2:   server_cmd( "amx_addban ^"%s^" ^"0^" ^"%s^"", Ip, SzMsg)
+                case 3:   server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", authid, SzMsg)
+                default:  server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg)
+            }
+
+        }
+        else if(is_user_connecting(id))
+        {
+            server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
+            server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg) //test kick downloaders
+        }
     }
 }
+
 @read_web(proxy_snort)
 {
-    new id = proxy_snort - USERREAD
+    static id; id = proxy_snort - USERREAD
     if( id > 0 && !g_has_been_checked[id] )
     if(!is_user_bot(id))
     {
@@ -378,8 +407,9 @@ stock get_user_profile(id)
                 @file_data(SzSave)
                 server_print "Proxy sniff...%s|%s", Ip, authid
                 log_amx "%s, %s uses a proxy!", name, authid
+                if(!g_testing[id])
                 //task per data wasn't being saved, kicking too quickly
-                set_task(1.0,"@handle_proxy_user",id)
+                    set_task(1.0,"@handle_proxy_user",id);
             }
             //What if they aren't on proxy or VPN?
             if (containi(g_proxy_socket_buffer, "no") != charsmin && containi(g_proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
@@ -409,18 +439,29 @@ stock get_user_profile(id)
                 copyc(msg, charsmax(msg), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "message") + 11], '"');
                 server_print "Message is: %s",msg
             }
-                //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
-            if (containi(g_proxy_socket_buffer, "^"provider^"") > charsmin )
+            //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
+            if (containi(g_proxy_socket_buffer, "^"provider^"") > charsmin)
             {
-                copyc(provider, charsmax (provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "^"provider^"") + 11], '"');
+                copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "^"provider^"") + 10], ',');
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
             }
+            if (containi(g_proxy_socket_buffer, "er^"") > charsmin)
+            {
+                copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "er^"") + 4], ',');
+                //Misc data and stats
+                if(get_pcvar_num(g_cvar_debugger))
+                    server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
+            }
+
             if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
             {
                 Data[SzIsp] = provider
-                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
+                if(!g_testing[id])
+                    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
                 if(get_pcvar_num(g_cvar_debugger) > 2 )
                     server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
                 set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
