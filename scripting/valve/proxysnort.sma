@@ -5,7 +5,7 @@
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
-*    Copyleft (C) March 2020-2024 .sρiηX҉.
+*    Copyleft (C) March 2020-2023 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -410,9 +410,9 @@ stock get_user_profile(id)
                 server_print "Message is: %s",msg
             }
                 //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
-            if (containi(g_proxy_socket_buffer, "provider") > charsmin )
+            if (containi(g_proxy_socket_buffer, "^"provider^"") > charsmin )
             {
-                copyc(provider, charsmax (provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "provider") + 12], '"');
+                copyc(provider, charsmax (provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "^"provider^"") + 11], '"');
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
