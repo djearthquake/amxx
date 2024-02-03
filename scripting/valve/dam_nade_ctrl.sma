@@ -80,7 +80,7 @@ public Fw_Damage(victim, inflictor, attacker, Float:fDamage, dmgbits)
                             if(is_user_connected(attacker))
                             {   
                                 client_print attacker, print_center, "%d", Damage_adj
-                                client_print attacker, print_console, "%n hit %n with %d grenade damage.", attacker, victim, Damage_adj
+                                client_print attacker, print_console, "%n hit %n with %d grenade damage.", attacker, victim, floatround(Damage_adj)
                             }
 
 
