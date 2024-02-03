@@ -78,7 +78,7 @@ public Fw_Damage(victim, inflictor, attacker, Float:fDamage, dmgbits)
             if(fDamage)
             {
                     #define DAMAGE       4
-                    new Damage_adj  = fDamage*XMultipler;
+                    new Float:Damage_adj  = fDamage*XMultipler;
 
                     if(XAdmin && access(victim, HE_IMMUNITY_ACCESS) || !XMultipler)
                     {
@@ -88,7 +88,7 @@ public Fw_Damage(victim, inflictor, attacker, Float:fDamage, dmgbits)
                     }
                     else
                     {
-                        SetHamParamFloat(DAMAGE, float(Damage_adj))
+                        SetHamParamFloat(DAMAGE, Damage_adj)
 
                         if(XPrintDamage)
 
