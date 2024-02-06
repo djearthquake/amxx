@@ -43,7 +43,6 @@ public client_infochanged(id)
 
         copy(ClientName[id], charsmax(ClientName[]), szBuffer)
         is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id)
-        //bNameCheck[id] = false
         return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
@@ -123,7 +122,7 @@ public fw_PlayerPostThink(id)
             if(is_user_alive(ent) )
             {
                 reclass = !CheckPlayerBit(g_AI, ent) ? "^n^n(human)" : "^n^n(bot)"
-                if(CheckPlayerBit(g_Adm, id))
+                if(CheckPlayerBit(g_Adm, ent))
                 {
                     reclass =  "^n^n(admin)"
                 }
