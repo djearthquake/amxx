@@ -123,6 +123,10 @@ public fw_PlayerPostThink(id)
             if(is_user_alive(ent) )
             {
                 reclass = !CheckPlayerBit(g_AI, ent) ? "^n^n(human)" : "^n^n(bot)"
+                if(CheckPlayerBit(g_Adm, id))
+                {
+                    reclass =  "^n^n(admin)"
+                }
             }
 
             get_user_model(ent, sModel, charsmax( sModel ) );
