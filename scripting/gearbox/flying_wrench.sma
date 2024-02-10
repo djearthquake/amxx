@@ -75,6 +75,7 @@ new const SzClass[][] =
         }
         if(is_user_connected(iAttackerOwner))
         {
+            replace(szClass, charsmax(szClass), "func_", "")
             client_print 0, print_center, "%n took out a %s", iAttackerOwner, szClass
         }
 
