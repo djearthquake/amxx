@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Fri Oct 20th, 2023.
+*(__ [__)*|\ | >< Last edit date Fri Feb 9th, 2024.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -431,7 +431,7 @@ public HandGrenade_Attack2_Touch(ent, id)
             case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
         }
 
-        new Float:End_Position[3];
+        static Float:End_Position[3];
         g_model = ent
         if(pev_valid(g_model))
         {
@@ -493,10 +493,10 @@ public HandGrenade_Attack2_Touch(ent, id)
             get_players(players,playercount,"h")
             for (new m=0; m<playercount; ++m)
             {
-                new hp; hp = get_user_health(players[m])
                 static playerlocation[3]
                 if(is_user_alive(players[m]) && players[m] != nade_owner)
                 {
+                    new hp; hp = get_user_health(players[m])
                     get_user_origin(players[m], playerlocation)
                     new result_distance; result_distance = get_entity_distance(g_model, players[m]);
 
@@ -601,7 +601,8 @@ public HandGrenade_Attack2_Touch(ent, id)
 
                                 new Float:fExpOrigin[3];
                                 fExpOrigin = End_Position;
-                                new killer = entity_get_edict(ent,EV_ENT_owner);
+
+                                static killer; killer = entity_get_edict(ent,EV_ENT_owner);
 
                                 log_kill(killer,players[m],"Grenade Radiation",1);
                                 END:
@@ -617,12 +618,13 @@ public HandGrenade_Attack2_Touch(ent, id)
 
 public Other_Attack_Touch(ent, id)
 {
-    new Float:Axis[3], Float:End_Position[3];
-    static killer; killer = entity_get_edict(ent,EV_ENT_owner);
-    if(id != killer && is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
+    static Float:Axis[3], Float:End_Position[3];
+    static killer;
+    if(is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
     {
+        killer = entity_get_edict(ent,EV_ENT_owner);
 
-        if(get_pcvar_num(g_cvar_neon_all))
+        if(killer != id && get_pcvar_num(g_cvar_neon_all))
         {
 
             ///Sound FX
