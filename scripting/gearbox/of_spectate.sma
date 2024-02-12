@@ -16,7 +16,7 @@
 #define charsmin                      -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.5"
+#define VERSION "1.0.6"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -827,7 +827,18 @@ public random_view(Tsk)
     {
         if(get_playersnum()>1)
         {
-            iViewPlayer = random_num(1,MaxClients)
+            ///iViewPlayer = random_num(1,MaxClients)
+            new iViewable_players, random_players[MAX_PLAYERS];
+
+            for(new iPlayer = 1; iPlayer <= MaxClients; ++iPlayer)
+            if(is_user_connected(iPlayer))
+            {
+                iViewable_players++;
+                random_players[iViewable_players] = iPlayer;
+            }
+
+            static iPick; iPick = random(iViewable_players+1);
+            iViewPlayer = random_players[iPick];
             if(is_user_alive(iViewPlayer) && !g_spectating[iViewPlayer])
             if( id != iViewPlayer && iViewPlayer != g_random_view[id])
             {
