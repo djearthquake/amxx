@@ -378,11 +378,9 @@ public client_putinserver(id)
         static szSpec[2]
         get_user_info(id,"spectate", szSpec, charsmax(szSpec))
 
-        //if(equali(szSpec, "1"))
         if(szSpec[0] == '1')
         {
             dllfunc(DLLFunc_ClientPutInServer, id)
-            ///@go_spec(id)
             set_task(1.0, "@go_spec", id)
         }
 
@@ -815,7 +813,7 @@ public random_view(Tsk)
     {
         task_exists(id+TOGGLE) ? change_task(id+TOGGLE, 0.3)
         :
-        set_task(1.0,"@random_view",id+TOGGLE,.flags = "b")
+        set_task(0.2,"@random_view",id+TOGGLE,.flags = "b")
     }
     return PLUGIN_HANDLED;
 }
@@ -823,18 +821,15 @@ public random_view(Tsk)
 @random_view(Tsk)
 {
     static id; id = Tsk - TOGGLE
-    if(get_playersnum()>1)
+    static iViewPlayer;
+
     OK && g_spectating[id])
     {
-        new players[MAX_PLAYERS], playercount, viewable, iViewPlayer;
-        get_players(players,playercount,"i");
-
-        for (viewable=1; viewable <= playercount; ++viewable)
-        if(playercount > 1)
+        if(get_playersnum()>1)
         {
-            iViewPlayer = random_num(1,playercount+1) //make new menu instead of this shortcut
-            if(is_user_connected(iViewPlayer) && !g_spectating[iViewPlayer])
-            if( id != iViewPlayer)
+            iViewPlayer = random_num(1,MaxClients)
+            if(is_user_alive(iViewPlayer) && !g_spectating[iViewPlayer])
+            if( id != iViewPlayer && iViewPlayer != g_random_view[id])
             {
                 set_view(id, CAMERA_3RDPERSON)
                 server_print("%N Trying random view on %N", id, iViewPlayer)
