@@ -480,7 +480,7 @@ public voteNextmap()
             if (++a >= g_mapNums) a = 0
 
         g_nextName[g_mapVoteNum] = a
-        pos += format(menu[pos], charsmax(menu) - pos, "%d. %a^n", g_mapVoteNum + 1, ArrayGetStringHandle(g_mapName, a));
+        pos += format(menu[pos], charsmax(menu) - pos, "%d. %a^n^n", g_mapVoteNum + 1, ArrayGetStringHandle(g_mapName, a));
         mkeys |= (1<<g_mapVoteNum)
         g_voteCount[g_mapVoteNum] = 0
     }
@@ -494,7 +494,7 @@ public voteNextmap()
 
     if ((g_wins + g_rnds) == 0 && (get_cvar_float("mp_timelimit") < get_pcvar_float(g_max)))
     {
-        pos += format(menu[pos], charsmax(menu) - pos, "%d. %L^n", SELECTMAPS + 1, LANG_SERVER, "EXTED_MAP", mapname)
+        pos += format(menu[pos], charsmax(menu) - pos, "%d. %L^n^n", SELECTMAPS + 1, LANG_SERVER, "EXTED_MAP", mapname)
         mkeys |= (1<<SELECTMAPS)
     }
 
