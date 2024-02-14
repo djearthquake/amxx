@@ -59,7 +59,7 @@ new /*Float:g_Velocity[MAX_PLAYERS + 1][3],*/ g_Duck[MAX_PLAYERS + 1], g_BackPac
 
 new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 
-#define IS_THERE (~(0<<IN_SCORE))
+#define IS_THERE (1<<IN_SCORE)
 
 public plugin_init()
 {
@@ -440,14 +440,16 @@ public client_connectex(id, const name[], const ip[], reason[128])
     OK && pev_valid(id)>1)
     {
         static menu; menu = menu_create ("Spectate", "@spec_menu");
+        static vec[3]
+        pev(g_random_view[id], pev_velocity, vec);
 
         menu_additem(menu, "PLAY/WATCH^n", "1");
         //if(g_spectating[id])
         menu_additem(menu, "Chase Cam/Free-look^n^n", "2")
         //if(g_random_view[id] && !bFirstPerson[id])
         menu_additem(menu, "First Person Chase Cam^n^n", "3")
-        bFirstPerson[id] && CheckPlayerBit(g_AI, g_random_view[id]) ?
-        menu_additem(menu, "Take-over Bot!^n^n^n^n", "4"):menu_additem(menu, "...^n^n^n^n^n", "5")
+        bFirstPerson[id] && CheckPlayerBit(g_AI, g_random_view[id]) || bFirstPerson[id] && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) ?
+        menu_additem(menu, "Take-over Bot/^n^n      AFK Player!^n^n^n^n", "4"):menu_additem(menu, "...^n^n^n^n^n", "5")
 
         menu_additem(menu, "Play/STOP song^n^n^n^n^n", "5")
         //if(!g_spectating[id])
@@ -527,9 +529,12 @@ public client_connectex(id, const name[], const ip[], reason[128])
                     static iTarget; iTarget = g_random_view[id]
                     if(bFirstPerson[id] && is_user_connected(iTarget)) //add take over AFK human next
                     {
-                        if(CheckPlayerBit(g_AI, iTarget) || pev(iTarget, pev_button) & ~IS_THERE)
+                        static vec[3]
+                        pev(g_random_view[id], pev_velocity, vec);
+
+                        if(CheckPlayerBit(g_AI, iTarget) || !CheckPlayerBit(g_AI, iTarget) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0))
                         {
-                            server_print "TAKING OVER BOT/ AFK PLAYER!"
+                            server_print "TAKING OVER BOT/AFK PLAYER!"
                             g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
                             dllfunc(DLLFunc_ClientPutInServer, id)
                             dllfunc(DLLFunc_SpectatorDisconnect, id)
@@ -554,7 +559,9 @@ public client_connectex(id, const name[], const ip[], reason[128])
 
                             client_print id, print_chat, "%n took control of %n.", id, iTarget
                             set_pev(id, pev_origin, g_user_origin[iTarget]);
-                            server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) );
+                            CheckPlayerBit(g_AI, iTarget) ?
+                            server_cmd( "kick #%d ^"Player took slot for being AFK!^"", get_user_userid(iTarget) ) :
+                            @go_spec(iTarget);
 
                             set_user_godmode(id,false)
                             client_cmd 0, "spk debris/beamstart6.wav"
@@ -562,7 +569,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
                     }
                     else
                     {
-                        client_print id, print_chat, "Must be in First Person view!"
+                        client_print id, print_chat, "Must be a bot or AFK human!"
                         menu_display(id, menu, 0,900);
                     }
                 }
