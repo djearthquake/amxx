@@ -481,28 +481,28 @@ public HandGrenade_Attack2_Touch(ent, id)
             emessage_end();
 
             ///Actual damage
-            new location[3]
-            new Float:Vec[3]
+            static location[3]
+            static Float:Vec[3]
             IVecFVec(location, Vec)
             FVecIVec(Vec, location)
             location[2] = location[2] + 20
 
-            new players[ MAX_PLAYERS ]
-            new playercount
+            static players[ MAX_PLAYERS ]
+            static playercount
 
             get_players(players,playercount,"h")
             for (new m=0; m<playercount; ++m)
             {
                 static playerlocation[3]
-                if(is_user_alive(players[m]) && players[m] != nade_owner)
+                if(1 <= players[m] <= MaxClients && is_user_connected(players[m]) && is_user_alive(players[m]) && players[m] != nade_owner)
                 {
-                    new hp; hp = get_user_health(players[m])
+                    static hp; hp = get_user_health(players[m])
                     get_user_origin(players[m], playerlocation)
-                    new result_distance; result_distance = get_entity_distance(g_model, players[m]);
+                    static result_distance; result_distance = get_entity_distance(g_model, players[m]);
 
                     if(result_distance < get_pcvar_num(g_proximity))
                     {
-                        new Cvar = get_pcvar_num(g_teams)
+                        static Cvar;Cvar = get_pcvar_num(g_teams)
                         if(Cvar || bStrike)
                         {
                             if(bStrike)
