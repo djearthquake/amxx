@@ -116,7 +116,7 @@ public concmd_RandomPlayer(id)
 @NewRound()
 {
     if(XScouts)
-        @scouts_knives
+        @scouts_knives()
 }
 
 @scouts_knives()
