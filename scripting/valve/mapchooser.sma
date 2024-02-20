@@ -72,7 +72,8 @@ public plugin_init()
     #endif
     if( is_running("gearbox") == 1)
             bOF_run = true
-    bHL_run =  is_running("gearbox") || is_running("valve")
+    bHL_run = find_ent(charsmin,"info_player_deathmatch") ? true : false
+
     g_max       = create_cvar("amx_extendmap_max", "90")
     g_step      = create_cvar("amx_extendmap_step", "15")
     g_auto_pick = create_cvar("mapchooser_auto", "0")
