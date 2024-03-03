@@ -43,7 +43,7 @@
 *.__)|   || \|/  \
 *
 *    Respawn from bots.
-*    Copyleft (C) Nov 2020-2023 .sρiηX҉.
+*    Copyleft (C) Nov 2020-2024 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -64,7 +64,7 @@
 *                -take the place of AFK humans for round.
 *    V1.1 to 1.2 -focus on correct side-arms and unsticking. Switch to "impulse 206" instead of prethink.
 *    V1.2 to 1.3 -Pause and log plugin if dependecy is not found.
-*
+*    V1.3 to 1.4 -Restart round when no player has C4 post spawn. Remove prefixes on weapon and item when announcing.
 *
 */
 
@@ -111,7 +111,9 @@ Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
-bool:bIsVip[MAX_PLAYERS + 1];
+bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bC4map;
+
+new const c4[][]={"weapon_c4","func_bomb_target","info_bomb_target"};
 
 new const SzSuit[]="item_assaultsuit"
 
@@ -122,10 +124,10 @@ new const SzCsAmmo[][]=
     "ammo_57mm",
     "ammo_45acp",
     "ammo_50ae"
-}
+};
 
-new const SzAdvert[]="Bind impulse 206 to control bot."
-new const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human."
+new const SzAdvert[]="Bind impulse 206 to control bot.";
+new const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
 public plugin_precache()
 {
@@ -141,14 +143,14 @@ public plugin_precache()
         else
         {
             RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
-            RegisterHamBots(Ham_Killed, "@died")
+            RegisterHamBots(Ham_Killed, "@died");
         }
     }
 }
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.3", "SPiNX");
+    register_plugin("Repawn from bots", "1.4", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1");
@@ -157,8 +159,8 @@ public plugin_init()
     g_stuck = register_cvar("respawn_unstick", "0.3");
     //Ham
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
-    RegisterHam(Ham_Spawn, "player", "@PlayerSpawn");
-    RegisterHam(Ham_Killed, "player", "@died")
+    RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1);
+    RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
     register_event("ResetHUD", "@BotSpawn", "bg")
     register_logevent("round_start", 2, "1=Round_Start")
@@ -169,6 +171,9 @@ public plugin_init()
     iMaxplayers = get_maxplayers()
     g_cor = get_user_msgid( "ClCorpse" )
     bIsCtrl[0] = true
+    for(new ent;ent < sizeof c4;++ent)
+    if(has_map_ent_class(c4[ent]))
+        bC4map = true
 }
 
 @died(id)
@@ -300,8 +305,13 @@ public CS_OnBuy(id, item)
                                 }
                                 give_item(id, SzWeaponClassname)
 
-                                formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname);
-                                client_print iBotOwner[id], print_chat,  SzParaphrase
+                                if(containi(SzWeaponClassname, "item_")!=charsmin)
+                                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                                if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+
+                                is_user_connected(iBotOwner[id]) ? formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname) :
+                                formatex(SzParaphrase, charsmax(SzParaphrase), "Disconnected player returned %n's %s.", id, SzWeaponClassname) & client_print( 0, print_chat,  SzParaphrase);
                             }
                         }
 
@@ -325,7 +335,10 @@ public CS_OnBuy(id, item)
 
                         RECLAIM:
                         iBotOwned[id] = 0;
-                        client_print 0, print_chat, "%n is no longer owned by %n.", id, iBotOwner[id]
+                        is_user_connected(iBotOwner[id]) ?
+                        client_print( 0, print_chat, "%n is no longer owned by %n.", id, iBotOwner[id])
+                        : client_print( 0, print_chat, "%n is no longer owned by human.", id)
+
 
                         if(g_iTempCash[id])
                             cs_set_user_money(id, g_iTempCash[id], 0);
@@ -336,6 +349,8 @@ public CS_OnBuy(id, item)
                 }
             }
             bBotUser[id] = false;
+            if(bC4map)
+                set_task 5.0, "@c4_check"
         }
     }
 }
@@ -344,6 +359,34 @@ public round_start()
 {
     cool_down_active = false
     set_msg_block( g_cor, BLOCK_NOT );
+}
+
+@c4_check()
+{
+    //check c4 to make sure somebody has it
+    bC4ok= false
+    if(bC4map)
+    {
+        server_print "Making sure C4 is available..."
+        for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
+        {
+             static iTeam; iTeam = get_user_team(iPlayer)
+             if(!bC4ok)
+             if(iTeam == 1 && user_has_weapon(iPlayer, CSW_C4))
+            {
+                 bC4ok= true
+                 give_item(iPlayer, "weapon_c4");
+                 client_print 0, print_chat, "%n has the c4.", iPlayer
+            }
+        }
+
+        if(!bC4ok)
+        {
+            console_cmd 0, "sv_restartround 5"
+            client_print 0, print_chat, "Redistributing the c4."
+        }
+
+    }
 }
 
 public round_end()
@@ -475,6 +518,7 @@ stock weapon_details(alive_bot)
         wpnid = get_user_weapon(alive_bot, magazine, ammo);
         get_weaponname(wpnid, SzWeaponClassname, charsmax(SzWeaponClassname))
         replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
         return wpnid, magazine, ammo, SzWeaponClassname;
     }
     return wpnid=0,magazine=0,ammo=0,SzWeaponClassname;
@@ -546,8 +590,14 @@ stock weapon_details(alive_bot)
             if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
             {
                 give_item(dead_spec, SzWeaponClassname)
+
                 if(equal(SzWeaponClassname, "weapon_c4"))
                     cs_set_user_plant(dead_spec, 1, 1)
+                if(containi(SzWeaponClassname, "item_")!=charsmin)
+                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+
                 client_print dead_spec, print_chat,  SzWeaponClassname
             }
         }
