@@ -285,6 +285,11 @@ public CS_OnBuy(id, item)
                         }
                         give_item(id, SzWeaponClassname)
 
+                        if(containi(SzWeaponClassname, "item_")!=charsmin)
+                            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                        if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+
                         client_print id, print_chat,  SzWeaponClassname
                     }
                     TRADE:
