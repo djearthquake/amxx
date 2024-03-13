@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Fri Feb 9th, 2024.
+*(__ [__)*|\ | >< Last edit date Fri Mar 13th, 2024.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -410,202 +410,204 @@ public glow(g_model)
 
 public HandGrenade_Attack2_Touch(ent, id)
 {
-
     static szClass[MAX_NAME_LENGTH]
-    pev(ent,pev_classname, szClass, charsmax(szClass))
-    static nade_owner;
-
-    if(bStrike && g_cvar_neon_c4 && !get_pcvar_num(g_cvar_neon_c4) && get_pdata_bool(ent, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
-        return PLUGIN_HANDLED
-
-    if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_rad) == 1)
+    if(pev_valid(ent)>1)
     {
-        nade_owner = pev(ent,pev_owner);
-        ///Sound FX //make a cvar lags might be reason for overflows!
-        if(get_pcvar_num(g_cvar_neon_snd))
-        switch(random_num(0,3))
+        pev(ent,pev_classname, szClass, charsmax(szClass))
+        static nade_owner;
+    
+        if(bStrike && g_cvar_neon_c4 && !get_pcvar_num(g_cvar_neon_c4) && get_pdata_bool(ent, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
+            return PLUGIN_HANDLED
+    
+        if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_rad) == 1)
         {
-            case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0, PITCH);
-            case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
-            case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-            case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-        }
-
-        static Float:End_Position[3];
-        g_model = ent
-        if(pev_valid(g_model))
-        {
-            entity_get_vector(g_model,EV_VEC_origin,End_Position);
-            entity_get_vector(g_model,EV_VEC_angles,Axis);
-
-            ///explode models on explode or touch.
-            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() )
-            ewrite_byte(TE_EXPLODEMODEL)
-            ewrite_coord(floatround(End_Position[0]+random_float(-11.0,11.0)))      // XYZ (start)
-            ewrite_coord(floatround(End_Position[1]-random_float(-11.0,11.0)))
-            ewrite_coord(floatround(End_Position[2]+random_float(1.0,75.0)))
-            ewrite_coord(random_num(-350,400))       // velocity
-            switch(random_num(0,2))
+            nade_owner = pev(ent,pev_owner);
+            ///Sound FX //make a cvar lags might be reason for overflows!
+            if(get_pcvar_num(g_cvar_neon_snd))
+            switch(random_num(0,3))
             {
-                case 0: ewrite_short(gibs_models0);
-                case 1: ewrite_short(gibs_models1);
-                case 2: ewrite_short(gibs_models2);
+                case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0, PITCH);
+                case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
+                case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
             }
-            ewrite_short(random_num(5,15))               //(count)
-            ewrite_byte(random_num(8,20))              //(life in 0.1's)
-            emessage_end()
-
-
-            if(equali(szClass, "Hook_illuminati"))
-            goto END
-
-            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() );
-            ewrite_byte(random_num(19,21));
-            ewrite_coord(floatround(End_Position[0]));
-            ewrite_coord(floatround(End_Position[1]));
-            ewrite_coord(floatround(End_Position[2]));
-            ewrite_coord(floatround(Axis[0]));
-            ewrite_coord(floatround(Axis[1]));
-            ewrite_coord(floatround(Axis[2]));
-            ewrite_short(g_ring);
-            ewrite_byte(100); //fr
-            ewrite_byte(255); // fr rate
-            ewrite_byte(random_num(8,15));  //life
-            ewrite_byte(random_num(8,80));  //width
-            ewrite_byte(random_num(0,50));   //amp
-            ewrite_byte(random_num(30,255));  //r
-            ewrite_byte(random_num(0,200));  //g
-            ewrite_byte(random_num(40,190)); //b
-            ewrite_byte(random_num(100,500)); //bright
-            ewrite_byte(0);
-            emessage_end();
-
-            ///Actual damage
-            static location[3]
-            static Float:Vec[3]
-            IVecFVec(location, Vec)
-            FVecIVec(Vec, location)
-            location[2] = location[2] + 20
-
-            static players[ MAX_PLAYERS ]
-            static playercount
-
-            get_players(players,playercount,"h")
-            for (new m=0; m<playercount; ++m)
+    
+            static Float:End_Position[3];
+            g_model = ent
+            if(pev_valid(g_model))
             {
-                static playerlocation[3]
-                if(1 <= players[m] <= MaxClients && is_user_connected(players[m]) && is_user_alive(players[m]) && players[m] != nade_owner)
+                entity_get_vector(g_model,EV_VEC_origin,End_Position);
+                entity_get_vector(g_model,EV_VEC_angles,Axis);
+    
+                ///explode models on explode or touch.
+                emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, 0); //players_who_see_effects() )
+                ewrite_byte(TE_EXPLODEMODEL)
+                ewrite_coord_f(End_Position[0]+random_float(-11.0,11.0))      // XYZ (start)
+                ewrite_coord_f(End_Position[1]-random_float(-11.0,11.0))
+                ewrite_coord_f(End_Position[2]+random_float(1.0,75.0))
+                ewrite_coord_f(random_float(-350.0,400.0))       // velocity
+                switch(random_num(0,2))
                 {
-                    static hp; hp = get_user_health(players[m])
-                    get_user_origin(players[m], playerlocation)
-                    static result_distance; result_distance = get_entity_distance(g_model, players[m]);
+                    case 0: ewrite_short(gibs_models0);
+                    case 1: ewrite_short(gibs_models1);
+                    case 2: ewrite_short(gibs_models2);
+                }
+                ewrite_short(random_num(5,15))               //(count)
+                ewrite_byte(random_num(8,20))              //(life in 0.1's)
+                emessage_end()
+    
+    
+                if(equali(szClass, "Hook_illuminati"))
+                goto END   
 
-                    if(result_distance < get_pcvar_num(g_proximity))
+                emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, 0); //players_who_see_effects() );
+                ewrite_byte(random_num(19,21));
+                ewrite_coord_f(End_Position[0]);
+                ewrite_coord_f(End_Position[1]);
+                ewrite_coord_f(End_Position[2]);
+                ewrite_coord_f(Axis[0]);
+                ewrite_coord_f(Axis[1]);
+                ewrite_coord_f(Axis[2]);
+                ewrite_short(g_ring);
+                ewrite_byte(100); //fr
+                ewrite_byte(255); // fr rate
+                ewrite_byte(random_num(8,15));  //life
+                ewrite_byte(random_num(8,80));  //width
+                ewrite_byte(random_num(0,50));   //amp
+                ewrite_byte(random_num(30,255));  //r
+                ewrite_byte(random_num(0,200));  //g
+                ewrite_byte(random_num(40,190)); //b
+                ewrite_byte(random_num(100,500)); //bright
+                ewrite_byte(0);
+                emessage_end();
+
+                ///Actual damage
+                static location[3]
+                static Float:Vec[3]
+                IVecFVec(location, Vec)
+                FVecIVec(Vec, location)
+                location[2] = location[2] + 20
+    
+                static players[ MAX_PLAYERS ]
+                static playercount
+    
+                get_players(players,playercount,"h")
+                for (new m=0; m<playercount; ++m)
+                {
+                    static playerlocation[3]
+                    if(1 <= players[m] <= MaxClients && is_user_connected(players[m]) && is_user_alive(players[m]) && players[m] != nade_owner)
                     {
-                        static Cvar;Cvar = get_pcvar_num(g_teams)
-                        if(Cvar || bStrike)
+                        static hp; hp = get_user_health(players[m])
+                        get_user_origin(players[m], playerlocation)
+                        static result_distance; result_distance = get_entity_distance(g_model, players[m]);
+    
+                        if(result_distance < get_pcvar_num(g_proximity))
                         {
-                            if(bStrike)
+                            static Cvar;Cvar = get_pcvar_num(g_teams)
+                            if(Cvar || bStrike)
                             {
-                                if(!Cvar && get_user_team(nade_owner) == get_user_team(players[m]))
-                                    return PLUGIN_HANDLED
+                                if(bStrike)
+                                {
+                                    if(!Cvar && get_user_team(nade_owner) == get_user_team(players[m]))
+                                        return PLUGIN_HANDLED
+                                }
+                                else
+                                {
+                                    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+                                    get_user_team(nade_owner, killers_team, charsmax(killers_team));
+                                    get_user_team(players[m], victims_team, charsmax(victims_team))
+    
+                                    if(Cvar && !equal(killers_team,victims_team))
+                                        return PLUGIN_CONTINUE
+                                }
+    
                             }
-                            else
+                            //spec no fx
+                            static flags
+                            flags = pev(players[m], pev_flags)
+    
+                            if(flags &~ FL_SPECTATOR)
                             {
-                                new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
-                                get_user_team(nade_owner, killers_team, charsmax(killers_team));
-                                get_user_team(players[m], victims_team, charsmax(victims_team))
-
-                                if(Cvar && !equal(killers_team,victims_team))
-                                    return PLUGIN_CONTINUE
-                            }
-
-                        }
-                        //spec no fx
-                        static flags
-                        flags = pev(players[m], pev_flags)
-
-                        if(flags &~ FL_SPECTATOR)
-                        {
-                            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
-                            ewrite_byte( TE_PLAYERSPRITES)
-                            ewrite_short(players[m])//ewrite_short(m)  //(playernum)
-                            switch(random_num(0,2))
-                            {
-                                case 0: ewrite_short(g_energy0);
-                                case 1: ewrite_short(g_energy1);
-                                case 2: ewrite_short(g_energy2);
-                            }
-                            ewrite_byte(5)     //(count)
-                            ewrite_byte(75) // (variance) (0 = no variance in size) (10 = 10% variance in size)
-                            emessage_end()
-
-
-                            emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0},players[m]);
-                            ewrite_short(25000); //amp
-                            ewrite_short(8000); //dur //4096 is~1sec
-                            ewrite_short(30000); //freq
-                            emessage_end();
-
-                            if(hp >= 30.0)
-                            {
-                                fakedamage(players[m],"Grenade Radiation",15.0,DMG_RADIATION)
-
-
-                                emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},players[m]);
-                                DELAY;DELAY;FLAGS;PUR;ALPHA; //This is where one can change BLU to GRN.
+                                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
+                                ewrite_byte( TE_PLAYERSPRITES)
+                                ewrite_short(players[m])//ewrite_short(m)  //(playernum)
+                                switch(random_num(0,2))
+                                {
+                                    case 0: ewrite_short(g_energy0);
+                                    case 1: ewrite_short(g_energy1);
+                                    case 2: ewrite_short(g_energy2);
+                                }
+                                ewrite_byte(5)     //(count)
+                                ewrite_byte(75) // (variance) (0 = no variance in size) (10 = 10% variance in size)
+                                emessage_end()
+    
+    
+                                emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0},players[m]);
+                                ewrite_short(25000); //amp
+                                ewrite_short(8000); //dur //4096 is~1sec
+                                ewrite_short(30000); //freq
                                 emessage_end();
-
-                                if(get_pcvar_num(g_debug) > 0)
+    
+                                if(hp >= 30.0)
+                                {
+                                    fakedamage(players[m],"Grenade Radiation",15.0,DMG_RADIATION)
+    
+    
+                                    emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},players[m]);
+                                    DELAY;DELAY;FLAGS;PUR;ALPHA; //This is where one can change BLU to GRN.
+                                    emessage_end();
+    
+                                    if(get_pcvar_num(g_debug) > 0)
+                                    {
+                                        #if AMXX_VERSION_NUM == 182
+                                        new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                                        get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
+                                        get_user_name(players[m], victims_name, charsmax(victims_name) );
+                                        client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
+                                        #endif
+    
+    
+                                        #if AMXX_VERSION_NUM != 182
+                                            client_print( 0, print_center,"%n blinded %n!", nade_owner, players[m] );
+                                        #endif
+                                    }
+    
+                                }
+    
+                                else
+    
+                                if(hp < 30.0)
                                 {
                                     #if AMXX_VERSION_NUM == 182
                                     new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
                                     get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
                                     get_user_name(players[m], victims_name, charsmax(victims_name) );
-                                    client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
+                                    client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
                                     #endif
-
-
+    
+    
                                     #if AMXX_VERSION_NUM != 182
-                                        client_print( 0, print_center,"%n blinded %n!", nade_owner, players[m] );
+                                    if( is_user_connected(nade_owner))
+                                    {
+                                        client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
+                                    }
                                     #endif
+    
+                                    if(bStrike)
+                                        set_msg_block(g_deathmsg, BLOCK_SET);
+                                    if(!bStrike)
+                                        set_msg_block(g_deathmsg, BLOCK_ONCE);
+    
+                                    fakedamage(players[m],"Grenade Radiation",300.0,DMG_RADIATION|DMG_NEVERGIB)
+    
+                                    new Float:fExpOrigin[3];
+                                    fExpOrigin = End_Position;
+    
+                                    static killer; killer = entity_get_edict(ent,EV_ENT_owner);
+    
+                                    log_kill(killer,players[m],"Grenade Radiation",1);
+                                    END:
                                 }
-
-                            }
-
-                            else
-
-                            if(hp < 30.0)
-                            {
-                                #if AMXX_VERSION_NUM == 182
-                                new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
-                                get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                                get_user_name(players[m], victims_name, charsmax(victims_name) );
-                                client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
-                                #endif
-
-
-                                #if AMXX_VERSION_NUM != 182
-                                if( is_user_connected(nade_owner))
-                                {
-                                    client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
-                                }
-                                #endif
-
-                                if(bStrike)
-                                    set_msg_block(g_deathmsg, BLOCK_SET);
-                                if(!bStrike)
-                                    set_msg_block(g_deathmsg, BLOCK_ONCE);
-
-                                fakedamage(players[m],"Grenade Radiation",300.0,DMG_RADIATION|DMG_NEVERGIB)
-
-                                new Float:fExpOrigin[3];
-                                fExpOrigin = End_Position;
-
-                                static killer; killer = entity_get_edict(ent,EV_ENT_owner);
-
-                                log_kill(killer,players[m],"Grenade Radiation",1);
-                                END:
                             }
                         }
                     }
@@ -645,14 +647,14 @@ public Other_Attack_Touch(ent, id)
             entity_get_vector(g_model,EV_VEC_origin,End_Position);
             entity_get_vector(g_model,EV_VEC_angles,Axis);
 
-            emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0}, 0); //players_who_see_effects() );
+            emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0}, 0); //players_who_see_effects() );
             ewrite_byte(random_num(19,21));
-            ewrite_coord(floatround(End_Position[0]));
-            ewrite_coord(floatround(End_Position[1]));
-            ewrite_coord(floatround(End_Position[2]));
-            ewrite_coord(floatround(Axis[0]));
-            ewrite_coord(floatround(Axis[1]));
-            ewrite_coord(floatround(Axis[2]));
+            ewrite_coord_f(End_Position[0]);
+            ewrite_coord_f(End_Position[1]);
+            ewrite_coord_f(End_Position[2]);
+            ewrite_coord_f(Axis[0]);
+            ewrite_coord_f(Axis[1]);
+            ewrite_coord_f(Axis[2]);
             ewrite_short(g_ring);
             ewrite_byte(100); //fr
             ewrite_byte(255); // fr rate
