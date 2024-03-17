@@ -34,7 +34,7 @@
 #define MAX_USER_INFO_LENGTH       256
 
 #define PLUGIN "!Client ReNaMeR"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define charsmin -1
 
 #define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
@@ -76,11 +76,25 @@ public client_putinserver(id)
     client_infochanged(id)
 }
 
-public client_connect(id)
+public client_connectex(id, const name[], const ip[], reason[128])
 {
+    static Output;
+    reason = "Please change name to something more plain. Thank you."
+
+    copy(ClientName[id], charsmax(ClientName[]), name)
+
+    if(get_pcvar_num(XUTF8_Strafe))
+    {
+        if(get_char_bytes(name) != 1 || !is_string_category(ClientName[id], charsmax(ClientName[]), UTF8C_ALL, Output))
+            return PLUGIN_HANDLED_MAIN;
+    }
+
     ClearPlayerBit(g_Adm, id);
     ClearPlayerBit(g_AI, id);
+
+    return PLUGIN_CONTINUE;
 }
+
 
 public client_infochanged(id)
 {
