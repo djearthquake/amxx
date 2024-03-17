@@ -2,7 +2,7 @@
 #include <amxmisc>
 #include <engine_stocks>
 #include <fakemeta>
-#include <gearbox>
+#tryinclude <gearbox>
 #include <hamsandwich>
 #include <xs>
 
@@ -10,9 +10,15 @@
 #define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG
 #define VOTE_ACCESS     ADMIN_USER|ADMIN_CFG
 
-#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_CROWBAR | 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_RPG |1 <<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_PENGUIN )
-
-//#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_SATCHEL | 1<<HLW_DISPLACER | 1<<HLW_GAUSS)
+#define HLW_GRAPPLE         16
+#define HLW_357             17
+#define HLW_PIPEWRENCH      18
+#define HLW_KNIFE           0x0019
+#define HLW_DISPLACER       20
+#define HLW_SHOCKROACH      22
+#define HLW_SPORE           23
+#define HLW_SNIPER          25
+#define HLW_PENGUIN         26
 
 const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
@@ -34,9 +40,11 @@ const LINUX_DIFF = 5;
 #define MAG_ARSEN   1000
 
 #define PLUGIN  "Gun Speed"
-#define VERSION "1.0.2"
+#define VERSION "1.0.4"
 #define AUTHOR "SPiNX"
 /* VARIABLES */
+
+static ARMS_EXCLUDED, g_mod_name[MAX_NAME_LENGTH];
 
 new
     bool: b_Bot[MAX_PLAYERS+1],
@@ -45,6 +53,7 @@ new
     gOldSpecialReload[ MAX_PLAYERS + 1 char ],
     gbCS,
     gbDod,
+    gbHL,
     gbSven,
     g_counter[2],
     m_pPlayer ,
@@ -57,15 +66,17 @@ new
     m_iClip,
     m_flNextAttack,
     Float:g_Speed,
-    gWeaponClassname[MAX_PLAYERS],
-    //pcvars[HLW_SPORE + 1];
-    pcvars[HLW_SNIPER + 1];
+    gWeaponClassname[MAX_NAME_LENGTH],
+    pcvars[MAX_PLAYERS]
+
+
 
 new const SzAmmo[][]={"ammo_9mmclip", "ammo_9mmbox", "ammo_gaussclip", "ammo_357", "ammo_crossbow", "ammo_buckshot", "ammo_556", "ammo_762"}
 
 new HamHook:XhookReloadPre, HamHook:XhookReloadPost, HamHook:XhookPrimaryAPre, HamHook:XhookPrimaryAPos;
 
 new bool:bAccess[MAX_PLAYERS + 1]
+new votekeys = (1<<0)|(1<<1)
 
 @dim(iMsgId, iDest, id)
 {
@@ -82,25 +93,36 @@ public plugin_init()
     register_plugin( PLUGIN, VERSION, AUTHOR );
     register_concmd("vote_gunspeed","cmdVote",VOTE_ACCESS,": Vote for gun speed!")
     register_message(TE_ELIGHT, "@dim")
-    static mod_name[MAX_NAME_LENGTH]
-    get_modname(mod_name, charsmax(mod_name))
-    server_print mod_name
+
     g_maxPlayers = get_maxplayers();
-    if(equal(mod_name, "cstrike") || equal(mod_name, "czero") )
+
+    get_modname(g_mod_name, charsmax(g_mod_name))
+    server_print g_mod_name
+    if(equal(g_mod_name, "gearbox") || equal(g_mod_name, "valve"))
+    {
+        gbHL = true
+        ARMS_EXCLUDED = ((1<<HLW_NONE | 1<<HLW_CROWBAR | 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_RPG |1 <<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_GAUSS | 1<<HLW_PENGUIN))
+    }
+    if(equal(g_mod_name, "cstrike") || equal(g_mod_name, "czero") )
     {
         gbCS = true
+        ARMS_EXCLUDED = ((1<<CSW_HEGRENADE | 1<<CSW_C4| 1<<CSW_SMOKEGRENADE| 1<<CSW_FLASHBANG| 1<<CSW_KNIFE))
     }
-    else if(equal(mod_name, "dod"))
+    else if(equal(g_mod_name, "dod"))
     {
         gbDod = true
     }
-    else if(containi(mod_name, "sven") > charsmin)
+    else if(containi(g_mod_name, "sven") > charsmin)
     {
         gbSven = true
     }
-    for (new i=HLW_GLOCK;i<=HLW_SNIPER;++i)
-    {
-        if(!(NO_RECOIL_WEAPONS_BITSUM & (1<<i)) && get_weaponname(i, gWeaponClassname, charsmax(gWeaponClassname)))
+    
+        /*if(gbHL)
+            for (new i=HLW_GLOCK;i<=HLW_SNIPER;++i)
+        */
+        for (new i=CSW_P228;i<=CSW_P90;++i)
+        {
+        if(!(ARMS_EXCLUDED & (1<<i)) && get_weaponname(i, gWeaponClassname, charsmax(gWeaponClassname)))
         {
             static cvar_name[MAX_PLAYERS + 1];
             formatex(cvar_name, charsmax(cvar_name), "gunspeed_%s", gWeaponClassname)
@@ -150,17 +172,19 @@ public plugin_init()
     }
 
     bind_pcvar_float(get_cvar_pointer("mp_gunspeed") ? get_cvar_pointer("mp_gunspeed") : register_cvar("mp_gunspeed", "0.0"), g_Speed)
-    RegisterHam(Ham_Spawn, "player", "@spawn", 1);
+    //RegisterHam(Ham_Spawn, "player", "@spawn", 1);
     register_event_ex ( "ResetHUD" , "@spawn", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive) //, RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
     register_event_ex ( "CurWeapon", "event_active_weapon", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive)
     //register_event("CurWeapon", "event_active_weapon", "be")
-    RegisterHam(Ham_Killed, "player", "@death", 0);
+   //RegisterHam(Ham_Killed, "player", "@death", 1);
+    register_event("DeathMsg","@death","a")
     for(new map;map < sizeof SzAmmo;++map)
     {
         if(has_map_ent_class(SzAmmo[map]))
-        remove_entity_name(SzAmmo[map])
+            remove_entity_name(SzAmmo[map])
     }
-    register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
+    //register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
+    register_menucmd(register_menuid("Gunspeed?"),votekeys,"voteGunspeed")
 }
 
 public client_putinserver(id)
@@ -173,7 +197,7 @@ public client_putinserver(id)
 
 public event_active_weapon(player)
 {
-    if(player  > 0 && player <= g_maxPlayers)
+    if(player  > 0 && player <= g_maxPlayers && is_user_connected(player))
     {
         cl_weapon[player] = read_data(2);
         if(cl_weapon[player])
@@ -187,13 +211,13 @@ public event_active_weapon(player)
 
 @death(victim,killer)
 {
-    if(is_user_connected(killer))
+    if(is_user_alive(killer))
         @spawn(killer)
 }
 
 @spawn(player)
 {
-    if(g_Speed > 0.0 && bAccess[player] && !b_Bot[player])
+    if(g_Speed > 0.0 && bAccess[player] && !b_Bot[player] && is_user_connected(player))
     {
         if(XhookPrimaryAPre)
             EnableHamForward(XhookPrimaryAPre)
@@ -207,6 +231,17 @@ public event_active_weapon(player)
         if(XhookReloadPost)
             EnableHamForward(XhookReloadPost)
 
+        if(gbHL)
+            set_task(1.0, "@delayed_ammo_give_hl", player)
+    }
+    else if(!g_Speed)
+        plugin_end()
+}
+
+@delayed_ammo_give_hl(player)
+{
+    if(is_user_alive(player))
+    {
         ///server_print "%n spawned gunspeed ammo", player
         set_pdata_int( player, CART_PARABELUM, MAG_BOX )
         set_pdata_int( player, SHOTGUN_SHELLS, MAG_BOX )
@@ -216,8 +251,7 @@ public event_active_weapon(player)
         set_pdata_int( player, CART_BOLT, MAG_DRUM )
         set_pdata_int( player, CART_SUB, MAG_DRUM )
     }
-    else if(!g_Speed)
-        plugin_end()
+
 }
 
 public Weapon_PrimaryAttack_Pre ( const weapon )
@@ -257,7 +291,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
             fGunSpeedOffset  =  get_pcvar_float(pcvars[cl_weapon[player]])
         }
         //new player = pev(weapon, pev_owner)
-        ////new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
+        //new player = gbSven ? pev(weapon, pev_owner) : get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         //if(is_user_connected(player) && is_user_alive(player) && pev_valid(weapon)>1)
         if(get_pcvar_num(pcvars[0]) && fGunSpeedOffset>0.0)
         switch(get_pcvar_num(pcvars[0]))
@@ -403,22 +437,20 @@ public Weapon_Reload_Post ( const weapon )
             }
         }
     }
-    //else
-    //    plugin_end()
 }
 
 public cmdVote(player,level,cid)
 {
     if(!cmd_access(player,level,cid,1) || task_exists(7845)) return PLUGIN_HANDLED
 
-    static keys; keys = MENU_KEY_1|MENU_KEY_2
+    new keys; keys = MENU_KEY_1|MENU_KEY_2
     for(new i = 0; i < 2; i++)
         g_counter[i] = 0
 
-    static menu[MAX_USER_INFO_LENGTH]
+    new menu[MAX_USER_INFO_LENGTH]
 
     //new len = format(menu,charsmax(menu),"[AMX] %s Gunspeed?^n", g_Speed ? "Disable" : "Enable")
-    static len; len = format(menu,charsmax(menu),"[AMX] Gunspeed?^n")
+    new len; len = format(menu,charsmax(menu),"[AMX] Gunspeed?^n")
 
     len += format(menu[len],charsmax(menu),"^n1. Yes")
     len += format(menu[len],charsmax(menu),"^n2. No")
@@ -429,7 +461,10 @@ public cmdVote(player,level,cid)
 }
 
 public voteGunspeed(player, key)
-    g_counter[key]++
+{
+    client_print(0,print_chat,"%n voted for option #%d",player,key+1)
+    ++g_counter[key]
+}
 
 public vote_results()
 {
