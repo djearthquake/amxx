@@ -117,11 +117,8 @@ public plugin_init()
         gbSven = true
     }
     
-        /*if(gbHL)
-            for (new i=HLW_GLOCK;i<=HLW_SNIPER;++i)
-        */
-        for (new i=CSW_P228;i<=CSW_P90;++i)
-        {
+    for (new i=CSW_P228;i<=CSW_P90;++i)
+    {
         if(!(ARMS_EXCLUDED & (1<<i)) && get_weaponname(i, gWeaponClassname, charsmax(gWeaponClassname)))
         {
             static cvar_name[MAX_PLAYERS + 1];
@@ -172,18 +169,19 @@ public plugin_init()
     }
 
     bind_pcvar_float(get_cvar_pointer("mp_gunspeed") ? get_cvar_pointer("mp_gunspeed") : register_cvar("mp_gunspeed", "0.0"), g_Speed)
+
+    //Since 25th Anniversary update ham has become  on Linux. Use at your own risk.
     //RegisterHam(Ham_Spawn, "player", "@spawn", 1);
-    register_event_ex ( "ResetHUD" , "@spawn", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive) //, RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman )
-    register_event_ex ( "CurWeapon", "event_active_weapon", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive)
-    //register_event("CurWeapon", "event_active_weapon", "be")
    //RegisterHam(Ham_Killed, "player", "@death", 1);
+
+    register_event_ex ( "ResetHUD" , "@spawn", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive)
+    register_event_ex ( "CurWeapon", "event_active_weapon", RegisterEventFlags:RegisterEvent_Single|RegisterEvent_OnlyAlive)
     register_event("DeathMsg","@death","a")
     for(new map;map < sizeof SzAmmo;++map)
     {
         if(has_map_ent_class(SzAmmo[map]))
             remove_entity_name(SzAmmo[map])
     }
-    //register_menucmd(register_menuid("Gunspeed?"),MENU_KEY_1|MENU_KEY_2,"voteGunspeed")
     register_menucmd(register_menuid("Gunspeed?"),votekeys,"voteGunspeed")
 }
 
@@ -283,8 +281,6 @@ public Weapon_PrimaryAttack_Post ( const weapon )
     {
         static player; player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS );
         static Float:fGunSpeedOffset
-        //if(is_user_connected(player) && is_user_alive(player) && pev_valid(weapon)>1)
-        //if(is_user_connected(cl_weapon[player]))
         if(is_user_alive(player))
         if(pcvars[cl_weapon[player]] && get_pcvar_float(pcvars[cl_weapon[player]]))
         {
@@ -325,7 +321,6 @@ public Weapon_PrimaryAttack_Post ( const weapon )
         }
         CHAOS:
         if ( gOldClip{ player } <= 0 ||!bAccess[player])
-        //if ( gOldClip{ player } <= g_maxPlayers || !bAccess[player])
         {
             return;
         }
