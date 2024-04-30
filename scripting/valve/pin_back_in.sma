@@ -9,7 +9,7 @@
 #include hamsandwich
 
 #define PLUGIN  "Put pin back Grenade"
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define AUTHOR "SPiNX"
 #define HEGREN 364
 
@@ -44,7 +44,7 @@ public plugin_init()
     m_pPlayer = (find_ent_data_info("CBasePlayerItem", "m_pPlayer") / LINUX_OFFSET_WEAPONS) - LINUX_OFFSET_WEAPONS
     register_concmd("repin_grenade","@repin_procedure", 0, "Unprime grenade")
     register_event("CurWeapon", "CurentWeapon", "bce", "1=HLW_HANDGRENADE");
-    g_grenade_prime = register_cvar("grenade_prime_type", "1")
+    g_grenade_prime = register_cvar("grenade_prime_type", "3")
 }
 
 
@@ -67,7 +67,7 @@ public Weapon_PrimaryAttack_Pre( const weapon )
     if(iPrime_type)
     {
         player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS )
-    
+
         if(!player)
             player = pev(weapon, pev_owner)
         if(is_user_alive(player))
@@ -90,7 +90,7 @@ public Weapon_PrimaryAttack_Post ( const weapon )
             iGrenades[player] = get_pdata_int(player, HEGREN)
             if(iGrenades[player] == 1)
                 iGrenades[player] = 0;
-            
+
             if(!played[player])
             {
                 played[player] = true
@@ -112,7 +112,7 @@ public Weapon_SecondaryAttack_Pre( const weapon )
     {
         static player
         player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS )
-    
+
         if(!player)
             player = pev(weapon, pev_owner)
         if(is_user_alive(player))
@@ -130,14 +130,14 @@ public Weapon_SecondaryAttack_Post( const weapon )
     {
         static player
         player = get_pdata_cbase( weapon, m_pPlayer, LINUX_OFFSET_WEAPONS )
-    
+
         if(!player)
             player = pev(weapon, pev_owner)
-        if(is_user_alive(player) && weapon > MaxClients && bRepinning[player]) 
+        if(is_user_alive(player) && weapon > MaxClients && bRepinning[player])
         {
             client_print player, print_center, iPrime_type > 3 ? SzReplyPop:SzReplyPin
             iGrenades[player] = get_pdata_int(player, HEGREN)
-    
+
             static model[MAX_PLAYERS]
             static weapon; weapon = get_grenade_id(player, model, charsmax(model), MaxClients);
             if(weapon)
@@ -167,7 +167,7 @@ public Weapon_SecondaryAttack_Post( const weapon )
                 played[player] = false
             }
             bRepinning[player] = false
-    
+
             return PLUGIN_HANDLED;
         }
         END:
@@ -177,7 +177,7 @@ public Weapon_SecondaryAttack_Post( const weapon )
     }
     return PLUGIN_HANDLED;
 
-} 
+}
 
 @repin_procedure(player_id)
 {
@@ -196,7 +196,7 @@ public Weapon_SecondaryAttack_Post( const weapon )
 
                     new iWeapon, clip, ammo;
                     iWeapon = get_user_weapon(player_id, clip, ammo)
-    
+
                     if(iWeapon == HLW_HANDGRENADE && iPrime_type|| iWeapon != HLW_HANDGRENADE && iPrime_type == 2|| iPrime_type == 3)
                     {
                         fm_strip_user_gun(player_id, _, gWeaponClassname)
@@ -205,18 +205,19 @@ public Weapon_SecondaryAttack_Post( const weapon )
                             give_item(player_id, gWeaponClassname)
                             set_pdata_int(player_id, HEGREN,  iGrenades[player_id])
                         }
-    
+
                         if(iWeapon == HLW_HANDGRENADE)
                             played[player_id] = false
-    
+
                         client_cmd player_id, "-attack"
-                        client_cmd(player_id, SzPinSound) 
+                        client_cmd(player_id, SzPinSound)
+                        client_cmd player_id, "weapon_handgrenade"
                     }
                     else if(iPrime_type)
                     {
                         hasNade[player_id] = false
                     }
-    
+
                 }
                 else
                 {
