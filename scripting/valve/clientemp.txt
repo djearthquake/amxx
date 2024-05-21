@@ -1,0 +1,98 @@
+//https://forums.alliedmods.net/member.php?u=281156 thEsp ; last mod was Sun 04 Oct 2020 08:01:07 PM CDT
+[al]
+HUD_CLIENTEMP_PRINT = %s u lidh nga %s, temperatura tani është %i°
+LOG_CLIENTEMP_PRINT = ""%s" u lidh nga "%s", temperatura tani është "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s^1u lidh nga ^4%s, ^1temperatura tani është ^3%i°
+HL_CLIENTEMP_PRINT  = temperatura është %i gradë
+ALREADY_CHECKED     = We already checked your temp. Please wait %i minutes.
+
+//My first contributor on 10-20-2019, 08:47. Again on 04-03-20, 17:27 https://forums.alliedmods.net/member.php?u=267944 tarsisd2
+[bp]
+HUD_CLIENTEMP_PRINT = %s conectou-se de %s, a temperatura agora é de %i°
+LOG_CLIENTEMP_PRINT = ""%s" conectou-se de "%s", a temperatura agora é de "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1conectou-se de ^4%s, ^1a temperatura agora é de ^3%i°
+HL_CLIENTEMP_PRINT  = A temperatura em %s é de %i graus.
+ALREADY_CHECKED     = We already checked your temp. Please wait %i minutes.
+
+//https://forums.alliedmods.net/member.php?u=304480 t2eeman 09/27/2020
+[chi] ;Simplified Chinese (简体中文)
+HUD_CLIENTEMP_PRINT = %s 连接自 %s，当前温度 %i°
+LOG_CLIENTEMP_PRINT = ""%s" 连接自 "%s"，当前温度 "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1连接自 ^4%s，^1当前温度 ^3%i°
+HL_CLIENTEMP_PRINT  = %s 的温度为 %i 度。
+ALREADY_CHECKED     = 我们已检查了您的温度，请稍等 %i 分钟后重试。
+
+// originally by https://forums.alliedmods.net/member.php?u=281156 thEsp
+// updated by https://forums.alliedmods.net/member.php?u=266045 Godofwar
+[de]
+HUD_CLIENTEMP_PRINT = %s kommt aus %s, die Temperatur beträgt jetzt %i°
+LOG_CLIENTEMP_PRINT = ""%s" kommt aus "%s", die Temperatur beträgt jetzt "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1kommt aus ^4%s, ^1die Temperatur beträgt jetzt ^3%i°
+HL_CLIENTEMP_PRINT  = %s Temperatur beträgt %i Grad.
+ALREADY_CHECKED     = We already checked your temp. Please wait %i minutes.
+
+//https://forums.alliedmods.net/member.php?u=281787 drakunovu6 10/04/2020
+//https://forums.alliedmods.net/member.php?u=246699 Rivotril //original
+[es]
+HUD_CLIENTEMP_PRINT = %s se ha conectado desde %s, la temperatura ahora mismo es de %i°
+LOG_CLIENTEMP_PRINT = ""%s" se ha conectado desde "%s", la temperatura ahora mismo es de "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1se ha conectado desde ^4%s, ^1la temperatura ahora mismo es de ^3%i°
+HL_CLIENTEMP_PRINT  = %s la temperatura es de %i grados.
+ALREADY_CHECKED     = Ya hemos comprobado tu temperatura. Por favor espera %i minutos.
+
+//https://forums.alliedmods.net/member.php?u=245430 SPiNX
+[en]
+HUD_CLIENTEMP_PRINT = %s connected from %s, temperature right now is %i°
+LOG_CLIENTEMP_PRINT = ""%s" connected from "%s", temperature right now is "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1connected from ^4%s, ^1temperature right now is ^3%i°
+HL_CLIENTEMP_PRINT  = %s temperature is %i degrees.
+ALREADY_CHECKED     = We already checked your temp. Please wait %i minutes.
+
+// https://forums.alliedmods.net/member.php?u=260300 RaZ_HU
+[hu]
+HUD_CLIENTEMP_PRINT = %s csatlakozott %s városból, az aktuális hőmérséklet pedig %i°
+LOG_CLIENTEMP_PRINT = ""%s" csatlakozott "%s" városból, az aktuális hőmérséklet pedig "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1csatlakozott ^4%s városból, ^1az aktuális hőmérséklet pedig ^3%i°
+HL_CLIENTEMP_PRINT  = %s a hőmérséklet %i fok.
+ALREADY_CHECKED     = Már megnéztük a hőmérsékleted. Kérlek várj %i percet.
+
+//https://forums.alliedmods.net/member.php?u=280676 Snake.
+[tr]
+HUD_CLIENTEMP_PRINT = %s "%s" yerinden baglandi, sicaklik suan %i°
+LOG_CLIENTEMP_PRINT = ""%s" "%s" yerinden baglandi, sicaklik suan "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^3%s ^1yerinden baglandi, ^1sicaklik suan ^3%i°
+HL_CLIENTEMP_PRINT  = %s sicaklik suan %i derece.
+ALREADY_CHECKED     = Sicakligini zaten kontrol ettik. Lütfen %i dakika bekle.
+
+//https://forums.alliedmods.net/member.php?u=149700 Napoleon_be
+[nl]
+HUD_CLIENTEMP_PRINT = %s connecteerde van %s, temperatuur op het moment is %i°
+LOG_CLIENTEMP_PRINT = ""%s" connecteerde van "%s", temperatuur op het moment is "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1connecteerde van ^4%s, ^1temperatuur op het moment is ^3%i°
+HL_CLIENTEMP_PRINT  = %s temperatuur is %i graden.
+ALREADY_CHECKED     = We already checked your temp. Please wait %i minutes.
+
+//https://forums.alliedmods.net/member.php?u=279064 Smilex_Gamer
+[pt]
+HUD_CLIENTEMP_PRINT = %s conectou-se de %s, a temperatura agora mesmo é de %i°
+LOG_CLIENTEMP_PRINT = ""%s" conectou-se de "%s", a temperatura agora mesmo é de "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1conectou-se de ^4%s, ^1a temperatura agora mesmo é de ^3%i°
+HL_CLIENTEMP_PRINT  = A temperatura em %s é de %i graus.
+ALREADY_CHECKED     = Nós já verificámos a tua temperatura. Por favor espera %i minutos.
+
+// originally by https://forums.alliedmods.net/member.php?u=269231 Nutu_
+// updated by https://forums.alliedmods.net/member.php?u=293910 Shadows Adi
+[ro]
+HUD_CLIENTEMP_PRINT = %s tocmai s-a conectat din %s, temperatura este de %i°
+LOG_CLIENTEMP_PRINT = ""%s" tocmai s-a conectat din "%s", temperatura este de "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1tocmai s-a conectat din ^4%s, ^1temperatura este de ^3%i°
+HL_CLIENTEMP_PRINT  = %s temperatura este de %i grade.
+ALREADY_CHECKED     = We already checked your temp. Please wait %i minutes.
+
+//https://forums.alliedmods.net/member.php?u=184733 Belo95135
+[sk]
+HUD_CLIENTEMP_PRINT = %s sa pripojil/a z %s, aktualna teplota: %i°
+LOG_CLIENTEMP_PRINT = ""%s" sa pripojil/a z "%s", aktualna teplota: "%i°""
+CS_CLIENTEMP_PRINT  = ^4%s ^1sa pripojil/a z ^4%s, ^1aktualna teplota: ^3%i°
+HL_CLIENTEMP_PRINT  = %s aktualna teplota je %i stupnov.
+ALREADY_CHECKED     = Uz sme skontrolovali tvoju teplotu. Musis pockat %i minut.
