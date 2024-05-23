@@ -75,7 +75,11 @@ public plugin_init()
 
 public plugin_precache()
 {
-    register_plugin("op4ctf_orange_fix","1.0","SPiNX");
+    register_plugin("op4ctf_orange_fix","1.1","SPiNX");
+    static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
+    if(!equal(mapname, "op4ctf_orange"))
+        pause "a"
+
 
     new ent = create_entity(ent_type)
 
