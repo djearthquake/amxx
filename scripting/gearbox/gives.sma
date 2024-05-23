@@ -18,11 +18,11 @@ new
     bool:bRegeneration,
     bool:bPortablehev,
     bool:bLongjump,
-    bool:bAccelerator
+    bool:bAccelerator;
 
-new g_cvar, g_cvar_gg
+new g_cvar, g_cvar_gg;
 
-new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav","ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"}
+new const g_szPowerup_sounds[][] = { "items/ammopickup1.wav", "ctf/itemthrow.wav","ctf/pow_armor_charge.wav","ctf/pow_backpack.wav","ctf/pow_health_charge.wav","turret/tu_ping.wav"};
 
 public plugin_precache()
 {
@@ -83,7 +83,7 @@ new const GIVES[][]=
     "weapon_snark",
     "weapon_tripmine",
     "weapon_9mmhandgun"
-}
+};
 
 new const szWeapons[][]=
 {
@@ -131,23 +131,23 @@ new const szWeapons[][]=
     "weapon_snark",
     "weapon_tripmine",
     "weapon_9mmhandgun"
-}
+};
 
-new const REPLACE[][] = {"ammo_", "weapon_", "item_"}
-new const tracer[]= "func_recharge" //armour
+new const REPLACE[][] = {"ammo_", "weapon_", "item_"};
+new const tracer[]= "func_recharge"; //armour
 
 new g_event
 
 public plugin_init()
 {
-    register_plugin("Gives random weapon(s) on spawn.", "B", ".sρiηX҉.");
+    register_plugin("Gives random weapon(s) on spawn.", "B1", ".sρiηX҉.");
     g_event = register_event_ex ( "ResetHUD" , "client_getfreestuff", RegisterEventFlags: RegisterEvent_Single|RegisterEvent_OnlyAlive)
     g_cvar = register_cvar("gives_mapclean", "1")
 }
 
 public plugin_cfg()
 {
-    new mname[MAX_NAME_LENGTH];
+    static mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax(mname));
 
     if(get_pcvar_num(g_cvar))
@@ -181,23 +181,26 @@ public client_getfreestuff(id)
     }
 }
 
+stock truer_random(x)
+	return random(x);
+	
 public reward(needy)
 {
-    if(is_user_connected(needy))
+    if(is_user_alive(needy))
     {
-        new flags = pev(needy, pev_flags)
+        static flags; flags = pev(needy, pev_flags)
         if(flags & FL_SPECTATOR)
         {
             server_print("Spec, %n does not need weaponry!", needy)
             remove_task(needy)
             return
         }
-        new charity[MAX_NAME_LENGTH];
-        formatex(charity, charsmax(charity), GIVES[random(sizeof(GIVES))]);
+        static charity[MAX_NAME_LENGTH];
+        formatex(charity, charsmax(charity), GIVES[truer_random(sizeof(GIVES))]);
         {
             #if defined OP4
             //power-up control
-            if(containi(charity, "ctf") > -1)
+            if(containi(charity, "ctf") > charsmin)
             {
                 if(equali(charity,"item_ctfbackpack"))
                 {
