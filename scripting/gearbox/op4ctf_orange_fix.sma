@@ -30,7 +30,7 @@ public plugin_init()
 {
     new Origin[3], iSwap, ent2
 
-    iSwap = find_ent(-1,"item_ctfportablehev")
+    iSwap = find_ent(MaxClients,"item_ctfportablehev")
 
     if(iSwap)
     {
@@ -42,7 +42,7 @@ public plugin_init()
     set_pev(ent2, pev_origin, Origin)
     DispatchSpawn(ent2);
 
-    iSwap = find_ent(-1,"weapon_displacer")
+    iSwap = find_ent(MaxClients,"weapon_displacer")
 
     if(iSwap)
     {
@@ -78,7 +78,10 @@ public plugin_precache()
     register_plugin("op4ctf_orange_fix","1.1","SPiNX");
     static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
     if(!equal(mapname, "op4ctf_orange"))
+    {
         pause "a"
+        return PLUGIN_HANDLED
+    }
 
 
     new ent = create_entity(ent_type)
@@ -88,5 +91,6 @@ public plugin_precache()
         DispatchKeyValue( ent, GIVES[i], "1" )
         DispatchSpawn(ent);
     }
+    return PLUGIN_CONTINUE
 
 }
