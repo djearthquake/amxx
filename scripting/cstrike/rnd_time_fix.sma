@@ -1,24 +1,30 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <engine_stocks>
-#include <hamsandwich>
 
 new g_ForceRoundTimer
 new fix_counter
 
-new bool:bFixAllPlayers
 new bool:bFixedPlayer[MAX_PLAYERS + 1]
 new bool:bRoundTimerFixed[MAX_PLAYERS + 1]
-new bool:bDefuseMap
+new g_Adm, g_AI;
 
 /*
  * Request by: Ark_Procession https://forums.alliedmods.net/member.php?u=301170
  * Aug 9 2022 1.0-1.1 make script more robust to prevent bug from reoccuring albeit temporarily.
+ * Jun 21 2024 1.1-1.2 don't run on bots. Stop uing hamsandwich. Use more bitwise. Remove redundancy.
  */
 
 
 #define PLUGIN "RoundTimer Fix"
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define AUTHOR ".sρiηX҉."
+
+
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
 
 new g_cvar_debugger_on
 
@@ -26,61 +32,42 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
 
-    bind_pcvar_num(get_cvar_pointer("roundfix_debug") ? get_cvar_pointer("roundfix_debug") : create_cvar("roundfix_debug", "1" ,FCVAR_SERVER, "Roundfix plugin debugger", .has_min = false, .has_max = false), g_cvar_debugger_on)
+    bind_pcvar_num(get_cvar_pointer("roundfix_debug") ? get_cvar_pointer("roundfix_debug") : create_cvar("roundfix_debug", "0" ,FCVAR_SERVER, "Roundfix plugin debugger", .has_min = false, .has_max = false), g_cvar_debugger_on)
 
     g_ForceRoundTimer = get_user_msgid("ShowTimer")
-    //register_logevent("@RoundTimerFixAllPlayers", 3 ,"2=Planted_The_Bomb");
-    register_event("BarTime", "@RoundTimerFixAllPlayers", "be", "1=3")
-    register_logevent("@round_start", 2, "1=Round_Start");
-    RegisterHamPlayer(Ham_Spawn, "@eventSpawn", 1)
+    register_event_ex ( "ResetHUD" , "@eventSpawn", RegisterEvent_Single|RegisterEvent_OnlyAlive|RegisterEvent_OnlyHuman)
 }
 
+
 public client_putinserver(id)
+    client_infochanged(id)
+
+public client_infochanged(id)
 {
     if(is_user_connected(id))
     {
-        set_task(0.5,"@RoundTimerFix",id)
+	    is_user_admin(id) ? (SetPlayerBit(g_Adm, id)) : (ClearPlayerBit(g_Adm, id))
+	    is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
+
+	    if(CheckPlayerBit(g_AI, id))
+	        bFixedPlayer[id] = true
     }
-}
-
-@RoundTimerFixAllPlayers()
-{
-    bFixAllPlayers = true
-
-    if(g_cvar_debugger_on > 0)
-        server_print("%s %s %s| Fix needs to be reapplied to everybody!",PLUGIN, VERSION, AUTHOR)
 }
 
 @eventSpawn(id)
 {
-    if(bFixAllPlayers || !bFixedPlayer[id])
-        @RoundTimerFix(id)
+    if(!CheckPlayerBit(g_AI, id))
+        if(!bFixedPlayer[id])
+		    @RoundTimerFix(id)
 }
-
-@round_start()
-{
-    bFixAllPlayers = false
-}
-
-@Plant()
-    bDefuseMap = true
 
 @RoundTimerFix(id)
-if(is_user_connected(id) || is_user_connecting(id))
+if(is_user_connected(id) && !bFixedPlayer[id])
 {
     emessage_begin(is_user_connected(id) ? MSG_ONE : MSG_ONE_UNRELIABLE, g_ForceRoundTimer, _, id);
     emessage_end();
+    bFixedPlayer[id] = true
 
-    if(bFixAllPlayers)
-    {
-        bFixedPlayer[id] = true
-
-        if(!bDefuseMap)
-            bRoundTimerFixed[id] = true
-
-        if(g_cvar_debugger_on > 0)
-            server_print("%s %s %s| Fix reapplied to [%n]", PLUGIN, VERSION, AUTHOR, id)
-    }
     fix_counter++
 }
 
