@@ -8,16 +8,18 @@ new fix_counter
 new bool:bFixedPlayer[MAX_PLAYERS + 1]
 new bool:bRoundTimerFixed[MAX_PLAYERS + 1]
 new g_Adm, g_AI;
+new const c4[][]={"weapon_c4","func_bomb_target","info_bomb_target"};
 
 /*
  * Request by: Ark_Procession https://forums.alliedmods.net/member.php?u=301170
  * Aug 9 2022 1.0-1.1 make script more robust to prevent bug from reoccuring albeit temporarily.
  * Jun 21 2024 1.1-1.2 don't run on bots. Stop uing hamsandwich. Use more bitwise. Remove redundancy.
+ * Jun 25 2024 1.2-1.3 pause when on a demonlition map to prevent crash.
  */
 
 
 #define PLUGIN "RoundTimer Fix"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define AUTHOR ".sρiηX҉."
 
 
@@ -31,6 +33,9 @@ new g_cvar_debugger_on
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
+    for(new ent;ent < sizeof c4;++ent)
+    if(find_ent(MaxClients, c4[ent]))
+	    pause("a")
 
     bind_pcvar_num(get_cvar_pointer("roundfix_debug") ? get_cvar_pointer("roundfix_debug") : create_cvar("roundfix_debug", "0" ,FCVAR_SERVER, "Roundfix plugin debugger", .has_min = false, .has_max = false), g_cvar_debugger_on)
 
