@@ -1,9 +1,7 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8.4"
-
-//#define  CZERO                     //COMMENT OUT WITH // TO NOT PLAY CZ.
+#define VERSION "1.8.5"
 
 //CZ install instructions. Per Ham install this plugin first.
 #define SPEC_PRG    "cs_ham_bots_api.amxx"
@@ -41,6 +39,7 @@
     1.8.2 SPiNX - Sun 09 Apr 2023 11:12:08 AM CDT - Optimize some natives. Add a couple fail safes.
     1.8.3 SPiNX - Mon 10 Apr 2023 AM - Finishing trouble-shooting. Refine so when using hook, jumping, in water etc the parachute is removed. Other optimizaions such as update admin when infochanges.
     1.8.4 SPiNX - Thurs 10 Apr 2023 AM - Players can now set rip cord depth. setinfo "auto_rip" "1000"
+    1.8.5 SPiNX - Fri 28 Jun 2024 AM - Reduce turbulence regarding chute's adjustment. Remove needs for defines across mods.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -87,8 +86,11 @@
 #include <cstrike>
 #include <fun>
 #include <hamsandwich>
-#if defined CZERO
-#tryinclude cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR
+
+#tryinclude cs_ham_bots_api
+
+#if !defined RegisterHamBots
+#define RegisterHamBots
 #endif
 
 #define MAX_PLAYERS                32
@@ -120,6 +122,7 @@ new bool:bFirstAuto[MAX_PLAYERS+1]
 new BotsThink, bool:think_captured
 new PlayerRipCord[MAX_PLAYERS+1]
 new bool:bMissileSet[MAX_PLAYERS+1]
+new bool:bAdjusted[MAX_PLAYERS+1]
 
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
@@ -158,7 +161,7 @@ public plugin_init()
     {
         gCStrike = true
     }
-    #if defined CZERO
+
     else if(equal(mod_name, "czero"))
     {
         if(is_plugin_loaded(SPEC_PRG,true) == charsmin)
@@ -168,11 +171,12 @@ public plugin_init()
         }
         else
         {
+			///Ignore expression has no effect unless playing Condition Zero with their built-in bots.
             RegisterHamBots(Ham_Spawn, "newSpawn", 1);
             RegisterHamBots(Ham_Killed, "death_event", 1);
         }
     }
-    #endif
+
     if (gCStrike)
     {
 
@@ -335,20 +339,27 @@ public parachute_reset(id)
 
 @chute_touch(chute,whatever)
 {
-    static id; id = pev(chute, pev_owner)
-    if(is_user_alive(id))
-    {
-        server_print "Adjusting %n parachute...", id
+	if(!get_pcvar_num(g_debug))
+	{
+	    static id; id = pev(chute, pev_owner)
+	    if(is_user_connected(id) && !bAdjusted[id])
+	    {
+	        server_print "Adjusting %n parachute...", id
+	
+	        if(para_ent[id] && is_valid_ent(para_ent[id])>1)
+	        {
+	                set_pev(para_ent[id], pev_solid, SOLID_NOT)
+	                bAdjusted[id] = true
+	                server_print "Adjusted %n parachute!", id
+	                set_task(bIsBot[id]?5.0:3.0, "@adj_throttle", id)
+	        }
+	    }
+	}
+}
 
-        if(para_ent[id] && is_user_connected(id))
-        {
-             if(is_valid_ent(para_ent[id])>1)
-             {
-                set_pev(para_ent[id], pev_solid, SOLID_NOT)
-                server_print "Adjusted %n parachute!", id
-            }
-        }
-    }
+@adj_throttle(id)
+{
+	bAdjusted[id] = false
 }
 
 public newSpawn(id)
