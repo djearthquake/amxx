@@ -171,7 +171,7 @@ public plugin_init()
         }
         else
         {
-			///Ignore expression has no effect unless playing Condition Zero with their built-in bots.
+            ///Ignore expression has no effect unless playing Condition Zero with their built-in bots.
             RegisterHamBots(Ham_Spawn, "newSpawn", 1);
             RegisterHamBots(Ham_Killed, "death_event", 1);
         }
@@ -321,6 +321,7 @@ public parachute_reset(id)
         }
         if(pev_valid(para_ent[id]))
         {
+            set_pev(para_ent[id], pev_solid, SOLID_NOT)
             if(print)
                 server_print "PAST Set ent to 0 for %n", id
             if(pev_valid(para_ent[id]))
@@ -339,27 +340,29 @@ public parachute_reset(id)
 
 @chute_touch(chute,whatever)
 {
-	if(!get_pcvar_num(g_debug))
-	{
-	    static id; id = pev(chute, pev_owner)
-	    if(is_user_connected(id) && !bAdjusted[id])
-	    {
-	        server_print "Adjusting %n parachute...", id
-	
-	        if(para_ent[id] && is_valid_ent(para_ent[id])>1)
-	        {
-	                set_pev(para_ent[id], pev_solid, SOLID_NOT)
-	                bAdjusted[id] = true
-	                server_print "Adjusted %n parachute!", id
-	                set_task(bIsBot[id]?5.0:3.0, "@adj_throttle", id)
-	        }
-	    }
-	}
+    if(!get_pcvar_num(g_debug))
+    {
+        static id; id = pev(chute, pev_owner)
+        if(is_user_connected(id) && !bAdjusted[id])
+        {
+            server_print "Adjusting %n parachute...", id
+
+            if(para_ent[id] && is_valid_ent(para_ent[id])>1)
+            {
+                    set_pev(para_ent[id], pev_solid, SOLID_NOT)
+                    bAdjusted[id] = true
+                    server_print "Adjusted %n parachute!", id
+                    set_task(bIsBot[id]?0.2:0.1, "@adj_throttle", id)
+            }
+        }
+    }
 }
 
 @adj_throttle(id)
 {
-	bAdjusted[id] = false
+    bAdjusted[id] = false
+    if(para_ent[id])
+        set_pev(para_ent[id], pev_flags, SF_BREAK_TOUCH)
 }
 
 public newSpawn(id)
