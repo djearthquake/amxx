@@ -855,6 +855,10 @@ public random_view(Tsk)
                 set_view(id, CAMERA_3RDPERSON)
                 server_print("%N Trying random view on %N", id, iViewPlayer)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
+
+                if(!CheckPlayerBit(g_AI, id))
+				    client_print(iViewPlayer, print_chat,"%n is spectating you.", id)
+
                 if(!bDemo[id])
                 {
                     bDemo[id] = true
