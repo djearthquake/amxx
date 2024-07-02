@@ -16,7 +16,7 @@
 #define charsmin                      -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.6"
+#define VERSION "1.0.7"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -46,6 +46,7 @@ new g_spec_msg, g_iHeadcount, g_players[ MAX_PLAYERS ], g_cvar_nametag
 new g_motd[MAX_RESOURCE_PATH_LENGTH]
 new const DIC[] = "of_spectate.txt"
 new Float:g_user_origin[MAX_PLAYERS + 1][3]
+new Float:g_Fov[MAX_PLAYERS + 1] //scopes
 
 new g_iViewtype[MAX_PLAYERS + 1]
 
@@ -175,6 +176,7 @@ public client_prethink( id )
             entity_get_vector(id, EV_VEC_punchangle, g_Punch[id]);
             entity_get_vector(id, EV_VEC_v_angle, g_Vangle[id]);
             entity_get_vector(id, EV_VEC_movedir, g_Mdir[id]);
+            g_Fov[id] = entity_get_float(id, EV_FL_fov);
         }
         else
         {
@@ -251,6 +253,7 @@ public client_prethink( id )
                         entity_set_vector(id, EV_VEC_punchangle, g_Punch[iTarget]);
                         entity_set_vector(id, EV_VEC_v_angle, g_Vangle[iTarget]);
                         entity_set_vector(id, EV_VEC_movedir, g_Mdir[iTarget]);
+                        entity_set_float(id, EV_FL_fov, g_Fov[iTarget]); //scoped?
 
                         //trace_line(0, g_Plane[id], g_Plane[iTarget], g_Velocity[iTarget])
                         entity_set_int( id, EV_INT_fixangle, 1 )
