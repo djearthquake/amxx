@@ -46,7 +46,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Thu 18th Jan 2024
+    *(__ [__)*|\ | >< Tue 2nd Jul 2024
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -75,7 +75,7 @@
     #endif
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.9.0"
+    #define VERSION "1.9.1"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -257,7 +257,7 @@ public plugin_init()
     g_timeout      = register_cvar("temp_block", "10"); //how long minimum in between client temp requests
     g_queue_weight = register_cvar("temp_queue_weight", "15"); //# passes before putting queue to sleep
     g_proxy_version     = get_cvar_pointer("proxy_action") ? get_cvar_pointer("proxy_action") : 0
-    XAutoTempjoin =  register_cvar("temp_auto", "0");
+    XAutoTempjoin =  register_cvar("temp_auto", "1");  // zero relies on Geo mod for now.
 
 
     register_clcmd("say !mytemp","Speak",0,"Shows your local temp.");
@@ -367,24 +367,26 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         server_print("%N being put in server clientemp", id)
+        get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
+
+        if (equali(ClientIP[id], "127.0.0.1"))
+        {
+            server_print "%N IP shows as 127.0.0.1, stopping %s script!", id, PLUGIN
+            server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
+            return PLUGIN_HANDLED;
+        }
+
         b_Bot[id] = is_user_bot(id) ? true : false
         b_Admin[id] = is_user_admin(id) ? true : false
 
         if(b_Bot[id] || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
             return PLUGIN_HANDLED_MAIN
 
-        if(!b_Bot[id] && (!task_exists(id+WEATHER) || !task_exists(id)) ) //will do server's weather
+        if(!task_exists(id+WEATHER) || !task_exists(id)) //will do server's weather
         {
             if(b_Admin[id] && !get_pcvar_num(g_debug))
             {
                 gotatemp[id] = true;
-                return PLUGIN_HANDLED;
-            }
-            get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
-            if (equali(ClientIP[id], "127.0.0.1"))
-            {
-                server_print "%N IP shows as 127.0.0.1, stopping %s script!", id, PLUGIN
-                server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
                 return PLUGIN_HANDLED;
             }
             else
@@ -402,7 +404,8 @@ public client_putinserver(id)
     new mask; mask = Tsk - WEATHER;
 
     new Float:task_expand;task_expand = random_num(5,10)*1.0
-    if(is_user_connected(mask))
+    ///if(is_user_connected(mask))
+    if(mask>0 && mask <= MaxClients)
     {
         if(equal(ClientIP[mask],"") || b_Admin[mask] && !g_testingip[mask])
         {
@@ -541,18 +544,22 @@ public Speak(id)
 
 public client_temp_cmd(id)
 {
-    if(id>0 && id <= MaxClients && got_coords[id])
+    if(id>0 && id <= MaxClients)
     {
-        server_print "client_temp_cmd for slot:%d|%s", id, ClientName[id]
-        if(!task_exists(id))
+        if(got_coords[id])
         {
-            get_playersnum() > 2 ? set_task(random_num(8,16)*1.0,"client_temp_filter", id) : set_task(1.0,"client_temp_filter", id)
-            server_print "Making a filter task for %s", ClientName[id]
+            server_print "client_temp_cmd for slot:%d|%s", id, ClientName[id]
+            if(!task_exists(id))
+            {
+                get_playersnum() > 2 ? set_task(random_num(8,16)*1.0,"client_temp_filter", id) : set_task(1.0,"client_temp_filter", id)
+                server_print "Making a filter task for %s", ClientName[id]
+            }
         }
-    }
-    else
-    {
-        @country_finder(id)
+        else
+        {
+            set_task(0.1, "@get_client_data", id+COORD)
+            //@country_finder(id)
+        }
     }
 }
 
@@ -1311,7 +1318,8 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             {
                 if(!somebody_is_being_help)
                 {
-                    got_coords[client] ? client_temp_cmd(client) : set_task(queued_task++*1.0,"@country_finder",client+WEATHER);
+                    ///got_coords[client] ? client_temp_cmd(client) : set_task(queued_task++*1.0,"@country_finder",client+WEATHER);
+                    got_coords[client] ?  client_temp_cmd(client) : set_task(1.0, "@get_client_data", client+COORD)
                     server_print "Index#:%d queued", client
                     somebody_is_being_help = true
                     server_print "%f|Queue task time for %s", queued_task++*1.0, ClientName[client]
@@ -1353,7 +1361,7 @@ public client_putinserver_now(id)
 {
     if(get_pcvar_num(g_debug))
         server_print("ID:%d entered!",id)
-    if(is_user_connected(id) && !b_Bot[id] && id > 0)
+    if(id > 0 && id <= MaxClients)
     {
         if(!task_exists(id))
         {
@@ -1364,28 +1372,20 @@ public client_putinserver_now(id)
 
 @get_user_data(id)
 {
-    ///static iTime; iTime = get_systime();
-    if(is_user_connected(id))
+    if(id > 0 && id <= MaxClients)
     {
 
         if(g_testingip[id])
         {
             //reformat name with test
             copy(ClientName[id],charsmax(ClientName[]), "TEST");
-        }
-        else
-        {
-            get_user_name(id, ClientName[id], charsmax(ClientName[]))
-        }
-
-        if(!g_testingip[id])
-        {
             get_user_ip( id, ClientIP[id], charsmax(ClientIP[]), WITHOUT_PORT)
             copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
             server_print("%N is not testing this ip", id)
         }
         else
         {
+            get_user_name(id, ClientName[id], charsmax(ClientName[]))
             server_print("%N test on %s precopy", id, ClientIP[id])
             copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
             server_print("%N test on %s postcopy", id, ClientIP[id])
@@ -1422,17 +1422,18 @@ public client_putinserver_now(id)
         }
         else if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
-            set_task(1.0,"@get_client_data", id+COORD)
+            server_print "%s ip is NOT cached. -%s.", ClientName[id], PLUGIN
+            set_task(0.5,"@get_client_data", id+COORD)
         }
     }
 }
 
 @get_client_data(goldsrc)
 {
-    static Soc_O_ErroR2,
+    new Soc_O_ErroR2,
     id; id = goldsrc - COORD
     //if(is_user_connected(id)) //cvar later to stop after disco or not
-    if(id>0 && id <=MaxClients)
+    if(id>0 && id <=MaxClients && !equal(ClientIP[id], ""))
     {
         ///static constring[MAX_CMD_LENGTH + MAX_IP_WITH_PORT_LENGTH + 1]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
@@ -1449,35 +1450,36 @@ public client_putinserver_now(id)
         ///client_print 0, print_chat, "%s %s %s Checking your city temp!", PLUGIN, AUTHOR, VERSION
     }
 }
+
 @write_api(text[MAX_CMD_LENGTH + MAX_IP_WITH_PORT_LENGTH + 1], Task)
 {
 
     static id; id = Task - WRITE
-    ///if(is_user_connected(id))
     if(id>0 && id <=MaxClients)
-    ///@latch(id)
-    #if AMXX_VERSION_NUM != 182
-    if (socket_is_writable(ip_api_socket, 0))
-    #endif
     {
-        //IS_SOCKET_IN_USE = true
-        socket_send(ip_api_socket,text,charsmax(text));
-        if(get_pcvar_num(g_debug))
-            server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
+        ///@latch(id)
+        #if AMXX_VERSION_NUM != 182
+        if (socket_is_writable(ip_api_socket, 0))
+        #endif
+        {
+            //IS_SOCKET_IN_USE = true
+            socket_send(ip_api_socket,text,charsmax(text));
+            if(get_pcvar_num(g_debug))
+                server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
+        }
+        else
+        {
+            remove_task(id+READ) && remove_task(id+WRITE)
+            server_print("%s %s socket wasn't writable", PLUGIN,ClientName[id])
+            set_task(0.5,"@get_client_data", id+COORD)
+        }
     }
-    else
-    {
-        remove_task(id+READ) && remove_task(id+WRITE)
-        server_print("%s %s socket wasn't writable", PLUGIN,ClientName[id])
-        set_task(1.0,"@get_client_data", id+COORD)
-    }
-
 }
 
 @read_api(Tsk)
 {
     static id; id = Tsk - READ
-    static msg[MAX_MOTD_LENGTH]
+    new msg[MAX_MOTD_LENGTH+1]
     if(id>0 && id <=MaxClients)
     #if AMXX_VERSION_NUM != 182
     if(socket_is_readable(ip_api_socket, 0))
@@ -1494,7 +1496,7 @@ public client_putinserver_now(id)
 
             if(containi(msg, "latitude") > charsmin && containi(msg, "longitude") > charsmin)
             {
-                static float:lat[8],float:lon[8];
+                new float:lat[8],float:lon[8];
                 copyc(lat, 6, msg[containi(msg, "latitude") + 10], '"');
                 replace(lat, 6, ":", "");
                 replace(lat, 6, ",", "");
@@ -1511,7 +1513,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"region^"") > charsmin)
             {
-                static region[MAX_RESOURCE_PATH_LENGTH]
+                new region[MAX_RESOURCE_PATH_LENGTH]
                 copyc(region, charsmax(region), msg[containi(msg, "^"region^"") + 10], '"')
                 replace(region, charsmax(region), ":", "");
                 replace(region, charsmax(region), ",", "");
@@ -1521,7 +1523,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"city^"") > charsmin)
             {
-                static city[MAX_RESOURCE_PATH_LENGTH]
+                new city[MAX_RESOURCE_PATH_LENGTH]
                 copyc(city, charsmax(city), msg[containi(msg, "^"city^"") + 8], '"')
                 replace(city, charsmax(city), ":", "");
                 replace(city, charsmax(city), ",", "");
@@ -1531,7 +1533,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"country^"") > charsmin)
             {
-                static country[MAX_RESOURCE_PATH_LENGTH]
+                new country[MAX_RESOURCE_PATH_LENGTH]
                 copyc(country, charsmax(country), msg[containi(msg, "^"country^"") + 11], '"')
                 replace(country, charsmax(country), ":", "");
                 replace(country, charsmax(country), ",", "");
