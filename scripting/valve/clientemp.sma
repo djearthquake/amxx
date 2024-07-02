@@ -364,33 +364,40 @@ public plugin_precache()
 
 public client_putinserver(id)
 {
+    static iDebug; iDebug = get_pcvar_num(g_debug)
+    static ClientAuth[MAX_PLAYERS+1]
     if(is_user_connected(id))
     {
-        server_print("%N being put in server clientemp", id)
         get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
+        get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
 
-        if (equali(ClientIP[id], "127.0.0.1"))
+        b_Bot[id] = is_user_bot(id) ? true : false
+
+        if(iDebug)
+            b_Bot[id] = equali(ClientAuth[id], "BOT") ? true : false
+
+        b_Admin[id] = is_user_admin(id) ? true : false
+
+        if(b_Bot[id] || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
+            return PLUGIN_HANDLED_MAIN
+
+        if(equali(ClientIP[id], "127.0.0.1") && id > 0)
         {
             server_print "%N IP shows as 127.0.0.1, stopping %s script!", id, PLUGIN
             server_cmd( "kick #%d ^"Please reconnect we misread your ID^"", get_user_userid(id) );
             return PLUGIN_HANDLED;
         }
 
-        b_Bot[id] = is_user_bot(id) ? true : false
-        b_Admin[id] = is_user_admin(id) ? true : false
-
-        if(b_Bot[id] || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
-            return PLUGIN_HANDLED_MAIN
-
         if(!task_exists(id+WEATHER) || !task_exists(id)) //will do server's weather
         {
-            if(b_Admin[id] && !get_pcvar_num(g_debug))
+            if(b_Admin[id] && !iDebug)
             {
                 gotatemp[id] = true;
                 return PLUGIN_HANDLED;
             }
             else
             {
+                server_print("%N being put in server clientemp", id)
                 client_putinserver_now(id)
             }
         }
