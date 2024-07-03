@@ -230,6 +230,74 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
+new const unicoding_table[63][2][126] =
+                {
+                    
+    {"\u00c0", "A"},
+    {"\u00c1", "A"},
+    {"\u00c2", "A"},
+    {"\u00c3", "A"},
+    {"\u00c4", "A"},
+    {"\u00c5", "A"},
+    {"\u00c6", "Ae"},
+    {"\u00c7", "C"},
+    {"\u00c8", "E"},
+    {"\u00c9", "E"},
+    {"\u00ca", "E"},
+    {"\u00cb", "E"},
+    {"\u00cc", "I"},
+    {"\u00cd", "I"},
+    {"\u00ce", "I"},
+    {"\u00cf", "I"},
+    {"\u00d0", "Eth"},
+    {"\u00d1", "N"},
+    {"\u00d2", "O"},
+    {"\u00d3", "O"},
+    {"\u00d4", "O"},
+    {"\u00d5", "O"},
+    {"\u00d6", "O"},
+    {"\u00d8", "O"},
+    {"\u00d9", "U"},
+    {"\u00da", "U"},
+    {"\u00db", "U"},
+    {"\u00dc", "U"},
+    {"\u00ds", "Y"},
+    {"\u00de", "Y"},
+    {"\u00df", "S"},
+    {"\u00e0", "a"},
+    {"\u00e1", "a"},
+    {"\u00e2", "a"},
+    {"\u00e3", "a"},
+    {"\u00e4", "a"},
+    {"\u00e5", "a"},
+    {"\u00e6", "ae"},
+    {"\u00e7", "cc"},
+    {"\u00e8", "e"},
+    {"\u00e9", "e"},
+    {"\u00ea", "e"},
+    {"\u00eb", "e"},
+    {"\u00ec", "i"},
+    {"\u00ed", "i"},
+    {"\u00ee", "i"},
+    {"\u00ef", "i"},
+    {"\u00f0", "eth"},
+    {"\u00f1", "n"},
+    {"\u00f2", "o"},
+    {"\u00f3", "o"},
+    {"\u00f4", "o"},
+    {"\u00f5", "o"},
+    {"\u00f6", "o"},
+    {"\u00f7", "o"},
+    {"\u00f8", "u"},
+    {"\u00fa", "u"},
+    {"\u00fb", "u"},
+    {"\u00fc", "u"},
+    {"\u00fd", "y"},
+    {"\u00fe", "y"},
+    {"\u00ff", "y"},
+    {"\u0161", "s"}
+                };
+
 public plugin_init()
 {
     register_cvar("client-temp_version", VERSION, FCVAR_SERVER);
@@ -1527,8 +1595,8 @@ public client_putinserver_now(id)
                 remove_quotes(region)
                 server_print "EXTRACTED %s", region
 
-                if(contain(region, "\u00")>charsmin)
-                    unicoding(region)
+                if(contain(region, "\u")>charsmin)
+                    unicoding_replace(region)
 
                 copy(ClientRegion[id],charsmax(ClientRegion[]),region)
             }
@@ -1540,8 +1608,8 @@ public client_putinserver_now(id)
                 replace(city, charsmax(city), ",", "");
                 server_print "EXTRACTED %s", city
 
-                if(contain(city, "\u00")>charsmin)
-                    unicoding(city)
+                if(contain(city, "\u")>charsmin)
+                    unicoding_replace(city)
 
                 copy(ClientCity[id],charsmax(ClientCity[]),city)
                 got_coords[id] = true
@@ -1554,8 +1622,8 @@ public client_putinserver_now(id)
                 replace(country, charsmax(country), ",", "");
                 server_print "EXTRACTED %s", country
 
-                if(contain(country, "\u00")>charsmin)
-                    unicoding(country)
+                if(contain(country, "\u")>charsmin)
+                    unicoding_replace(country)
 
                 copy(ClientCountry[id],charsmax(ClientCountry[]),country)
             }
@@ -1610,73 +1678,20 @@ public client_putinserver_now(id)
     return PLUGIN_CONTINUE
 }
 
-stock unicoding(szLettercode[MAX_RESOURCE_PATH_LENGTH])
+stock unicoding_replace(szLettercode[MAX_RESOURCE_PATH_LENGTH])
 {
-    replace(szLettercode, charsmax(szLettercode), "\u00c0", "A")
-    replace(szLettercode, charsmax(szLettercode), "\u00c1", "A")
-    replace(szLettercode, charsmax(szLettercode), "\u00c2", "A")
-    replace(szLettercode, charsmax(szLettercode), "\u00c3", "A")
-    replace(szLettercode, charsmax(szLettercode), "\u00c4", "A")
-    replace(szLettercode, charsmax(szLettercode), "\u00c5", "A")
-    replace(szLettercode, charsmax(szLettercode), "\u00c6", "Ae")
-    replace(szLettercode, charsmax(szLettercode), "\u00c7", "C")
-    replace(szLettercode, charsmax(szLettercode), "\u00c8", "E")
-    replace(szLettercode, charsmax(szLettercode), "\u00c9", "E")
-    replace(szLettercode, charsmax(szLettercode), "\u00ca", "E")
-    replace(szLettercode, charsmax(szLettercode), "\u00cb", "E")
-    replace(szLettercode, charsmax(szLettercode), "\u00cc", "I")
-    replace(szLettercode, charsmax(szLettercode), "\u00cd", "I")
-    replace(szLettercode, charsmax(szLettercode), "\u00ce", "I")
-    replace(szLettercode, charsmax(szLettercode), "\u00cf", "I")
-    replace(szLettercode, charsmax(szLettercode), "\u00d0", "Eth")
-    replace(szLettercode, charsmax(szLettercode), "\u00d1", "N")
-    replace(szLettercode, charsmax(szLettercode), "\u00d2", "O")
-    replace(szLettercode, charsmax(szLettercode), "\u00d3", "O")
-    replace(szLettercode, charsmax(szLettercode), "\u00d4", "O")
-    replace(szLettercode, charsmax(szLettercode), "\u00d5", "O")
-    replace(szLettercode, charsmax(szLettercode), "\u00d6", "O")
-    replace(szLettercode, charsmax(szLettercode), "\u00d8", "O")
-    replace(szLettercode, charsmax(szLettercode), "\u00d9", "U")
-    replace(szLettercode, charsmax(szLettercode), "\u00da", "U")
-    replace(szLettercode, charsmax(szLettercode), "\u00db", "U")
-    replace(szLettercode, charsmax(szLettercode), "\u00dc", "U")
-    replace(szLettercode, charsmax(szLettercode), "\u00ds", "Y")
-    replace(szLettercode, charsmax(szLettercode), "\u00de", "Y")
-    replace(szLettercode, charsmax(szLettercode), "\u00df", "S")
-    replace(szLettercode, charsmax(szLettercode), "\u00e0", "a")
-    replace(szLettercode, charsmax(szLettercode), "\u00e1", "a")
-    replace(szLettercode, charsmax(szLettercode), "\u00e2", "a")
-    replace(szLettercode, charsmax(szLettercode), "\u00e3", "a")
-    replace(szLettercode, charsmax(szLettercode), "\u00e4", "a")
-    replace(szLettercode, charsmax(szLettercode), "\u00e5", "a")
-    replace(szLettercode, charsmax(szLettercode), "\u00e6", "ae")
-    replace(szLettercode, charsmax(szLettercode), "\u00e7", "cc")
-    replace(szLettercode, charsmax(szLettercode), "\u00e8", "e")
-    replace(szLettercode, charsmax(szLettercode), "\u00e9", "e")
-    replace(szLettercode, charsmax(szLettercode), "\u00ea", "e")
-    replace(szLettercode, charsmax(szLettercode), "\u00eb", "e")
-    replace(szLettercode, charsmax(szLettercode), "\u00ec", "i")
-    replace(szLettercode, charsmax(szLettercode), "\u00ed", "i")
-    replace(szLettercode, charsmax(szLettercode), "\u00ee", "i")
-    replace(szLettercode, charsmax(szLettercode), "\u00ef", "i")
-    replace(szLettercode, charsmax(szLettercode), "\u00f0", "eth")
-    replace(szLettercode, charsmax(szLettercode), "\u00f1", "n")
-    replace(szLettercode, charsmax(szLettercode), "\u00f2", "o")
-    replace(szLettercode, charsmax(szLettercode), "\u00f3", "o")
-    replace(szLettercode, charsmax(szLettercode), "\u00f4", "o")
-    replace(szLettercode, charsmax(szLettercode), "\u00f5", "o")
-    replace(szLettercode, charsmax(szLettercode), "\u00f6", "o")
-    replace(szLettercode, charsmax(szLettercode), "\u00f7", "o")
-    replace(szLettercode, charsmax(szLettercode), "\u00f8", "u")
-    replace(szLettercode, charsmax(szLettercode), "\u00fa", "u")
-    replace(szLettercode, charsmax(szLettercode), "\u00fb", "u")
-    replace(szLettercode, charsmax(szLettercode), "\u00fc", "u")
-    replace(szLettercode, charsmax(szLettercode), "\u00fd", "y")
-    replace(szLettercode, charsmax(szLettercode), "\u00fe", "y")
-    replace(szLettercode, charsmax(szLettercode), "\u00ff", "y")
+    for(new a; a < sizeof unicoding_table; a++)
+    {
+        for(new b; b < sizeof unicoding_table[]; b++)
+        {
+            for(new c; c < sizeof unicoding_table[][];c++)
+            {
+                replace(szLettercode, charsmax(szLettercode), unicoding_table[a][0], unicoding_table[a][1])
+            }
+        }
+    }
     return szLettercode
 }
-
 
 public ReadClientFromFile( )
 {
