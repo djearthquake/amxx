@@ -230,9 +230,10 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
-new const unicoding_table[66][2][132] =
-                {
-                    
+///new const unicoding_table[67][2][134] =
+static const unicoding_table[67][2][134] =
+                {///https://en.wikipedia.org/wiki/List_of_Unicode_characters
+    {"\u2013", "-"},
     {"\u00c0", "A"},
     {"\u00c1", "A"},
     {"\u00c2", "A"},
@@ -452,7 +453,7 @@ public client_putinserver(id)
         if(b_Bot[id] || is_user_hltv(id))
             return PLUGIN_HANDLED_MAIN
         if(!get_pcvar_num(XAutoTempjoin))
-			return PLUGIN_HANDLED_MAIN
+            return PLUGIN_HANDLED_MAIN
         
         if(equali(ClientIP[id], "127.0.0.1") && id > 0)
         {
@@ -463,8 +464,9 @@ public client_putinserver(id)
 
         if(!task_exists(id+WEATHER) || !task_exists(id)) //will do server's weather
         {
-            if(b_Admin[id] && !iDebug)
+            if(b_Admin[id] && !get_pcvar_num(g_admins))//||!iDebug )
             {
+
                 gotatemp[id] = true;
                 return PLUGIN_HANDLED;
             }
@@ -504,8 +506,12 @@ public client_putinserver(id)
             #if AMXX_VERSION_NUM == 182
                 geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
             #else
-                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 2 );
+                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 0 );
             #endif
+            if(equal(ClientCountry[mask],"") && !task_exists(mask+COORD))
+            {
+                 set_task(0.5,"@get_client_data", mask+COORD)
+            }
         }
         Data[SzCountry] = ClientCountry[mask]
 
@@ -521,16 +527,24 @@ public client_putinserver(id)
             get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
         }
 
-        if(equal(ClientCity[mask],""))
+        if(equal(ClientCity[mask],"")) 
         {
             server_print"We did not have the CITY captured right.^nUsing Maxmind."
-            geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),1)
+            geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),0)
+            if(equal(ClientCity[mask],"") && !task_exists(mask+COORD)) 
+            {
+                set_task(0.5,"@get_client_data", mask+COORD)
+            }
         }
 
         if(equal(ClientRegion[mask],""))
         {
             server_print"We did not have the REGION captured right.^nUsing Maxmind."
-            geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),2)
+            geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),0)
+            if(equal(ClientRegion[mask],"") && !task_exists(mask+COORD))
+            {
+                set_task(0.5,"@get_client_data", mask+COORD)
+            }
         }
 
         //Transfer coords from other API into this one.
@@ -539,13 +553,14 @@ public client_putinserver(id)
             Data[fLatitude] = ClientLAT[mask]
             Data[fLongitude] = ClientLON[mask]
         }
-        /*
         else
         {
-            client_putinserver_now(mask)
-            return
+            if(!task_exists(mask+COORD))
+            {
+                set_task(0.5,"@get_client_data", mask+COORD)
+                return
+            }
         }
-         */
         Data[SzCity] = ClientCity[mask]
         Data[SzRegion] = ClientRegion[mask]
 
@@ -636,7 +651,7 @@ public client_temp_cmd(id)
         }
         else
         {
-            set_task(0.1, "@get_client_data", id+COORD)
+            ///set_task(0.1, "@get_client_data", id+COORD)
             @country_finder(id+WEATHER)
         }
     }
@@ -788,7 +803,7 @@ public client_temp(id)
 
             get_datadir(g_filepath, charsmax(g_filepath));
 
-            //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING COPIED
+            //////////THIS STOPS CRASHING SERVER DUE TO MAXMIND NOT BEING ON SERVER.
             formatex(g_szFile[0], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[0]);
             formatex(g_szFile[1], charsmax(g_szFile), "%s/%s", g_filepath, g_szRequired_Files[1]);
             if( (!file_exists(g_szFile[0])) && !file_exists(g_szFile[1]) )
@@ -1464,7 +1479,7 @@ public client_putinserver_now(id)
         }
         else
         {
-			//reformat name with test
+            //reformat name with test
             copy(ClientName[id],charsmax(ClientName[]), "TEST");
             server_print("%N test on %s precopy", id, ClientIP[id])
             copy(Data[ SzAddress ], charsmax(Data[ SzAddress ]), ClientIP[id])
@@ -1503,7 +1518,12 @@ public client_putinserver_now(id)
         else if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
             server_print "%s ip is NOT cached. -%s.", ClientName[id], PLUGIN
-            set_task(0.5,"@get_client_data", id+COORD)
+             #if AMXX_VERSION_NUM == 182
+                geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
+            #else
+                geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), 0 );
+            #endif
+            //set_task(0.5,"@get_client_data", id+COORD)
         }
     }
 }
@@ -1560,7 +1580,7 @@ public client_putinserver_now(id)
 {
     static id; id = Tsk - READ
     new msg[MAX_MOTD_LENGTH+1]
-    if(is_user_connected(id))
+    if(is_user_connected(id) && !got_coords[id])
     #if AMXX_VERSION_NUM != 182
     if(socket_is_readable(ip_api_socket, 0))
     {
@@ -1593,7 +1613,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"region^"") > charsmin)
             {
-                new region[MAX_RESOURCE_PATH_LENGTH]
+                static region[MAX_RESOURCE_PATH_LENGTH]
                 copyc(region, charsmax(region), msg[containi(msg, "^"region^"") + 10], '"')
                 replace(region, charsmax(region), ":", "");
                 replace(region, charsmax(region), ",", "");
@@ -1620,7 +1640,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"country^"") > charsmin)
             {
-                new country[MAX_RESOURCE_PATH_LENGTH]
+                static country[MAX_RESOURCE_PATH_LENGTH]
                 copyc(country, charsmax(country), msg[containi(msg, "^"country^"") + 11], '"')
                 replace(country, charsmax(country), ":", "");
                 replace(country, charsmax(country), ",", "");
