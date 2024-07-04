@@ -46,7 +46,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Tue 2nd Jul 2024
+    *(__ [__)*|\ | >< Thurs 4th Jul 2024
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -75,7 +75,7 @@
     #endif
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.9.1"
+    #define VERSION "1.9.2"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -230,7 +230,7 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
-new const unicoding_table[63][2][126] =
+new const unicoding_table[66][2][132] =
                 {
                     
     {"\u00c0", "A"},
@@ -295,7 +295,10 @@ new const unicoding_table[63][2][126] =
     {"\u00fd", "y"},
     {"\u00fe", "y"},
     {"\u00ff", "y"},
-    {"\u0161", "s"}
+    {"\u0161", "s"},
+    {"\u0130", "I"},
+    {"\u0131", "i"},
+    {"\u015", "s"}
                 };
 
 public plugin_init()
@@ -433,22 +436,24 @@ public plugin_precache()
 public client_putinserver(id)
 {
     static iDebug; iDebug = get_pcvar_num(g_debug)
-    static ClientAuth[MAX_PLAYERS+1]
+    new ClientAuth[MAX_PLAYERS+1]
     if(is_user_connected(id))
     {
         get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
         get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
 
         b_Bot[id] = is_user_bot(id) ? true : false
-
+/*
         if(iDebug)
             b_Bot[id] = equali(ClientAuth[id], "BOT") ? true : false
-
+*/
         b_Admin[id] = is_user_admin(id) ? true : false
 
-        if(b_Bot[id] || is_user_hltv(id) || !get_pcvar_num(XAutoTempjoin))
+        if(b_Bot[id] || is_user_hltv(id))
             return PLUGIN_HANDLED_MAIN
-
+        if(!get_pcvar_num(XAutoTempjoin))
+			return PLUGIN_HANDLED_MAIN
+        
         if(equali(ClientIP[id], "127.0.0.1") && id > 0)
         {
             server_print "%N IP shows as 127.0.0.1, stopping %s script!", id, PLUGIN
@@ -479,8 +484,7 @@ public client_putinserver(id)
     new mask; mask = Tsk - WEATHER;
 
     new Float:task_expand;task_expand = random_num(5,10)*1.0
-    ///if(is_user_connected(mask))
-    if(mask>0 && mask <= MaxClients)
+    if(is_user_connected(mask))
     {
         if(equal(ClientIP[mask],"") || b_Admin[mask] && !g_testingip[mask])
         {
@@ -489,7 +493,7 @@ public client_putinserver(id)
         }
 
         Data[SzAddress] = ClientIP[mask]
-        server_print("%N shows %s on country_finder", mask, ClientIP[mask])
+        server_print(is_user_connected(mask)?"%N shows %s on country_finder":"Client shows %s on country_finder", mask, ClientIP[mask])
 
         if(TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
             TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
@@ -633,7 +637,7 @@ public client_temp_cmd(id)
         else
         {
             set_task(0.1, "@get_client_data", id+COORD)
-            //@country_finder(id)
+            @country_finder(id+WEATHER)
         }
     }
 }
@@ -694,7 +698,7 @@ public client_remove(id)
 
 public client_temp_filter(id)
 {
-    if( id > 0 && id <= MaxClients )     //still get temp post disco
+    if( is_user_connected(id) )     //still get temp post disco
     {
         server_print "CLIENT TEMP FILTER FUNCTION"
         if(b_Admin[id] && g_testingip[id])
@@ -939,7 +943,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
         server_print "Feeding %s", PLUGIN
     static id; id = feeding - WEATHER;
 
-    if(id > 0 && id <= MaxClients && !gotatemp[id])
+    if(is_user_connected(id) && !gotatemp[id])
     {
 
         if(get_pcvar_num(g_debug))
@@ -1162,7 +1166,8 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                 #define HUD_PLACE2 random_float(0.75,2.10),random_float(-0.25,-1.50)
                 ////////////////////////////////
                 if(iBugger)
-                    server_print "New Temp is %i", str_to_num(Data[iTemp]) //new_temp
+                    //server_print "New Temp is %i", str_to_num(Data[iTemp]) //new_temp
+                    server_print "New Temp is %i", Data[iTemp] //new_temp
                 ////////////////////////////////
 
                 if( new_temp >= iRED_TEMP )
@@ -1393,8 +1398,8 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             {
                 if(!somebody_is_being_help)
                 {
-                    ///got_coords[client] ? client_temp_cmd(client) : set_task(queued_task++*1.0,"@country_finder",client+WEATHER);
-                    got_coords[client] ?  client_temp_cmd(client) : set_task(1.0, "@get_client_data", client+COORD)
+                    got_coords[client] ? client_temp_cmd(client) : set_task(queued_task++*1.0,"@country_finder",client+WEATHER);
+                    ///got_coords[client] ?  client_temp_cmd(client) : set_task(1.0, "@get_client_data", client+COORD)
                     server_print "Index#:%d queued", client
                     somebody_is_being_help = true
                     server_print "%f|Queue task time for %s", queued_task++*1.0, ClientName[client]
@@ -1436,7 +1441,7 @@ public client_putinserver_now(id)
 {
     if(get_pcvar_num(g_debug))
         server_print("ID:%d entered!",id)
-    if(id > 0 && id <= MaxClients)
+    if(is_user_connected(id))
     {
         if(!task_exists(id))
         {
@@ -1447,7 +1452,7 @@ public client_putinserver_now(id)
 
 @get_user_data(id)
 {
-    if(id > 0 && id <= MaxClients)
+    if(is_user_connected(id))
     {
 
         if(!g_testingip[id])
@@ -1490,7 +1495,7 @@ public client_putinserver_now(id)
 
             got_coords[id] = true
 
-            ///////////////////@country_finder(id+WEATHER)
+            ////@country_finder(id+WEATHER)
             ///set_task(1.0,"@que_em_up", id) //looping
             if(b_Admin[id] && get_pcvar_num(g_admins) || g_testingip[id] || !b_Admin[id])
                 @the_queue(id)
@@ -1507,8 +1512,8 @@ public client_putinserver_now(id)
 {
     new Soc_O_ErroR2,
     id; id = goldsrc - COORD
-    //if(is_user_connected(id)) //cvar later to stop after disco or not
-    if(id>0 && id <=MaxClients && !equal(ClientIP[id], ""))
+    if(is_user_connected(id)) //cvar later to stop after disco or not
+    //if(is_user_connected(id) && !equal(ClientIP[id], ""))
     {
         ///static constring[MAX_CMD_LENGTH + MAX_IP_WITH_PORT_LENGTH + 1]
         ip_api_socket = socket_open(api, 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
@@ -1530,14 +1535,14 @@ public client_putinserver_now(id)
 {
 
     static id; id = Task - WRITE
-    if(id>0 && id <=MaxClients)
+    if(is_user_connected(id))
     {
         ///@latch(id)
         #if AMXX_VERSION_NUM != 182
         if (socket_is_writable(ip_api_socket, 0))
         #endif
         {
-            //IS_SOCKET_IN_USE = true
+            IS_SOCKET_IN_USE = true
             socket_send(ip_api_socket,text,charsmax(text));
             if(get_pcvar_num(g_debug))
                 server_print("Yes! %s:writing the web for %s",PLUGIN, ClientName[id])
@@ -1555,7 +1560,7 @@ public client_putinserver_now(id)
 {
     static id; id = Tsk - READ
     new msg[MAX_MOTD_LENGTH+1]
-    if(id>0 && id <=MaxClients)
+    if(is_user_connected(id))
     #if AMXX_VERSION_NUM != 182
     if(socket_is_readable(ip_api_socket, 0))
     {
@@ -1612,7 +1617,6 @@ public client_putinserver_now(id)
                     unicoding_replace(city)
 
                 copy(ClientCity[id],charsmax(ClientCity[]),city)
-                got_coords[id] = true
             }
             if(containi(msg, "^"country^"") > charsmin)
             {
@@ -1627,14 +1631,20 @@ public client_putinserver_now(id)
 
                 copy(ClientCountry[id],charsmax(ClientCountry[]),country)
             }
+            got_coords[id] = true
             IS_SOCKET_IN_USE = false
             if(socket_close(ip_api_socket) == 1)
+            {
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
+                
+            }
             else
+            {
                 server_print "%s already closed the socket on %s!",api,ClientName[id]
+            }
 
-            if(!somebody_is_being_help)
-                set_task(random_num(2,7)*1.0,"@country_finder",id+WEATHER);
+            ////if(!somebody_is_being_help)
+            set_task(random_num(2,7)*1.0,"@country_finder",id+WEATHER);
 
         }
         else if(g_socket_pass[id] < 3 && (!got_coords[id] || equal(ClientCountry[id],"") || equal(ClientCity[id],"") || equal(ClientRegion[id],"")))
@@ -1660,7 +1670,10 @@ public client_putinserver_now(id)
         else
         {
             if(socket_close(ip_api_socket) == 1)
+            {
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
+                set_task(random_num(2,7)*1.0,"@country_finder",id+WEATHER);
+            }
             else
                 log_amx("Trouble closing API socket.")
 
@@ -1675,6 +1688,7 @@ public client_putinserver_now(id)
         remove_task(id+READ) && remove_task(id+WRITE)
         IS_SOCKET_IN_USE = false
     }
+    IS_SOCKET_IN_USE = false
     return PLUGIN_CONTINUE
 }
 
