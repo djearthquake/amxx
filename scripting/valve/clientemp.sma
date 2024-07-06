@@ -484,9 +484,11 @@ public client_putinserver(id)
 @country_finder(Tsk)
 {
     new mask; mask = Tsk - WEATHER;
+    static g_max; g_max = get_pcvar_num(g_maxmind)
 
     new Float:task_expand;task_expand = random_num(5,10)*1.0
     if(is_user_connected(mask))
+    change_task(iQUEUE, 10.0)
     {
         if(equal(ClientIP[mask],"") || b_Admin[mask] && !g_testingip[mask])
         {
@@ -533,7 +535,7 @@ public client_putinserver(id)
 
             if(equal(ClientCity[mask],"") /*&& !task_exists(mask+COORD)*/)
             {
-                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),charsmin)&server_print("Using Maxmind.")
+                !g_max ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),charsmin)&server_print("Using Maxmind.")
                 return
             }
         }
@@ -543,7 +545,7 @@ public client_putinserver(id)
             server_print"We did not have the REGION captured right."
             if(equal(ClientRegion[mask],""))
             {
-                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),charsmin)&server_print("Using Maxmind.")
+                !g_max ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),charsmin)&server_print("Using Maxmind.")
                 return
             }
         }
@@ -1118,7 +1120,10 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
         if(IS_SOCKET_IN_USE && !gotatemp[id])
         {
             if(iBugger)
+            {
                 server_print "Socket in use for %s", ClientName[id]
+            }
+            goto END
         }
 
         else
@@ -1140,7 +1145,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             server_print "Buffer loaded for %s.", ClientName[id]
             ///IS_SOCKET_IN_USE = true
 
-            if (get_timeleft() > 30) ///Refrain from running sockets on map change!
+            if (get_timeleft() > 9) ///Refrain from running sockets on map change!
             {
                 if(iBugger)
                     server_print "%s:Ck temp",PLUGIN
@@ -1177,6 +1182,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
                     log_amx("%L", LANG_PLAYER, "LOG_CLIENTEMP_PRINT", ClientName[id], ClientCity[id], new_temp);
                 #endif
                 Data[iTemp] = new_temp
+                gotatemp[id] = true
                 TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
 
                 ////////////////////////////////
@@ -1316,9 +1322,10 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
         if(g_testingip[id])
         {
             g_testingip[id] = false
-            gotatemp[id] = false
+            gotatemp[id] = true
         }
     }
+    END:
     return PLUGIN_HANDLED
 }
 
