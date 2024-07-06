@@ -320,18 +320,18 @@ public CS_OnBuy(id, item)
                             }
                         }
 
-                        new iBuyOrigin[3];
+                        /*new iBuyOrigin[3];
 
                         iBuyOrigin[0] = floatround(fBuyOrigin[0]);
                         iBuyOrigin[1] = floatround(fBuyOrigin[1]);
-                        iBuyOrigin[2] = floatround(fBuyOrigin[2])
-                        if(iDust)
+                        iBuyOrigin[2] = floatround(fBuyOrigin[2])*/
+                        if(iDust && is_user_connected(iBotOwner[id]))
                         {
-                            emessage_begin( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, {0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
+                            emessage_begin_f( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
                             ewrite_byte(TE_PARTICLEBURST)
-                            ewrite_coord(iBuyOrigin[0])
-                            ewrite_coord(iBuyOrigin[1])
-                            ewrite_coord(iBuyOrigin[2])
+                            ewrite_coord_f(fBuyOrigin[0])
+                            ewrite_coord_f(fBuyOrigin[1])
+                            ewrite_coord_f(fBuyOrigin[2])
                             ewrite_short(500)//(radius)
                             ewrite_byte(random(256))
                             ewrite_byte(MAX_IP_LENGTH * 10) //(duration * 10) (will be randomized a bit)
@@ -509,6 +509,17 @@ public control_bot(dead_spec)
 
                 set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
                 entity_set_int(dead_spec, EV_INT_fixangle, 0)
+                if(!cs_get_weapon_id(dead_spec))
+                {
+                    give_item(dead_spec, "weapon_awp")
+                    give_item(dead_spec, "weapon_deagle")
+                    give_item(dead_spec, "weapon_knife")
+                    //log_amx("Pausing to prevent crash.")
+                    log_amx("They had no weapon. Check log.")
+                    //client_print 0, print_chat, "Attempting to prevent a crash!"
+                    //console_cmd 0, "sv_restartround 5"
+                    //pause("a")
+                }
             }
         }
         return PLUGIN_CONTINUE;
@@ -526,7 +537,7 @@ stock weapon_details(alive_bot)
         replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
         return wpnid, magazine, ammo, SzWeaponClassname;
     }
-    return wpnid=0,magazine=0,ammo=0,SzWeaponClassname;
+    return wpnid,magazine,ammo,SzWeaponClassname;
 }
 
 @give_weapons(dead_spec, alive_bot)
@@ -535,11 +546,16 @@ stock weapon_details(alive_bot)
     {
         weapon_details(alive_bot)
         strip_user_weapons(dead_spec)
-        if(wpnid != CSW_KNIFE)
+        if(wpnid == CSW_KNIFE || wpnid == CSW_C4)
+            return PLUGIN_HANDLED;
+        cs_set_user_bpammo(dead_spec, wpnid, ammo)
+        if(equal(SzWeaponClassname, ""))
         {
-            cs_set_user_bpammo(dead_spec, wpnid, ammo)
+            log_amx("Pausing to prevent crash.")
+            client_print 0, print_chat, "Attempting to prevent a crash!"
+            console_cmd 0, "sv_restartround 5"
+            pause("a")
         }
-
         client_print(dead_spec, print_chat, "%n took control of %n's %s. %i in mag, %i bullets total and %i armor.", dead_spec, alive_bot, SzWeaponClassname, magazine, ammo, arm);
 
         get_user_velocity(dead_spec, vec)
@@ -615,6 +631,7 @@ stock weapon_details(alive_bot)
         if(is_user_alive(dead_spec))strip_user_weapons(alive_bot)
         user_silentkill(alive_bot, 1);
     }
+    return PLUGIN_HANDLED
 }
 
 public stuck_timer(dead_spec)
