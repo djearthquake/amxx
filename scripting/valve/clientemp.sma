@@ -506,7 +506,7 @@ public client_putinserver(id)
             #if AMXX_VERSION_NUM == 182
                 geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
             #else
-                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), 0 );
+                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), charsmin );
             #endif
             if(equal(ClientCountry[mask],"") && !task_exists(mask+COORD))
             {
@@ -533,7 +533,7 @@ public client_putinserver(id)
 
             if(equal(ClientCity[mask],"") /*&& !task_exists(mask+COORD)*/)
             {
-                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),0)&server_print("Using Maxmind.")
+                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),charsmin)&server_print("Using Maxmind.")
                 return
             }
         }
@@ -543,7 +543,7 @@ public client_putinserver(id)
             server_print"We did not have the REGION captured right."
             if(equal(ClientRegion[mask],""))
             {
-                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),0)&server_print("Using Maxmind.")
+                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),charsmin)&server_print("Using Maxmind.")
                 return
             }
         }
