@@ -46,7 +46,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Thurs 4th Jul 2024
+    *(__ [__)*|\ | >< Sat 6th Jul 2024
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -146,7 +146,7 @@
     new g_word_buffer[MAX_PLAYERS]
     new g_debug, g_timeout, Float:g_task
 
-    new g_queue_weight, g_q_weight
+    new g_queue_weight, g_q_weight, g_maxmind
     new g_Weather_Feed, g_cvar_uplink, g_cvar_units, g_cvar_token, g_filepath[ MAX_NAME_LENGTH ]
     new g_szFile[ MAX_RESOURCE_PATH_LENGTH ][ MAX_RESOURCE_PATH_LENGTH ], g_admins, g_long;
 
@@ -320,16 +320,17 @@ public plugin_init()
         pause "a";
     }
 
-    g_cvar_units   = register_cvar("sv_units", "metric");
-    g_cvar_token   = register_cvar("sv_openweather-key", "null", FCVAR_PROTECTED);
-    g_cvar_uplink  = register_cvar("sv_uplink2", "GET /data/2.5/weather?q=");
-    g_admins       = register_cvar("temp_admin", "1");
-    g_debug        = register_cvar("temp_debug", "0");
-    g_long         = register_cvar("temp_long", "1"); //Uses longitude or city to get weather
-    g_timeout      = register_cvar("temp_block", "10"); //how long minimum in between client temp requests
-    g_queue_weight = register_cvar("temp_queue_weight", "15"); //# passes before putting queue to sleep
-    g_proxy_version     = get_cvar_pointer("proxy_action") ? get_cvar_pointer("proxy_action") : 0
-    XAutoTempjoin =  register_cvar("temp_auto", "1");  // zero relies on Geo mod for now.
+    g_cvar_units    = register_cvar("sv_units", "metric");
+    g_cvar_token    = register_cvar("sv_openweather-key", "null", FCVAR_PROTECTED);
+    g_cvar_uplink   = register_cvar("sv_uplink2", "GET /data/2.5/weather?q=");
+    g_admins        = register_cvar("temp_admin", "1");
+    g_debug         = register_cvar("temp_debug", "0");
+    g_long          = register_cvar("temp_long", "1"); //Uses longitude or city to get weather
+    g_timeout       = register_cvar("temp_block", "10"); //how long minimum in between client temp requests
+    g_queue_weight  = register_cvar("temp_queue_weight", "15"); //# passes before putting queue to sleep
+    g_proxy_version = get_cvar_pointer("proxy_action") ? get_cvar_pointer("proxy_action") : 0
+    g_maxmind       = register_cvar("temp_maxmind", "0") //use Maxmind and Geo Module or built-in Amxx API
+    XAutoTempjoin   =  register_cvar("temp_auto", "1");  // zero relies on Geo mod for now.
 
 
     register_clcmd("say !mytemp","Speak",0,"Shows your local temp.");
@@ -437,24 +438,23 @@ public plugin_precache()
 public client_putinserver(id)
 {
     static iDebug; iDebug = get_pcvar_num(g_debug)
-    new ClientAuth[MAX_PLAYERS+1]
     if(is_user_connected(id))
     {
         get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
         get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
 
         b_Bot[id] = is_user_bot(id) ? true : false
-/*
+
         if(iDebug)
             b_Bot[id] = equali(ClientAuth[id], "BOT") ? true : false
-*/
+
         b_Admin[id] = is_user_admin(id) ? true : false
 
         if(b_Bot[id] || is_user_hltv(id))
             return PLUGIN_HANDLED_MAIN
         if(!get_pcvar_num(XAutoTempjoin))
             return PLUGIN_HANDLED_MAIN
-        
+
         if(equali(ClientIP[id], "127.0.0.1") && id > 0)
         {
             server_print "%N IP shows as 127.0.0.1, stopping %s script!", id, PLUGIN
@@ -462,9 +462,9 @@ public client_putinserver(id)
             return PLUGIN_HANDLED;
         }
 
-        if(!task_exists(id+WEATHER) || !task_exists(id)) //will do server's weather
+        if(!task_exists(id+WEATHER) || !task_exists(id))
         {
-            if(b_Admin[id] && !get_pcvar_num(g_admins))//||!iDebug )
+            if(b_Admin[id] && !get_pcvar_num(g_admins))
             {
 
                 gotatemp[id] = true;
@@ -527,23 +527,24 @@ public client_putinserver(id)
             get_user_authid(mask,ClientAuth[mask],charsmax(ClientAuth[]))
         }
 
-        if(equal(ClientCity[mask],"")) 
+        if(equal(ClientCity[mask],""))
         {
-            server_print"We did not have the CITY captured right.^nUsing Maxmind."
-            geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),0)
-            if(equal(ClientCity[mask],"") && !task_exists(mask+COORD)) 
+            server_print"We did not have the CITY captured right."
+
+            if(equal(ClientCity[mask],"") /*&& !task_exists(mask+COORD)*/)
             {
-                set_task(0.5,"@get_client_data", mask+COORD)
+                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_city(ClientIP[mask],ClientCity[mask],charsmax(ClientCity[]),0)&server_print("Using Maxmind.")
+                return
             }
         }
 
         if(equal(ClientRegion[mask],""))
         {
-            server_print"We did not have the REGION captured right.^nUsing Maxmind."
-            geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),0)
-            if(equal(ClientRegion[mask],"") && !task_exists(mask+COORD))
+            server_print"We did not have the REGION captured right."
+            if(equal(ClientRegion[mask],""))
             {
-                set_task(0.5,"@get_client_data", mask+COORD)
+                !g_maxmind ? set_task(0.5,"@get_client_data", mask+COORD) : geoip_region_name(ClientIP[mask],ClientRegion[mask],charsmax(ClientRegion[]),0)&server_print("Using Maxmind.")
+                return
             }
         }
 
@@ -567,7 +568,7 @@ public client_putinserver(id)
         if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
             TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
-            server_print "Adding Client to check temp"
+            server_print "Saving Client to check temp file."
             formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^" ^"%s^"", Data[SzAddress], Data[SzCity], Data[SzRegion], Data[SzCountry], Data[fLatitude], Data[fLongitude]) ///likes quotes not comma TAB
             @file_data(SzSave)
         }
@@ -638,7 +639,8 @@ public Speak(id)
 
 public client_temp_cmd(id)
 {
-    if(id>0 && id <= MaxClients)
+    //if(id>0 && id <= MaxClients)
+    if(is_user_connected(id))
     {
         if(got_coords[id])
         {
@@ -651,8 +653,8 @@ public client_temp_cmd(id)
         }
         else
         {
-            ///set_task(0.1, "@get_client_data", id+COORD)
-            @country_finder(id+WEATHER)
+            set_task(0.1, "@get_client_data", id+COORD)
+            //@country_finder(id+WEATHER)
         }
     }
 }
@@ -950,6 +952,8 @@ public client_disconnected(id)
         set_task(5.0,"client_remove",id)
     #endif
     server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
+    if(somebody_is_being_help && !gotatemp[id])
+        somebody_is_being_help= false
 }
 
 public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
@@ -969,13 +973,12 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
         get_pcvar_string(g_cvar_uplink, uplink, charsmax(uplink) );
         get_pcvar_string(g_cvar_token, token, charsmax(token) );
-        /*
+
         if(!is_user_connected(id))
         {
             server_print "User disconnected while getting temp socket ready."
-            return
+            ///return
         }
-         */
         #if defined SOCK_NON_BLOCKING
             g_Weather_Feed = socket_open("api.openweathermap.org", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS); //used newer inc on 182;compiles works ok
         #else
@@ -1613,7 +1616,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"region^"") > charsmin)
             {
-                static region[MAX_RESOURCE_PATH_LENGTH]
+                new region[MAX_RESOURCE_PATH_LENGTH]
                 copyc(region, charsmax(region), msg[containi(msg, "^"region^"") + 10], '"')
                 replace(region, charsmax(region), ":", "");
                 replace(region, charsmax(region), ",", "");
@@ -1627,7 +1630,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"city^"") > charsmin)
             {
-                static city[MAX_RESOURCE_PATH_LENGTH]
+                new city[MAX_RESOURCE_PATH_LENGTH]
                 copyc(city, charsmax(city), msg[containi(msg, "^"city^"") + 8], '"')
                 replace(city, charsmax(city), ":", "");
                 replace(city, charsmax(city), ",", "");
@@ -1640,7 +1643,7 @@ public client_putinserver_now(id)
             }
             if(containi(msg, "^"country^"") > charsmin)
             {
-                static country[MAX_RESOURCE_PATH_LENGTH]
+                new country[MAX_RESOURCE_PATH_LENGTH]
                 copyc(country, charsmax(country), msg[containi(msg, "^"country^"") + 11], '"')
                 replace(country, charsmax(country), ":", "");
                 replace(country, charsmax(country), ",", "");
@@ -1656,7 +1659,7 @@ public client_putinserver_now(id)
             if(socket_close(ip_api_socket) == 1)
             {
                 server_print "%s finished %s reading",PLUGIN, ClientName[id]
-                
+
             }
             else
             {
