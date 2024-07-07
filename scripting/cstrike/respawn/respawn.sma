@@ -65,7 +65,7 @@
 *    V1.1 to 1.2 -focus on correct side-arms and unsticking. Switch to "impulse 206" instead of prethink.
 *    V1.2 to 1.3 -Pause and log plugin if dependecy is not found.
 *    V1.3 to 1.4 -Restart round when no player has C4 post spawn. Remove prefixes on weapon and item when announcing.
-*
+*    V1.4 to 1.5 -Code for cs_set_user_bpammo failing on random weapons. If client has no weapon as a result one is given to stop crash on beginning of next round.
 */
 
 #include amxmodx
@@ -150,7 +150,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.4", "SPiNX");
+    register_plugin("Repawn from bots", "1.5", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1");
@@ -509,22 +509,26 @@ public control_bot(dead_spec)
 
                 set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
                 entity_set_int(dead_spec, EV_INT_fixangle, 0)
-                if(!cs_get_weapon_id(dead_spec))
-                {
-                    give_item(dead_spec, "weapon_awp")
-                    give_item(dead_spec, "weapon_deagle")
-                    give_item(dead_spec, "weapon_knife")
-                    //log_amx("Pausing to prevent crash.")
-                    log_amx("They had no weapon. Check log.")
-                    //client_print 0, print_chat, "Attempting to prevent a crash!"
-                    //console_cmd 0, "sv_restartround 5"
-                    //pause("a")
-                }
+                set_task(2.0, "@check_arms", dead_spec)
             }
         }
         return PLUGIN_CONTINUE;
     }
     return PLUGIN_HANDLED;
+}
+
+@check_arms(dead_spec)
+{
+    if(is_user_alive(dead_spec))
+    {
+        if(!get_user_weapon(dead_spec))
+        {
+            give_item(dead_spec, "weapon_awp")
+            give_item(dead_spec, "weapon_deagle")
+            give_item(dead_spec, "weapon_knife")
+            log_amx("They had no weapon. Check log.")
+        }
+    }
 }
 
 stock weapon_details(alive_bot)
