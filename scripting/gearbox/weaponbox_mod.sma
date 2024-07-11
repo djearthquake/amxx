@@ -8,7 +8,7 @@
 #define WEAPON_OFFSET 4
 
 #define PLUGIN "HL Weaponbox Mod"
-#define VERSION "1.0"
+#define VERSION "1.1"
 #define AUTHOR "SPiNX"
 
 #if !defined set_ent_rendering
@@ -53,6 +53,7 @@ public plugin_init()
     g_iGlow = register_cvar("weaponbox_glow", "1");
 }
 
+/*
 public plugin_precache()
 {
     for(new a; a < sizeof szWeapons; a++)
@@ -63,6 +64,7 @@ public plugin_precache()
         }
     }
 }
+*/
 
 @_weaponbox(iEnt)
 {
