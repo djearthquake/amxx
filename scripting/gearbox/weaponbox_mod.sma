@@ -3,7 +3,6 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <engine>
-#include <gearbox>
 #include <fakemeta>
 #include <hamsandwich>
 
@@ -14,6 +13,7 @@
 #define AUTHOR "SPiNX"
 
 #define charsmin -1
+#define HLW_PENGUIN         26
 
 #if !defined set_ent_rendering
 #define set_ent_rendering set_rendering
@@ -67,13 +67,13 @@ public plugin_init()
     static wpn_id; wpn_id = get_user_weapon(iOwner)
     if(iGlow_cvar > charsmin)
     {
-        if(HLW_CROWBAR <= wpn_id <= MAX_PLAYERS)
+        if(HLW_CROWBAR <= wpn_id <= HLW_PENGUIN)
         {
             engfunc(EngFunc_SetModel, iEnt, szWeapons[wpn_id][1]);
         }
         if (wpn_id == HLW_TRIPMINE)
         {
-            set_task(0.3, "@mine_adj", iEnt)
+            set_task(2.0, "@mine_adj", iEnt)
         }
         if(iGlow_cvar)
         {
@@ -89,8 +89,6 @@ public plugin_init()
     fOrigin[2] -= 40.0
 
     set_pev(iEnt, pev_origin, fOrigin)
-    set_pev(iEnt, pev_body, 3)
-    set_pev(iEnt, pev_sequence, 8)
 }
 
 stock COLOR()
