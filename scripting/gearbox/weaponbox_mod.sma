@@ -10,8 +10,10 @@
 #define WEAPON_OFFSET 4
 
 #define PLUGIN "HL Weaponbox Mod"
-#define VERSION "1.2"
+#define VERSION "1.21"
 #define AUTHOR "SPiNX"
+
+#define charsmin -1
 
 #if !defined set_ent_rendering
 #define set_ent_rendering set_rendering
@@ -62,24 +64,21 @@ public plugin_init()
 {
     static iOwner; iOwner = pev(iEnt, pev_owner)
     static iGlow_cvar;iGlow_cvar = get_pcvar_num(g_iGlow);
-    new wpn_id = get_user_weapon(iOwner)
-
-    if(is_user_admin(iOwner))
-            client_print iOwner, print_chat, "Weapon id:%i", wpn_id
-
-    if(HLW_CROWBAR <= wpn_id <= MAX_PLAYERS)
+    static wpn_id; wpn_id = get_user_weapon(iOwner)
+    if(iGlow_cvar > charsmin)
     {
-        if(is_user_admin(iOwner))
-            client_print iOwner, print_chat, "%s is %i", szWeapons[wpn_id][1], wpn_id
-        engfunc(EngFunc_SetModel, iEnt, szWeapons[wpn_id][1]);
-    }
-    if (wpn_id == HLW_TRIPMINE)
-    {
-	set_task(1.0, "@mine_adj", iEnt)
-    }
-    if(iGlow_cvar)
-    {
-        set_ent_rendering(iEnt, kRenderFxGlowShell, COLOR(), COLOR(), COLOR(), kRenderNormal, random_num(20,100));
+        if(HLW_CROWBAR <= wpn_id <= MAX_PLAYERS)
+        {
+            engfunc(EngFunc_SetModel, iEnt, szWeapons[wpn_id][1]);
+        }
+        if (wpn_id == HLW_TRIPMINE)
+        {
+            set_task(0.3, "@mine_adj", iEnt)
+        }
+        if(iGlow_cvar)
+        {
+            set_ent_rendering(iEnt, kRenderFxGlowShell, COLOR(), COLOR(), COLOR(), kRenderNormal, random_num(20,100));
+        }
     }
 }
 
