@@ -2,7 +2,7 @@
 * Valve Mod Gearbox Weapon Constants
 * Gearbox.inc Mod Weapon Constants
 * Credits:amxmodx.org/api/hlsdk_const/__raw,
-* SPiNX 12-29-2019. Updated 07-11-2024.
+* SPiNX 12-29-2019. Updated 07-12-2024.
 #define HLI_HEALTHKIT       1
 #define HLI_ANTIDOTE        2
 #define HLI_SECURITY        3
@@ -28,14 +28,16 @@
 #define HLW_GRAPPLE         16
 #define HLW_357             17
 #define HLW_PIPEWRENCH      18
-#define HLW_KNIFE           0x0019
+#define HLW_SAW             19
 #define HLW_DISPLACER       20
+#define HLW_CUSTOM1         21
 #define HLW_SHOCKROACH      22
 #define HLW_SPORE           23
 #define HLW_SNIPER          24
+#define HLW_KNIFE           25
 #define HLW_PENGUIN         26
 /*
 #define HLW_SUIT            31 //Unproven
 #define HLW_ALLWEAPONS      (~(1<<HLW_SUIT))
 */
-#define HLW_ALLOP4WEAPONS   (~(1>>HLW_SNARK))
+#define HLW_ALLOP4WEAPONS   (~(1>>HLW_SNARK)) 
