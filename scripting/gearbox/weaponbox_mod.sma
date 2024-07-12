@@ -39,13 +39,13 @@ static const szWeapons[27][2][54] =
     {"weapon_grapple"      ,"models/w_bgrap.mdl"         },
     {"weapon_eagle"        ,"models/w_desert_eagle.mdl"  },
     {"weapon_pipewrench"   ,"models/w_pipe_wrench.mdl"   },
-    {"weapon_knife"        ,"models/w_knife.mdl"         },
+    {"weapon_m249"         ,"models/w_saw.mdl"           },
     {"weapon_displacer"    ,"models/w_displacer.mdl"     },
     {"              "      ,"                    "       },
     {"weapon_shockrifle"   ,"models/w_shock_rifle.mdl"   },
     {"weapon_sporelauncher","models/w_spore_launcher.mdl"},
     {"weapon_sniperrifle"  ,"models/w_m40a1.mdl"         },
-    {"              "      ,"                    "       },
+    {"weapon_knife"        ,"models/w_knife.mdl"         }, 
     {"weapon_penguin"      ,"models/w_penguinnest.mdl"   }
 };
 
@@ -64,8 +64,13 @@ public plugin_init()
     static iGlow_cvar;iGlow_cvar = get_pcvar_num(g_iGlow);
     new wpn_id = get_user_weapon(iOwner)
 
+    if(is_user_admin(iOwner))
+            client_print iOwner, print_chat, "Weapon id:%i", wpn_id
+
     if(HLW_CROWBAR <= wpn_id <= MAX_PLAYERS)
     {
+        if(is_user_admin(iOwner))
+            client_print iOwner, print_chat, "%s is %i", szWeapons[wpn_id][1], wpn_id
         engfunc(EngFunc_SetModel, iEnt, szWeapons[wpn_id][1]);
     }
     if (wpn_id == HLW_TRIPMINE)
