@@ -103,7 +103,6 @@
 
     #define GLOBAL_SOCKET_BUFFER_SIZE           MAX_MENU_LENGTH  + MAX_RESOURCE_PATH_LENGTH
 
-
     #if !defined client_disconnected
     #define client_disconnected client_disconnect
     #endif
@@ -230,9 +229,8 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
-///new const unicoding_table[67][2][134] =
-static const unicoding_table[67][2][134] =
-                {///https://en.wikipedia.org/wiki/List_of_Unicode_characters
+static const unicoding_table[70][2][140] =
+{///https://en.wikipedia.org/wiki/List_of_Unicode_characters
     {"\u2013", "-"},
     {"\u00c0", "A"},
     {"\u00c1", "A"},
@@ -299,8 +297,11 @@ static const unicoding_table[67][2][134] =
     {"\u0161", "s"},
     {"\u0130", "I"},
     {"\u0131", "i"},
-    {"\u015", "s"}
-                };
+    {"\u015",  "s"},
+    {"\u021a", "T"},
+    {"\u021b", "t"},
+    {"\u017d", "Z"}
+};
 
 public plugin_init()
 {
@@ -508,7 +509,7 @@ public client_putinserver(id)
             #if AMXX_VERSION_NUM == 182
                 geoip_country( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]) );
             #else
-                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), charsmin );
+                geoip_country_ex( ClientIP[mask], ClientCountry[mask], charsmax(ClientCountry[]), LANG_SERVER );
             #endif
             if(equal(ClientCountry[mask],"") && !task_exists(mask+COORD))
             {
@@ -954,8 +955,15 @@ public client_disconnected(id)
         set_task(5.0,"client_remove",id)
     #endif
     server_print "%s %s from %s disappeared on %s, %s radar.", ClientName[id], ClientAuth[id], Data[SzCountry], Data[SzCity], Data[SzRegion]
-    if(somebody_is_being_help && !gotatemp[id])
-        somebody_is_being_help= false
+    if(somebody_is_being_help)
+        set_task(45.0,"@unbusy_disco", id)
+}
+
+@unbusy_disco(id)
+{
+    somebody_is_being_help = false
+    IS_SOCKET_IN_USE = false;
+    bServer = false
 }
 
 public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
@@ -1112,7 +1120,7 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
         if(equal(ClientCity[id], ""))
         {
-            geoip_city(ClientIP[id],ClientCity[id],charsmax(ClientCity[]),1)
+            geoip_city(ClientIP[id],ClientCity[id],charsmax(ClientCity[]),LANG_SERVER)
             Data[SzCity] = ClientCity[id]
             TrieSetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data )
         }
@@ -1531,7 +1539,7 @@ public client_putinserver_now(id)
              #if AMXX_VERSION_NUM == 182
                 geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
             #else
-                geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), 0 );
+                geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), LANG_SERVER );
             #endif
             //set_task(0.5,"@get_client_data", id+COORD)
         }
