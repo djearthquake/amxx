@@ -24,13 +24,13 @@
 
 #define charsmin                  -1
 
-new g_name[MAX_PLAYERS +1];
+new g_name[MAX_PLAYERS +1]
 new g_bot_min, g_bot_max, g_bot_control, g_iHeadcount;
 new const SzAdvert[] = "Presenting the OP4 (C)apture (T)he (F)lag legacy bot(s)...with b-team tags"
 new const SzFlagCapMap[] = "op4c"
 new bool:FirstRun
 static bool:bStrike
-static g_mname[MAX_NAME_LENGTH]
+static g_mname[MAX_NAME_LENGTH];
 
 public OnAutoConfigsBuffered() @zero_bots()
 
@@ -106,7 +106,9 @@ public client_disconnected(id)
     if (get_pcvar_num(g_bot_control))
     {
         static mname[MAX_PLAYERS];
-        static numplayers; numplayers = iPlayers();
+        //static numplayers; numplayers = iPlayers();
+        new players[ MAX_PLAYERS ],numplayers;get_players(players,numplayers,"ch")
+        
         get_mapname(mname,charsmax(mname));
 
         if ( (containi(mname,SzFlagCapMap) > -1) && (numplayers < 2) )
@@ -114,9 +116,9 @@ public client_disconnected(id)
             //set_task_ex(1.0, "on_join", 34, .flags = SetTask_RepeatTimes, .repeat = 1 );
             set_task(1.0,"on_join", 34)
             //set_task_ex(5.0, "on_exit", 56, .flags = SetTask_RepeatTimes, .repeat = 1 );
-            set_task(5.0, "on_exit", 56)
+            //set_task(5.0, "on_exit", 56)
         }
-        else if (numplayers > 1 && numplayers < 5)
+        else if (numplayers && numplayers < 5)
         {
             if(!task_exists(340043))
                 //set_task_ex(10.0, "on_join", 340043, .flags = SetTask_RepeatTimes, .repeat = 1 );
@@ -148,7 +150,6 @@ public bots_()
 
 public bots_flag()
 {
-
     static mname[MAX_NAME_LENGTH];
     get_mapname(mname,charsmax (mname));
     static adjmsize, Float:mega;
@@ -156,9 +157,11 @@ public bots_flag()
     static Float:msize; msize = (filesize("maps/%s.bsp",mname, charsmax (mname))*(mega)/1024)
     adjmsize = floatround(msize, floatround_ceil);
 
-    static numplayers; numplayers = iPlayers()
+    //new numplayers; numplayers = iPlayers()
 
-    if (numplayers > 1)
+    new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
+
+    if (iHeadcount > 1)
     {
         new g_Bots_Min = floatround(adjmsize * 1.5) + 2;
         new g_Bots_Max = floatround(adjmsize * 2.5) + 4;
@@ -198,29 +201,34 @@ public mop_bot()
 @zero_bots()
 {
     server_cmd("jk_botti min_bots 0;jk_botti max_bots 0;HPB_Bot min_bots 0; HPB_Bot max_bots 0")
-    for(new list;list <= MaxClients;++list)
+    for(new list = 1 ;list <= MaxClients;++list)
     if(is_user_connected(list) && is_user_bot(list))
     {
-        server_cmd("amx_kick %n ^"Purging bots.^"",list);
+        server_print("Starting purge %N", list)
+        server_cmd("kick %n ^"Purging bots.^"",list);
     }
     return PLUGIN_HANDLED
 }
 
 public on_join()
 {
-    new numplayers = iPlayers()
+    new players[ MAX_PLAYERS ],numplayers;get_players(players,numplayers,"ch")
 
     if (get_pcvar_num(g_bot_control))
     {
         if (containi(g_mname, SzFlagCapMap) > -1)
         {
-            if ( numplayers > 1 && numplayers < 7 )
+            if ( /*numplayers > 1 &&*/ numplayers < 7 )
                 bots_flag();
 
             if( numplayers > 6 )
             {
                 @zero_bots()
                 server_print "Autoconcom bot adjustment."
+            }
+            if ( numplayers == 1 )
+            {
+                set_task(45.0, "@zero_bots", 2024)
             }
             if ( !numplayers )
             {
