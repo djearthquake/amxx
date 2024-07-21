@@ -65,7 +65,7 @@ public plugin_init()
     static iOwner; iOwner = pev(iEnt, pev_owner)
     static iGlow_cvar;iGlow_cvar = get_pcvar_num(g_iGlow);
     static wpn_id; wpn_id = get_user_weapon(iOwner)
-    if(iGlow_cvar > charsmin)
+    if(iGlow_cvar > charsmin && pev_valid(iEnt)>1)
     {
         if(HLW_CROWBAR <= wpn_id <= HLW_PENGUIN)
         {
@@ -84,11 +84,14 @@ public plugin_init()
 
 @mine_adj(iEnt)
 {
-    static Float:fOrigin[3];
-    pev(iEnt, pev_origin, fOrigin)
-    fOrigin[2] -= 40.0
-
-    set_pev(iEnt, pev_origin, fOrigin)
+    if(pev_valid(iEnt)>1)
+    {
+        static Float:fOrigin[3];
+        pev(iEnt, pev_origin, fOrigin)
+        fOrigin[2] -= 40.0
+    
+        set_pev(iEnt, pev_origin, fOrigin)
+    }
 }
 
 stock COLOR()
