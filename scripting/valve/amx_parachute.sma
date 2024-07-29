@@ -103,7 +103,7 @@
 #define IS_THERE (~(0<<IN_SCORE))
 #define charsmin                  -1
 
-#define Parachute_size  35.0
+#define Parachute_size  15.0
 
 new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1];
 new para_ent[ MAX_PLAYERS +1 ]
@@ -155,7 +155,7 @@ public plugin_init()
         MaxClients = get_maxplayers()
     #endif
 
-    new mod_name[MAX_NAME_LENGTH]
+    static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
     if(equal(mod_name, "cstrike"))
     {
@@ -303,7 +303,7 @@ public client_infochanged(id)
 
 public parachute_reset(id)
 {
-    new print = get_pcvar_num(g_debug)
+    static print; print = get_pcvar_num(g_debug)
     if(is_user_connected(id))
     {
         set_user_gravity(id, 1.0)
@@ -311,46 +311,69 @@ public parachute_reset(id)
         if(print)
             server_print "Resetting chute for %n", id
 
-        if(task_exists(id))remove_task(id);
+        if(task_exists(id))
+        {
+            remove_task(id);
+        }
         if(print)
         {
             server_print "Removed chute task for %n", id
-            server_print "reset task for %n", id
-
-            server_print "Set ent to 0 for %n", id
         }
         if(pev_valid(para_ent[id]))
         {
             set_pev(para_ent[id], pev_solid, SOLID_NOT)
-            if(print)
-                server_print "PAST Set ent to 0 for %n", id
+
             if(pev_valid(para_ent[id]))
             {
                 if(print)
+                {
                     server_print "Removing para_ent for %n", id
+                }
                 remove_entity(para_ent[id])
+                if(g_UnBreakable)
+                {
+                    para_ent[id] = 0
+                    server_print "Set ent to 0 for %n", id
+                }
+            }
+            if(print)
+            {
+                server_print "PAST Set ent to 0 for %n", id
+            }
+            if(para_ent[id])
+            {
+                remove_entity(para_ent[id])
+            }
+            if(para_ent[id])
+            {
+                para_ent[id] = 0
+                server_print "Set ent to 0...end"
             }
         }
     }
-    if(pev_valid(para_ent[id]))
-        remove_entity(para_ent[id])
-
-    para_ent[id] = 0
 }
 
-@chute_touch(chute,whatever)
+@chute_touch(iChute,iWhatever)
 {
-    if(!get_pcvar_num(g_debug))
+    static iDebug; iDebug = get_pcvar_num(g_debug)
+    static szClass[MAX_NAME_LENGTH]
+    pev(iWhatever, pev_classname, szClass, charsmax(szClass))
     {
-        static id; id = pev(chute, pev_owner)
+        static id; id = pev(iChute, pev_owner)
         if(is_user_connected(id) && !bAdjusted[id])
         {
-            server_print "Adjusting %n parachute...", id
+            if(iDebug)
+            {
+                is_user_connected(iWhatever) ? server_print ("Adjusting %n parachute...off %n", id, iWhatever) : server_print ("Adjusting %n parachute...off %s", id, szClass);
+            }
 
-            if(para_ent[id] && is_valid_ent(para_ent[id])>1)
+            if(para_ent[id] && pev_valid(para_ent[id])>1)
             {
                     set_pev(para_ent[id], pev_solid, SOLID_NOT)
-                    bAdjusted[id] = true
+                    if(iDebug)
+                    {
+                        bAdjusted[id] = true
+                    }
                     server_print "Adjusted %n parachute!", id
                     set_task(bIsBot[id]?0.2:0.1, "@adj_throttle", id)
             }
@@ -361,8 +384,10 @@ public parachute_reset(id)
 @adj_throttle(id)
 {
     bAdjusted[id] = false
-    if(para_ent[id])
-        set_pev(para_ent[id], pev_flags, SF_BREAK_TOUCH)
+    if(para_ent[id] && get_pcvar_num(g_debug))
+    {
+        server_print "Adjust to %n's parachute...complete.", id
+    }
 }
 
 public newSpawn(id)
@@ -411,10 +436,12 @@ public parachute_prethink(id)
         new button = get_user_button(id)
         new oldbutton = get_user_oldbutton(id)
 
-        new iDrop = pev(id,pev_flFallVelocity)
-
-        emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
-        parachute_think(flags, id, button, oldbutton, iDrop)
+        static iDrop; iDrop = 0;  iDrop = pev(id,pev_flFallVelocity)
+        if(is_user_alive(id))
+        {
+            emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
+            parachute_think(flags, id, button, oldbutton, iDrop)
+        }
     }
 }
 
@@ -428,7 +455,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
      */
     new Float:frame;
     new fParachuteSpeed = get_pcvar_num(pFallSpeed)
-    if(is_user_alive(id))
+    if(id)
     {
         new AUTO;
         new Rip_Cord = get_pcvar_num(pAutoDeploy);
@@ -528,8 +555,10 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                             new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
                             formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
                             set_pev(para_ent[id], pev_classname, "parachute")
+                            //set_pev(para_ent[id], pev_flags, SF_BREAK_TOUCH)
+                            set_pev(para_ent[id], pev_takedamage, DAMAGE_AIM)
 
-                            if(is_valid_ent(para_ent[id]))
+                            if(pev_valid(para_ent[id])>1)
                             {
                                 entity_set_string(para_ent[id], EV_SZ_targetname, SzChuteName)
                                 entity_set_edict(para_ent[id], EV_ENT_aiment, id)
@@ -567,7 +596,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                                 entity_set_float(para_ent[id], EV_FL_fuser1, 0.0)
                             }
                         }
-                        if(para_ent[id] && is_valid_ent(para_ent[id]))
+                        if(para_ent[id] && pev_valid(para_ent[id])>1)
                         {
                             entity_set_int(id, EV_INT_sequence, 3)
                             entity_set_int(para_ent[id], EV_INT_movetype, MOVETYPE_FOLLOW)
@@ -680,12 +709,15 @@ public chute_pop(id)
         if(print)
             server_print("%n chute pop effect ended", id);
     }
+    parachute_reset(id)
 }
 
 //administrative code/////////////////////////////////
 public client_connect(id)
-if(is_user_connected(id))
-    parachute_reset(id)
+{
+    if(id)
+    { parachute_reset(id); }
+}
 
 #if !defined client_disconnected
 #define client_disconnected client_disconnect
@@ -696,16 +728,21 @@ public client_disconnected(id)
 
 public death_event()
 {
-    new id = read_data(2)
-    if(is_user_connected(id))
+    static id; id = 0; id = read_data(2)
+    if(id && id <=MaxClients)
     {
+        if(is_user_connected(id))
+        {
+            emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
+            server_print "stopping sound"
+        }
         //otherwise the dead become a stepping stone for the living
-        if(para_ent[id])
+        if(pev_valid(para_ent[id]>1))
+        {
             set_pev(para_ent[id],pev_solid,SOLID_NOT)
-
-        parachute_reset(id)
+        }
     }
-
+    parachute_reset(id)
 }
 
 public HandleSay(id)
