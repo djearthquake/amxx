@@ -726,15 +726,13 @@ public client_connect(id)
 public client_disconnected(id)
     parachute_reset(id)
 
-public death_event()
+public death_event(id)
 {
-    static id; id = 0; id = read_data(2)
     if(id && id <=MaxClients)
     {
         if(is_user_connected(id))
         {
             emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
-            server_print "stopping sound"
         }
         //otherwise the dead become a stepping stone for the living
         if(pev_valid(para_ent[id]>1))
