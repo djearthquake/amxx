@@ -229,8 +229,9 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
-static const unicoding_table[74][2][148] =
+static const unicoding_table[76][2][152] =
 {///https://en.wikipedia.org/wiki/List_of_Unicode_characters
+  ///https://www.fileformat.info/info/unicode/char/0165/index.htm
     {"\u2013", "-"},
     {"\u00c0", "A"},
     {"\u00c1", "A"},
@@ -304,8 +305,9 @@ static const unicoding_table[74][2][148] =
     {"\u0141", "L"},
     {"\u011f", "g"},
     {"\u0105", "a"},
+    {"\u011b", "e"},
+    {"\u0165", "t"},
     {"\u017a", "z"}
-
 };
 
 public plugin_init()
