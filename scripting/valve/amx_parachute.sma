@@ -351,6 +351,10 @@ public parachute_reset(id)
             }
         }
     }
+    if(para_ent[id])
+    {
+        remove_entity(para_ent[id])
+    }
 }
 
 @chute_touch(iChute,iWhatever)
@@ -728,16 +732,13 @@ public client_disconnected(id)
 
 public death_event(id)
 {
-    if(id && id <=MaxClients)
+    if(!is_user_alive(id))
     {
-        if(is_user_connected(id))
-        {
-            emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
-        }
-        //otherwise the dead become a stepping stone for the living
+        emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
         if(pev_valid(para_ent[id]>1))
         {
             set_pev(para_ent[id],pev_solid,SOLID_NOT)
+            //otherwise the dead become a stepping stone for the living
         }
     }
     parachute_reset(id)
