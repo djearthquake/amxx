@@ -411,7 +411,8 @@ public plugin_save(g_model)
 
 public glow(g_model)
 {
-    if(pev_valid(g_model) && get_pcvar_num(g_cvar_neon_gren))
+    if(get_pcvar_num(g_cvar_neon_gren) && get_pcvar_num(g_cvar_neon_hull))
+    if(pev_valid(g_model))
     {
         set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
     }
@@ -505,7 +506,12 @@ public HandGrenade_Attack2_Touch(ent, id)
                 for (new m=0; m<playercount; ++m)
                 {
                     static playerlocation[3]
-                    if(1 <= players[m] <= MaxClients && is_user_connected(players[m]) && is_user_alive(players[m]) && players[m] != nade_owner)
+                    new flags = pev(players[m], pev_flags)
+
+                    ///if(is_user_alive(players[m]) && players[m] != nade_owner & flags &~ FL_SPECTATOR)
+                    //if(is_user_alive(players[m]) && players[m] != nade_owner && players[m] & flags &~ FL_SPECTATOR)
+
+                    if(is_user_alive(players[m]) && players[m] != nade_owner)
                     {
                         static hp; hp = get_user_health(players[m])
                         get_user_origin(players[m], playerlocation)
@@ -532,7 +538,8 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 }
 
                             }
-                            if(players[m])
+                            if(flags & FL_SPECTATOR)
+                                goto END
                             {
                                 emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
                                 ewrite_byte( TE_PLAYERSPRITES)
@@ -856,8 +863,8 @@ stock players_who_see_effects()
     if(is_user_alive(SEE))
     {
         new iMob = SEE
-        //if(~CheckPlayerBit(g_AI, iMob))
-        if(!is_user_bot(iMob) && !iBot)
+        if(~CheckPlayerBit(g_AI, iMob) && !iBot)
+        ///if(!is_user_bot(iMob) && !iBot)
         {
             new flags = pev(iMob, pev_flags)
             if(flags & FL_SPECTATOR)
