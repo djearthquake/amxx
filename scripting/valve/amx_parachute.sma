@@ -430,21 +430,25 @@ if(is_user_connected(id))
 
 public parachute_prethink(id)
 {
-    if(!get_pcvar_num(pEnabled)) return
-    if(is_user_connected(id))
+    if(get_pcvar_num(pEnabled))
     {
-        new flags = get_entity_flags(id)
-        if(flags & FL_SPECTATOR)
-            return
-
-        new button = get_user_button(id)
-        new oldbutton = get_user_oldbutton(id)
-
-        static iDrop; iDrop = 0;  iDrop = pev(id,pev_flFallVelocity)
-        if(is_user_alive(id))
+        if(is_user_connected(id))
         {
-            emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH)
-            parachute_think(flags, id, button, oldbutton, iDrop)
+            new flags = get_entity_flags(id)
+            static iDrop; iDrop = 0;  iDrop = pev(id,pev_flFallVelocity)
+            emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, iDrop > 700 ? 0 : SND_STOP, PITCH);
+
+            if(flags & FL_SPECTATOR)
+                return
+
+            if(is_user_alive(id))
+            {
+                new button = get_user_button(id)
+                new oldbutton = get_user_oldbutton(id)
+
+                parachute_think(flags, id, button, oldbutton, iDrop)
+            }
+            set_pev(id,pev_flFallVelocity, 0.0)
         }
     }
 }
@@ -457,9 +461,12 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
      * 1 - idle - 39 frames
      * 2 - detach - 29 frames
      */
-    new Float:frame;
-    new fParachuteSpeed = get_pcvar_num(pFallSpeed)
-    if(id)
+    static Float:frame;
+    static flags; flags = get_entity_flags(id)
+    if(flags & FL_SPECTATOR)
+        return
+    static fParachuteSpeed; fParachuteSpeed = get_pcvar_num(pFallSpeed)
+    if(is_user_alive(id))
     {
         new AUTO;
         new Rip_Cord = get_pcvar_num(pAutoDeploy);
@@ -553,8 +560,8 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 
                             set_pev(para_ent[id], pev_spawnflags, 6)
 
-                            para_ent[id] = g_UnBreakable ? create_entity("info_target") : create_entity("func_breakable")
-                            set_pev(para_ent[id], pev_solid, g_UnBreakable  ? SOLID_NOT : SOLID_BBOX)
+                            para_ent[id] = g_UnBreakable || bIsBot[id] && bOF_run ? create_entity("info_target") : create_entity("func_breakable")
+                            set_pev(para_ent[id], pev_solid, g_UnBreakable ? SOLID_NOT : SOLID_BBOX)
 
                             new SzChuteName[MAX_RESOURCE_PATH_LENGTH]
                             formatex( SzChuteName, charsmax( SzChuteName), "%n's parachute",id )
@@ -586,6 +593,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                                 set_pev(para_ent[id],pev_angles,angles)
 
                                 set_pev(para_ent[id],pev_takedamage, g_UnBreakable || bIsBot[id] && bOF_run ? DAMAGE_NO : DAMAGE_YES)
+                                ///set_pev(para_ent[id],pev_takedamage, g_UnBreakable ? DAMAGE_NO : DAMAGE_YES)
 
                                 //Give the parachute health so we can destroy it later in a fight.
                                 if(!g_UnBreakable)
@@ -735,7 +743,8 @@ public death_event(id)
     if(!is_user_alive(id))
     {
         emit_sound(id, CHAN_BODY, LOST_CHUTE_SOUND, VOL_NORM, ATTN_IDLE, SND_STOP, PITCH)
-        if(pev_valid(para_ent[id]>1))
+        set_pev(id,pev_flFallVelocity, 0.0)
+        if(para_ent[id] & pev_valid(para_ent[id]>1))
         {
             set_pev(para_ent[id],pev_solid,SOLID_NOT)
             //otherwise the dead become a stepping stone for the living
