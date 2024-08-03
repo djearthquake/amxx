@@ -309,17 +309,18 @@ public hull_glow(model)
 @tracer(s)
 {
     if(get_pcvar_num(g_cvar_neon_gren))
-    if(pev_valid(s) && get_pcvar_num(g_cvar_neon_hull) == 1){
-
-      switch(random_num(0,1))
-       {
-        case 0: set_ent_rendering(s, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(s,1000));
-        case 1: set_ent_rendering(s, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
-       }
-
+    if(pev_valid(s) && get_pcvar_num(g_cvar_neon_hull) == 1)
+    {
+        switch(random_num(0,1))
+        {
+            case 0: set_ent_rendering(s, kRenderFxExplode, COLOR, COLOR, COLOR, kRenderGlow, power(s,1000));
+            case 1: set_ent_rendering(s, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(80,200));
+        }
     }
-    if(get_pcvar_num(g_cvar_neon_toss) == 1)
+    if(get_pcvar_num(g_cvar_neon_toss))
+    {
         Trail_me(s)
+    }
 }
 
 public CurentWeapon(id)
@@ -401,20 +402,24 @@ public plugin_save(g_model)
         remove_task(g_model);
 
     if(task_exists(g_model))
+    {
         switch(0,1)
         {
-          case 0: return PLUGIN_HANDLED_MAIN;
-          case 1: plugin_save(g_model);
+            case 0: return PLUGIN_HANDLED_MAIN;
+            case 1: plugin_save(g_model);
         }
+    }
     return PLUGIN_CONTINUE;
 }
 
 public glow(g_model)
 {
     if(get_pcvar_num(g_cvar_neon_gren) && get_pcvar_num(g_cvar_neon_hull))
-    if(pev_valid(g_model))
     {
-        set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
+        if(pev_valid(g_model))
+        {
+         set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
+        }
     }
 }
 
@@ -506,13 +511,10 @@ public HandGrenade_Attack2_Touch(ent, id)
                 for (new m=0; m<playercount; ++m)
                 {
                     static playerlocation[3]
-                    new flags = pev(players[m], pev_flags)
-
-                    ///if(is_user_alive(players[m]) && players[m] != nade_owner & flags &~ FL_SPECTATOR)
-                    //if(is_user_alive(players[m]) && players[m] != nade_owner && players[m] & flags &~ FL_SPECTATOR)
 
                     if(is_user_alive(players[m]) && players[m] != nade_owner)
                     {
+                        new flags = pev(players[m], pev_flags)
                         static hp; hp = get_user_health(players[m])
                         get_user_origin(players[m], playerlocation)
                         static result_distance; result_distance = get_entity_distance(g_model, players[m]);
@@ -538,12 +540,12 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 }
 
                             }
-                            if(flags & FL_SPECTATOR)
-                                goto END
+                            static iPlayers; iPlayers = flags &~ FL_SPECTATOR
+                            if(iPlayers)
                             {
-                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
-                                ewrite_byte( TE_PLAYERSPRITES)
-                                ewrite_short(players[m])//ewrite_short(m)  //(playernum)
+                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
+                                ewrite_byte(TE_PLAYERSPRITES)
+                                ewrite_short(players[m])
                                 switch(random_num(0,2))
                                 {
                                     case 0: ewrite_short(g_energy0);
@@ -569,9 +571,8 @@ public HandGrenade_Attack2_Touch(ent, id)
 
                                     fakedamage(players[m], szClass,15.0,DMG_RADIATION)
 
-
                                     //emessage_begin(MSG_BROADCAST,g_event_fade,{0,0,0},players[m]);
-                                    emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},players[m]);
+                                    emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, players[m]);
                                     DELAY;DELAY;FLAGS;
                                     if(hp > 50)
                                     {
@@ -657,7 +658,6 @@ public Other_Attack_Touch(ent, id)
 
         if(killer != id && get_pcvar_num(g_cvar_neon_all))
         {
-
             ///Sound FX
             if(get_pcvar_num(g_cvar_neon_snd))
             {
@@ -716,15 +716,17 @@ public Other_Attack_Touch(ent, id)
                 {
                     get_user_origin(players[m], playerlocation);
                     result_distance  = get_entity_distance(g_model, players[m]);
-
+                    static SzClass[MAX_NAME_LENGTH];
+                    pev(ent,pev_classname, SzClass,charsmax(SzClass))
+                    if(contain(SzClass, "Rad")==charsmin)
+                    {
+                        format(SzClass, charsmax(SzClass), "Radioactive %s", SzClass)
+                    }
                     if(result_distance  < get_pcvar_num(g_proximity))
                     {
                         new hp; hp = get_user_health(players[m])
                         if(hp > 15.0)
                         {
-                            static SzClass[MAX_NAME_LENGTH];
-                            if(contain(SzClass, "Rad")==charsmin)
-                                format(SzClass, charsmax(SzClass), "Radioactive %s", SzClass)
                             fakedamage(players[m],SzClass,1.0,DMG_SONIC);
                             {
                                 emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] )
@@ -745,9 +747,9 @@ public Other_Attack_Touch(ent, id)
                         {
                             set_msg_block(g_deathmsg, bStrike ? BLOCK_SET : BLOCK_ONCE);
                             entity_explosion_knockback(players[m], End_Position);
-                            fakedamage(players[m],"Sonic Radiation",300.0,DMG_SONIC);
+                            fakedamage(players[m],SzClass,300.0,DMG_SONIC);
 
-                            log_kill(killer,players[m],"Sonic Radiation",1);
+                            log_kill(killer,players[m],SzClass,1);
                         }
                     }
                 }
