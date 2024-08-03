@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Tues Jul 30th, 2024.
+*(__ [__)*|\ | >< Last edit date Fri Aug 1st, 2024.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -114,11 +114,11 @@
 
     new Float:Axis[3];
     new g_model,sprite,g_ring;
-    new g_cvar_neon_all,g_cvar_neon_c4,g_cvar_neon_hull,g_cvar_neon_toss,g_cvar_neon_rad,g_cvar_neon_wid;
+    new g_cvar_neon_all,g_cvar_neon_c4,g_cvar_neon_hull,g_cvar_neon_toss,g_cvar_neon_rad,g_cvar_neon_wid, g_cvar_neon_snd, g_cvar_neon_gren, g_cvar_neon_bot;
     new gibs_models0, gibs_models1, gibs_models2;
     new g_energy0,g_energy1,g_energy2;
 
-    new g_pickable, g_debug, g_cvar_neon_snd, g_proximity;
+    new g_pickable, g_debug, g_proximity;
     new g_pickerton[MAX_PLAYERS];
     new g_cvar_bsod_iDelay;
     new g_iLoss,g_iPing;
@@ -145,7 +145,7 @@ public plugin_end()
 
 public plugin_init()
 {
-    register_plugin("Neon Grenade Trace","A","SPiNX");
+    register_plugin("Neon Grenade Trace","A1","SPiNX");
     static modname[MAX_PLAYERS];
     get_modname(modname, charsmax(modname))
     bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
@@ -172,6 +172,8 @@ public plugin_init()
     g_cvar_neon_rad    = register_cvar("sv_neon_rad",  "1");
     g_cvar_neon_snd    = register_cvar("sv_neon_snd",  "0");
     g_cvar_neon_wid    = register_cvar("sv_neon_wid",  "3"); //max width
+    g_cvar_neon_gren    = register_cvar("sv_neon_gren",  "0"); //plugin on or off
+    g_cvar_neon_bot   = register_cvar("sv_neon_bot",  "0"); //blind/freeze bots
     g_proximity             = register_cvar("sv_neon_range",  "500"); //max range
     g_teams            =  bStrike ? get_cvar_pointer("mp_friendlyfire") : get_cvar_pointer("mp_teamplay")
     clamp(g_cvar_neon_wid,1,150);
@@ -306,6 +308,7 @@ public hull_glow(model)
 
 @tracer(s)
 {
+    if(get_pcvar_num(g_cvar_neon_gren))
     if(pev_valid(s) && get_pcvar_num(g_cvar_neon_hull) == 1){
 
       switch(random_num(0,1))
@@ -321,68 +324,74 @@ public hull_glow(model)
 
 public CurentWeapon(id)
 {
-    if(is_user_connected(id) && is_user_alive(id))
+    if(get_pcvar_num(g_cvar_neon_gren))
     {
-        new temp_ent1, temp_ent2, temp_ent3, temp_ent4,/*temp_ent5,*/ temp_ent6, /*temp_ent7,*/ temp_ent8;
-        //Standard
-        temp_ent1 = find_ent(MaxClients,"grenade");
-        temp_ent2 = find_ent(MaxClients,"ARgrenade");
-
-        //Make hivehand into vorpal weapon.
-        if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
-            temp_ent3 = find_ent(MaxClients,"hornet");
-        //Magic Missile variant.
-        if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
-            temp_ent4 =  find_ent(MaxClients,"bolt");
-        //Baby nuke tipped RPG and alike.
-        if(get_pcvar_num(g_cvar_neon_all) > 9)
+        if(is_user_alive(id))
         {
-//            temp_ent5 = find_ent(MaxClients,"gib"); //rpg_rocket
-            temp_ent6 = find_ent(MaxClients,"mortar_shell");
-//            temp_ent7 = find_ent(MaxClients,"func_tank");
-            temp_ent8 = find_ent(MaxClients,"func_rocket"); //spinx_missile fork of lud's
+            new temp_ent1, temp_ent2, temp_ent3, temp_ent4,/*temp_ent5,*/ temp_ent6, /*temp_ent7,*/ temp_ent8;
+            //Standard
+            temp_ent1 = find_ent(MaxClients,"grenade");
+            temp_ent2 = find_ent(MaxClients,"ARgrenade");
+    
+            //Make hivehand into vorpal weapon.
+            if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
+                temp_ent3 = find_ent(MaxClients,"hornet");
+            //Magic Missile variant.
+            if(get_pcvar_num(g_cvar_neon_all) > 6 || get_pcvar_num(g_cvar_neon_all) == -6)
+                temp_ent4 =  find_ent(MaxClients,"bolt");
+            //Baby nuke tipped RPG and alike.
+            if(get_pcvar_num(g_cvar_neon_all) > 9)
+            {
+    //            temp_ent5 = find_ent(MaxClients,"gib"); //rpg_rocket
+                temp_ent6 = find_ent(MaxClients,"mortar_shell");
+    //            temp_ent7 = find_ent(MaxClients,"func_tank");
+                temp_ent8 = find_ent(MaxClients,"func_rocket"); //spinx_missile fork of lud's
+            }
+    
+            if(pev_valid(temp_ent1) )
+                g_model = temp_ent1;
+    
+            if(pev_valid(temp_ent2) )
+                g_model = temp_ent2;
+    
+            if(pev_valid(temp_ent3) )
+                g_model = temp_ent3;
+    
+            if(pev_valid(temp_ent4) )
+                g_model = temp_ent4;
+    
+     //       if(pev_valid(temp_ent5) )
+     //           g_model = temp_ent5;
+    
+            if(pev_valid(temp_ent6) )
+                g_model = temp_ent6;
+    
+     //       if(pev_valid(temp_ent7) )
+     //           g_model = temp_ent7;
+    
+            if(pev_valid(temp_ent8) )
+                g_model = temp_ent8;
+    
+            new s = g_model
+            @tracer(s)
         }
-
-        if(pev_valid(temp_ent1) )
-            g_model = temp_ent1;
-
-        if(pev_valid(temp_ent2) )
-            g_model = temp_ent2;
-
-        if(pev_valid(temp_ent3) )
-            g_model = temp_ent3;
-
-        if(pev_valid(temp_ent4) )
-            g_model = temp_ent4;
-
- //       if(pev_valid(temp_ent5) )
- //           g_model = temp_ent5;
-
-        if(pev_valid(temp_ent6) )
-            g_model = temp_ent6;
-
- //       if(pev_valid(temp_ent7) )
- //           g_model = temp_ent7;
-
-        if(pev_valid(temp_ent8) )
-            g_model = temp_ent8;
-
-        new s = g_model
-        @tracer(s)
     }
-
 }
 
 public Trail_me(g_model)
 {
     if(get_pcvar_num(g_cvar_neon_toss) !=1)return;
     new lums = random_num(100,2000);new time = random_num(18,40);new width = random_num(1,get_pcvar_num(g_cvar_neon_wid));
-    emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 );
-    ewrite_byte(TE_BEAMFOLLOW);
-    ewrite_short(g_model);ewrite_short(sprite);
-    ewrite_byte(time);ewrite_byte(width);
-    ewrite_byte(COLOR);ewrite_byte(COLOR);ewrite_byte(COLOR);
-    ewrite_byte(lums);emessage_end();
+    static iGroup; iGroup = players_who_see_effects();
+    if(iGroup && get_pcvar_num(g_cvar_neon_gren))
+    {
+        emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, iGroup );
+        ewrite_byte(TE_BEAMFOLLOW);
+        ewrite_short(g_model);ewrite_short(sprite);
+        ewrite_byte(time);ewrite_byte(width);
+        ewrite_byte(COLOR);ewrite_byte(COLOR);ewrite_byte(COLOR);
+        ewrite_byte(lums);emessage_end();
+    }
 }
 
 public plugin_save(g_model)
@@ -402,7 +411,7 @@ public plugin_save(g_model)
 
 public glow(g_model)
 {
-    if(pev_valid(g_model)>1)
+    if(pev_valid(g_model) && get_pcvar_num(g_cvar_neon_gren))
     {
         set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
     }
@@ -411,7 +420,7 @@ public glow(g_model)
 public HandGrenade_Attack2_Touch(ent, id)
 {
     new szClass[MAX_NAME_LENGTH]
-    if(pev_valid(ent)>1)
+    if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_gren))
     {
         pev(ent,pev_classname, szClass, charsmax(szClass))
         static nade_owner;
@@ -419,7 +428,7 @@ public HandGrenade_Attack2_Touch(ent, id)
         if(bStrike && g_cvar_neon_c4 && !get_pcvar_num(g_cvar_neon_c4) && get_pdata_bool(ent, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
             return PLUGIN_HANDLED
 
-        if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_rad) == 1)
+        if(pev_valid(ent) && get_pcvar_num(g_cvar_neon_rad))
         {
             nade_owner = pev(ent,pev_owner);
             ///Sound FX //make a cvar lags might be reason for overflows!
@@ -431,16 +440,17 @@ public HandGrenade_Attack2_Touch(ent, id)
                 case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
                 case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
             }
+            static iGroup; iGroup = players_who_see_effects();
 
             static Float:End_Position[3];
             g_model = ent
-            if(pev_valid(g_model))
+            if(pev_valid(g_model) && iGroup)
             {
                 entity_get_vector(g_model,EV_VEC_origin,End_Position);
                 entity_get_vector(g_model,EV_VEC_angles,Axis);
 
                 ///explode models on explode or touch.
-                emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, players_who_see_effects() )
+                emessage_begin_f( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, iGroup )
                 ewrite_byte(TE_EXPLODEMODEL)
                 ewrite_coord_f(End_Position[0]+random_float(-11.0,11.0))      // XYZ (start)
                 ewrite_coord_f(End_Position[1]-random_float(-11.0,11.0))
@@ -460,7 +470,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                 if(equali(szClass, "Hook_illuminati"))
                 goto END
 
-                emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, players_who_see_effects() );
+                emessage_begin_f( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, iGroup );
                 ewrite_byte(random_num(19,21));
                 ewrite_coord_f(End_Position[0]);
                 ewrite_coord_f(End_Position[1]);
@@ -522,14 +532,9 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 }
 
                             }
-                            //spec no fx
-                            static flags
-                            flags = pev(players[m], pev_flags)
-
-                            if(flags & FL_SPECTATOR)
-                                goto END;
+                            if(players[m])
                             {
-                                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0); //players_who_see_effects() ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
+                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] ) // 0 0 255 going for blue background to make better use of my sprites in amxx//Use 17 with a task!
                                 ewrite_byte( TE_PLAYERSPRITES)
                                 ewrite_short(players[m])//ewrite_short(m)  //(playernum)
                                 switch(random_num(0,2))
@@ -543,7 +548,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 emessage_end()
 
 
-                                emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0},players[m]);
+                                emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0}, players[m]);
                                 ewrite_short(25000); //amp
                                 ewrite_short(8000); //dur //4096 is~1sec
                                 ewrite_short(30000); //freq
@@ -558,6 +563,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                                     fakedamage(players[m], szClass,15.0,DMG_RADIATION)
 
 
+                                    //emessage_begin(MSG_BROADCAST,g_event_fade,{0,0,0},players[m]);
                                     emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0},players[m]);
                                     DELAY;DELAY;FLAGS;
                                     if(hp > 50)
@@ -636,7 +642,9 @@ public Other_Attack_Touch(ent, id)
 {
     static Float:Axis[3], Float:End_Position[3];
     static killer;
-    if(is_user_connected(id) && is_user_alive(id) && pev_valid(ent))
+    static iGroup; iGroup = players_who_see_effects();
+    if(get_pcvar_num(g_cvar_neon_gren))
+    if(iGroup && is_user_alive(id) && pev_valid(ent))
     {
         killer = entity_get_edict(ent,EV_ENT_owner);
 
@@ -661,7 +669,7 @@ public Other_Attack_Touch(ent, id)
             entity_get_vector(g_model,EV_VEC_origin,End_Position);
             entity_get_vector(g_model,EV_VEC_angles,Axis);
 
-            emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0}, players_who_see_effects() );
+            emessage_begin_f( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0}, iGroup );
             ewrite_byte(random_num(19,21));
             ewrite_coord_f(End_Position[0]);
             ewrite_coord_f(End_Position[1]);
@@ -695,7 +703,7 @@ public Other_Attack_Touch(ent, id)
             get_players(players,playercount,"h")
             for (new m=0; m<playercount; ++m)
             {
-                new playerlocation[3];
+                static playerlocation[3];
                 static iRad;iRad = get_pcvar_num(g_cvar_neon_rad)
                 if(iRad && is_user_alive(players[m]))
                 {
@@ -707,9 +715,12 @@ public Other_Attack_Touch(ent, id)
                         new hp; hp = get_user_health(players[m])
                         if(hp > 15.0)
                         {
-                            fakedamage(players[m],"Sonic Radiation",1.0,DMG_SONIC);
+                            static SzClass[MAX_NAME_LENGTH];
+                            if(contain(SzClass, "Rad")==charsmin)
+                                format(SzClass, charsmax(SzClass), "Radioactive %s", SzClass)
+                            fakedamage(players[m],SzClass,1.0,DMG_SONIC);
                             {
-                                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, players_who_see_effects() )
+                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] )
                                 ewrite_byte( TE_PLAYERSPRITES);
                                 ewrite_short(players[m])  //(playernum)
                                 switch(random_num(0,2))
@@ -838,25 +849,54 @@ public pin_scoreboard(killer)
 }
 
 stock players_who_see_effects()
-{
-    //CPU client safeguard attempt.
-    static flags;
-    new players[MAX_PLAYERS], playercount, SEE;
-    get_players(players,playercount,"ch");
-
-    for (SEE=0; SEE<playercount; SEE++)
+{  //CPU client safeguard attempt.;
+    static iDebug; iDebug = get_pcvar_num(g_debug)
+    static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
+    for(new SEE=1; SEE<=MaxClients; ++SEE)
+    if(is_user_alive(SEE))
     {
-
-        flags = pev(players[SEE], pev_flags)
-    
-        if(flags & FL_SPECTATOR)
-            goto END;
-        return players[SEE];
+        new iMob = SEE
+        //if(~CheckPlayerBit(g_AI, iMob))
+        if(!is_user_bot(iMob) && !iBot)
+        {
+            new flags = pev(iMob, pev_flags)
+            if(flags & FL_SPECTATOR)
+            {
+                if(iDebug)
+                {
+                    server_print ("%N is a spec", iMob)
+                }
+            }
+            else
+            {
+                if(iDebug)
+                {
+                  server_print ("%N is NOT a spec", iMob)
+                }
+                if(is_user_alive(iMob))
+                {
+                   if(~CheckPlayerBit(g_AI, iMob) && !iBot)
+                    {
+                        if(iDebug)
+                        {
+                            server_print ("Effect sent to: %N", iMob)
+                        }
+                        return iMob; //humans only
+                    }
+                }
+            }
+        }
+        else
+        {
+            if(iDebug)
+            {
+                server_print ("Effect sent to: %N", iMob)
+            }
+            return iMob //bots 
+        }
     }
-    END:
     return PLUGIN_CONTINUE;
 }
-
 
 #include <xs>
 public entity_explosion_knockback(victim, Float:fExpOrigin[3])
