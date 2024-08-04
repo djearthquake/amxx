@@ -5,7 +5,7 @@
 /**
 *    AMXX MISSILES. Missile menu launcher for GoldSrc.
 *
-*    Copyleft (C) Oct 2020-2023 .sρiηX҉.
+*    Copyleft (C) Oct 2020-2024 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -282,7 +282,7 @@
 *
 *  v3.8 - JTP10181 - 07/23/04
 *   - Converted MOTD boxes to work with steam and possibly with WON still
-*   - Fixed all authid variables to be 34 chars so STEAMIDs are handled pParachuterly
+*   - Fixed all authid variables to be 34 chars so STEAMIDs are handled properly
 *   - Changed wc3 specific code to use the engine module for AMXx
 *   - Added code so the missile buying can only be enabled for CS
 *       since the money functions are only for CS in AMXx
@@ -376,7 +376,6 @@ new bool:b_Bot[MAX_PLAYERS+1]
 new bool:bCS
 new round_delay;
 new has_rocket[ MAX_PLAYERS + 1 ];
-//new is_parachuting[ MAX_PLAYERS + 1 ];
 
 /* missile_inv:  fake,common,laserguide,guncam,antimissile,heatseeker,Parachuteseeking,multimissile */
 new missile_inv[ MAX_PLAYERS + 1 ][8];
@@ -1396,7 +1395,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
             }
         }
 
-        if(!found){
+        if(!found){ 
             client_print(id,print_chat,"[AMXX] Cannot fire Heat-Seeker,^n^nthere are no heat signatures in view.")
             if(!admin){
                 #if defined CSTRIKE
@@ -1431,7 +1430,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
         {
             if(players[i] != id)
             {
-                if(get_user_gravity(players[i]) == 0.1)
+                if(pev(players[i],pev_flFallVelocity) == get_cvar_float("parachute_fallspeed"))
                 {
                     output = 1;
                     if(output == 1)
@@ -1446,6 +1445,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
                             found = 1
                             if(players[i] != id)
                             {
+                                client_print(id,print_chat,"[AMXX] Firing Missile on skydiver %n.", players[i])
                                 args[6] = players[i]
                             }
                         }
