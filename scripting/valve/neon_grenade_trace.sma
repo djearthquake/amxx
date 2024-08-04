@@ -333,7 +333,7 @@ public CurentWeapon(id)
             //Standard
             temp_ent1 = find_ent(MaxClients,"grenade");
             temp_ent2 = find_ent(MaxClients,"ARgrenade");
-    
+
             //Make hivehand into vorpal weapon.
             if(get_pcvar_num(g_cvar_neon_all) > 4 || get_pcvar_num(g_cvar_neon_all) == -4)
                 temp_ent3 = find_ent(MaxClients,"hornet");
@@ -348,31 +348,31 @@ public CurentWeapon(id)
     //            temp_ent7 = find_ent(MaxClients,"func_tank");
                 temp_ent8 = find_ent(MaxClients,"func_rocket"); //spinx_missile fork of lud's
             }
-    
+
             if(pev_valid(temp_ent1) )
                 g_model = temp_ent1;
-    
+
             if(pev_valid(temp_ent2) )
                 g_model = temp_ent2;
-    
+
             if(pev_valid(temp_ent3) )
                 g_model = temp_ent3;
-    
+
             if(pev_valid(temp_ent4) )
                 g_model = temp_ent4;
-    
+
      //       if(pev_valid(temp_ent5) )
      //           g_model = temp_ent5;
-    
+
             if(pev_valid(temp_ent6) )
                 g_model = temp_ent6;
-    
+
      //       if(pev_valid(temp_ent7) )
      //           g_model = temp_ent7;
-    
+
             if(pev_valid(temp_ent8) )
                 g_model = temp_ent8;
-    
+
             new s = g_model
             @tracer(s)
         }
@@ -512,14 +512,15 @@ public HandGrenade_Attack2_Touch(ent, id)
                 get_players(players,playercount,"h")
                 for (new m=0; m<playercount; ++m)
                 {
-                    new flags = pev(players[m], pev_flags)
+                    new iPlayers = players[m]
+                    new flags = pev(iPlayers, pev_flags)
                     static playerlocation[3]
 
-                    if(is_user_connected(players[m]) && players[m] != nade_owner)
+                    if(is_user_connected(iPlayers) && iPlayers != nade_owner)
                     {
-                        static hp; hp = get_user_health(players[m])
-                        get_user_origin(players[m], playerlocation)
-                        static result_distance; result_distance = get_entity_distance(g_model, players[m]);
+                        static hp; hp = get_user_health(iPlayers)
+                        get_user_origin(iPlayers, playerlocation)
+                        static result_distance; result_distance = get_entity_distance(g_model, iPlayers);
 
                         if(result_distance < get_pcvar_num(g_proximity))
                         {
@@ -528,14 +529,14 @@ public HandGrenade_Attack2_Touch(ent, id)
                             {
                                 if(bStrike)
                                 {
-                                    if(!Cvar && get_user_team(nade_owner) == get_user_team(players[m]))
+                                    if(!Cvar && get_user_team(nade_owner) == get_user_team(iPlayers))
                                         return PLUGIN_HANDLED
                                 }
                                 else
                                 {
                                     new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
                                     get_user_team(nade_owner, killers_team, charsmax(killers_team));
-                                    get_user_team(players[m], victims_team, charsmax(victims_team))
+                                    get_user_team(iPlayers, victims_team, charsmax(victims_team))
 
                                     if(Cvar && !equal(killers_team,victims_team))
                                         return PLUGIN_CONTINUE
@@ -543,11 +544,11 @@ public HandGrenade_Attack2_Touch(ent, id)
 
                             }
 
-                            ///if(is_user_alive(players[m]))
+                            if(iPlayers)
                             {
-                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
+                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  iPlayers)
                                 ewrite_byte(TE_PLAYERSPRITES)
-                                ewrite_short(players[m])
+                                ewrite_short(iPlayers)
                                 switch(random(3))
                                 {
                                     case 0: ewrite_short(g_energy0);
@@ -559,32 +560,35 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 emessage_end()
 
 
-                                emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0}, players[m]);
+                                emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0}, iPlayers);
                                 ewrite_short(25000); //amp
                                 ewrite_short(8000); //dur //4096 is~1sec
                                 ewrite_short(30000); //freq
                                 emessage_end();
 
                                 if(contain(szClass, "Rad")==charsmin)
+                                {
                                     format(szClass, charsmax(szClass), "Radioactive %s", szClass)
+                                }
 
                                 if(hp >= 30.0)
                                 {
 
-                                    fakedamage(players[m], szClass,15.0,DMG_RADIATION)
-                                    @fade_shake(players[m], hp, flags)
+                                    fakedamage(iPlayers, szClass,15.0,DMG_RADIATION)
+
+                                    @fade_shake(iPlayers, hp, flags)
                                     if(get_pcvar_num(g_debug) > 0)
                                     {
                                         #if AMXX_VERSION_NUM == 182
-                                        new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                                        static throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
                                         get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                                        get_user_name(players[m], victims_name, charsmax(victims_name) );
+                                        get_user_name(iPlayers, victims_name, charsmax(victims_name) );
                                         client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
                                         #endif
 
 
                                         #if AMXX_VERSION_NUM != 182
-                                            client_print( 0, print_center,"%n blinded %n!", nade_owner, players[m] );
+                                            client_print( 0, print_center,"%n blinded %n!", nade_owner, iPlayers );
                                         #endif
                                     }
 
@@ -595,9 +599,9 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 if(hp < 30.0)
                                 {
                                     #if AMXX_VERSION_NUM == 182
-                                    new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                                    static throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
                                     get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                                    get_user_name(players[m], victims_name, charsmax(victims_name) );
+                                    get_user_name(iPlayers, victims_name, charsmax(victims_name) );
                                     client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
                                     #endif
 
@@ -605,7 +609,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                                     #if AMXX_VERSION_NUM != 182
                                     if( is_user_connected(nade_owner))
                                     {
-                                        client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
+                                        client_print( 0, print_chat,"%n melted %n!", nade_owner, iPlayers );
                                     }
                                     #endif
 
@@ -614,14 +618,14 @@ public HandGrenade_Attack2_Touch(ent, id)
                                     if(!bStrike)
                                         set_msg_block(g_deathmsg, BLOCK_ONCE);
 
-                                    fakedamage(players[m],szClass,300.0,DMG_RADIATION|DMG_NEVERGIB)
+                                    fakedamage(iPlayers,szClass,300.0,DMG_RADIATION|DMG_NEVERGIB)
 
-                                    new Float:fExpOrigin[3];
+                                    static Float:fExpOrigin[3];
                                     fExpOrigin = End_Position;
 
                                     static killer; killer = entity_get_edict(ent,EV_ENT_owner);
 
-                                    log_kill(killer,players[m],szClass,1);
+                                    log_kill(killer,iPlayers,szClass,1);
                                     END:
                                 }
                             }
@@ -634,15 +638,16 @@ public HandGrenade_Attack2_Touch(ent, id)
     return PLUGIN_CONTINUE;
 }
 
-@fade_shake(players[], hp, flags)
+@fade_shake(iPlayers, hp, flags)
 {
-    new m
     static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
     if(flags & ~FL_SPECTATOR)
     {
-        if(CheckPlayerBit(g_AI, players[m]) && !iBot)
+        //bots will freeze
+        if(CheckPlayerBit(g_AI, iPlayers) && !iBot)
             return
-        emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, players[m]);
+
+        emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, iPlayers);
         DELAY;DELAY;FLAGS;
         if(hp > 50)
         {
@@ -721,12 +726,13 @@ public Other_Attack_Touch(ent, id)
             get_players(players,playercount,"h")
             for (new m=0; m<playercount; ++m)
             {
+                new iPlayers = players[m]
                 static playerlocation[3];
                 static iRad;iRad = get_pcvar_num(g_cvar_neon_rad)
-                if(iRad && is_user_alive(players[m]))
+                if(iRad && is_user_alive(iPlayers))
                 {
-                    get_user_origin(players[m], playerlocation);
-                    result_distance  = get_entity_distance(g_model, players[m]);
+                    get_user_origin(iPlayers, playerlocation);
+                    result_distance  = get_entity_distance(g_model, iPlayers);
                     static SzClass[MAX_NAME_LENGTH];
                     pev(ent,pev_classname, SzClass,charsmax(SzClass))
                     if(contain(SzClass, "Rad")==charsmin)
@@ -735,14 +741,14 @@ public Other_Attack_Touch(ent, id)
                     }
                     if(result_distance  < get_pcvar_num(g_proximity))
                     {
-                        new hp; hp = get_user_health(players[m])
+                        new hp; hp = get_user_health(iPlayers)
                         if(hp > 15.0)
                         {
-                            fakedamage(players[m],SzClass,1.0,DMG_SONIC);
+                            fakedamage(iPlayers,SzClass,1.0,DMG_SONIC);
                             {
-                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] )
+                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, iPlayers )
                                 ewrite_byte( TE_PLAYERSPRITES);
-                                ewrite_short(players[m])  //(playernum)
+                                ewrite_short(iPlayers)
                                 switch(random_num(0,2))
                                 {
                                     case 0: ewrite_short(g_energy0);
@@ -757,10 +763,10 @@ public Other_Attack_Touch(ent, id)
                         else
                         {
                             set_msg_block(g_deathmsg, bStrike ? BLOCK_SET : BLOCK_ONCE);
-                            entity_explosion_knockback(players[m], End_Position);
-                            fakedamage(players[m],SzClass,300.0,DMG_SONIC);
+                            entity_explosion_knockback(iPlayers, End_Position);
+                            fakedamage(iPlayers,SzClass,300.0,DMG_SONIC);
 
-                            log_kill(killer,players[m],SzClass,1);
+                            log_kill(killer,iPlayers,SzClass,1);
                         }
                     }
                 }
