@@ -938,7 +938,8 @@ public client_putinserver(id)
         is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
         if(CheckPlayerBit(g_AI, id))
         {
-            client_print 0, print_chat, "%n is a bot!", id
+	    if(get_pcvar_num(g_debug))
+                client_print 0, print_chat, "%n is a bot!", id
         }
     }
 }
