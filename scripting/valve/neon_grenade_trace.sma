@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Fri Aug 1st, 2024.
+*(__ [__)*|\ | >< Last edit date Sun Aug 4th, 2024.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -418,14 +418,14 @@ public glow(g_model)
     {
         if(pev_valid(g_model))
         {
-         set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
+            set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
         }
     }
 }
 
 public HandGrenade_Attack2_Touch(ent, id)
 {
-    new szClass[MAX_NAME_LENGTH]
+    static szClass[MAX_NAME_LENGTH]
     if(pev_valid(ent)>1 && get_pcvar_num(g_cvar_neon_gren))
     {
         pev(ent,pev_classname, szClass, charsmax(szClass))
@@ -439,12 +439,14 @@ public HandGrenade_Attack2_Touch(ent, id)
             nade_owner = pev(ent,pev_owner);
             ///Sound FX //make a cvar lags might be reason for overflows!
             if(get_pcvar_num(g_cvar_neon_snd))
-            switch(random_num(0,3))
             {
-                case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0, PITCH);
-                case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
-                case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
-                case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                switch(random_num(0,3))
+                {
+                    case 0:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, 0, PITCH);
+                    case 1:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, 0, PITCH);
+                    case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                    case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
+                }
             }
             static iGroup; iGroup = players_who_see_effects();
 
@@ -510,11 +512,11 @@ public HandGrenade_Attack2_Touch(ent, id)
                 get_players(players,playercount,"h")
                 for (new m=0; m<playercount; ++m)
                 {
+                    new flags = pev(players[m], pev_flags)
                     static playerlocation[3]
 
-                    if(is_user_alive(players[m]) && players[m] != nade_owner)
+                    if(is_user_connected(players[m]) && players[m] != nade_owner)
                     {
-                        new flags = pev(players[m], pev_flags)
                         static hp; hp = get_user_health(players[m])
                         get_user_origin(players[m], playerlocation)
                         static result_distance; result_distance = get_entity_distance(g_model, players[m]);
@@ -540,13 +542,13 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 }
 
                             }
-                            static iPlayers; iPlayers = flags &~ FL_SPECTATOR
-                            if(iPlayers)
+
+                            ///if(is_user_alive(players[m]))
                             {
                                 emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
                                 ewrite_byte(TE_PLAYERSPRITES)
                                 ewrite_short(players[m])
-                                switch(random_num(0,2))
+                                switch(random(3))
                                 {
                                     case 0: ewrite_short(g_energy0);
                                     case 1: ewrite_short(g_energy1);
@@ -570,21 +572,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 {
 
                                     fakedamage(players[m], szClass,15.0,DMG_RADIATION)
-
-                                    //emessage_begin(MSG_BROADCAST,g_event_fade,{0,0,0},players[m]);
-                                    emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, players[m]);
-                                    DELAY;DELAY;FLAGS;
-                                    if(hp > 50)
-                                    {
-                                        GRN;
-                                    }
-                                    else
-                                    {
-                                        PUR;
-                                    }
-                                    ALPHA;
-                                    emessage_end();
-
+                                    @fade_shake(players[m], hp, flags)
                                     if(get_pcvar_num(g_debug) > 0)
                                     {
                                         #if AMXX_VERSION_NUM == 182
@@ -644,6 +632,29 @@ public HandGrenade_Attack2_Touch(ent, id)
         }
     }
     return PLUGIN_CONTINUE;
+}
+
+@fade_shake(players[], hp, flags)
+{
+    new m
+    static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
+    if(flags & ~FL_SPECTATOR)
+    {
+        if(CheckPlayerBit(g_AI, players[m]) && !iBot)
+            return
+        emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, players[m]);
+        DELAY;DELAY;FLAGS;
+        if(hp > 50)
+        {
+            GRN;
+        }
+        else
+        {
+            PUR;
+        }
+        ALPHA;
+        emessage_end();
+    }
 }
 
 public Other_Attack_Touch(ent, id)
@@ -859,49 +870,33 @@ public pin_scoreboard(killer)
 
 stock players_who_see_effects()
 {  //CPU client safeguard attempt.;
+    new iMob
     static iDebug; iDebug = get_pcvar_num(g_debug)
-    static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
     for(new SEE=1; SEE<=MaxClients; ++SEE)
-    if(is_user_alive(SEE))
     {
-        new iMob = SEE
-        if(~CheckPlayerBit(g_AI, iMob) && !iBot)
-        ///if(!is_user_bot(iMob) && !iBot)
+        iMob = SEE
+        if(!CheckPlayerBit(g_AI, iMob))
         {
-            new flags = pev(iMob, pev_flags)
-            if(flags & FL_SPECTATOR)
+            if(is_user_alive(SEE))
             {
-                if(iDebug)
+                new flags = pev(iMob, pev_flags)
+                if(flags & FL_SPECTATOR)
                 {
-                    server_print ("%N is a spec", iMob)
-                }
-            }
-            else
-            {
-                if(iDebug)
-                {
-                  server_print ("%N is NOT a spec", iMob)
-                }
-                if(is_user_alive(iMob))
-                {
-                   if(~CheckPlayerBit(g_AI, iMob) && !iBot)
+                    if(iDebug)
                     {
-                        if(iDebug)
-                        {
-                            server_print ("Effect sent to: %N", iMob)
-                        }
-                        return iMob; //humans only
+                        server_print ("%N is a spec", iMob)
                     }
                 }
+                else
+                {
+                    if(iDebug)
+                    {
+                        server_print ("%N is NOT a spec", iMob)
+                        server_print ("Effect sent to human: %N", iMob)
+                    }
+                    return iMob; //alive non-spectator humans only
+                }
             }
-        }
-        else
-        {
-            if(iDebug)
-            {
-                server_print ("Effect sent to: %N", iMob)
-            }
-            return iMob //bots 
         }
     }
     return PLUGIN_CONTINUE;
@@ -941,6 +936,10 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
+        if(CheckPlayerBit(g_AI, id))
+        {
+            client_print 0, print_chat, "%n is a bot!", id
+        }
     }
 }
 
