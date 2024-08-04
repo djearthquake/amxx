@@ -121,7 +121,6 @@ new bool:bOF_run
 new bool:bFirstAuto[MAX_PLAYERS+1]
 new BotsThink, bool:think_captured
 new PlayerRipCord[MAX_PLAYERS+1]
-new bool:bMissileSet[MAX_PLAYERS+1]
 new bool:bAdjusted[MAX_PLAYERS+1]
 
 #define PITCH (random_num (90,111))
@@ -295,7 +294,7 @@ public client_infochanged(id)
     {
         bIsAdmin[id] = get_user_flags(id) & PARACHUTE_LEVEL ? true : false
 
-        new szRipCordCustom[MAX_NAME_LENGTH]
+        static szRipCordCustom[8]
         get_user_info(id,"auto_rip", szRipCordCustom, charsmax(szRipCordCustom))
         PlayerRipCord[id] = str_to_num(szRipCordCustom);
     }
@@ -306,7 +305,7 @@ public parachute_reset(id)
     static print; print = get_pcvar_num(g_debug)
     if(is_user_connected(id))
     {
-        set_user_gravity(id, 1.0)
+        //set_user_gravity(id, 1.0)
 
         if(print)
             server_print "Resetting chute for %n", id
@@ -347,7 +346,10 @@ public parachute_reset(id)
             if(para_ent[id])
             {
                 para_ent[id] = 0
-                server_print "Set ent to 0...end"
+                if(print)
+                {
+                    server_print "Set ent to 0...end"
+                }
             }
         }
     }
@@ -399,9 +401,7 @@ if(is_user_connected(id))
 {
     if( para_ent[id] )
     {
-        set_user_gravity(id, 1.0)
-        set_task 0.1, "@missile_cmd", id
-
+        //set_user_gravity(id, 1.0)
         if(bOF_run && bIsBot[id])
         {
             if(g_UnBreakable)
@@ -488,17 +488,11 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 
             if( para_ent[id] && (flags & FL_FLY | flags & FL_ONGROUND | flags & FL_INWATER | flags & FL_PARTIALGROUND | flags & FL_ONTRAIN) || iDrop < charsmin )
             {
-                if(bMissileSet[id])
-                {
-                    //set_user_info(id, "is_parachuting", "0")
-                    bMissileSet[id] = false
-                }
                 if(get_pcvar_num(pDetach) && pev_valid(para_ent[id])>1)
                 {
                     bFirstAuto[id] = false
 
                     if(get_user_gravity(id) == 0.1)
-                        set_user_gravity(id, 1.0)
 
                     if(entity_get_int(para_ent[id],EV_INT_sequence) != 2)
                     {
@@ -529,7 +523,6 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                         remove_entity(para_ent[id])
                         para_ent[id] = 0
                     }
-                    set_user_gravity(id, 1.0)
                 }
                 return
             }
@@ -537,11 +530,6 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
             {
                 if(button & IN_USE|AUTO)
                 {
-                    if(!bMissileSet[id])
-                    {
-                        //set_user_info(id, "is_parachuting", "1")
-                        bMissileSet[id] = true
-                    }
                     if(AUTO && !bFirstAuto[id])
                         bFirstAuto[id] = true
                     else if(button & IN_USE)
@@ -615,7 +603,7 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                             entity_set_int(id, EV_INT_gaitsequence, 1)
                             entity_set_float(id, EV_FL_frame, 1.0)
                             entity_set_float(id, EV_FL_framerate, 1.0)
-                            set_user_gravity(id, 0.1)
+                            //set_user_gravity(id, 0.1)
 
                             velocity[2] = (velocity[2] + 40.0 < fallspeed) ? velocity[2] + 40.0 : fallspeed
                             entity_set_vector(id, EV_VEC_velocity, velocity)
@@ -641,12 +629,6 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                         if(!para_ent[id] || !pev_valid(para_ent[id]) || !g_UnBreakable && pev(para_ent[id],pev_health) <  get_pcvar_float(g_packHP)*0.2)
                         {
                             colorize(id)
-                            set_user_gravity(id, 1.0)
-                            if(bMissileSet[id])
-                            {
-                                //set_user_info(id, "is_parachuting", "0")
-                                bMissileSet[id] = false
-                            }
 
                             //Let player know they shot the chute not the player.
                             set_task(0.2,"chute_pop",id)
@@ -660,25 +642,13 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
                     }
                     else if(para_ent[id])
                     {
-                        if(bMissileSet[id])
-                        {
-                            //set_user_info(id, "is_parachuting", "0")
-                            bMissileSet[id] = false
-                        }
                         remove_entity(para_ent[id])
-                        set_user_gravity(id, 1.0)
                         para_ent[id] = 0
                     }
                 }
                 else if ((oldbutton & IN_USE) && para_ent[id])
                 {
-                    if(bMissileSet[id])
-                    {
-                        //set_user_info(id, "is_parachuting", "0")
-                        bMissileSet[id] = false
-                    }
                     remove_entity(para_ent[id])
-                    set_user_gravity(id, 1.0)
                     para_ent[id] = 0
                 }
             }
@@ -689,8 +659,10 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 //effects
 public colorize(id)
 {
-    if(is_user_alive(id) && para_ent[id] == 0)
+    if(is_user_alive(id) && pev_valid(para_ent[id]))
+    {
         set_user_rendering(id,kRenderFxGlowShell,random_num(0,255),random_num(0,255),random_num(0,255),kRenderNormal,25);
+    }
 }
 
 public chute_pop(id)
@@ -958,12 +930,4 @@ public admin_give_parachute(id, level, cid)
         log_amx("^"%s<%d><%s><>^" gave a parachute to ^"%s<%d><%s><>^"", name,get_user_userid(id),authid,name2,get_user_userid(player),authid2)
     }
     return PLUGIN_HANDLED
-}
-
-@missile_cmd(id)
-{
-    if(is_user_connected(id))
-    {
-        set_user_info(id, "is_parachuting", bMissileSet[id] ? "1" : "0")
-    }
 }
