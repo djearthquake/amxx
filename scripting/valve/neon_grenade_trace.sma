@@ -416,7 +416,7 @@ public glow(g_model)
     {
         if(pev_valid(g_model))
         {
-         set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
+            set_ent_rendering(g_model, kRenderFxGlowShell, COLOR, COLOR, COLOR, kRenderNormal, random_num(5,250));
         }
     }
 }
@@ -537,8 +537,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 }
 
                             }
-                            //static iPlayers; iPlayers = flags &~ FL_SPECTATOR
-                            if(players[m])
+                            if(players[m] != 0)
                             {
                                 emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
                                 ewrite_byte(TE_PLAYERSPRITES)
@@ -558,11 +557,11 @@ public HandGrenade_Attack2_Touch(ent, id)
                                     format(szClass, charsmax(szClass), "Radioactive %s", szClass)
                                 }
 
+                                new iPlayers = players[m];
+                                @fade_shake(iPlayers, hp)
+
                                 if(hp >= 30.0)
                                 {
-                                    new iPlayers = players[m];
-                                    @fade_shake(iPlayers, hp)
-
                                     fakedamage(players[m], szClass,15.0,DMG_RADIATION)
 
                                     if(get_pcvar_num(g_debug) > 0)
@@ -875,11 +874,9 @@ stock players_who_see_effects()
     static iDebug; iDebug = get_pcvar_num(g_debug)
     static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
     for(new SEE=1; SEE<=MaxClients; ++SEE)
-    if(is_user_alive(SEE))
     {
         new iMob = SEE
-        if(~CheckPlayerBit(g_AI, iMob) && !iBot)
-        ///if(!is_user_bot(iMob) && !iBot)
+        if(is_user_connected(iMob))
         {
             new flags = pev(iMob, pev_flags)
             if(flags & FL_SPECTATOR)
@@ -897,7 +894,9 @@ stock players_who_see_effects()
                 }
                 if(is_user_alive(iMob))
                 {
-                   if(~CheckPlayerBit(g_AI, iMob) && !iBot)
+                    if(CheckPlayerBit(g_AI, iMob))
+                        goto END
+                    if(is_user_alive(iMob))
                     {
                         if(iDebug)
                         {
@@ -907,16 +906,18 @@ stock players_who_see_effects()
                     }
                 }
             }
-        }
-        else
-        {
-            if(iDebug)
+            if(CheckPlayerBit(g_AI, iMob))
+            if(iBot)
             {
-                server_print ("Effect sent to: %N", iMob)
+                if(iDebug)
+                {
+                    server_print ("Effect sent to: %N", iMob)
+                }
+                return iMob //bots
             }
-            return iMob //bots
         }
     }
+    END:
     return PLUGIN_CONTINUE;
 }
 
