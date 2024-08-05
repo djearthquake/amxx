@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Fri Aug 1st, 2024.
+*(__ [__)*|\ | >< Last edit date Mon Aug 5th, 2024.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -537,84 +537,74 @@ public HandGrenade_Attack2_Touch(ent, id)
                                 }
 
                             }
-                            if(players[m] != 0)
+
+                            emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
+                            ewrite_byte(TE_PLAYERSPRITES)
+                            ewrite_short(players[m])
+                            switch(random_num(0,2))
                             {
-                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
-                                ewrite_byte(TE_PLAYERSPRITES)
-                                ewrite_short(players[m])
-                                switch(random_num(0,2))
-                                {
-                                    case 0: ewrite_short(g_energy0);
-                                    case 1: ewrite_short(g_energy1);
-                                    case 2: ewrite_short(g_energy2);
-                                }
-                                ewrite_byte(5)     //(count)
-                                ewrite_byte(75) // (variance) (0 = no variance in size) (10 = 10% variance in size)
-                                emessage_end()
+                                case 0: ewrite_short(g_energy0);
+                                case 1: ewrite_short(g_energy1);
+                                case 2: ewrite_short(g_energy2);
+                            }
+                            ewrite_byte(5)     //(count)
+                            ewrite_byte(75) // (variance) (0 = no variance in size) (10 = 10% variance in size)
+                            emessage_end()
 
-                                if(contain(szClass, "Rad")==charsmin)
-                                {
-                                    format(szClass, charsmax(szClass), "Radioactive %s", szClass)
-                                }
+                            if(contain(szClass, "Rad")==charsmin)
+                            {
+                                format(szClass, charsmax(szClass), "Radioactive %s", szClass)
+                            }
+                            static iPlayers; iPlayers = players[m];
+                            @fade_shake(iPlayers, hp)
+                            if(hp >= 30.0)
+                            {
+                                fakedamage(players[m], szClass,15.0,DMG_RADIATION)
 
-                                new iPlayers = players[m];
-                                @fade_shake(iPlayers, hp)
-
-                                if(hp >= 30.0)
-                                {
-                                    fakedamage(players[m], szClass,15.0,DMG_RADIATION)
-
-                                    if(get_pcvar_num(g_debug) > 0)
-                                    {
-                                        #if AMXX_VERSION_NUM == 182
-                                        new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
-                                        get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
-                                        get_user_name(players[m], victims_name, charsmax(victims_name) );
-                                        client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
-                                        #endif
-
-
-                                        #if AMXX_VERSION_NUM != 182
-                                            client_print( 0, print_center,"%n blinded %n!", nade_owner, players[m] );
-                                        #endif
-                                    }
-
-                                }
-
-                                else
-
-                                if(hp < 30.0)
+                                if(get_pcvar_num(g_debug))
                                 {
                                     #if AMXX_VERSION_NUM == 182
                                     new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
                                     get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
                                     get_user_name(players[m], victims_name, charsmax(victims_name) );
-                                    client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
+                                    client_print( 0, print_center,"%s blinded %s!", throwers_name, victims_name );
                                     #endif
 
 
                                     #if AMXX_VERSION_NUM != 182
-                                    if( is_user_connected(nade_owner))
-                                    {
-                                        client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
-                                    }
+                                        client_print( 0, print_center,"%n blinded %n!", nade_owner, players[m] );
                                     #endif
-
-                                    if(bStrike)
-                                        set_msg_block(g_deathmsg, BLOCK_SET);
-                                    if(!bStrike)
-                                        set_msg_block(g_deathmsg, BLOCK_ONCE);
-
-                                    fakedamage(players[m],szClass,300.0,DMG_RADIATION|DMG_NEVERGIB)
-
-                                    new Float:fExpOrigin[3];
-                                    fExpOrigin = End_Position;
-
-                                    static killer; killer = entity_get_edict(ent,EV_ENT_owner);
-
-                                    log_kill(killer,players[m],szClass,1);
-                                    END:
                                 }
+
+                            }
+                            else
+                            {
+                                #if AMXX_VERSION_NUM == 182
+                                new throwers_name[ MAX_NAME_LENGTH ], victims_name[ MAX_NAME_LENGTH ];
+                                get_user_name(nade_owner, throwers_name, charsmax(throwers_name) );
+                                get_user_name(players[m], victims_name, charsmax(victims_name) );
+                                client_print( 0, print_chat,"%s melted %s!", throwers_name, victims_name );
+                                #endif
+
+
+                                #if AMXX_VERSION_NUM != 182
+                                if( is_user_connected(nade_owner))
+                                {
+                                    client_print( 0, print_chat,"%n melted %n!", nade_owner, players[m] );
+                                }
+                                #endif
+
+                                bStrike ? set_msg_block(g_deathmsg, BLOCK_SET) : set_msg_block(g_deathmsg, BLOCK_ONCE);
+
+                                fakedamage(players[m],szClass,300.0,DMG_RADIATION|DMG_NEVERGIB)
+
+                                new Float:fExpOrigin[3];
+                                fExpOrigin = End_Position;
+
+                                static killer; killer = entity_get_edict(ent,EV_ENT_owner);
+
+                                log_kill(killer,players[m],szClass,1);
+                                END:
                             }
                         }
                     }
@@ -902,7 +892,10 @@ stock players_who_see_effects()
                         {
                             server_print ("Effect sent to: %N", iMob)
                         }
-                        return iMob; //humans only
+                        if(iMob)
+                        {
+                            return iMob; //humans only
+                        }
                     }
                 }
             }
@@ -913,7 +906,10 @@ stock players_who_see_effects()
                 {
                     server_print ("Effect sent to: %N", iMob)
                 }
-                return iMob //bots
+                if(iMob)
+                {
+                    return iMob //bots
+                }
             }
         }
     }
