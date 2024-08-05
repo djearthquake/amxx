@@ -862,7 +862,7 @@ public pin_scoreboard(killer)
 stock players_who_see_effects()
 {  //CPU client safeguard attempt.;
     static iDebug; iDebug = get_pcvar_num(g_debug)
-    static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
+    //static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
     for(new SEE=1; SEE<=MaxClients; ++SEE)
     {
         new iMob = SEE
@@ -875,43 +875,27 @@ stock players_who_see_effects()
                 {
                     server_print ("%N is a spec", iMob)
                 }
+                return PLUGIN_CONTINUE
             }
             else
             {
                 if(iDebug)
                 {
-                  server_print ("%N is NOT a spec", iMob)
+                    server_print ("%N is NOT a spec", iMob)
                 }
                 if(is_user_alive(iMob))
                 {
                     if(CheckPlayerBit(g_AI, iMob))
-                        goto END
-                    if(is_user_alive(iMob))
                     {
-                        if(iDebug)
-                        {
-                            server_print ("Effect sent to: %N", iMob)
-                        }
-                        if(iMob)
-                        {
-                            return iMob; //humans only
-                        }
+                        goto END
                     }
+                    return iMob;   
                 }
+
             }
-            if(CheckPlayerBit(g_AI, iMob))
-            if(iBot)
-            {
-                if(iDebug)
-                {
-                    server_print ("Effect sent to: %N", iMob)
-                }
-                if(iMob)
-                {
-                    return iMob //bots
-                }
-            }
+
         }
+
     }
     END:
     return PLUGIN_CONTINUE;
