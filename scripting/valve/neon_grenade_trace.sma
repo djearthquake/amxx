@@ -39,7 +39,7 @@
 *
 *
 * __..__  .  .\  /
-*(__ [__)*|\ | >< Last edit date Mon Aug 5th, 2024.
+*(__ [__)*|\ | >< Last edit date Wed Aug 7th, 2024.
 *.__)|   || \|/  \
 *    Radioactive Half-Life grenade trails.
 *
@@ -58,6 +58,7 @@
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 #include <amxmodx>
  #include <amxmisc>
   #include <engine>
@@ -381,10 +382,10 @@ public Trail_me(g_model)
 {
     if(get_pcvar_num(g_cvar_neon_toss) !=1)return;
     new lums = random_num(100,2000);new time = random_num(18,40);new width = random_num(1,get_pcvar_num(g_cvar_neon_wid));
-    static iGroup; iGroup = players_who_see_effects();
-    if(iGroup && get_pcvar_num(g_cvar_neon_gren))
+    ///static iGroup; iGroup = players_who_see_effects();
+    if(get_pcvar_num(g_cvar_neon_gren))
     {
-        emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, iGroup );
+        emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 );
         ewrite_byte(TE_BEAMFOLLOW);
         ewrite_short(g_model);ewrite_short(sprite);
         ewrite_byte(time);ewrite_byte(width);
@@ -444,17 +445,17 @@ public HandGrenade_Attack2_Touch(ent, id)
                 case 2:emit_sound(ent, CHAN_AUTO, SOUND_SHIT1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
                 case 3:emit_sound(ent, CHAN_AUTO, SOUND_HAWK1, VOL_NORM, ATTN_NORM, SND_STOP, PITCH);
             }
-            static iGroup; iGroup = players_who_see_effects();
+            ///static iGroup; iGroup = players_who_see_effects();
 
             static Float:End_Position[3];
             g_model = ent
-            if(pev_valid(g_model) && iGroup)
+            if(pev_valid(g_model))
             {
                 entity_get_vector(g_model,EV_VEC_origin,End_Position);
                 entity_get_vector(g_model,EV_VEC_angles,Axis);
 
                 ///explode models on explode or touch.
-                emessage_begin_f( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, iGroup )
+                emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, 0 )
                 ewrite_byte(TE_EXPLODEMODEL)
                 ewrite_coord_f(End_Position[0]+random_float(-11.0,11.0))      // XYZ (start)
                 ewrite_coord_f(End_Position[1]-random_float(-11.0,11.0))
@@ -474,7 +475,7 @@ public HandGrenade_Attack2_Touch(ent, id)
                 if(equali(szClass, "Hook_illuminati"))
                 goto END
 
-                emessage_begin_f( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, iGroup );
+                emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, 0 );
                 ewrite_byte(random_num(19,21));
                 ewrite_coord_f(End_Position[0]);
                 ewrite_coord_f(End_Position[1]);
@@ -538,7 +539,7 @@ public HandGrenade_Attack2_Touch(ent, id)
 
                             }
 
-                            emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 },  players[m])
+                            emessage_begin( MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 },  0)
                             ewrite_byte(TE_PLAYERSPRITES)
                             ewrite_short(players[m])
                             switch(random_num(0,2))
@@ -555,8 +556,10 @@ public HandGrenade_Attack2_Touch(ent, id)
                             {
                                 format(szClass, charsmax(szClass), "Radioactive %s", szClass)
                             }
-                            static iPlayers; iPlayers = players[m];
-                            @fade_shake(iPlayers, hp)
+                            //static iPlayers; iPlayers = players[m];
+                            //@fade_shake(iPlayers, hp)
+                            @fade_shake(players[m], hp)
+
                             if(hp >= 30.0)
                             {
                                 fakedamage(players[m], szClass,15.0,DMG_RADIATION)
@@ -615,25 +618,27 @@ public HandGrenade_Attack2_Touch(ent, id)
     return PLUGIN_CONTINUE;
 }
 
-@fade_shake(iPlayers, hp)
+//@fade_shake(iPlayers, hp)
+@fade_shake(iPlayers[], hp)
 {
+    static m;
     static iBot; iBot =  get_pcvar_num(g_cvar_neon_bot)
-    if(is_user_alive(iPlayers))
+    if(is_user_alive(iPlayers[m]))
     {
         //bots will freeze
-        if(CheckPlayerBit(g_AI, iPlayers) && !iBot)
+        if(CheckPlayerBit(g_AI, iPlayers[m]) && !iBot)
             return
 
-        if(pev(iPlayers, pev_flags) & FL_SPECTATOR)
+        if(pev(iPlayers[m], pev_flags) & FL_SPECTATOR)
             return
 
-        emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0}, iPlayers);
+        emessage_begin(MSG_ONE_UNRELIABLE,g_shake_msg,{0,0,0}, iPlayers[m]);
         ewrite_short(25000); //amp
         ewrite_short(8000); //dur //4096 is~1sec
         ewrite_short(30000); //freq
         emessage_end();
 
-        emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, iPlayers);
+        emessage_begin(MSG_ONE_UNRELIABLE,g_event_fade,{0,0,0}, iPlayers[m]);
         DELAY;DELAY;FLAGS;
         if(hp > 50)
         {
@@ -652,9 +657,9 @@ public Other_Attack_Touch(ent, id)
 {
     static Float:Axis[3], Float:End_Position[3];
     static killer;
-    static iGroup; iGroup = players_who_see_effects();
+    ///static iGroup; iGroup = players_who_see_effects();
     if(get_pcvar_num(g_cvar_neon_gren))
-    if(iGroup && is_user_alive(id) && pev_valid(ent))
+    if(is_user_alive(id) && pev_valid(ent))
     {
         killer = entity_get_edict(ent,EV_ENT_owner);
 
@@ -678,7 +683,7 @@ public Other_Attack_Touch(ent, id)
             entity_get_vector(g_model,EV_VEC_origin,End_Position);
             entity_get_vector(g_model,EV_VEC_angles,Axis);
 
-            emessage_begin_f( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0}, iGroup );
+            emessage_begin_f( MSG_BROADCAST, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0}, 0 );
             ewrite_byte(random_num(19,21));
             ewrite_coord_f(End_Position[0]);
             ewrite_coord_f(End_Position[1]);
@@ -731,7 +736,7 @@ public Other_Attack_Touch(ent, id)
                         {
                             fakedamage(players[m],SzClass,1.0,DMG_SONIC);
                             {
-                                emessage_begin( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, players[m] )
+                                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
                                 ewrite_byte( TE_PLAYERSPRITES);
                                 ewrite_short(players[m])  //(playernum)
                                 switch(random_num(0,2))
