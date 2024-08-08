@@ -8,7 +8,7 @@
 #include fakemeta
 #include fakemeta_util
 
-#define IDENTIFY register_plugin("c4 Experience","1.23","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.24","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -25,22 +25,22 @@ const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
 const UNIX_DIFF = 20;
 
-static m_bIsC4, m_flNextBeep, m_flNextFreqInterval, m_flDefuseCountDown, m_fAttenu
+static m_bIsC4, m_flNextBeep, m_flNextFreqInterval, m_flDefuseCountDown, m_fAttenu;
 
 #if !defined MaxClients
     new MaxClients
 #endif
 
-new g_fExperience_offset
+new g_fExperience_offset;
 static Float:g_fUninhibited_Walk = 272.0;
-new g_fire
-new g_boomtime
-new g_weapon_c4_index, g_maxPlayers, g_debug
-new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]
-new bool:Client_C4_adjusted_already[MAX_PLAYERS+1]
+new g_fire;
+new g_boomtime;
+new g_weapon_c4_index, g_maxPlayers, g_debug;
+new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
+new bool:Client_C4_adjusted_already[MAX_PLAYERS+1];
 
 public plugin_precache()
-g_fire = precache_model("sprites/laserbeam.spr")
+g_fire = precache_model("sprites/laserbeam.spr");
 
 public plugin_init()
 {
@@ -101,9 +101,10 @@ public FnPlant()
     if(is_user_alive(id))
     {
         server_print "Is %n planting?", id
-        if(g_weapon_c4_index > MaxClients && pev_valid(g_weapon_c4_index) > 1)
+        if(pev_valid(g_weapon_c4_index))
+        if(g_weapon_c4_index > MaxClients && get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF) && pev_valid(g_weapon_c4_index) > 1)
         {
-            g_weapon_c4_index ? set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50) : c4_from_grenade()
+            set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50)
 
             static Float:fExp
             static Float:fC4_factor
@@ -111,8 +112,12 @@ public FnPlant()
             fC4_factor = get_user_frags(id)*fExp
 
             if(!get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
+            {
+                c4_from_grenade()
+                log_amx("C4 index out of bounds!")
                 return
-
+            }
+            c4_from_grenade();
             if((cs_get_c4_explode_time(g_weapon_c4_index)-get_gametime()-fC4_factor) < 9.0)
             {
                 set_pcvar_float(g_fExperience_offset, get_pcvar_float(g_fExperience_offset)/2)
@@ -172,7 +177,7 @@ public fnDefusal(id)
             c4_from_grenade();
             static Float:fC4_factor
             fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
-            g_weapon_c4_index ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
+            g_weapon_c4_index > MaxClients ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
 
             static iBoom_time
             iBoom_time =  floatround(cs_get_c4_explode_time(g_weapon_c4_index) - get_gametime())
@@ -290,19 +295,19 @@ stock iPlayers()
 stock c4_from_grenade()
 {
     static iC4; iC4 = MaxClients;
-    static szClass[MAX_NAME_LENGTH]
     {
-        while ((iC4= find_ent(charsmin,"grenade")))
+        while ((iC4= find_ent(iC4, "grenade")) && pev_valid(iC4))
         {
-            if(pev_valid(iC4) > 1 && iC4 > MaxClients)
+            if(get_pdata_bool(iC4, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
             {
-                if(get_pdata_bool(iC4, m_bIsC4, UNIX_DIFF, UNIX_DIFF))
+                static SzClass[MAX_NAME_LENGTH]
+                pev(iC4,pev_classname, SzClass, charsmax(SzClass))
+                if(equal(SzClass, "grenade"))
+                {
                     g_weapon_c4_index = iC4
-                break;
+                    break;
+                }
             }
-            pev(pev_classname, g_weapon_c4_index, szClass, charsmax(szClass))
-            if(g_weapon_c4_index <= MaxClients || !pev_valid(g_weapon_c4_index) || !equali(szClass, "grenade"))
-                c4_from_grenade()
         }
     }
 }
