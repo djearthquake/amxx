@@ -150,7 +150,8 @@ public plugin_precache()
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.5", "SPiNX");
+    register_plugin("Repawn from bots", "1.51", "SPiNX");
+    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb");  
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1");
@@ -174,6 +175,25 @@ public plugin_init()
     for(new ent;ent < sizeof c4;++ent)
     if(has_map_ent_class(c4[ent]))
         bC4map = true
+}
+
+stock get_loguser_index()
+{
+    new loguser[80], name[32];
+    read_logargv(0, loguser, 79);
+    parse_loguser(loguser, name, 31);
+    
+    return get_user_index(name);
+}
+
+public logevent_function_p()
+{
+    static id; id = get_loguser_index();
+    if(is_user_alive(id))
+    {
+        give_item(id, "weapon_c4");
+    }
+
 }
 
 @died(id)
@@ -354,8 +374,10 @@ public CS_OnBuy(id, item)
                 }
             }
             bBotUser[id] = false;
+            /*
             if(bC4map)
                 set_task 5.0, "@c4_check"
+            */
         }
     }
 }
@@ -369,28 +391,46 @@ public round_start()
 @c4_check()
 {
     //check c4 to make sure somebody has it
-    bC4ok= false
+    bC4ok = false
     if(bC4map)
     {
         server_print "Making sure C4 is available..."
         for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
         {
-             static iTeam; iTeam = get_user_team(iPlayer)
-             if(!bC4ok)
-             if(iTeam == 1 && user_has_weapon(iPlayer, CSW_C4))
+            static iTeam; iTeam = get_user_team(iPlayer)
+            if(!bC4ok)
+            if(iTeam == 1)
             {
-                 bC4ok= true
-                 give_item(iPlayer, "weapon_c4");
-                 client_print 0, print_chat, "%n has the c4.", iPlayer
+                if(user_has_weapon(iPlayer, CSW_C4))
+                {
+                    bC4ok = true
+                    client_print 0, print_chat, "%n has the c4.", iPlayer
+                }
+
             }
+            
         }
 
         if(!bC4ok)
         {
-            console_cmd 0, "sv_restartround 5"
-            client_print 0, print_chat, "Redistributing the c4."
+            static team_players, random_players[MAX_PLAYERS+2];
+            for(new iPlayer = 1; iPlayer <= MaxClients; ++iPlayer)
+            {
+                static iTeam; iTeam = get_user_team(iPlayer)
+                if(is_user_alive(iPlayer) && iTeam == 1 && !bC4ok)
+                {
+                    bC4ok= true
+                    team_players++
+                    random_players[team_players] = iPlayer
+                    new iPick = random(team_players+1);
+                    if(!user_has_weapon(iPick, CSW_C4))
+                    {
+                        client_print 0, print_chat, "Redistributing the c4 to %n.", iPick
+                        give_item(iPick, "weapon_c4");
+                    }
+                }
+            }
         }
-
     }
 }
 
