@@ -363,8 +363,9 @@ public parachute_reset(id)
 {
     static iDebug; iDebug = get_pcvar_num(g_debug)
     static szClass[MAX_NAME_LENGTH]
-    pev(iWhatever, pev_classname, szClass, charsmax(szClass))
+    if(pev_valid(iWhatever && pev_valid(iChute)))
     {
+        pev(iWhatever, pev_classname, szClass, charsmax(szClass))
         static id; id = pev(iChute, pev_owner)
         if(is_user_connected(id) && !bAdjusted[id])
         {
@@ -375,13 +376,13 @@ public parachute_reset(id)
 
             if(para_ent[id] && pev_valid(para_ent[id])>1)
             {
-                    set_pev(para_ent[id], pev_solid, SOLID_NOT)
-                    if(iDebug)
-                    {
-                        bAdjusted[id] = true
-                    }
-                    server_print "Adjusted %n parachute!", id
-                    set_task(bIsBot[id]?0.2:0.1, "@adj_throttle", id)
+                set_pev(para_ent[id], pev_solid, SOLID_NOT)
+                if(iDebug)
+                {
+                    bAdjusted[id] = true
+                }
+                server_print "Adjusted %n parachute!", id
+                set_task(bIsBot[id]?0.2:0.1, "@adj_throttle", id)
             }
         }
     }
