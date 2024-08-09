@@ -202,9 +202,10 @@ public logevent_function_p()
 {
     if(is_user_alive(id))
     {
-        give_item(id, "weapon_c4");
-        server_print "Gave %N C4.", id
-        @c4_check()
+        if(!user_has_weapon(id, CSW_C4))
+        {
+            @c4_check()
+        }
     }
 }
 
