@@ -151,16 +151,16 @@ public plugin_precache()
 public plugin_init()
 {
     register_plugin("Repawn from bots", "1.52", "SPiNX");
-    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb");  
+    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
-    g_humans = register_cvar("respawn_humans", "1");
+    g_humans = register_cvar("respawn_humans", "1")
     g_keep = register_cvar("respawn_keep", "0")
     g_sound_reminder = register_cvar("respawn_sound", "1")
-    g_stuck = register_cvar("respawn_unstick", "0.3");
+    g_stuck = register_cvar("respawn_unstick", "0.3")
     //Ham
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
-    RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1);
+    RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
     register_event("ResetHUD", "@BotSpawn", "bg")
@@ -182,7 +182,7 @@ stock get_loguser_index()
     static loguser[80], name[MAX_NAME_LENGTH];
     read_logargv(0, loguser, charsmax(loguser));
     parse_loguser(loguser, name, charsmax(loguser));
-    
+
     return get_user_index(name);
 }
 
@@ -420,9 +420,8 @@ public round_start()
                         bC4ok = true
                         client_print 0, print_chat, "%n has the c4.", iPlayer
                         engclient_cmd(iPlayer, "drop", "weapon_c4")
-                        give_item(iPlayer, "weapon_c4");
                     }
-    
+
                 }
 
             }
