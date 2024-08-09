@@ -103,7 +103,7 @@ iSpawnBackpackCT, iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_PLAYE
 
 //Global variables
 g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor,
-g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1],
+g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers,
 
 //Floats
 Float:vec[3], Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3],
@@ -150,7 +150,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.51", "SPiNX");
+    register_plugin("Repawn from bots", "1.52", "SPiNX");
     register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb");  
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
@@ -179,21 +179,33 @@ public plugin_init()
 
 stock get_loguser_index()
 {
-    new loguser[80], name[32];
-    read_logargv(0, loguser, 79);
-    parse_loguser(loguser, name, 31);
+    static loguser[80], name[MAX_NAME_LENGTH];
+    read_logargv(0, loguser, charsmax(loguser));
+    parse_loguser(loguser, name, charsmax(loguser));
     
     return get_user_index(name);
 }
 
 public logevent_function_p()
 {
-    static id; id = get_loguser_index();
+    if(g_bot_controllers)
+    {
+        static id; id = get_loguser_index();
+        if(is_user_connected(id))
+        {
+            set_task 3.0, "@give_c4", id
+        }
+    }
+}
+
+@give_c4(id)
+{
     if(is_user_alive(id))
     {
         give_item(id, "weapon_c4");
+        server_print "Gave %N C4.", id
+        @c4_check()
     }
-
 }
 
 @died(id)
@@ -364,6 +376,10 @@ public CS_OnBuy(id, item)
                         client_print( 0, print_chat, "%n is no longer owned by %n.", id, iBotOwner[id])
                         : client_print( 0, print_chat, "%n is no longer owned by human.", id)
 
+                        if(g_bot_controllers)
+                        {
+                            client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
+                        }
 
                         if(g_iTempCash[id])
                             cs_set_user_money(id, g_iTempCash[id], 0);
@@ -374,10 +390,6 @@ public CS_OnBuy(id, item)
                 }
             }
             bBotUser[id] = false;
-            /*
-            if(bC4map)
-                set_task 5.0, "@c4_check"
-            */
         }
     }
 }
@@ -386,6 +398,7 @@ public round_start()
 {
     cool_down_active = false
     set_msg_block( g_cor, BLOCK_NOT );
+    g_bot_controllers = 0
 }
 
 @c4_check()
@@ -395,25 +408,30 @@ public round_start()
     if(bC4map)
     {
         server_print "Making sure C4 is available..."
-        for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
+        for(new iPlayer = 1 ; iPlayer <= MaxClients ; ++iPlayer)
         {
-            static iTeam; iTeam = get_user_team(iPlayer)
-            if(!bC4ok)
-            if(iTeam == 1)
+            if(is_user_connected(iPlayer))
             {
-                if(user_has_weapon(iPlayer, CSW_C4))
+                static iTeam; iTeam = get_user_team(iPlayer)
+                if(!bC4ok && iTeam == 1)
                 {
-                    bC4ok = true
-                    client_print 0, print_chat, "%n has the c4.", iPlayer
+                    if(user_has_weapon(iPlayer, CSW_C4))
+                    {
+                        bC4ok = true
+                        client_print 0, print_chat, "%n has the c4.", iPlayer
+                        engclient_cmd(iPlayer, "drop", "weapon_c4")
+                        give_item(iPlayer, "weapon_c4");
+                    }
+    
                 }
 
             }
-            
+
         }
 
         if(!bC4ok)
         {
-            static team_players, random_players[MAX_PLAYERS+2];
+            new team_players, random_players[MAX_PLAYERS+2];
             for(new iPlayer = 1; iPlayer <= MaxClients; ++iPlayer)
             {
                 static iTeam; iTeam = get_user_team(iPlayer)
@@ -422,7 +440,7 @@ public round_start()
                     bC4ok= true
                     team_players++
                     random_players[team_players] = iPlayer
-                    new iPick = random(team_players+1);
+                    new iPick = random(iPlayer);
                     if(!user_has_weapon(iPick, CSW_C4))
                     {
                         client_print 0, print_chat, "Redistributing the c4 to %n.", iPick
@@ -550,6 +568,7 @@ public control_bot(dead_spec)
                 set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
                 entity_set_int(dead_spec, EV_INT_fixangle, 0)
                 set_task(2.0, "@check_arms", dead_spec)
+                g_bot_controllers++
             }
         }
         return PLUGIN_CONTINUE;
