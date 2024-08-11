@@ -103,7 +103,7 @@ iSpawnBackpackCT, iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_PLAYE
 
 //Global variables
 g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor,
-g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers,
+g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_T_spawn, g_c4_client, g_IS_PLANTING,
 
 //Floats
 Float:vec[3], Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3],
@@ -150,8 +150,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.52", "SPiNX");
-    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
+    register_plugin("Repawn from bots", "1.53", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1")
@@ -164,17 +163,26 @@ public plugin_init()
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
     register_event("ResetHUD", "@BotSpawn", "bg")
+    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
     register_logevent("round_start", 2, "1=Round_Start")
     register_logevent("round_end", 2, "1=Round_End")
+    register_event("BarTime", "PLANTING", "be", "1=3")
+    register_logevent("bomb_planted", 3, "2=Planted_The_Bomb");
     //control
     register_impulse(206,"@buy_bot")
     //Misc
     iMaxplayers = get_maxplayers()
     g_cor = get_user_msgid( "ClCorpse" )
+    g_bot_controllers = 0
     bIsCtrl[0] = true
+
     for(new ent;ent < sizeof c4;++ent)
-    if(has_map_ent_class(c4[ent]))
-        bC4map = true
+    {
+         if(has_map_ent_class(c4[ent]))
+         {
+            bC4map = true
+        }
+    }
 }
 
 stock get_loguser_index()
@@ -186,25 +194,86 @@ stock get_loguser_index()
     return get_user_index(name);
 }
 
+
 public logevent_function_p()
 {
     if(g_bot_controllers)
     {
-        static id; id = get_loguser_index();
+        new id = get_loguser_index();
         if(is_user_connected(id))
         {
-            set_task 3.0, "@give_c4", id
+            g_c4_client = id
         }
     }
 }
 
-@give_c4(id)
+public bomb_planted()
 {
+    g_IS_PLANTING = 0;
+}
+
+public PLANTING( id )
+{
+    g_IS_PLANTING = id
+
     if(is_user_alive(id))
     {
-        if(!user_has_weapon(id, CSW_C4))
+        client_print 0, print_chat ,"%n is planting!", g_IS_PLANTING
+    }
+}
+
+@c4_check()
+{
+    //check c4 to make sure somebody has it
+    bC4ok = false
+    g_c4_spawners = 0
+    if(bC4map)
+    {
+        server_print "Making sure C4 is available..."
+        for(new iPlayer = 1 ; iPlayer <= MaxClients ; ++iPlayer)
         {
-            @c4_check()
+            if(is_user_alive(iPlayer))
+            {
+                static iTeam; iTeam = get_user_team(iPlayer)
+                if(!bC4ok && iTeam == 1)
+                {
+                    if(user_has_weapon(iPlayer, CSW_C4))
+                    {
+                        g_c4_spawners++
+                        bC4ok = true
+                        client_print 0, print_chat, "%n has the c4.", iPlayer
+                        engclient_cmd(iPlayer, "drop", "weapon_c4")
+                    }
+                    if(g_c4_spawners>1)
+                    {
+                        strip_user_weapons(iPlayer)
+                        give_item(iPlayer, "weapon_elite")
+                        give_item(iPlayer, "weapon_knife")
+                    }
+
+                }
+
+            }
+
+        }
+
+        if(!bC4ok)
+        {
+            static players[MAX_PLAYERS], iPnum;
+            get_players(players, iPnum, "e", "TERRORIST");
+            new player1 = players[random(iPnum)];
+            {
+                if(is_user_alive(player1) && !bC4ok)
+                {
+                    bC4ok= true
+                    if(!user_has_weapon(player1, CSW_C4))
+                    {
+                        client_print 0, print_chat, "Redistributing the c4 to %n.", player1
+                        give_item(player1, "weapon_c4");
+                        ////engclient_cmd(player1, "drop", "weapon_c4")
+                    }
+                }
+            }
         }
     }
 }
@@ -261,17 +330,21 @@ public CS_OnBuy(id, item)
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
         {
-            ///if(is_user_alive(id))
+            static iTeam; iTeam = get_user_team(id)
+            if(iTeam == 1 && !iSpawnBackpackT)
             {
-                static iTeam; iTeam = get_user_team(id)
-                if(iTeam == 1 && !iSpawnBackpackT && !user_has_weapon(id, CSW_C4))
+                g_T_spawn++
+                if(!user_has_weapon(id, CSW_C4) &&  g_T_spawn == 4)
                 {
                     iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
+                    server_print "RESPAWN| Grabbed default provisions from T, %N",id
                 }
-                else if(iTeam == 2 && !iSpawnBackpackCT )
-                {
-                    iSpawnBackpackCT = entity_get_int(id, EV_INT_weapons)
-                }
+
+            }
+            else if(iTeam == 2 && !iSpawnBackpackCT )
+            {
+                iSpawnBackpackCT = entity_get_int(id, EV_INT_weapons)
+                server_print "RESPAWN| Grabbed default provisions from CT, %N",id
             }
         }
         if(bIsCtrl[id])
@@ -377,11 +450,6 @@ public CS_OnBuy(id, item)
                         client_print( 0, print_chat, "%n is no longer owned by %n.", id, iBotOwner[id])
                         : client_print( 0, print_chat, "%n is no longer owned by human.", id)
 
-                        if(g_bot_controllers)
-                        {
-                            client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
-                        }
-
                         if(g_iTempCash[id])
                             cs_set_user_money(id, g_iTempCash[id], 0);
 
@@ -399,57 +467,22 @@ public round_start()
 {
     cool_down_active = false
     set_msg_block( g_cor, BLOCK_NOT );
-    g_bot_controllers = 0
-}
-
-@c4_check()
-{
-    //check c4 to make sure somebody has it
-    bC4ok = false
-    if(bC4map)
+    if(g_bot_controllers)
     {
-        server_print "Making sure C4 is available..."
-        for(new iPlayer = 1 ; iPlayer <= MaxClients ; ++iPlayer)
+        client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
+    }
+    if(bC4map && g_c4_client)
+    {
+        is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
+
+        if(user_has_weapon(g_c4_client, CSW_C4))
         {
-            if(is_user_connected(iPlayer))
-            {
-                static iTeam; iTeam = get_user_team(iPlayer)
-                if(!bC4ok && iTeam == 1)
-                {
-                    if(user_has_weapon(iPlayer, CSW_C4))
-                    {
-                        bC4ok = true
-                        client_print 0, print_chat, "%n has the c4.", iPlayer
-                        engclient_cmd(iPlayer, "drop", "weapon_c4")
-                    }
-
-                }
-
-            }
-
-        }
-
-        if(!bC4ok)
-        {
-            new team_players, random_players[MAX_PLAYERS+2];
-            for(new iPlayer = 1; iPlayer <= MaxClients; ++iPlayer)
-            {
-                static iTeam; iTeam = get_user_team(iPlayer)
-                if(is_user_alive(iPlayer) && iTeam == 1 && !bC4ok)
-                {
-                    bC4ok= true
-                    team_players++
-                    random_players[team_players] = iPlayer
-                    new iPick = random(iPlayer);
-                    if(!user_has_weapon(iPick, CSW_C4))
-                    {
-                        client_print 0, print_chat, "Redistributing the c4 to %n.", iPick
-                        give_item(iPick, "weapon_c4");
-                    }
-                }
-            }
+            engclient_cmd(g_c4_client, "drop", "weapon_c4")
         }
     }
+    g_bot_controllers = 0;
+    g_c4_client = 0;
+    g_IS_PLANTING = 0;
 }
 
 public round_end()
@@ -484,6 +517,8 @@ public round_end()
                 if(get_user_team(dead_spec) == get_user_team(alive_bot))
                 {
                     if(!bIsCtrl[alive_bot])
+                    if(get_user_weapon(alive_bot) != CSW_KNIFE || get_user_weapon(alive_bot) != CSW_C4)
+                    if(alive_bot != g_IS_PLANTING)
                     {
                         get_user_name(alive_bot,bots_name,charsmax(bots_name))
                         client_print(dead_spec, print_center,"Ready to control %s.", bots_name);
@@ -526,7 +561,7 @@ public control_bot(dead_spec)
     if(!is_user_alive(dead_spec))
     {
         alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
-        if(alive_bot <= 0)
+        if(alive_bot <= 0 || alive_bot == g_IS_PLANTING)
             return PLUGIN_HANDLED_MAIN
 
         if(is_user_alive(alive_bot))
@@ -537,7 +572,7 @@ public control_bot(dead_spec)
 
             if(get_user_team(dead_spec) == get_user_team(alive_bot))
             get_user_velocity(alive_bot, vec)
-            if(bIsBot[alive_bot]  && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) && pev(alive_bot, pev_flags) & FL_ONGROUND)
+            if(bIsBot[alive_bot] && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) && pev(alive_bot, pev_flags) & FL_ONGROUND)
             {
                 set_user_rendering(alive_bot, kRenderFxNone, 0, 0, 0, kRenderTransTexture,0)
                 entity_set_int(dead_spec, EV_INT_fixangle, 1)
@@ -576,7 +611,7 @@ public control_bot(dead_spec)
     return PLUGIN_HANDLED;
 }
 
-@check_arms(dead_spec)
+@check_arms(dead_spec) //observed when bot switches to knife then player takes control of them.
 {
     if(is_user_alive(dead_spec))
     {
