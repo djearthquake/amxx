@@ -265,8 +265,8 @@ public nice(show)
 
 @round_start()
 {
-    if(task_exists(5656))
-        remove_task(5656)
+    //if(task_exists(5656))
+    remove_task(5656)
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount)
     for(new CT;CT < sizeof players;CT++)
     Client_C4_adjusted_already[players[CT]] = false
@@ -292,7 +292,8 @@ stock iPlayers()
     return iHeadcount
 }
 
-stock c4_from_grenade()
+
+stock c4_from_grenade2()
 {
     static iC4; iC4 = MaxClients;
     {
@@ -309,6 +310,16 @@ stock c4_from_grenade()
                 }
             }
         }
+    }
+}
+
+
+stock c4_from_grenade()
+{
+    g_weapon_c4_index = fm_find_ent_by_model(MaxClients, "grenade", "models/w_c4.mdl")
+    if(!g_weapon_c4_index)
+    {
+        c4_from_grenade2()
     }
 }
 
