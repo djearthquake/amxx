@@ -29,7 +29,7 @@ new ClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 static sModel[MAX_PLAYERS];
 
 public plugin_init()
-    register_plugin("All HP","1.2","SPiNX");
+    register_plugin("All HP","1.22","SPiNX");
 
 new g_Adm, g_AI
 
@@ -53,6 +53,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
     copyc(ClientIP[id], charsmax(ClientIP[]), ip, ':')
     reason = (containi(ip, local) > charsmin) ? "IP address misread!" : "Bad STEAMID!"
     copy(ClientName[id],charsmax(ClientName[]), name)
+    //ClientCountry[id] = ""
     return PLUGIN_CONTINUE
 }
 #endif
@@ -73,7 +74,7 @@ public client_putinserver(id)
             #if AMXX_VERSION_NUM == 182
                 geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
             #else
-                geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), 2 );
+                geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), LANG_SERVER ); //tried all indexes from -1 to 1, all lead to client lang
             #endif
         }
 #endif
@@ -82,7 +83,10 @@ public client_putinserver(id)
 }
 
 public client_disconnected(id)
+{
     remove_task(id)
+    //ClientCountry[id] = ""
+}
 
 public fw_PlayerPostThink(id)
 {
@@ -114,6 +118,10 @@ public fw_PlayerPostThink(id)
         else
         {
             pev(ent,pev_classname,classname,charsmax(classname))
+            if(contain(classname, "func_")>charsmin)
+            {
+                replace(classname, charsmax(classname), "func_", "")
+            }
         }
 
         static reclass[MAX_NAME_LENGTH], armor; armor = pev(ent,pev_armorvalue)
