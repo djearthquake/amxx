@@ -229,7 +229,7 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
-static const unicoding_table[77][2][154] =
+static const unicoding_table[79][2][158] =
 {///https://en.wikipedia.org/wiki/List_of_Unicode_characters
   ///https://www.fileformat.info/info/unicode/char/0165/index.htm
     {"\u2013", "-"},
@@ -308,6 +308,8 @@ static const unicoding_table[77][2][154] =
     {"\u011b", "e"},
     {"\u0165", "t"},
     {"\u0103", "a"},
+    {"\u0219", "s"},
+    {"\u0144", "n"},
     {"\u017a", "z"}
 };
 
