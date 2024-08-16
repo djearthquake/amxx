@@ -92,6 +92,9 @@
 #define charsmin -1
 #define MAX_NAME_LENGTH 32
 
+#if !defined set_ent_rendering
+#define set_ent_rendering set_rendering
+#endif
 
 new
 //Cvars
@@ -103,7 +106,7 @@ iSpawnBackpackCT, iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_PLAYE
 
 //Global variables
 g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor,
-g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_T_spawn, g_c4_client, g_IS_PLANTING,
+g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_c4_client, g_IS_PLANTING,
 
 //Floats
 Float:vec[3], Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3],
@@ -163,11 +166,12 @@ public plugin_init()
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
     register_event("ResetHUD", "@BotSpawn", "bg")
-    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
     register_logevent("round_start", 2, "1=Round_Start")
     register_logevent("round_end", 2, "1=Round_End")
-    register_event("BarTime", "PLANTING", "be", "1=3")
+    register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
     register_logevent("bomb_planted", 3, "2=Planted_The_Bomb");
+    register_logevent("bomb_dropped", 3, "2=Dropped_The_Bomb");
+    register_event("BarTime", "PLANTING", "be", "1=3")
     //control
     register_impulse(206,"@buy_bot")
     //Misc
@@ -193,7 +197,6 @@ stock get_loguser_index()
 
     return get_user_index(name);
 }
-
 
 public logevent_function_p()
 {
@@ -222,12 +225,58 @@ public PLANTING( id )
     }
 }
 
+public bomb_dropped()
+{
+    new id = get_loguser_index();
+
+    if(is_user_connected(id))
+    {
+        server_print("%N dropped C4...", id)
+    }
+    if(!is_user_alive(id))
+    {
+        new iC4 = find_ent(MaxClients, "weapon_c4")
+        if(!iC4)
+        {
+            @c4_check()
+        }
+        else
+        {
+            server_print("We found the dropped C4!")
+            
+            if(pev_valid(iC4))
+            {
+                set_task(0.4, "@c4_model", iC4)
+            }
+        }
+    }
+}
+
+@c4_model()
+{
+    new iC4 = fm_find_ent_by_model(MaxClients, "weaponbox", "models/w_backpack.mdl")
+    if(iC4)
+    {
+        set_task(0.3, "@render", iC4,_,_,"b")
+    }
+    else
+    {
+        @c4_check()
+    }
+}
+
+@render(index)
+{
+    pev_valid(index) ? set_ent_rendering(index, kRenderFxGlowShell, COLOR(), COLOR(), COLOR(), kRenderTransColor, random_num(15,100)) : remove_task(index)
+}
+
 @c4_check()
 {
     //check c4 to make sure somebody has it
     bC4ok = false
     g_c4_spawners = 0
-    if(bC4map)
+    new iHeadCount = get_playersnum()
+    if(bC4map && iHeadCount)
     {
         server_print "Making sure C4 is available..."
         for(new iPlayer = 1 ; iPlayer <= MaxClients ; ++iPlayer)
@@ -261,6 +310,8 @@ public PLANTING( id )
         {
             static players[MAX_PLAYERS], iPnum;
             get_players(players, iPnum, "e", "TERRORIST");
+            if(!iPnum)
+                return
             new player1 = players[random(iPnum)];
             {
                 if(is_user_alive(player1) && !bC4ok)
@@ -305,7 +356,22 @@ public CS_OnBuy(id, item)
     {
         g_iTempCash[bot] = cs_get_user_money(bot)
         cs_set_user_money(bot, 0, 0)
-        if(is_user_alive(bot))strip_user_weapons(bot)
+        if(is_user_alive(bot))
+        {
+            server_print("%n was controlled last round", bot)
+            strip_user_weapons(bot)
+            set_task(3.0,"@check_bot_knife", bot)
+        }
+    }
+}
+
+@check_bot_knife(id)
+{
+    if(!user_has_weapon(id, CSW_KNIFE))
+    {
+        log_amx "%N had no knife!", id
+        client_print iBotOwner[id], print_chat,  "%n had no knife!", id
+        set_task(2.0,"@ReSpawn", id)
     }
 }
 
@@ -316,7 +382,9 @@ public CS_OnBuy(id, item)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
 
         if(!g_JustTook[id])
+        {
             set_task(0.1,"@ReSpawn", id)
+        }
     }
 }
 
@@ -333,8 +401,9 @@ public CS_OnBuy(id, item)
             static iTeam; iTeam = get_user_team(id)
             if(iTeam == 1 && !iSpawnBackpackT)
             {
-                g_T_spawn++
-                if(!user_has_weapon(id, CSW_C4) &&  g_T_spawn == 4)
+                //g_T_spawn++
+                //if(!user_has_weapon(id, CSW_C4) &&  g_T_spawn == 4)
+                if(!user_has_weapon(id, CSW_C4))
                 {
                     iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
                     server_print "RESPAWN| Grabbed default provisions from T, %N",id
@@ -379,87 +448,94 @@ public CS_OnBuy(id, item)
 
                 iDefaultTeamPack = get_user_team(id) == 1 ? iSpawnBackpackT :  iSpawnBackpackCT
                 g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
-                if(is_user_alive(id))strip_user_weapons(id)
-                for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
+                if(is_user_alive(id))
                 {
-                    if(iDefaultTeamPack & 1<<iArms)
-                    if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
+                    strip_user_weapons(id)
+                    for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
                     {
-                        if(equal(SzWeaponClassname, "weapon_c4"))
+                        if(iDefaultTeamPack & 1<<iArms)
+                        if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
                         {
-                            return
-                        }
-                        give_item(id, SzWeaponClassname)
-
-                        if(containi(SzWeaponClassname, "item_")!=charsmin)
-                            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
-                        if(containi(SzWeaponClassname, "weapon_")!=charsmin)
-                            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
-
-                        client_print id, print_chat,  SzWeaponClassname
-                    }
-                    TRADE:
-                    if(bIsCtrl[id])
-                    {
-                        strip_user_weapons(id) //double-pistol bugfix
-                        new Float:fBuyOrigin[3];
-                        pev(id, pev_origin, fBuyOrigin)
-
-                        for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
-                        {
-                            if(g_BackPack[id] & 1<<iArms)
-                            if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
+                            if(equal(SzWeaponClassname, "weapon_c4"))
                             {
-                                if(equal(SzWeaponClassname, "weapon_c4"))
-                                {
-                                    return
-                                }
-                                give_item(id, SzWeaponClassname)
-
-                                if(containi(SzWeaponClassname, "item_")!=charsmin)
-                                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
-                                if(containi(SzWeaponClassname, "weapon_")!=charsmin)
-                                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
-
-                                is_user_connected(iBotOwner[id]) ? formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname) :
-                                formatex(SzParaphrase, charsmax(SzParaphrase), "Disconnected player returned %n's %s.", id, SzWeaponClassname) & client_print( 0, print_chat,  SzParaphrase);
+                                return
                             }
+                            give_item(id, SzWeaponClassname)
+
+                            if(containi(SzWeaponClassname, "item_")!=charsmin)
+                                replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                            if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                                replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+                            client_print id, print_chat,  SzWeaponClassname
                         }
-
-                        /*new iBuyOrigin[3];
-
-                        iBuyOrigin[0] = floatround(fBuyOrigin[0]);
-                        iBuyOrigin[1] = floatround(fBuyOrigin[1]);
-                        iBuyOrigin[2] = floatround(fBuyOrigin[2])*/
-                        if(iDust && is_user_connected(iBotOwner[id]))
+                        TRADE:
+                        if(bIsCtrl[id])
                         {
-                            emessage_begin_f( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
-                            ewrite_byte(TE_PARTICLEBURST)
-                            ewrite_coord_f(fBuyOrigin[0])
-                            ewrite_coord_f(fBuyOrigin[1])
-                            ewrite_coord_f(fBuyOrigin[2])
-                            ewrite_short(500)//(radius)
-                            ewrite_byte(random(256))
-                            ewrite_byte(MAX_IP_LENGTH * 10) //(duration * 10) (will be randomized a bit)
-                            emessage_end()
+                            strip_user_weapons(id) //double-pistol bugfix
+                            new Float:fBuyOrigin[3];
+                            pev(id, pev_origin, fBuyOrigin)
+
+                            for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
+                            {
+                                if(g_BackPack[id] & 1<<iArms)
+                                if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
+                                {
+                                    if(!equal(SzWeaponClassname, "weapon_c4") || !equal(SzWeaponClassname, "weapon_null"))
+                                    {
+                                        give_item(id, SzWeaponClassname)
+                                    }
+
+                                    if(containi(SzWeaponClassname, "item_")!=charsmin)
+                                        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                                    if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                                        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+
+                                    is_user_connected(iBotOwner[id]) ? formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname) :
+                                    formatex(SzParaphrase, charsmax(SzParaphrase), "Disconnected player returned %n's %s.", id, SzWeaponClassname) & client_print( 0, print_chat,  SzParaphrase);
+                                }
+                            }
+
+                            if(!user_has_weapon(id, CSW_KNIFE))
+                            {
+                                log_amx "Gave %n a knife!", id
+                                give_item(id, "weapon_knife")
+                            }
+
+                            /*new iBuyOrigin[3];
+
+                            iBuyOrigin[0] = floatround(fBuyOrigin[0]);
+                            iBuyOrigin[1] = floatround(fBuyOrigin[1]);
+                            iBuyOrigin[2] = floatround(fBuyOrigin[2])*/
+                            if(iDust && is_user_connected(iBotOwner[id]))
+                            {
+                                emessage_begin_f( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
+                                ewrite_byte(TE_PARTICLEBURST)
+                                ewrite_coord_f(fBuyOrigin[0])
+                                ewrite_coord_f(fBuyOrigin[1])
+                                ewrite_coord_f(fBuyOrigin[2])
+                                ewrite_short(500)//(radius)
+                                ewrite_byte(random(256))
+                                ewrite_byte(MAX_IP_LENGTH * 10) //(duration * 10) (will be randomized a bit)
+                                emessage_end()
+                            }
+
+                            RECLAIM:
+                            iBotOwned[id] = 0;
+                            is_user_connected(iBotOwner[id]) ?
+                            client_print( 0, print_chat, "%n is no longer owned by %n.", id, iBotOwner[id])
+                            : client_print( 0, print_chat, "%n is no longer owned by human.", id)
+
+                            if(g_iTempCash[id])
+                                cs_set_user_money(id, g_iTempCash[id], 0);
+
+                            iBotOwner[id] = 0;
+                            bIsCtrl[id] = false;
                         }
-
-                        RECLAIM:
-                        iBotOwned[id] = 0;
-                        is_user_connected(iBotOwner[id]) ?
-                        client_print( 0, print_chat, "%n is no longer owned by %n.", id, iBotOwner[id])
-                        : client_print( 0, print_chat, "%n is no longer owned by human.", id)
-
-                        if(g_iTempCash[id])
-                            cs_set_user_money(id, g_iTempCash[id], 0);
-
-                        iBotOwner[id] = 0;
-                        bIsCtrl[id] = false;
                     }
                 }
-            }
-            bBotUser[id] = false;
+            }bBotUser[id] = false;
         }
+        @check_arms(id)
     }
 }
 
@@ -478,6 +554,10 @@ public round_start()
         if(user_has_weapon(g_c4_client, CSW_C4))
         {
             engclient_cmd(g_c4_client, "drop", "weapon_c4")
+        }
+        else
+        {
+            @c4_check()
         }
     }
     g_bot_controllers = 0;
@@ -605,6 +685,7 @@ public control_bot(dead_spec)
                 set_task(2.0, "@check_arms", dead_spec)
                 g_bot_controllers++
             }
+
         }
         return PLUGIN_CONTINUE;
     }
@@ -617,10 +698,8 @@ public control_bot(dead_spec)
     {
         if(!get_user_weapon(dead_spec))
         {
-            give_item(dead_spec, "weapon_awp")
-            give_item(dead_spec, "weapon_deagle")
             give_item(dead_spec, "weapon_knife")
-            log_amx("They had no weapon. Check log.")
+            log_amx("%N had no weapon.")
         }
     }
 }
@@ -630,11 +709,15 @@ stock weapon_details(alive_bot)
     if(is_user_connected(alive_bot) && is_user_alive(alive_bot))
     {
         wpnid = get_user_weapon(alive_bot, magazine, ammo);
-        get_weaponname(wpnid, SzWeaponClassname, charsmax(SzWeaponClassname))
-        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
-        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
-        return wpnid, magazine, ammo, SzWeaponClassname;
+        if(wpnid)
+        {
+            get_weaponname(wpnid, SzWeaponClassname, charsmax(SzWeaponClassname))
+            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+            return wpnid, magazine, ammo, SzWeaponClassname;
+        }
     }
+    wpnid=0,magazine=0,ammo=0,SzWeaponClassname="nothing";
     return wpnid,magazine,ammo,SzWeaponClassname;
 }
 
@@ -642,17 +725,15 @@ stock weapon_details(alive_bot)
 {
     if(is_user_connected(dead_spec) && is_user_alive(alive_bot))
     {
-        weapon_details(alive_bot)
-        strip_user_weapons(dead_spec)
-        if(wpnid == CSW_KNIFE || wpnid == CSW_C4)
-            return PLUGIN_HANDLED;
-        cs_set_user_bpammo(dead_spec, wpnid, ammo)
-        if(equal(SzWeaponClassname, ""))
+        new wpnid = get_user_weapon(alive_bot)
+        if(wpnid)
         {
-            log_amx("Pausing to prevent crash.")
-            client_print 0, print_chat, "Attempting to prevent a crash!"
-            console_cmd 0, "sv_restartround 5"
-            pause("a")
+            weapon_details(alive_bot)
+        }
+        strip_user_weapons(dead_spec)
+        if(wpnid & wpnid != CSW_KNIFE || wpnid != CSW_C4)
+        {
+            cs_set_user_bpammo(dead_spec, wpnid, ammo)
         }
         client_print(dead_spec, print_chat, "%n took control of %n's %s. %i in mag, %i bullets total and %i armor.", dead_spec, alive_bot, SzWeaponClassname, magazine, ammo, arm);
 
@@ -719,6 +800,7 @@ stock weapon_details(alive_bot)
 
                 client_print dead_spec, print_chat,  SzWeaponClassname
             }
+
         }
 
         if(cs_get_user_shield(alive_bot))
@@ -773,5 +855,13 @@ public stuck_timer(dead_spec)
         }
 
         set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
+
     }
+
+}
+
+stock COLOR()
+{
+    new iRandom = random(256)
+    return iRandom
 }
