@@ -699,7 +699,7 @@ public control_bot(dead_spec)
         if(!get_user_weapon(dead_spec))
         {
             give_item(dead_spec, "weapon_knife")
-            log_amx("%N had no weapon.")
+            log_amx("%N had no weapon.", dead_spec)
         }
     }
 }
