@@ -39,10 +39,12 @@ public client_putinserver(id)
 {
     g_playercount++
     OkSpawn[id] = true
-    if(is_user_connected(id) &&g_playercount>PLAYER_COUNT)
+    if(is_user_connected(id) && g_playercount > PLAYER_COUNT)
     {
         if(is_user_alive(id))
         {
+            static effects; effects = pev(id, pev_effects)
+            set_pev(id, pev_effects, (effects | EF_NODRAW))
             fakedamage(id,"Welcome!",1000.0,DMG_GENERIC)
         }
         OkSpawn[id] = false
@@ -53,23 +55,35 @@ public client_putinserver(id)
 
 public client_death(id)
 {
-    if(g_playercount>PLAYER_COUNT)
+    if(is_user_connected(id) && g_playercount > PLAYER_COUNT)
     {
         g_spawn_timer[id] = get_pcvar_num(g_mp_spawntime)
+
         set_task(float(g_spawn_timer[id]), "@spawn_buffer",id)
-        set_task_ex(1.0, "@Show_spawn_time", id+2024, .flags = SetTask_RepeatTimes, .repeat = g_spawn_timer[id] )
+        set_task_ex(1.0, "@Show_spawn_time", id+2024, .flags = SetTask_RepeatTimes, .repeat = g_spawn_timer[id])
+
+        static effects; effects = pev(id, pev_effects)
+        set_pev(id, pev_effects, (effects | EF_NODRAW))
+
         OkSpawn[id] = false
     }
 }
 
 public client_spawn(id)
 {
-    if(g_playercount>PLAYER_COUNT)
+    if(is_user_connected(id))
     {
-        if(is_user_alive(id) && !OkSpawn[id])
+        static effects; effects = pev(id, pev_effects)
+        if(g_playercount>PLAYER_COUNT)
         {
-            set_pev(id, pev_deadflag, DEAD_DEAD)
+            if(is_user_alive(id) && !OkSpawn[id])
+            {
+                set_pev(id, pev_deadflag, DEAD_DEAD)
+                set_pev(id, pev_effects, (effects | EF_NODRAW))
+                return
+            }
         }
+        set_pev(id, pev_effects, (effects | ~EF_NODRAW))
     }
 }
 
