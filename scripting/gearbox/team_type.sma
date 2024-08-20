@@ -9,7 +9,8 @@
 static
 g_MsgScoreInfo, g_MsgTeamInfo, g_MsgGameMode;
 new
-g_TeamName[MAX_NAME_LENGTH][MAX_PLAYERS +1];
+g_TeamName[MAX_NAME_LENGTH][MAX_PLAYERS +1],
+bool: bMessagePush[MAX_PLAYERS+1];
 
 public plugin_init()
 {
@@ -29,15 +30,28 @@ public client_infochanged(id)
     {
         get_team(id);
         send_GameMode_msg();
-        send_TeamInfo_msg(id)
+        send_TeamInfo_msg(id);
     }
+}
 
+public client_command(id)
+{
+    if(!bMessagePush[id])
+    {
+       client_infochanged(id)
+    }
+}
+
+public client_disconnected(id)
+{
+    bMessagePush[id] = false
 }
 
 public ev_TeamInfo()
 {
+    static id; id = read_data(1);
+    if(is_user_connected(id))
     {
-        static id; id = read_data(1);
         static flags; flags = pev(id, pev_flags)
 
         if(flags & FL_SPECTATOR && !is_user_hltv(id))
