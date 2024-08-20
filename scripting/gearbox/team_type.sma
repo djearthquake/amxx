@@ -87,7 +87,7 @@ get_team(id)
     }
     else if(is_user_admin(id))
     {
-        g_TeamName[id] = "ADMIN";
+        g_TeamName[id] = flags & FL_SPECTATOR ? "WATCHER" : "ADMIN"
     }
     else if(is_user_bot(id))
     {
