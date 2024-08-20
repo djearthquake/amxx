@@ -15,9 +15,9 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
 
-    g_MsgGameMode = get_user_msgid("GameMode");
+    g_MsgGameMode  = get_user_msgid("GameMode");
     g_MsgScoreInfo = get_user_msgid("ScoreInfo");
-    g_MsgTeamInfo = get_user_msgid("TeamInfo");
+    g_MsgTeamInfo  = get_user_msgid("TeamInfo");
 
     register_message(g_MsgScoreInfo, "fw_ScoreInfo_Msg");
     register_event("TeamInfo", "ev_TeamInfo", "a");
