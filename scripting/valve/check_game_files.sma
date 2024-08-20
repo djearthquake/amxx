@@ -2,7 +2,7 @@
 
 static const szReason[]= "Your DLL game files are corrupted. Please Verify Integrity of Game Files."
 
-public plugin()
+public plugin_init()
 {
     register_plugin("HL DLL CHECK", "1.1", ".sρiηX҉.");
 }
