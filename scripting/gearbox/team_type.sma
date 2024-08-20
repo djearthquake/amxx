@@ -15,6 +15,14 @@ public plugin_init()
     g_MsgTeamInfo  = get_user_msgid("TeamInfo");
 }
 
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        set_task(1.0, "@get_team", id)
+    }
+}
+
 public client_infochanged(id)
 {
     @get_team(id);
@@ -47,15 +55,16 @@ public client_infochanged(id)
             g_TeamName[id] = "PLAYER";
         }
     }
-    @message(id);
+    @message();
 }
 
-@message(id)
+@message()
 {
     emessage_begin(MSG_BROADCAST, g_MsgGameMode);
     ewrite_byte(1);
     emessage_end();
 
+    for(new id = 1 ;id <= MaxClients;++id)
     if(is_user_connected(id))
     {
         emessage_begin(MSG_BROADCAST, g_MsgTeamInfo);
