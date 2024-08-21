@@ -78,12 +78,6 @@
 #include hamsandwich
 
 #include unstick
-//CZ install instructions. Per Ham install this plugin first.
-#define SPEC_PRG    "cs_ham_bots_api.amxx"
-#define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/czero/AI"
-
-#include cs_ham_bots_api //COMMENT OUT WITH // TO PLAY REGULAR CS.
-//#tryinclude cs_ham_bots_api
 
 #define FRICTION_NOT    1.0
 #define FRICTION_MUD    1.8
@@ -132,22 +126,21 @@ new const SzCsAmmo[][]=
 new const SzAdvert[]="Bind impulse 206 to control bot.";
 new const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
-public plugin_precache()
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
 {
-    //fail-safe although plugin is expected to stop before hand like this.
-    /////[AMXX] Plugin "respawn.amxx" failed to load: Module/Library "cs_ham_bots_api" required for plugin.  Check modules.ini.
-    if (is_running("czero"))
+    RegisterHamFromEntity( Ham_Spawn, ham_bot, "@PlayerSpawn", 1 );
+    RegisterHamFromEntity( Ham_Killed, ham_bot, "@died", 1 );
+    server_print("Respawn ham bot from %N", ham_bot)
+}
+
+public client_authorized(bot, const authid[])
+{
+    new bool:bRegistered;
+    if(equal(authid, "BOT") && !bRegistered)
     {
-        if(is_plugin_loaded(SPEC_PRG,true) == charsmin)
-        {
-            log_amx("%s must be installed! %s", SPEC_PRG, URL)
-            pause("c")
-        }
-        else
-        {
-            RegisterHamBots(Ham_Spawn, "@PlayerSpawn");
-            RegisterHamBots(Ham_Killed, "@died");
-        }
+        set_task(0.1, "@register", bot);
+        bRegistered = true;
     }
 }
 
@@ -243,7 +236,7 @@ public bomb_dropped()
         else
         {
             server_print("We found the dropped C4!")
-            
+
             if(pev_valid(iC4))
             {
                 set_task(0.4, "@c4_model", iC4)
@@ -731,7 +724,7 @@ stock weapon_details(alive_bot)
             weapon_details(alive_bot)
         }
         strip_user_weapons(dead_spec)
-        if(wpnid & wpnid != CSW_KNIFE || wpnid != CSW_C4)
+        if(wpnid & wpnid != CSW_KNIFE && wpnid != CSW_C4)
         {
             cs_set_user_bpammo(dead_spec, wpnid, ammo)
         }
