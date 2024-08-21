@@ -37,7 +37,8 @@
  *
  * 03-25-2021 Version A::
  * -Color Cvars, finish tuning sound.
- *
+ * 08-21-2024 Versions A1::
+ * -Added CZ Bot support
  *
  * POTENTIAL AND KNOWN ISSUES:
  * ---------------------------
@@ -68,7 +69,7 @@
 
 // Plugin information
 #define Plugin  "Tau Cannon Port"
-#define Version "A"
+#define Version "A1"
 #define Author  "SPINX"
 // Maxplayers
 const MaxPlayers = 32
@@ -131,6 +132,7 @@ new g_pOneRound
 new Float:g_pDmgPrim
 new Float:g_pDmgSec
 new g_pClip
+new g_free_for_all
 
 // Global varibles
 new g_gauss_color_beam //beam color override CVAR
@@ -205,7 +207,7 @@ enum
     gauss_fire2,
     gauss_holster,
     gauss_draw
-}
+};
 
 // Precache
 public plugin_precache( )
@@ -269,6 +271,7 @@ public plugin_init( )
     register_cvar( "tcannon_version", Version, FCVAR_FLAGS )
 
     register_clcmd("buy_gauss","cmd_give_tso",0,"Acquire HL Elite Gauss.");
+    g_free_for_all = register_cvar("gauss_free", "1")
 
     // Events
     register_event( "CurWeapon", "EV_CurWeapon", "b", "1=1" )
@@ -329,7 +332,10 @@ public client_connect( Player )
 }
 
 // Client disconnected
-public client_disconnect( Player )
+#if !defined client_disconnected
+#define client_disconnected client_disconnect
+#endif
+public client_disconnected( Player )
 {
     // Only few important updates
     g_bIsAlive[ Player ] = false
@@ -343,6 +349,12 @@ public cmd_give_tso(Player, level, cid)
 
     buy_gauss(Player);
     //if(get_pcvar_num(g_debug))server_print("Acquiring the ported gauss");
+    return PLUGIN_HANDLED;
+}
+
+public free_gauss(Player)
+{
+    ze_select_item_post(Player, g_iGaussID);
     return PLUGIN_HANDLED;
 }
 
@@ -413,8 +425,8 @@ public EV_CurWeapon( Player )
 
     // Update
     g_iCurrentWeapon[ Player ] = read_data( 2 )
-    
-   /* 
+
+   /*
     //Get and check weapon ID
     new weaponID = read_data( 2 )
 
@@ -800,7 +812,7 @@ public fw_PlayerPreThink( Player )
         // Not alive / dont have gauss/ not m249
         if ( !g_bIsAlive [ Player ] || !g_iHasGauss [ Player ] || g_iCurrentWeapon [ Player ] != CSW_M249 )
             return
-    
+
         // Play aftershock discharge
         if( g_fflPlayAfterShock[ Player ] && g_fflPlayAfterShock[ Player ] < get_gametime( ) )
         {
@@ -812,11 +824,11 @@ public fw_PlayerPreThink( Player )
                     case 2: emit_sound( Player, CHAN_WEAPON, g_szSoundElectro3,random_float( 0.7, 0.8 ), ATTN_NORM, 0, PITCH_NORM )
                     case 3: return // No sound
                 }
-    
+
             // Reset discharge
             g_fflPlayAfterShock[ Player ] = 0.0
         }
-    
+
         // Check if we are in a middle of attack
         if( g_bInAttack[ Player ] != 0 )
         {
@@ -825,10 +837,10 @@ public fw_PlayerPreThink( Player )
             {
                 // Start to fire
                 StartFire( Player )
-    
+
                 // Reset attack state
                 g_bInAttack[ Player ] = 0
-    
+
                 // Next idle time
                 g_flWeaponIdleTime[ Player ] = get_gametime( ) + 2.0
             }
@@ -850,6 +862,10 @@ public fw_PlayerSpawn_Post( Player )
 
     // Update
     g_bIsAlive[ Player ] = true
+    if(get_pcvar_num(g_free_for_all))
+    {
+        free_gauss(Player)
+    }
 }
 
 // Gauss deploy
@@ -1854,4 +1870,20 @@ FX_SpriteTrail( Float:vecStart[ ], Float:vecDest[ ], iCount, iLife, iScale, iVel
     write_byte( iVel ) // Velocity along vector
     write_byte( iRnd ) // Randomness of velocity
     message_end( )
+}
+
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    RegisterHamFromEntity( Ham_Spawn, ham_bot, "fw_PlayerSpawn_Post", 1 );
+    server_print("Gauss ham bot from %N", ham_bot)
+}
+public client_authorized(bot, const authid[])
+{
+    new bool:bRegistered;
+    if(equal(authid, "BOT") && !bRegistered)
+    {
+        set_task(0.1, "@register", bot);
+        bRegistered = true;
+    }
 }
