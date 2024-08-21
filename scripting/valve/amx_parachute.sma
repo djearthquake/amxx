@@ -1,11 +1,7 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8.5"
-
-//CZ install instructions. Per Ham install this plugin first.
-#define SPEC_PRG    "cs_ham_bots_api.amxx"
-#define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/czero/AI"
+#define VERSION "1.8.6"
 
 /*******************************************************************************
     Original AMX Author: KRoTaL
@@ -40,6 +36,7 @@
     1.8.3 SPiNX - Mon 10 Apr 2023 AM - Finishing trouble-shooting. Refine so when using hook, jumping, in water etc the parachute is removed. Other optimizaions such as update admin when infochanges.
     1.8.4 SPiNX - Thurs 10 Apr 2023 AM - Players can now set rip cord depth. setinfo "auto_rip" "1000"
     1.8.5 SPiNX - Fri 28 Jun 2024 AM - Reduce turbulence regarding chute's adjustment. Remove needs for defines across mods.
+    1.8.6 SPiNX - Wed 21 Aug 2024 PM - Drop HamBots.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -86,12 +83,6 @@
 #include <cstrike>
 #include <fun>
 #include <hamsandwich>
-
-#tryinclude cs_ham_bots_api
-
-#if !defined RegisterHamBots
-#define RegisterHamBots
-#endif
 
 #define MAX_PLAYERS                32
 #define MAX_RESOURCE_PATH_LENGTH   64
@@ -160,22 +151,6 @@ public plugin_init()
     {
         gCStrike = true
     }
-
-    else if(equal(mod_name, "czero"))
-    {
-        if(is_plugin_loaded(SPEC_PRG,true) == charsmin)
-        {
-            log_amx("%s must be installed! %s", SPEC_PRG, URL)
-            pause("c")
-        }
-        else
-        {
-            ///Ignore expression has no effect unless playing Condition Zero with their built-in bots.
-            RegisterHamBots(Ham_Spawn, "newSpawn", 1);
-            RegisterHamBots(Ham_Killed, "death_event", 1);
-        }
-    }
-
     if (gCStrike)
     {
 
@@ -272,18 +247,39 @@ public plugin_precache()
 
 }
 
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    RegisterHamFromEntity( Ham_Spawn, ham_bot, "newSpawn", 1 );
+    RegisterHamFromEntity( Ham_Killed, ham_bot, "death_event", 1 );
+    server_print("Parachute ham bot from %N", ham_bot)
+}
+public client_authorized(id, const authid[])
+{
+    new bool:bRegistered;
+    bIsBot[id] = equal(authid, "BOT") ? true : false
+    if(bIsBot[id] && !bRegistered)
+    {
+        set_task(0.1, "@register", id);
+        bRegistered = true;
+    }
+}
+
 public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        bIsBot[id] = is_user_bot(id) ? true : false
         if(bIsBot[id] && !think_captured)
         {
             think_captured = true
             BotsThink = pev(id, pev_framerate)
             server_print "Bot framerate is %i", BotsThink
+
             if(!BotsThink)
-                BotsThink = 25
+            {
+                server_print "Setting %n's framerate", id
+                set_pev(id, pev_framerate, 25)
+            }
         }
     }
 }
