@@ -23,7 +23,7 @@
 const DMG_GRENADE = (1<<24)
 #endif
 
-new HamHook:XBotDamage, HamHook:XDamage, Xcvar
+new /*HamHook:XBotDamage,*/ HamHook:XDamage, Xcvar
 new XAdmin, Float:XMultipler, XPrintDamage, XBreakable
 new const CvarXAdminDesc[]="Grenade admin immunity"
 new const CvarXMultiplerDesc[]="Grenade damage multiplier"
@@ -31,7 +31,8 @@ new const CvarXPrintDesc[]="Grenade damage print"
 new const CvarXBreakableDesc[]="Grenades/C4 destroys breakables."
 
 new bool:bOF_run
-new g_MOD_DMG;
+new g_MOD_DMG
+new bool:bRegistered;
 
 public plugin_init()
 {
@@ -66,13 +67,16 @@ public plugin_init()
 
 @register(ham_bot)
 {
-    XBotDamage = RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "Fw_Damage", 1 );
-    server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    if(is_user_connected(ham_bot))
+    {
+        //XBotDamage =
+        RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "Fw_Damage", 1 );
+        server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    }
 }
 
 public client_authorized(id, const authid[])
 {
-    new bool:bRegistered;
     if(equal(authid, "BOT")  && !bRegistered)
     {
         bRegistered = true;
@@ -90,7 +94,7 @@ public client_authorized(id, const authid[])
 public Fw_Damage(victim, inflictor, attacker, Float:fDamage, dmgbits)
 {
     static iCvar; iCvar = get_pcvar_num(Xcvar)
-    iCvar ?  EnableHamForward(XBotDamage) :  DisableHamForward(XBotDamage)
+    //iCvar ?  EnableHamForward(XBotDamage) :  DisableHamForward(XBotDamage)
     iCvar ?  EnableHamForward(XDamage)    :  DisableHamForward(XDamage)
     if(is_user_connected(victim) && !is_user_bot(attacker))
     {
@@ -133,6 +137,6 @@ public Fw_Damage(victim, inflictor, attacker, Float:fDamage, dmgbits)
 
 public plugin_end()
 {
-    DisableHamForward(XBotDamage)
+    //DisableHamForward(XBotDamage)
     DisableHamForward(XDamage)
 }
