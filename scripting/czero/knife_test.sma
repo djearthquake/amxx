@@ -8,7 +8,9 @@
 #define URL      "github.com/djearthquake"
 #define MAX_PLAYERS 32
 
-new HamHook:XBotDamage, HamHook:XDamage, Xcvar
+new HamHook:XDamage, Xcvar
+
+new bool:bRegistered;
 
 public plugin_init()
 {
@@ -25,38 +27,37 @@ public plugin_init()
 //CONDITION ZERO TYPE BOTS. SPiNX
 @register(ham_bot)
 {
-    XBotDamage = RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "@PostTakeDamage", 1 );
-    server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "@PostTakeDamage", 1 );
+        server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    }
 }
 
 public client_authorized(id, const authid[])
 {
-    if(is_user_connected(id))
+    if(equal(authid, "BOT")  && !bRegistered)
     {
-        new bool:bRegistered;
-        if(equal(authid, "BOT")  && !bRegistered)
+        bRegistered = true;
+        if(get_cvar_pointer("bot_quota"))
         {
-            bRegistered = true;
-            if(get_cvar_pointer("bot_quota"))
-            {
-                set_task(0.1, "@register", id);
-            }
+            set_task(0.1, "@register", id);
         }
     }
 }
 
 public plugin_end()
 {
-    DisableHamForward(XBotDamage)
+    //DisableHamForward(XBotDamage)
     DisableHamForward(XDamage)
 }
 
 @PostTakeDamage(iVictim, iInflictor, iAttacker, Float:iDamage, iDamagebits)
 {
-    static iCvar; iCvar = get_pcvar_num(Xcvar)
-    iCvar ?  EnableHamForward(XBotDamage) :  DisableHamForward(XBotDamage)
-    iCvar ?  EnableHamForward(XDamage)    :  DisableHamForward(XDamage)
 
+    static iCvar; iCvar = get_pcvar_num(Xcvar)
+    //iCvar ?  EnableHamForward(XBotDamage) :  DisableHamForward(XBotDamage)
+    iCvar ?  EnableHamForward(XDamage)    :  DisableHamForward(XDamage)
     static iKnife[MAX_PLAYERS]
     if(is_user_connected(iAttacker) && is_user_connected(iVictim))
     {
