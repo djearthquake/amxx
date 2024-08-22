@@ -271,7 +271,7 @@ public plugin_init( )
     register_cvar( "tcannon_version", Version, FCVAR_FLAGS )
 
     register_clcmd("buy_gauss","cmd_give_tso",0,"Acquire HL Elite Gauss.");
-    g_free_for_all = register_cvar("gauss_free", "1")
+    g_free_for_all = register_cvar("gauss_free", "1");
 
     // Events
     register_event( "CurWeapon", "EV_CurWeapon", "b", "1=1" )
@@ -1878,12 +1878,16 @@ FX_SpriteTrail( Float:vecStart[ ], Float:vecDest[ ], iCount, iLife, iScale, iVel
     RegisterHamFromEntity( Ham_Spawn, ham_bot, "fw_PlayerSpawn_Post", 1 );
     server_print("Gauss ham bot from %N", ham_bot)
 }
+
 public client_authorized(bot, const authid[])
 {
-    new bool:bRegistered;
-    if(equal(authid, "BOT") && !bRegistered)
+    if(is_user_connected(bot))
     {
-        set_task(0.1, "@register", bot);
-        bRegistered = true;
+        new bool:bRegistered;
+        if(equal(authid, "BOT") && !bRegistered)
+        {
+            set_task(0.1, "@register", bot);
+            bRegistered = true;
+        }
     }
 }
