@@ -96,7 +96,7 @@
 
 #define Parachute_size  15.0
 
-new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1];
+new bool:has_parachute[ MAX_PLAYERS +1 ], bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1], bool:bRegistered;
 new para_ent[ MAX_PLAYERS +1 ]
 new gCStrike = 0
 new pDetach, pFallSpeed, pEnabled, pCost, pPayback, pAutoDeploy /*MAY2020*/,pAutoRules /*MAY2020*/;
@@ -249,22 +249,21 @@ public plugin_precache()
 //CONDITION ZERO TYPE BOTS. SPiNX
 @register(ham_bot)
 {
-    RegisterHamFromEntity( Ham_Spawn, ham_bot, "newSpawn", 1 );
-    RegisterHamFromEntity( Ham_Killed, ham_bot, "death_event", 1 );
-    server_print("Parachute ham bot from %N", ham_bot)
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity( Ham_Spawn, ham_bot, "newSpawn", 1 );
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "death_event", 1 );
+        server_print("Parachute ham bot from %N", ham_bot)
+    }
 }
 
 public client_authorized(id, const authid[])
 {
-    if(is_user_connected(id))
+    bIsBot[id] = equal(authid, "BOT") ? true : false
+    if(bIsBot[id] && !bRegistered)
     {
-        new bool:bRegistered;
-        bIsBot[id] = equal(authid, "BOT") ? true : false
-        if(bIsBot[id] && !bRegistered)
-        {
-            set_task(0.1, "@register", id);
-            bRegistered = true;
-        }
+        set_task(0.1, "@register", id);
+        bRegistered = true;
     }
 }
 
