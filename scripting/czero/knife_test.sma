@@ -31,13 +31,16 @@ public plugin_init()
 
 public client_authorized(id, const authid[])
 {
-    new bool:bRegistered;
-    if(equal(authid, "BOT")  && !bRegistered)
+    if(is_user_connected(id))
     {
-        bRegistered = true;
-        if(get_cvar_pointer("bot_quota"))
+        new bool:bRegistered;
+        if(equal(authid, "BOT")  && !bRegistered)
         {
-            set_task(0.1, "@register", id);
+            bRegistered = true;
+            if(get_cvar_pointer("bot_quota"))
+            {
+                set_task(0.1, "@register", id);
+            }
         }
     }
 }
