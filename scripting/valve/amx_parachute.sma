@@ -111,7 +111,7 @@ new /*g_model, */g_packHP
 new bool:bOF_run
 new bool:bFirstAuto[MAX_PLAYERS+1]
 new PlayerRipCord[MAX_PLAYERS+1]
-new bool:bAdjusted[MAX_PLAYERS+1]
+new bool:bAdjusted[MAX_PLAYERS+1];
 
 #define PITCH (random_num (90,111))
 #define PARACHUTE_LEVEL ADMIN_LEVEL_A
