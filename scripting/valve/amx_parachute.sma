@@ -110,7 +110,6 @@ new const PARA_MODEL[] = "models/parachute2.mdl"
 new /*g_model, */g_packHP
 new bool:bOF_run
 new bool:bFirstAuto[MAX_PLAYERS+1]
-new BotsThink, bool:think_captured
 new PlayerRipCord[MAX_PLAYERS+1]
 new bool:bAdjusted[MAX_PLAYERS+1]
 
@@ -254,32 +253,17 @@ public plugin_precache()
     RegisterHamFromEntity( Ham_Killed, ham_bot, "death_event", 1 );
     server_print("Parachute ham bot from %N", ham_bot)
 }
-public client_authorized(id, const authid[])
-{
-    new bool:bRegistered;
-    bIsBot[id] = equal(authid, "BOT") ? true : false
-    if(bIsBot[id] && !bRegistered)
-    {
-        set_task(0.1, "@register", id);
-        bRegistered = true;
-    }
-}
 
-public client_putinserver(id)
+public client_authorized(id, const authid[])
 {
     if(is_user_connected(id))
     {
-        if(bIsBot[id] && !think_captured)
+        new bool:bRegistered;
+        bIsBot[id] = equal(authid, "BOT") ? true : false
+        if(bIsBot[id] && !bRegistered)
         {
-            think_captured = true
-            BotsThink = pev(id, pev_framerate)
-            server_print "Bot framerate is %i", BotsThink
-
-            if(!BotsThink)
-            {
-                server_print "Setting %n's framerate", id
-                set_pev(id, pev_framerate, 25)
-            }
+            set_task(0.1, "@register", id);
+            bRegistered = true;
         }
     }
 }
