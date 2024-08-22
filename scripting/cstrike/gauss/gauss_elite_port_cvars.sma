@@ -120,6 +120,7 @@ new bool:g_bIsAlive[ MaxPlayers+1 ] // Whether player is alive
 new bool:g_bIsConnected[ MaxPlayers+1 ] // Whether player is connected
 new bool:g_bPrimaryFire[ MaxPlayers+1 ] // Does this weapon is using primary attack ?
 new bool:g_bKilledByLaser[ MaxPlayers+1 ] // Imma firin mah lazor O.o
+new bool:bRegistered; //cz hambot
 
 // CVAR pointers
 new cvar_oneround // Whether gun should be only for 1 round
@@ -1875,19 +1876,18 @@ FX_SpriteTrail( Float:vecStart[ ], Float:vecDest[ ], iCount, iLife, iScale, iVel
 //CONDITION ZERO TYPE BOTS. SPiNX
 @register(ham_bot)
 {
-    RegisterHamFromEntity( Ham_Spawn, ham_bot, "fw_PlayerSpawn_Post", 1 );
-    server_print("Gauss ham bot from %N", ham_bot)
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity( Ham_Spawn, ham_bot, "fw_PlayerSpawn_Post", 1 );
+        server_print("Gauss ham bot from %N", ham_bot)
+    }
 }
 
 public client_authorized(bot, const authid[])
 {
-    if(is_user_connected(bot))
+    if(equal(authid, "BOT") && !bRegistered)
     {
-        new bool:bRegistered;
-        if(equal(authid, "BOT") && !bRegistered)
-        {
-            set_task(0.1, "@register", bot);
-            bRegistered = true;
-        }
+        set_task(0.1, "@register", bot);
+        bRegistered = true;
     }
 }
