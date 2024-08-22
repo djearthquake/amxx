@@ -136,11 +136,14 @@ new const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
 public client_authorized(bot, const authid[])
 {
-    new bool:bRegistered;
-    if(equal(authid, "BOT") && !bRegistered)
+    if(is_user_connected(bot))
     {
-        set_task(0.1, "@register", bot);
-        bRegistered = true;
+        new bool:bRegistered;
+        if(equal(authid, "BOT") && !bRegistered)
+        {
+            set_task(0.1, "@register", bot);
+            bRegistered = true;
+        }
     }
 }
 
