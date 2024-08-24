@@ -11,10 +11,9 @@ new const ent_type[] = "item_healthkit"
 
 new g_ent;
 
-
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.3", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.4", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -28,6 +27,7 @@ public plugin_cfg()
     register_touch("player", "func_breakable", "@ent_changing_function")
     register_touch("Hook_illuminati", "func_breakable", "@ent_changing_function")
     register_clcmd("clear_kits","@clear_medkits",ADMIN_SLAY,"- removes all medikits.");
+    register_clcmd("fix_boxes","@fix_boxes",ADMIN_SLAY,"- break on trigger not melee.");
 }
 
 @ent_changing_function(player, entity_we_touched)
@@ -42,22 +42,11 @@ public plugin_cfg()
     }
 }
 
-@clear_medkits(id)
-{
-    if(is_user_connected(id))
-    {
-        g_ent = 0;
-        set_task(0.5, "@ent_remover")
-        set_task(1.5, "@feedback", id)
-    }
-    return PLUGIN_HANDLED
-}
-
 @feedback(id)
 {
     if(is_user_connected(id))
     {
-        client_print(id, print_chat, "%i %s removed for you %n!", g_ent, ent_type, id)
+        client_print(id, print_chat, "%i jobs taken care of for you %n!", g_ent, id)
     }
 }
 
@@ -66,8 +55,34 @@ public plugin_cfg()
     new  ent = MaxClients; while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent))
     {
         set_pev(ent, pev_flags, FL_KILLME)
-        g_ent++
     }
+}
+
+@clear_medkits(id)
+{
+    g_ent = 0;
+    if(is_user_connected(id))
+    {
+        set_task(0.5, "@ent_remover", id)
+        set_task(1.0, "@feedback", id)
+    }
+    return PLUGIN_HANDLED
+}
+
+@fix_boxes(id)
+{
+    g_ent = 0;
+    if(is_user_connected(id))
+    {
+        new  ent = MaxClients; while( (ent = find_ent(ent, "func_breakable") ) > MaxClients && pev_valid(ent)>1)
+        {
+            set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+            DispatchSpawn(ent); //make trigger only work
+            g_ent++
+        }
+        set_task(1.0, "@feedback", id)
+    }
+    return PLUGIN_HANDLED
 }
 
 public plugin_precache()
