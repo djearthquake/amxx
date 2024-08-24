@@ -9,6 +9,8 @@ new const smallkit1[] = "items/smallmedkit1.wav"
 new const smallkit2[] = "items/smallmedkit2.wav"
 new const ent_type[] = "item_healthkit"
 
+new g_ent;
+
 
 public plugin_init()
 {
@@ -42,14 +44,29 @@ public plugin_cfg()
 
 @clear_medkits(id)
 {
-    set_task(1.0, "@ent_remover")
+    if(is_user_connected(id))
+    {
+        g_ent = 0;
+        set_task(0.5, "@ent_remover")
+        set_task(1.5, "@feedback", id)
+    }
+    return PLUGIN_HANDLED
+}
+
+@feedback(id)
+{
+    if(is_user_connected(id))
+    {
+        client_print(id, print_chat, "%i %s removed for you %n!", g_ent, ent_type, id)
+    }
 }
 
 @ent_remover()
 {
-    new ent, iThink; ent = MaxClients; while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent))
+    new  ent = MaxClients; while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent))
     {
         set_pev(ent, pev_flags, FL_KILLME)
+        g_ent++
     }
 }
 
