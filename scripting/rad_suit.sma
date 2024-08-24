@@ -1,13 +1,38 @@
+/*
+ * rad_suit.sma
+ *
+ * Copyright 2024  <SPiNX>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 0.1 - Fresh idea tested damage and made it handle CZ bots.
+ * 0.2 - Added support for gungame and neon_grenades.
+ */
+
 #include amxmodx
 #include amxmisc
 #include fakemeta
 #include hamsandwich
 
 #define PLUGIN "RAD SUIT"
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define AUTHOR ".sρiηX҉."
 
 #define fNULL 0.0
+#define GUN_PRG "gungame.amxx"
+#define GREN_PRG "neon_grenades.amxx"
 #define charsmin -1
 
 #define DAMAGE_LEVEL ADMIN_LEVEL_F
@@ -18,12 +43,18 @@
 #define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 new bool:bRegistered;
+static bool:bNeon;
 new bool:bSuit[MAX_PLAYERS+1]
 
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
     RegisterHam(Ham_TakeDamage, "player", "Fw_Damage", 0);
+    bNeon = is_plugin_loaded(GREN_PRG,true)!=charsmin ? true : false
+    if(bNeon)
+    {
+        server_print("Neon trace detected!")
+    }
 }
 
 public client_putinserver(id)
@@ -31,6 +62,23 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         bSuit[id] = is_vip(id) ? true : false
+        //Give everybody a suit when running Neon grenades and Gungame.
+        //init is no good when gungame is not 24/7 and loaded only under some maps.
+        if(bNeon)
+        {
+            new gun_game = is_plugin_loaded(GUN_PRG,true)!=charsmin ? true : false
+            if(gun_game)
+            {
+                server_print("Gungame detected.")
+                bSuit[id] = true
+            }
+        }
+
+        if(bSuit[id])
+        {
+            server_print "Gave %n a rad suit.", id
+            client_print 0, print_chat, "Gave %n a rad suit.", id
+        }
     }
 }
 
