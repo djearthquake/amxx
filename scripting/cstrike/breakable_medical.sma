@@ -22,8 +22,7 @@ public plugin_cfg()
     bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
     if(bStrike)
     {
-        register_logevent("@ent_fixer", 2, "1=Round_End")
-        register_logevent("@ent_remover", 2, "1=Round_End")
+        register_logevent("@round_end", 2, "1=Round_End")
     }
 
     register_touch("player", "func_breakable", "@ent_changing_function")
@@ -51,6 +50,12 @@ public plugin_cfg()
     {
         client_print(id, print_chat, "%i jobs taken care of for you %n!", g_ent, id)
     }
+}
+
+@round_end()
+{
+    @ent_fixer()
+    @ent_remover()
 }
 
 @clear_medkits(id)
