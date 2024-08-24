@@ -363,11 +363,14 @@ public CS_OnBuy(id, item)
 
 @check_bot_knife(id)
 {
-    if(!user_has_weapon(id, CSW_KNIFE))
+    if(is_user_connected(id))
     {
-        log_amx "%N had no knife!", id
-        client_print iBotOwner[id], print_chat,  "%n had no knife!", id
-        set_task(2.0,"@ReSpawn", id)
+        if(!user_has_weapon(id, CSW_KNIFE))
+        {
+            log_amx "%N had no knife!", id
+            client_print iBotOwner[id], print_chat,  "%n had no knife!", id
+            set_task(2.0,"@ReSpawn", id)
+        }
     }
 }
 
