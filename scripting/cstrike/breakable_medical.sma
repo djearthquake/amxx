@@ -12,7 +12,7 @@ new const ent_type[] = "item_healthkit"
 
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.2", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.3", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -21,10 +21,11 @@ public plugin_cfg()
     bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
     if(bStrike)
     {
-        register_event("SendAudio", "@clear_medkits", "a", "2&%!MRAD_terwin", "2&%!MRAD_ctwin", "2&%!MRAD_rounddraw")
+        register_logevent("@ent_remover", 2, "1=Round_End")
     }
     register_touch("player", "func_breakable", "@ent_changing_function")
     register_touch("Hook_illuminati", "func_breakable", "@ent_changing_function")
+    register_clcmd("clear_kits","@clear_medkits",ADMIN_SLAY,"- removes all medikits.");
 }
 
 @ent_changing_function(player, entity_we_touched)
@@ -39,12 +40,16 @@ public plugin_cfg()
     }
 }
 
-@clear_medkits()
+@clear_medkits(id)
 {
-    static ent, iThink; ent = MaxClients; while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent))
+    set_task(1.0, "@ent_remover")
+}
+
+@ent_remover()
+{
+    new ent, iThink; ent = MaxClients; while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent))
     {
-        iThink = pev(ent, pev_nextthink); iThink == 0 ? (remove_entity(ent)&server_print("%d is removed", ent)) : (set_pev(ent, pev_flags, FL_KILLME)&server_print("%d's flagged next_think %i", ent, iThink))
-        server_print("%d's flagged next_think %i", ent, iThink)
+        set_pev(ent, pev_flags, FL_KILLME)
     }
 }
 
@@ -53,4 +58,6 @@ public plugin_precache()
     precache_model(medkit);
     precache_sound(smallkit1);
     precache_sound(smallkit2);
+    precache_sound("debris/metal1.wav")
+    precache_sound("debris/metal3.wav")
 }
