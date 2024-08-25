@@ -112,7 +112,7 @@ public plugin_init( )
     pYPosition  = register_cvar("hud_ammo_hair_y"    , "-1.0"  );
     pHoldTime   = register_cvar("hud_ammo_hair_time" ,  "0.1"  );
 
-    g_mag_offset = equal(g_mod_name, updated_mod) == true ? sven_mag : hl_mag
+    g_mag_offset = equal(g_mod_name, updated_mod) == 1 ? sven_mag : hl_mag
 
     g_crosshair = create_cvar("cross", "1")
 
