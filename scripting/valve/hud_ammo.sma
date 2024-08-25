@@ -53,7 +53,7 @@ static iWeapon_Modded
 
 public event_active_weapon(player)
 {
-    if(is_user_connected(player) && is_user_alive(player))
+    if(is_user_alive(player))
     {
         cl_weapon[player] = read_data(2);
 
@@ -66,7 +66,7 @@ public event_active_weapon(player)
 public plugin_init( )
 {
     register_plugin( "Show Ammo Hud", "1.1", "SPiNX" )
-    bCS = cstrike_running() == 1 ? true : false
+    bCS = cstrike_running() == 1 || is_running("czero") ? true : false
 
     register_event("CurWeapon", "event_active_weapon", "be")
 
@@ -160,7 +160,9 @@ public make_crosshair_hud(plr)
     set_hudmessage(iRed, iGreen, iBlue, fXPos, fYPos, 0, 2.0, fHoldTime, 0.0, 0.0, -1);
 
     #define HUD show_hudmessage
-    HUD (plr, "%s", bNice ? thinker[0][random(sizeof(thinker))]:thinker[1][random(sizeof(thinker))])
+    //HUD (plr, "%s", bNice ? thinker[0][random(sizeof(thinker))]:thinker[1][random(sizeof(thinker))])
+    //25th anniversay may have adversely affected. Tested on Linux Client. Blank. OSX. Seeing half the symbol.
+    HUD (plr, "%s", thinker[1][random(sizeof(thinker))]) //Working on Linux Client.
     @muzzlebreak(plr, 1)
 }
 
@@ -242,9 +244,16 @@ public client_prethink(plr)
     }
 
     if(!bCS)
-        cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+    {
+        if(is_user_admin(plr))
+        {
+            cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+        }
+    }
     return PLUGIN_CONTINUE;
 }
 
 public plugin_end()
-unregister_forward(FM_PlayerPreThink, g_think);
+{
+    unregister_forward(FM_PlayerPreThink, g_think);
+}
