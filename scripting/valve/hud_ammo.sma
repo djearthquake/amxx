@@ -53,6 +53,8 @@ new bool:b_Bot[MAX_PLAYERS+1], bool:bCS, bool:bNice, bool:bDrive[MAX_PLAYERS+1];
 new g_mod_name[MAX_NAME_LENGTH];
 static iWeapon_Modded
 
+new g_crosshair;
+
 public event_active_weapon(player)
 {
     if(is_user_alive(player))
@@ -114,6 +116,8 @@ public plugin_init( )
         g_mag_offset = hl_mag
     else
         g_mag_offset = sven_mag
+
+    g_crosshair = create_cvar("cross", "1")
 }
 
 public EV_CurWeapon( plr )
@@ -150,21 +154,29 @@ public make_crosshair_hud(plr)
 {
     static const thinker[][][]=
     {
+
         {
-         "⋮","⋯","⋰","⋱"
-                },
-                {
-         "|","X","/","\"
+             "⋮","⋯","⋰","⋱"
+        },
+
+        {
+             "|","X","/","\"
         }
+
     };
 
     iRed = RAINBOW;iGreen = RAINBOW; iBlue = RAINBOW;fXPos = get_pcvar_float(pXPosition);fYPos = get_pcvar_float(pYPosition);fHoldTime = get_pcvar_float(pHoldTime)
     set_hudmessage(iRed, iGreen, iBlue, fXPos, fYPos, 0, 2.0, fHoldTime, 0.0, 0.0, -1);
 
     #define HUD show_hudmessage
-    //HUD (plr, "%s", bNice ? thinker[0][random(sizeof(thinker))]:thinker[1][random(sizeof(thinker))])
-    //25th anniversay may have adversely affected. Tested on Linux Client. Blank. OSX. Seeing half the symbol.
-    HUD (plr, "%s", thinker[1][random(sizeof(thinker))]) //Working on Linux Client.
+    static iCross; iCross = get_pcvar_num(g_crosshair)
+
+    switch(iCross)
+    {
+        case 1: HUD (plr, "%s", thinker[1][random(sizeof(thinker))]) //Working on Linux Client.
+        //25th anniversay may have adversely affected. Tested on Linux Client. Blank. OSX. Seeing half the symbol.
+        case 2: HUD (plr, "%s", bNice ? thinker[0][random(sizeof(thinker))]:thinker[1][random(sizeof(thinker))])
+    }
     @muzzlebreak(plr, 1)
 }
 
