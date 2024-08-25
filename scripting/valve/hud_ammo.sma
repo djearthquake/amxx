@@ -1,11 +1,6 @@
 #include amxmodx
 #include amxmisc
-//#define CSTRIKE  //uncomment if jeeps lag
-#if defined CSTRIKE
-#include cstrike
-#endif
 #include engine
-//#include fakemeta
 #include fakemeta_stocks                                      /*crosshair*/
 #include hamsandwich
 
@@ -85,7 +80,6 @@ public plugin_init( )
     if(bCS)
     {
         register_event( "CurWeapon", "EV_CurWeapon", "b", "1=1" )
-        //RegisterHam(Ham_OnControls, "func_vehicle", "driving", 1)
         iWeapon_Modded = CSW_M249
     }
     else
