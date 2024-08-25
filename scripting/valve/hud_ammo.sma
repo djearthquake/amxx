@@ -53,7 +53,6 @@ new g_mod_name[MAX_NAME_LENGTH];
 static iWeapon_Modded
 
 new g_crosshair
-static g_Ammox
 static g_Adm, g_AI;
 
 public event_active_weapon(player)
@@ -83,7 +82,10 @@ public plugin_init( )
         iWeapon_Modded = CSW_M249
     }
     else
+    {
         iWeapon_Modded = HLW_GAUSS
+        server_print("hud_ammo detected %s running.", g_mod_name)
+    }
 
     #if !defined MaxClients
         MaxClients = get_maxplayers()
@@ -101,7 +103,7 @@ public plugin_init( )
     red         = register_cvar( "hud_ammo_red" , "120"   );
     grn         = register_cvar( "hud_ammo_grn" , "200"   );
     blu         = register_cvar( "hud_ammo_blu" , "75"    );
-    msk         = register_cvar( "hud_ammo_mask", "1"     ); //mask ammo on bottom_right. Warning: blocks xhair and slots!!
+    msk         = register_cvar( "hud_ammo_mask", "1"     ); //mask ammo on bottom_right.
     x           = register_cvar( "hud_ammo_x"   , "0.912" );
     y           = register_cvar( "hud_ammo_y"   , "0.95"  );
 
@@ -113,7 +115,6 @@ public plugin_init( )
     g_mag_offset = equal(g_mod_name, updated_mod) ? sven_mag : hl_mag
 
     g_crosshair = create_cvar("cross", "1")
-    g_Ammox = get_user_msgid("AmmoX")
 }
 
 
@@ -128,13 +129,14 @@ public client_putinserver(id)
             return
 
         set_task(0.1,"client_think",id,.flags="b")
+        server_print("Made hud think for %N", id )
     }
 }
 
 public EV_CurWeapon( plr )
 {
 
-    if(is_user_bot(plr))
+    if(CheckPlayerBit(g_AI, plr))
         return PLUGIN_HANDLED;
     if(!is_user_alive(plr) || cl_weapon[plr] != iWeapon_Modded)
         return PLUGIN_HANDLED;
@@ -217,16 +219,20 @@ public client_think(plr)
 
     set_pdata_int(plr, m_iWeaponVolume, SILENCER);
 
-    new button = get_user_button(plr), oldbutton = get_user_oldbutton(plr)
+    static button, oldbutton;
+    button = get_user_button(plr)
+    oldbutton = get_user_oldbutton(plr)
 
     if(cl_weapon[plr] == iWeapon_Modded)
     {
-        if(button & IN_ATTACK2)
+        if(oldbutton & IN_ATTACK2)
         {
+            server_print("%n trying",plr)
             make_crosshair_hud(plr)
         }
     }
-    else if(cl_weapon[plr] == HLW_GLOCK)
+
+    else if (cl_weapon[plr] == HLW_GLOCK)
     {
         if(button & IN_ATTACK)
         {
@@ -239,27 +245,16 @@ public client_think(plr)
         }
 
     }
-
+    //ammo hud adjustments
     if(cl_weapon[plr] == iWeapon_Modded)
     {
         weapon_details(plr);
-        if( (oldbutton & IN_ATTACK || button & IN_ATTACK2) && magazine > g_mag_offset  && get_pcvar_num(msk))
+        if( (oldbutton & IN_ATTACK || button & IN_ATTACK2 ) && magazine > g_mag_offset  && get_pcvar_num(msk))
         {
             make_new_ammo_hud(plr);
-            static Float:fX,Float:fY;
-
-/*
-            emessage_begin(MSG_ONE_UNRELIABLE, g_Ammox, _, plr)
-            ewrite_byte(3)
-            ewrite_byte(ammo)
-            emessage_end()
-*/
-            fX++, fY++
-            if(fY>30)fX--, fY--
 
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO );
-            EF_CrosshairAngle(plr, fX, fY ); {}
-            make_crosshair_hud(plr);
+            //EF_CrosshairAngle(plr, fX, fY ); {}
         }
         else
         if(magazine > g_mag_offset)
@@ -276,9 +271,10 @@ public client_think(plr)
 
     if(!bCS)
     {
+        //Mods like Sven, HL, and OP4
         if(oldbutton & IN_ATTACK || button & IN_ATTACK2)
         {
-            new iOK;
+            static iOK;
             iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK
 
             static Float:fX,Float:fY;
