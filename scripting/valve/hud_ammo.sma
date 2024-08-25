@@ -1,7 +1,8 @@
 #include amxmodx
 #include amxmisc
 #include engine
-#include fakemeta_stocks                                      /*crosshair*/
+#include fakemeta
+#include fakemeta_stocks
 #include hamsandwich
 
 #define MAX_PLAYERS          32
@@ -24,7 +25,7 @@
 #define FLASH_SUPRESSOR             4
 
 #if !defined MaxClients
-    new MaxClients
+    static MaxClients
 #endif
 
 const LINUX_OFFSET_WEAPONS = 4;
@@ -134,11 +135,17 @@ public client_putinserver(id)
     }
 }
 
+public client_disconnected(id)
+{
+    remove_task(id)
+}
+
 public EV_CurWeapon( plr )
 {
 
     if(CheckPlayerBit(g_AI, plr))
         return PLUGIN_HANDLED;
+
     if(!is_user_alive(plr) || cl_weapon[plr] != iWeapon_Modded)
         return PLUGIN_HANDLED;
 
@@ -146,21 +153,27 @@ public EV_CurWeapon( plr )
     {
         weapon_details(plr);
 
-        new button = get_user_button(plr), oldbutton = get_user_oldbutton(plr);
+        static button, oldbutton; button  = get_user_button(plr), oldbutton = get_user_oldbutton(plr);
         if((oldbutton & IN_ATTACK || button & IN_ATTACK2) && magazine > g_mag_offset && get_pcvar_num(msk))
+        {
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO )
-
+        }
         else
+        {
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+        }
     }
-
     return PLUGIN_CONTINUE
 }
 
 public make_new_ammo_hud(plr)
 {
     fHoldTime = get_pcvar_float(pHoldTime)
-    set_hudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)
+    bNice?
+    set_dhudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)
+    &show_dhudmessage(plr, "     %i         %i  " , magazine, ammo )
+    :
+    set_hudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)&
     show_hudmessage(plr, "     %i         %i  " , magazine, ammo )
 }
 
@@ -252,10 +265,18 @@ public client_think(plr)
         weapon_details(plr);
         if( (oldbutton & IN_ATTACK || button & IN_ATTACK2 ) && magazine > g_mag_offset  && get_pcvar_num(msk))
         {
+            static Float:fX,Float:fY;
+            //////////////////////////////////////
+            fX = fX+ 0.25
+            fY = fY- 0.25
+            if(fY<10)fX++, fY--
+            else if
+            (fX>10)fX--, fY++
+
             make_new_ammo_hud(plr);
 
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO );
-            //EF_CrosshairAngle(plr, fX, fY );
+            EF_CrosshairAngle(plr, fX, fY );
         }
         else
         if(magazine > g_mag_offset)
@@ -275,10 +296,10 @@ public client_think(plr)
         //Mods like Sven, HL, and OP4
         if(oldbutton & IN_ATTACK || button & IN_ATTACK2)
         {
-            static Float:fX,Float:fY;
             static iOK;
             iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK
 
+            static Float:fX,Float:fY;
             fX = fX+ 0.25
             fY = fY- 0.25
             if(fY<10)fX++, fY--
@@ -291,7 +312,7 @@ public client_think(plr)
             }
             else
             {
-                iOK ? EF_CrosshairAngle(plr, fX, fY ) : EF_CrosshairAngle(plr, 0.0, 0.0 )
+                EF_CrosshairAngle(plr, 0.0, 0.0 )
             }
 
         }
@@ -300,7 +321,7 @@ public client_think(plr)
             EF_CrosshairAngle(plr, 0.0, 0.0 )
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
         }
-    }
 
+    }
     return PLUGIN_CONTINUE;
 }
