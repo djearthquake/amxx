@@ -5,7 +5,7 @@
 #include cstrike
 #endif
 #include engine
-#include fakemeta
+//#include fakemeta
 #include fakemeta_stocks                                      /*crosshair*/
 #include hamsandwich
 
@@ -37,11 +37,15 @@ const LINUX_DIFF = 5;
 #define RAINBOW random_num  (1,255)
 #define charsmin            -1
 
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
 static m_iHideHUD, m_iWeaponFlash, m_iWeaponVolume
 
 new red,grn,blu,msk, x, y;
 new iRed, iGreen, iBlue;
-new g_think, g_mag_offset;
+new g_mag_offset;
 new const updated_mod[] = "sven"
 new const hl_mag   = 20
 new const sven_mag = 300
@@ -49,11 +53,13 @@ new const sven_mag = 300
 new magazine, ammo, wpnid;
 new pXPosition,pYPosition,pHoldTime,Float:fXPos,Float:fYPos,Float:fHoldTime;
 new cl_weapon[MAX_PLAYERS + 1]
-new bool:b_Bot[MAX_PLAYERS+1], bool:bCS, bool:bNice, bool:bDrive[MAX_PLAYERS+1];
+static bool:bCS, bool:bNice
 new g_mod_name[MAX_NAME_LENGTH];
 static iWeapon_Modded
 
-new g_crosshair;
+new g_crosshair
+static g_Ammox
+static g_Adm, g_AI;
 
 public event_active_weapon(player)
 {
@@ -69,27 +75,28 @@ public event_active_weapon(player)
 
 public plugin_init( )
 {
-    register_plugin( "Show Ammo Hud", "1.1", "SPiNX" )
-    bCS = is_running("cstrike") || is_running("czero") ? true : false
+    register_plugin( "Show Ammo Hud", "1.2", "SPiNX" )
+    get_modname(g_mod_name, charsmax(g_mod_name));
+
+    bCS = equal(g_mod_name, "cstrike") || equal(g_mod_name, "czero")  ? true : false
 
     register_event("CurWeapon", "event_active_weapon", "be")
 
     if(bCS)
     {
         register_event( "CurWeapon", "EV_CurWeapon", "b", "1=1" )
-        RegisterHam(Ham_OnControls, "func_vehicle", "driving", 1)
+        //RegisterHam(Ham_OnControls, "func_vehicle", "driving", 1)
         iWeapon_Modded = CSW_M249
     }
     else
         iWeapon_Modded = HLW_GAUSS
-
-
 
     #if !defined MaxClients
         MaxClients = get_maxplayers()
     #endif
 
     bNice = colored_menus() ? true : false
+
     m_iHideHUD = (find_ent_data_info("CBasePlayer", "m_iHideHUD") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF //ALL 3 OS have this in DLL/SO/DYLIB
 
     m_iWeaponFlash = (find_ent_data_info("CBasePlayer", "m_iWeaponFlash") / LINUX_OFFSET_WEAPONS) - LINUX_DIFF
@@ -109,15 +116,25 @@ public plugin_init( )
     pYPosition  = register_cvar("hud_ammo_hair_y"    , "-1.0"  );
     pHoldTime   = register_cvar("hud_ammo_hair_time" ,  "0.1"  );
 
-    g_think = register_forward(FM_PlayerPreThink, "client_prethink", true);
-
-    get_modname(g_mod_name, charsmax(g_mod_name));
-    if(!equal(g_mod_name, updated_mod))
-        g_mag_offset = hl_mag
-    else
-        g_mag_offset = sven_mag
+    g_mag_offset = equal(g_mod_name, updated_mod) ? sven_mag : hl_mag
 
     g_crosshair = create_cvar("cross", "1")
+    g_Ammox = get_user_msgid("AmmoX")
+}
+
+
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
+        is_user_admin(id) ? SetPlayerBit(g_Adm, id) : ClearPlayerBit(g_Adm, id)
+
+        if(CheckPlayerBit(g_AI, id))
+            return
+
+        set_task(0.1,"client_think",id,.flags="b")
+    }
 }
 
 public EV_CurWeapon( plr )
@@ -199,22 +216,10 @@ stock weapon_details(plr)
     return wpnid, magazine, ammo;
 }
 
-public driving(plr){if(is_user_alive(plr))bDrive[plr] = bDrive[plr] ? false : true;}
-
-public client_putinserver(plr)
+public client_think(plr)
 {
-    b_Bot[plr] = is_user_bot(plr) ? true : false
-}
-
-public client_prethink(plr)
-{
-    if(!is_user_alive(plr) || b_Bot[plr] || plr < 1 ||  plr > MaxClients || bDrive[plr])
+    if(!is_user_alive(plr))
         return PLUGIN_HANDLED;
-
-    #if defined CSTRIKE
-    if(cs_get_user_driving(plr))
-        return PLUGIN_HANDLED;
-    #endif
 
     set_pdata_int(plr, m_iWeaponVolume, SILENCER);
 
@@ -246,13 +251,31 @@ public client_prethink(plr)
         weapon_details(plr);
         if( (oldbutton & IN_ATTACK || button & IN_ATTACK2) && magazine > g_mag_offset  && get_pcvar_num(msk))
         {
+            make_new_ammo_hud(plr);
+            static Float:fX,Float:fY;
+
+/*
+            emessage_begin(MSG_ONE_UNRELIABLE, g_Ammox, _, plr)
+            ewrite_byte(3)
+            ewrite_byte(ammo)
+            emessage_end()
+*/
+            fX++, fY++
+            if(fY>30)fX--, fY--
+
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO );
+            EF_CrosshairAngle(plr, fX, fY ); {}
             make_crosshair_hud(plr);
         }
         else
         if(magazine > g_mag_offset)
         {
             make_new_ammo_hud(plr);
+            set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+        }
+        else
+        {
+            EF_CrosshairAngle(plr, 0.0, 0.0 ); {}
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
         }
     }
@@ -265,7 +288,6 @@ public client_prethink(plr)
             iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK
 
             static Float:fX,Float:fY;
-
             fX++, fY++
             if(fY>30)fX--, fY--
 
@@ -282,12 +304,9 @@ public client_prethink(plr)
         else
         {
             EF_CrosshairAngle(plr, 0.0, 0.0 )
+            set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
         }
     }
-    return PLUGIN_CONTINUE;
-}
 
-public plugin_end()
-{
-    unregister_forward(FM_PlayerPreThink, g_think);
+    return PLUGIN_CONTINUE;
 }
