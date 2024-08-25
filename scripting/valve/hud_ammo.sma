@@ -259,19 +259,29 @@ public client_prethink(plr)
 
     if(!bCS)
     {
-        //if(is_user_admin(plr
         if(oldbutton & IN_ATTACK || button & IN_ATTACK2)
         {
-            //static Float:fX,Float:fY;
-            //fX += fX, fY += fY
-            cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK ?
-            client_cmd(plr, "crosshair 0") : client_cmd(plr, "crosshair 1")
-            //EF_CrosshairAngle(plr, 98.0, 98.0 ) : EF_CrosshairAngle(plr, 0.0, 0.0 )
-            ///set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+            new iOK;
+            iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK
+
+            static Float:fX,Float:fY;
+
+            fX++, fY++
+            if(fY>30)fX--, fY--
+
+            if(is_user_admin(plr))
+            {
+                iOK ? EF_CrosshairAngle(plr, fX, fY ) : EF_CrosshairAngle(plr, 0.0, 0.0 )
+            }
+            else
+            {
+                iOK ? EF_CrosshairAngle(plr, fX, fY ) : EF_CrosshairAngle(plr, 0.0, 0.0 )
+            }
+
         }
         else
         {
-            client_cmd(plr, "crosshair 1")
+            EF_CrosshairAngle(plr, 0.0, 0.0 )
         }
     }
     return PLUGIN_CONTINUE;
