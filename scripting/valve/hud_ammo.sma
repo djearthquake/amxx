@@ -6,6 +6,7 @@
 #endif
 #include engine
 #include fakemeta
+#include fakemeta_stocks                                      /*crosshair*/
 #include hamsandwich
 
 #define MAX_PLAYERS          32
@@ -37,6 +38,7 @@ const LINUX_DIFF = 5;
 #define charsmin            -1
 
 static m_iHideHUD, m_iWeaponFlash, m_iWeaponVolume
+
 new red,grn,blu,msk, x, y;
 new iRed, iGreen, iBlue;
 new g_think, g_mag_offset;
@@ -66,7 +68,7 @@ public event_active_weapon(player)
 public plugin_init( )
 {
     register_plugin( "Show Ammo Hud", "1.1", "SPiNX" )
-    bCS = cstrike_running() == 1 || is_running("czero") ? true : false
+    bCS = is_running("cstrike") || is_running("czero") ? true : false
 
     register_event("CurWeapon", "event_active_weapon", "be")
 
@@ -169,7 +171,7 @@ public make_crosshair_hud(plr)
 @muzzlebreak(plr,muzzle)
 {
     set_pdata_int(plr, m_iWeaponFlash, 0);
-    new effects = pev(plr, pev_effects)
+    static effects; effects = pev(plr, pev_effects)
 
     switch(muzzle)
     {
@@ -185,7 +187,7 @@ stock weapon_details(plr)
     return wpnid, magazine, ammo;
 }
 
-public driving(plr){if(is_user_connected(plr))bDrive[plr] = bDrive[plr] ? false : true;}
+public driving(plr){if(is_user_alive(plr))bDrive[plr] = bDrive[plr] ? false : true;}
 
 public client_putinserver(plr)
 {
@@ -245,9 +247,19 @@ public client_prethink(plr)
 
     if(!bCS)
     {
-        if(is_user_admin(plr))
+        //if(is_user_admin(plr
+        if(oldbutton & IN_ATTACK || button & IN_ATTACK2)
         {
-            cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+            //static Float:fX,Float:fY;
+            //fX += fX, fY += fY
+            cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK ?
+            client_cmd(plr, "crosshair 0") : client_cmd(plr, "crosshair 1")
+            //EF_CrosshairAngle(plr, 98.0, 98.0 ) : EF_CrosshairAngle(plr, 0.0, 0.0 )
+            ///set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) : set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
+        }
+        else
+        {
+            client_cmd(plr, "crosshair 1")
         }
     }
     return PLUGIN_CONTINUE;
