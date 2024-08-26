@@ -23,7 +23,7 @@
 
 #define charsmin -1
 
-static const CvarTeamDesc[]="Allow admins, bots, amd spec on scoreboard."
+static const CvarTeamDesc[]="Allow admins, bots, and spec on scoreboard."
 //Make up whatever tag you want for the teams.
 static const szBot[]   = "bot"
 static const szClient[]= "player"
@@ -52,7 +52,7 @@ public plugin_init()
     g_MsgGameMode  = get_user_msgid("GameMode");
     g_MsgTeamInfo  = get_user_msgid("TeamInfo");
 
-    register_clcmd("scoreboard","@scoreboard", ADMIN_ALL, "- Show admin in scoreboard.");
+    register_concmd("scoreboard","@scoreboard", ADMIN_ALL, "- Bot/spec/admin on scoreboard.");
 
     bind_pcvar_num(get_cvar_pointer("team_type") ? get_cvar_pointer("team_type") :
     create_cvar("team_type", "1", FCVAR_NONE, CvarTeamDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar )
