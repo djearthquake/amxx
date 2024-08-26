@@ -56,6 +56,16 @@ public plugin_init()
 
     bind_pcvar_num(get_cvar_pointer("team_type") ? get_cvar_pointer("team_type") :
     create_cvar("team_type", "1", FCVAR_NONE, CvarTeamDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar )
+    register_forward(FM_UpdateClientData, "@fw_UpdateClientData")
+}
+
+@fw_UpdateClientData(id)
+{
+    if(is_user_connected(id))
+    if((pev(id, pev_button) & IN_SCORE) && (pev(id, pev_oldbuttons) & IN_SCORE) && !b_Toggle[id])
+    {
+        client_print(id, print_center, "Type scoreboard in console to see^n^nbots, specs, and admins.");
+    }
 }
 
 @scoreboard(id)
@@ -66,12 +76,14 @@ public plugin_init()
         if(b_Toggle[id])
         {
             @get_team(id)
+            client_print(id,print_center, "Admin Scoreboard.");
         }
         else
         {
             emessage_begin(MSG_ONE_UNRELIABLE, g_MsgGameMode,_,id);
             ewrite_byte(b_Toggle[id]);
             emessage_end();
+            client_print(id,print_center, "Default Scoreboard.");
         }
     }
     return PLUGIN_HANDLED
