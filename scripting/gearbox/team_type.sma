@@ -23,6 +23,10 @@
 
 #define charsmin -1
 
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
+
 static const CvarTeamDesc[]="Allow admins, bots, and spec on scoreboard."
 //Make up whatever tag you want for the teams.
 static const szBot[]   = "bot"
@@ -35,7 +39,7 @@ new bool:b_Toggle[MAX_PLAYERS+1]
 static
 g_MsgTeamInfo, g_MsgGameMode, bool:info_detect, bool:B_op4c_map;
 new
-g_TeamName[MAX_NAME_LENGTH][MAX_PLAYERS +1], g_cvar, bool:bIsBot[MAX_PLAYERS+1];
+g_AI, g_Adm, g_TeamName[MAX_NAME_LENGTH][MAX_PLAYERS +1], g_cvar;
 
 public plugin_init()
 {
@@ -89,14 +93,14 @@ public plugin_init()
     return PLUGIN_HANDLED
 }
 
-public client_authorized(id, const authid[])
-{
-    bIsBot[id] = equal(authid, "BOT") ? true : false
-}
-
 public client_infochanged(id)
 {
-    @get_team(id)
+    if(is_user_connected(id))
+    {
+        is_user_bot(id) ? (SetPlayerBit(g_AI, id)) : (ClearPlayerBit(g_AI, id))
+        is_user_admin(id) ? (SetPlayerBit(g_Adm, id)) : (ClearPlayerBit(g_Adm, id))
+        @get_team(id)
+    }
 }
 
 @get_team(id)
@@ -104,21 +108,20 @@ public client_infochanged(id)
     if(is_user_connected(id))
     {
         static flags; flags = pev(id, pev_flags);
-        static bool:bAdm; bAdm = is_user_admin(id) ? true : false
 
         if(is_user_hltv(id))
         {
             g_TeamName[id] = "HLTV";
         }
-        if(flags & FL_SPECTATOR && !bAdm)
+        if(flags & FL_SPECTATOR && ~CheckPlayerBit(g_Adm, id))
         {
             g_TeamName[id] = szSpec;
         }
-        else if(bAdm)
+        else if(CheckPlayerBit(g_Adm, id))
         {
             g_TeamName[id] = g_cvar == 1 ?  szAdm : (flags & FL_SPECTATOR ? szSpec : szAdm);
         }
-        else if(bIsBot[id])
+        else if(CheckPlayerBit(g_AI, id))
         {
             g_TeamName[id] = szBot;
         }
