@@ -137,7 +137,7 @@ public handle_say(id, blah[MAX_USER_INFO_LENGTH])
         read_args(blah,charsmax(blah))
         remove_quotes(blah)
 
-        if(g_spectating[id])
+        if(g_spectating[id] && !equal(blah, ""))
         {
             format(reblah, charsmax(reblah), "[Spectator]%n: %s", id, blah)
             client_print 0, print_chat, "%s", reblah
@@ -331,6 +331,8 @@ stock loss()
             set_user_info(id, "name", SzClientName[id])
             g_bSpecNam[id] = false
         }
+        set_user_info(id, "_spec", "0")
+        set_user_godmode(id,false)
         set_view(id, CAMERA_NONE)
     }
 }
@@ -381,7 +383,7 @@ public client_putinserver(id)
         static szSpec[2]
         get_user_info(id,"spectate", szSpec, charsmax(szSpec))
 
-        if(szSpec[0] == '1')
+        if(szSpec[0] == '1' && !g_bFlagMap)
         {
             dllfunc(DLLFunc_ClientPutInServer, id)
             set_task(1.0, "@go_spec", id)
@@ -763,7 +765,10 @@ public client_command(id)
     OK)
     {
         if(!g_random_view[id] && !g_spectating[id])
+        {
+            set_user_godmode(id,false)
             return PLUGIN_CONTINUE
+        }
         if(CheckPlayerBit(g_AI, id))
             goto SKIP
         static szArg[MAX_PLAYERS],
@@ -777,12 +782,12 @@ public client_command(id)
         //    g_spectating[id] = true
 
         if(g_spectating[id])
-            if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/) )
+            if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/ ) )
             {
                 set_user_godmode(id,true)
                 fm_strip_user_weapons(id)
 
-                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "!spec_switch") || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec"))
+                if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "!spec_switch") || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec") ||  equal(szArgCmd, "scoreboard") )
                     goto SKIP
                 return PLUGIN_HANDLED_MAIN
             }
@@ -857,7 +862,7 @@ public random_view(Tsk)
                 client_print(id, print_chat,"Trying random view on %n", iViewPlayer)
 
                 if(!CheckPlayerBit(g_AI, id))
-				    client_print(iViewPlayer, print_chat,"%n is spectating you.", id)
+                    client_print(iViewPlayer, print_chat,"%n is spectating you.", id)
 
                 if(!bDemo[id])
                 {
