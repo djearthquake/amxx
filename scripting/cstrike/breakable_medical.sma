@@ -3,6 +3,7 @@
 #include engine
 #include engine_stocks
 #include fakemeta
+#include fakemeta_util
 
 new const medkit[]   = "models/w_medkit.mdl"
 new const smallkit1[] = "items/smallmedkit1.wav"
@@ -14,7 +15,7 @@ new bool:bDust
 
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.5", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.51", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -29,8 +30,9 @@ public plugin_cfg()
     register_touch("player", "func_breakable", "@ent_changing_function")
     register_touch("Hook_illuminati", "func_breakable", "@ent_changing_function")
 
-    register_clcmd("clear_kits","@clear_medkits",ADMIN_SLAY,"- removes all medikits.");
-    register_clcmd("fix_boxes","@fix_boxes",ADMIN_SLAY,"- break on trigger not melee.");
+    register_clcmd("clear_kits","@clear_medkits", ADMIN_SLAY, "- removes all medikits.");
+    register_clcmd("fix_boxes","@fix_boxes", ADMIN_SLAY, "- break on trigger not melee.");
+    register_clcmd("hard_boxes","@ent_hardener", ADMIN_SLAY, "- make unbreakable.");
     static mname[MAX_PLAYERS];
     get_mapname(mname, charsmax(mname) )
     bDust = containi(mname, "dust") != -1 ? true:false
@@ -43,7 +45,7 @@ public plugin_cfg()
         DispatchKeyValue(entity_we_touched, "explodemagnitude", "10") //make it hurt
         DispatchKeyValue(entity_we_touched, "spawnobject", "2") //make medkit
         DispatchKeyValue(entity_we_touched,"gibmodel", medkit)
-        DispatchKeyValue(entity_we_touched,"spawnflags", "256")
+        DispatchKeyValue(entity_we_touched,"spawnflags", "256") //walk and touch break do not mix well with a registered touch already
         DispatchSpawn(entity_we_touched); //make gib work
     }
 }
@@ -87,6 +89,18 @@ public plugin_cfg()
     return PLUGIN_HANDLED
 }
 
+
+@ent_hardener(id)
+{
+    g_ent = 0;
+    if(is_user_connected(id))
+    {
+        set_task(0.5, "@ent_unbreakable", id)
+        set_task(1.0, "@feedback", id)
+    }
+    return PLUGIN_HANDLED
+}
+
 @ent_fixer()
 {
     new  ent = MaxClients; while( (ent = find_ent(ent, "func_breakable") ) > MaxClients && pev_valid(ent)>1)
@@ -105,11 +119,31 @@ public plugin_cfg()
     }
 }
 
+@ent_unbreakable()
+{
+    new  ent = MaxClients; while( (ent = find_ent(ent, "func_breakable") ) > MaxClients && pev_valid(ent)>1)
+    {
+        //https://twhl.info/wiki/page/func_breakable
+        fm_set_kvd(ent, "material", "7");
+        fm_set_kvd(ent, "renderamt", "75");
+        fm_set_kvd(ent, "rendermode", "2");
+        fm_set_kvd(ent, "renderfx", "0");
+        fm_set_kvd(ent, "rendercolor", "0 255 255")
+        set_pev(ent, pev_classname, "SPiNX Glass")
+        DispatchSpawn(ent); //make unbreakable
+        g_ent++
+    }
+}
+
+
 public plugin_precache()
 {
     precache_model(medkit);
     precache_sound(smallkit1);
     precache_sound(smallkit2);
+    precache_sound("debris/bustglass1.wav");
+    precache_sound("debris/bustglass2.wav");
+    precache_sound("debris/bustglass3.wav");
     precache_sound("debris/metal1.wav")
     precache_sound("debris/metal3.wav")
 }
