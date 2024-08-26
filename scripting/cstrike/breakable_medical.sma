@@ -10,10 +10,11 @@ new const smallkit2[] = "items/smallmedkit2.wav"
 new const ent_type[] = "item_healthkit"
 
 new g_ent;
+new bool:bDust
 
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.4", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.5", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -30,6 +31,9 @@ public plugin_cfg()
 
     register_clcmd("clear_kits","@clear_medkits",ADMIN_SLAY,"- removes all medikits.");
     register_clcmd("fix_boxes","@fix_boxes",ADMIN_SLAY,"- break on trigger not melee.");
+    static mname[MAX_PLAYERS];
+    get_mapname(mname, charsmax(mname) )
+    bDust = containi(mname, "dust") != -1 ? true:false
 }
 
 @ent_changing_function(player, entity_we_touched)
@@ -54,7 +58,10 @@ public plugin_cfg()
 
 @round_end()
 {
-    @ent_fixer()
+    if(bDust)
+    {
+        @ent_fixer()
+    }
     @ent_remover()
 }
 
