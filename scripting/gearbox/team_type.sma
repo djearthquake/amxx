@@ -30,6 +30,8 @@ static const szClient[]= "player"
 static const szSpec[]  = "!spec"
 static const szAdm[]   = "Admin"
 
+new bool:b_Toggle[MAX_PLAYERS+1]
+
 static
 g_MsgTeamInfo, g_MsgGameMode, bool:info_detect, bool:B_op4c_map;
 new
@@ -50,25 +52,39 @@ public plugin_init()
     g_MsgGameMode  = get_user_msgid("GameMode");
     g_MsgTeamInfo  = get_user_msgid("TeamInfo");
 
+    register_clcmd("scoreboard","@scoreboard", ADMIN_ALL, "- Show admin in scoreboard.");
+
     bind_pcvar_num(get_cvar_pointer("team_type") ? get_cvar_pointer("team_type") :
-    create_cvar("team_type", "0", FCVAR_NONE, CvarTeamDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar )
+    create_cvar("team_type", "1", FCVAR_NONE, CvarTeamDesc,.has_min = true, .min_val = 0.0, .has_max = true, .max_val = 3.0), g_cvar )
 }
 
-public client_putinserver(id)
+@scoreboard(id)
 {
     if(is_user_connected(id))
     {
-        bIsBot[id] = is_user_bot(id) ? true : false
-        set_task(0.5, "@get_team", id)
+        b_Toggle[id]  = b_Toggle[id]  ?  false : true
+        if(b_Toggle[id])
+        {
+            @get_team(id)
+        }
+        else
+        {
+            emessage_begin(MSG_ONE_UNRELIABLE, g_MsgGameMode,_,id);
+            ewrite_byte(b_Toggle[id]);
+            emessage_end();
+        }
     }
+    return PLUGIN_HANDLED
+}
+
+public client_authorized(id, const authid[])
+{
+    bIsBot[id] = equal(authid, "BOT") ? true : false
 }
 
 public client_infochanged(id)
 {
-    if(is_user_connected(id))
-    {
-        @get_team(id);
-    }
+    @get_team(id)
 }
 
 @get_team(id)
@@ -99,15 +115,16 @@ public client_infochanged(id)
             g_TeamName[id] = szClient;
         }
     }
-    @message();
+    @message(id);
 }
 
-@message()
+@message(id)
 {
+    if(g_cvar)
     if(get_playersnum())
     {
-        emessage_begin(MSG_BROADCAST, g_MsgGameMode);
-        ewrite_byte(g_cvar ? 1 : 0);
+        emessage_begin(MSG_ONE_UNRELIABLE, g_MsgGameMode,_,id);
+        ewrite_byte(b_Toggle[id]);
         emessage_end();
 
         for(new id = 1 ;id <= MaxClients;++id)
