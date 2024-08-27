@@ -4,6 +4,7 @@
 #include amxmisc
 #include engine_stocks
 #include fakemeta
+#include fun
 #include hamsandwich
 
 #define DEATH_CHECK 2024
@@ -23,7 +24,7 @@ public plugin_init()
 
 public client_disconnected(id)
 {
-    g_playercount--    
+    g_playercount--
 }
 
 public client_spawn_control(id)
@@ -79,11 +80,13 @@ public client_spawn(id)
             if(is_user_alive(id) && !OkSpawn[id])
             {
                 set_pev(id, pev_deadflag, DEAD_DEAD)
+                set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,0)
                 set_pev(id, pev_effects, (effects | EF_NODRAW))
                 return
             }
         }
         set_pev(id, pev_effects, (effects | ~EF_NODRAW))
+        set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,255)
     }
 }
 
