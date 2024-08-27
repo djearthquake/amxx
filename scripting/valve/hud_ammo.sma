@@ -70,7 +70,7 @@ public event_active_weapon(player)
 
 public plugin_init( )
 {
-    register_plugin( "Show Ammo Hud", "1.2", "SPiNX" )
+    register_plugin( "Show Ammo Hud", "1.21", "SPiNX" )
     get_modname(g_mod_name, charsmax(g_mod_name));
 
     bCS = equal(g_mod_name, "cstrike") || equal(g_mod_name, "czero")  ? true : false
@@ -241,7 +241,7 @@ public client_think(plr)
     {
         if(oldbutton & IN_ATTACK2)
         {
-            server_print("%n trying",plr)
+            ///server_print("%n trying",plr)
             make_crosshair_hud(plr)
         }
     }
@@ -265,18 +265,8 @@ public client_think(plr)
         weapon_details(plr);
         if( (oldbutton & IN_ATTACK || button & IN_ATTACK2 ) && magazine > g_mag_offset  && get_pcvar_num(msk))
         {
-            static Float:fX,Float:fY;
-            //////////////////////////////////////
-            fX = fX+ 0.25
-            fY = fY- 0.25
-            if(fY<10)fX++, fY--
-            else if
-            (fX>10)fX--, fY++
-
             make_new_ammo_hud(plr);
-
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO );
-            EF_CrosshairAngle(plr, fX, fY );
         }
         else
         if(magazine > g_mag_offset)
@@ -286,7 +276,6 @@ public client_think(plr)
         }
         else
         {
-            EF_CrosshairAngle(plr, 0.0, 0.0 );
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
         }
     }
@@ -297,28 +286,12 @@ public client_think(plr)
         if(oldbutton & IN_ATTACK || button & IN_ATTACK2)
         {
             static iOK;
-            iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK
-
-            static Float:fX,Float:fY;
-            fX = fX+ 0.25
-            fY = fY- 0.25
-            if(fY<10)fX++, fY--
-            else if
-            (fX>10)fX--, fY++
-
-            if(CheckPlayerBit(g_Adm, plr))
-            {
-                iOK ? EF_CrosshairAngle(plr, fX, fY ) : EF_CrosshairAngle(plr, 0.0, 0.0 )
-            }
-            else
-            {
-                EF_CrosshairAngle(plr, 0.0, 0.0 )
-            }
-
+            iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK;
+            iOK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) :
+            set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
         }
         else
         {
-            EF_CrosshairAngle(plr, 0.0, 0.0 )
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
         }
 
