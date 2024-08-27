@@ -15,7 +15,7 @@ new bool:bDust
 
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.51", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.5", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -33,20 +33,27 @@ public plugin_cfg()
     register_clcmd("clear_kits","@clear_medkits", ADMIN_SLAY, "- removes all medikits.");
     register_clcmd("fix_boxes","@fix_boxes", ADMIN_SLAY, "- break on trigger not melee.");
     register_clcmd("hard_boxes","@ent_hardener", ADMIN_SLAY, "- make unbreakable.");
+
     static mname[MAX_PLAYERS];
     get_mapname(mname, charsmax(mname) )
     bDust = containi(mname, "dust") != -1 ? true:false
 }
 
-@ent_changing_function(player, entity_we_touched)
+@ent_changing_function(iPlayer, entity_we_touched)
 {
-    if(pev_valid(entity_we_touched) ==2)
+    if(pev_valid(entity_we_touched) == 2)
     {
         DispatchKeyValue(entity_we_touched, "explodemagnitude", "10") //make it hurt
         DispatchKeyValue(entity_we_touched, "spawnobject", "2") //make medkit
-        DispatchKeyValue(entity_we_touched,"gibmodel", medkit)
-        DispatchKeyValue(entity_we_touched,"spawnflags", "256") //walk and touch break do not mix well with a registered touch already
+        DispatchKeyValue(entity_we_touched, "gibmodel", medkit)
+        DispatchKeyValue(entity_we_touched, "spawnflags", "256") //walk and touch break do not mix well with a registered touch already
+        set_pev(entity_we_touched, pev_classname, "Breakable Medical")
         DispatchSpawn(entity_we_touched); //make gib work
+
+        if(is_user_connected(iPlayer))
+        {
+            client_cmd iPlayer, "spk sound/items/smallmedkit2"
+        }
     }
 }
 
