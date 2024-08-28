@@ -560,236 +560,238 @@ public fw_CmdStart( Player, UC_Handle, Seed )
     // Not alive/dont have gauss/not m249
     if( !g_bIsAlive[ Player ] || !g_iHasGauss[ Player ] || g_iCurrentWeapon[ Player ] != CSW_M249 )
         return FMRES_IGNORED
-
-    // Retrieve pressed button bitsum
-    static iButtons
-    iButtons = get_uc( UC_Handle, UC_Buttons )
-
-    // Retrieve game time
-    static Float:flGameTime
-    flGameTime = get_gametime( )
-
-    // Retrieve weapon entity
-    static iEnt
-    iEnt = find_ent_by_owner( NULLENT, g_szClassM249, Player )
-
-    // Retrieve clip amount
-    static iClip
-    iClip = cs_get_weapon_ammo( iEnt )
-
-    // Primary attack
-    if( iButtons & IN_ATTACK )
+    if(is_user_alive(Player))
     {
-        // Remove attack buttons from their button mask
-        iButtons &= ~IN_ATTACK
-        set_uc( UC_Handle, UC_Buttons, iButtons )
+        // Retrieve pressed button bitsum
+        static iButtons
+        iButtons = get_uc( UC_Handle, UC_Buttons )
 
-        // Prevent too fast shooting
-        if( flGameTime - g_flLastShotTime[ Player ] < GAUSS_REFIRERATE )
-            return FMRES_IGNORED
+        // Retrieve game time
+        static Float:flGameTime
+        flGameTime = get_gametime( )
 
-        // Dont fire while reloading
-        if( get_pdata_int( iEnt, m_fInReload, 4 ) )
-            return FMRES_IGNORED
+        // Retrieve weapon entity
+        static iEnt
+        iEnt = find_ent_by_owner( NULLENT, g_szClassM249, Player )
 
-        // Not enough clip/under water
-        if( iClip < 2 || is_user_in_water( Player ) )
+        // Retrieve clip amount
+        static iClip
+        if(pev_valid(iEnt))
         {
-            // Emit empty sound
-            ExecuteHamB( Ham_Weapon_PlayEmptySound, iEnt )
-            return FMRES_IGNORED
+            iClip = cs_get_weapon_ammo( iEnt )
         }
 
-        // Update
-        g_bPrimaryFire[ Player ] = true
-
-        // Start to fire
-        StartFire( Player )
-
-        // Decrease clip
-        cs_set_weapon_ammo( iEnt, iClip-2 )
-
-        // Reset weapon attack status
-        g_bInAttack[ Player ] = 0
-
-        // Set time when idle animation should be played
-        g_flWeaponIdleTime[ Player ] = flGameTime + 1.0
-
-        // Remember last shot time
-        g_flLastShotTime[ Player ] = flGameTime
-    }
-    // Secondary attack
-    else if( iButtons & IN_ATTACK2 )
-    {
-        // Prevent too fast shooting
-        if( flGameTime - g_flLastShotTime[ Player ] < GAUSS_REFIRERATE2 )
-            return FMRES_IGNORED
-
-        // Dont fire while reloading
-        if( get_pdata_int( iEnt, m_fInReload, 4 ) )
-            return FMRES_IGNORED
-
-        // Are we swimming ?
-        if( is_user_in_water( Player ) )
+        // Primary attack
+        if( iButtons & IN_ATTACK )
         {
-            // We are in a middle of attack
-            if( g_bInAttack[ Player ] != 0 )
-            {
-                // Stop attack
-                emit_sound( Player, CHAN_WEAPON, g_szSoundElectro1, VOL_NORM, ATTN_NORM, 0, 80 + random_num( 0, 0x3f ) )
+            // Remove attack buttons from their button mask
+            iButtons &= ~IN_ATTACK
+            set_uc( UC_Handle, UC_Buttons, iButtons )
 
-                // Gun idle
-                UTIL_PlayWeaponAnimation( Player, gauss_idle )
+            // Prevent too fast shooting
+            if( flGameTime - g_flLastShotTime[ Player ] < GAUSS_REFIRERATE )
                 return FMRES_IGNORED
-            }
-            else
-            {
-                // Empty sound
-                ExecuteHam( Ham_Weapon_PlayEmptySound, iEnt )
+
+            // Dont fire while reloading
+            if( get_pdata_int( iEnt, m_fInReload, 4 ) )
                 return FMRES_IGNORED
-            }
-        }
 
-        // Get player oldbuttons
-        static iOldButtons
-        iOldButtons = pev( Player, pev_oldbuttons )
-
-        // Make sure that we are holding secondary attack button
-        if( iOldButtons & IN_ATTACK2 )
-        {
-            // Which attack state do we have
-            switch ( g_bInAttack[ Player ] )
+            // Not enough clip/under water
+            if( iClip < 2 || is_user_in_water( Player ) )
             {
-                case 0: // Attack start
-                {
-                    // Out of ammo
-                    if ( iClip <= 0 )
-                    {
-                        ExecuteHam( Ham_Weapon_PlayEmptySound, iEnt )
-                        return FMRES_IGNORED
-                    }
-
-                    // We aren't using primary attack anymore
-                    g_bPrimaryFire[ Player ] = false
-
-                    // Decrease clip
-                    cs_set_weapon_ammo( iEnt, --iClip )
-
-                    // Update
-                    g_flNextAmmoBurn[ Player ] = flGameTime
-
-                    // Send spinup animation
-                    UTIL_PlayWeaponAnimation( Player, gauss_spinup )
-
-                    // Update attack state
-                    g_bInAttack[ Player ] = 1
-
-                    // Next idle time
-                    g_flWeaponIdleTime[ Player ] = flGameTime + 0.5
-
-                    // Update
-                    g_flStartCharge[ Player ] = flGameTime
-                    g_flAmmoStartCharge[ Player ] = flGameTime + GAUSS_CHARGETIME
-
-                    // Update sound state
-                    g_iSoundState[ Player ] = 0
-
-                    // Spin sound
-                    emit_sound( Player, CHAN_WEAPON, g_szSoundGaussSpin, VOL_NORM, ATTN_NORM, g_iSoundState[Player ], 110 )
-
-                    // Change sound state
-                    g_iSoundState[ Player ] = SND_CHANGE_PITCH
-                }
-                case 1: // In a middle of attack
-                {
-                    if( g_flWeaponIdleTime[ Player ] < flGameTime )
-                    {
-                        // Spin anim
-                        UTIL_PlayWeaponAnimation( Player, gauss_spin )
-
-                        // Update state
-                        g_bInAttack[ Player ] = 2
-                    }
-                }
-                default: // End of attack
-                {
-                    // During the charging process, eat one bit of ammo every once in a while
-                    if( flGameTime >= g_flNextAmmoBurn[ Player ] && g_flNextAmmoBurn[ Player ] != 1000 )
-                    {
-                        // Decrease clip
-                        cs_set_weapon_ammo( iEnt, --iClip )
-
-                        // Next time when ammo should be decreased
-                        g_flNextAmmoBurn[ Player ] = flGameTime + 0.1
-                    }
-
-                    // Shit!We run out of ammo
-                    if( iClip <= 0 )
-                    {
-                        // Force gun to fire
-                        StartFire( Player )
-
-                        // Reset weapon state
-                        g_bInAttack[ Player ] = 0
-
-                        // Set next idle time
-                        g_flWeaponIdleTime[ Player ] = flGameTime + 1.0
-                    }
-
-                    // Gun is fully charged up
-                    if( flGameTime >= g_flAmmoStartCharge[ Player ] )
-                    {
-                        // Dont eat any more ammo!
-                        g_flNextAmmoBurn[ Player ] = 1000.0
-                    }
-
-                    // Calculate pitch
-                    static Float:flPitch
-                    //flPitch = ( flGameTime - g_flStartCharge[ Player ] ) * ( 150 / GAUSS_CHARGETIME ) + 100
-                    flPitch = ( flGameTime - g_flStartCharge[ Player ] ) * ( random_num(50,350) / GAUSS_CHARGETIME ) + random_num(50,350)
-
-                    // Pitch shouldnt be THAT big
-                    if ( flPitch > 250 )
-                    {
-                        flPitch = 250.0 //Anything over "250.0" will crash.
-                    }
-
-                    // Spin sound
-                    emit_sound( Player, CHAN_WEAPON, g_szSoundGaussSpin, VOL_NORM, ATTN_NORM, ( g_iSoundState[ Player ] == SND_CHANGE_PITCH ) ? 1 : 0, floatround( flPitch ) )
-
-                    // Hack for going through level transitions
-                    g_iSoundState[ Player ] = SND_CHANGE_PITCH
-
-                    // We are charing way too long!
-                    if( g_flStartCharge[ Player ] < flGameTime - 10 )
-                    {
-                        // ZAP!
-                        emit_sound( Player, CHAN_WEAPON, g_szSoundElectro1, VOL_NORM, ATTN_NORM, 0, 80 + random_num( 0, 0x3f ) )
-                        emit_sound( Player, CHAN_VOICE, g_szSoundElectro3, VOL_NORM, ATTN_NORM, 0, 80 + random_num( 0, 0x3f ) )
-
-                        // Reset fire state
-                        g_bInAttack[ Player ] = 0
-
-                        // Next idle time
-                        g_flWeaponIdleTime[ Player ] = flGameTime + 1.0
-
-                        // Damage player
-                        ExecuteHamB( Ham_TakeDamage, Player, 0, Player, 50.0, DMG_SHOCK )
-
-                        // Make screen fade
-                        UTIL_ScreenFade( Player, UNIT_SECOND*2, UNIT_SECOND/2, FFADE_IN, 255, 128, 0, 128 )
-
-                        // Idle animation
-                        UTIL_PlayWeaponAnimation( Player, gauss_idle )
-                    }
-                }
+                // Emit empty sound
+                ExecuteHamB( Ham_Weapon_PlayEmptySound, iEnt )
+                return FMRES_IGNORED
             }
 
             // Update
+            g_bPrimaryFire[ Player ] = true
+
+            // Start to fire
+            StartFire( Player )
+
+            // Decrease clip
+            cs_set_weapon_ammo( iEnt, iClip-2 )
+
+            // Reset weapon attack status
+            g_bInAttack[ Player ] = 0
+
+            // Set time when idle animation should be played
+            g_flWeaponIdleTime[ Player ] = flGameTime + 1.0
+
+            // Remember last shot time
             g_flLastShotTime[ Player ] = flGameTime
         }
-    }
+        // Secondary attack
+        else if( iButtons & IN_ATTACK2 )
+        {
+            // Prevent too fast shooting
+            if( flGameTime - g_flLastShotTime[ Player ] < GAUSS_REFIRERATE2 )
+                return FMRES_IGNORED
 
+            // Dont fire while reloading
+            if( get_pdata_int( iEnt, m_fInReload, 4 ) )
+                return FMRES_IGNORED
+
+            // Are we swimming ?
+            if( is_user_in_water( Player ) )
+            {
+                // We are in a middle of attack
+                if( g_bInAttack[ Player ] != 0 )
+                {
+                    // Stop attack
+                    emit_sound( Player, CHAN_WEAPON, g_szSoundElectro1, VOL_NORM, ATTN_NORM, 0, 80 + random_num( 0, 0x3f ) )
+
+                    // Gun idle
+                    UTIL_PlayWeaponAnimation( Player, gauss_idle )
+                    return FMRES_IGNORED
+                }
+                else
+                {
+                    // Empty sound
+                    ExecuteHam( Ham_Weapon_PlayEmptySound, iEnt )
+                    return FMRES_IGNORED
+                }
+            }
+
+            // Get player oldbuttons
+            static iOldButtons
+            iOldButtons = pev( Player, pev_oldbuttons )
+
+            // Make sure that we are holding secondary attack button
+            if( iOldButtons & IN_ATTACK2 )
+            {
+                // Which attack state do we have
+                switch ( g_bInAttack[ Player ] )
+                {
+                    case 0: // Attack start
+                    {
+                        // Out of ammo
+                        if ( iClip <= 0 )
+                        {
+                            ExecuteHam( Ham_Weapon_PlayEmptySound, iEnt )
+                            return FMRES_IGNORED
+                        }
+
+                        // We aren't using primary attack anymore
+                        g_bPrimaryFire[ Player ] = false
+
+                        // Decrease clip
+                        cs_set_weapon_ammo( iEnt, --iClip )
+
+                        // Update
+                        g_flNextAmmoBurn[ Player ] = flGameTime
+
+                        // Send spinup animation
+                        UTIL_PlayWeaponAnimation( Player, gauss_spinup )
+
+                        // Update attack state
+                        g_bInAttack[ Player ] = 1
+
+                        // Next idle time
+                        g_flWeaponIdleTime[ Player ] = flGameTime + 0.5
+
+                        // Update
+                        g_flStartCharge[ Player ] = flGameTime
+                        g_flAmmoStartCharge[ Player ] = flGameTime + GAUSS_CHARGETIME
+
+                        // Update sound state
+                        g_iSoundState[ Player ] = 0
+
+                        // Spin sound
+                        emit_sound( Player, CHAN_WEAPON, g_szSoundGaussSpin, VOL_NORM, ATTN_NORM, g_iSoundState[Player ], 110 )
+
+                        // Change sound state
+                        g_iSoundState[ Player ] = SND_CHANGE_PITCH
+                    }
+                    case 1: // In a middle of attack
+                    {
+                        if( g_flWeaponIdleTime[ Player ] < flGameTime )
+                        {
+                            // Spin anim
+                            UTIL_PlayWeaponAnimation( Player, gauss_spin )
+
+                            // Update state
+                            g_bInAttack[ Player ] = 2
+                        }
+                    }
+                    default: // End of attack
+                    {
+                        // During the charging process, eat one bit of ammo every once in a while
+                        if( flGameTime >= g_flNextAmmoBurn[ Player ] && g_flNextAmmoBurn[ Player ] != 1000 )
+                        {
+                            // Decrease clip
+                            cs_set_weapon_ammo( iEnt, --iClip )
+
+                            // Next time when ammo should be decreased
+                            g_flNextAmmoBurn[ Player ] = flGameTime + 0.1
+                        }
+
+                        // Shit!We run out of ammo
+                        if( iClip <= 0 )
+                        {
+                            // Force gun to fire
+                            StartFire( Player )
+
+                            // Reset weapon state
+                            g_bInAttack[ Player ] = 0
+
+                            // Set next idle time
+                            g_flWeaponIdleTime[ Player ] = flGameTime + 1.0
+                        }
+
+                        // Gun is fully charged up
+                        if( flGameTime >= g_flAmmoStartCharge[ Player ] )
+                        {
+                            // Dont eat any more ammo!
+                            g_flNextAmmoBurn[ Player ] = 1000.0
+                        }
+
+                        // Calculate pitch
+                        static Float:flPitch
+                        //flPitch = ( flGameTime - g_flStartCharge[ Player ] ) * ( 150 / GAUSS_CHARGETIME ) + 100
+                        flPitch = ( flGameTime - g_flStartCharge[ Player ] ) * ( random_num(50,350) / GAUSS_CHARGETIME ) + random_num(50,350)
+
+                        // Pitch shouldnt be THAT big
+                        if ( flPitch > 250 )
+                        {
+                            flPitch = 250.0 //Anything over "250.0" will crash.
+                        }
+
+                        // Spin sound
+                        emit_sound( Player, CHAN_WEAPON, g_szSoundGaussSpin, VOL_NORM, ATTN_NORM, ( g_iSoundState[ Player ] == SND_CHANGE_PITCH ) ? 1 : 0, floatround( flPitch ) )
+
+                        // Hack for going through level transitions
+                        g_iSoundState[ Player ] = SND_CHANGE_PITCH
+
+                        // We are charing way too long!
+                        if( g_flStartCharge[ Player ] < flGameTime - 10 )
+                        {
+                            // ZAP!
+                            emit_sound( Player, CHAN_WEAPON, g_szSoundElectro1, VOL_NORM, ATTN_NORM, 0, 80 + random_num( 0, 0x3f ) )
+                            emit_sound( Player, CHAN_VOICE, g_szSoundElectro3, VOL_NORM, ATTN_NORM, 0, 80 + random_num( 0, 0x3f ) )
+
+                            // Reset fire state
+                            g_bInAttack[ Player ] = 0
+
+                            // Next idle time
+                            g_flWeaponIdleTime[ Player ] = flGameTime + 1.0
+
+                            // Damage player
+                            ExecuteHamB( Ham_TakeDamage, Player, 0, Player, 50.0, DMG_SHOCK )
+
+                            // Make screen fade
+                            UTIL_ScreenFade( Player, UNIT_SECOND*2, UNIT_SECOND/2, FFADE_IN, 255, 128, 0, 128 )
+
+                            // Idle animation
+                            UTIL_PlayWeaponAnimation( Player, gauss_idle )
+                        }
+                    }
+                }
+                g_flLastShotTime[ Player ] = flGameTime // Update
+            }
+        }
+    }
     return FMRES_HANDLED
 }
 
@@ -1055,84 +1057,87 @@ public fw_TCannonReload_Post( iEnt )
 // Gauss start fire
 public StartFire( Player )
 {
-    // This var holds damage
-    static Float:flDamage
-
-    // Make vectors
-    UTIL_MakeVectors( Player )
-
-    // Get gametime
-    static Float:flGameTime
-    flGameTime = get_gametime( )
-
-    // This is maximal possible damage from secondary attack!
-    if( flGameTime - g_flStartCharge[ Player ] > GAUSS_CHARGETIME )
+    if(is_user_alive(Player))
     {
-        flDamage = g_pDmgSec
-    }
-    else
-    {
-        // The longer you hold attack button - the bigger is damage
-        flDamage = g_pDmgSec * ( ( flGameTime - g_flStartCharge[ Player ] ) / GAUSS_CHARGETIME )
-    }
+        // This var holds damage
+        static Float:flDamage
 
-    // Primary attack do less damage
-    if( g_bPrimaryFire[ Player ] )
-    {
-        flDamage = g_pDmgPrim
-    }
+        // Make vectors
+        UTIL_MakeVectors( Player )
 
-    // Make sure that we are not ending attack
-    if( g_bInAttack[ Player ] != 3 )
-    {
-        // Secondary attack can pop you up in the air.Not primary attack!
-        if( !g_bPrimaryFire[ Player ] )
+        // Get gametime
+        static Float:flGameTime
+        flGameTime = get_gametime( )
+
+        // This is maximal possible damage from secondary attack!
+        if( flGameTime - g_flStartCharge[ Player ] > GAUSS_CHARGETIME )
         {
-            // Current players velocity
-            static Float:flVel[ 3 ], Float:v_forward[ 3 ]
-            pev( Player, pev_velocity, flVel )
-            global_get( glb_v_forward, v_forward )
-
-            // Try to affect only vertical velocity
-            VectorMS( flVel, flDamage * 5.0, v_forward, flVel )
-
-            // Jump!
-            set_pev( Player, pev_velocity, flVel )
+            flDamage = g_pDmgSec
         }
+        else
+        {
+            // The longer you hold attack button - the bigger is damage
+            flDamage = g_pDmgSec * ( ( flGameTime - g_flStartCharge[ Player ] ) / GAUSS_CHARGETIME )
+        }
+
+        // Primary attack do less damage
+        if( g_bPrimaryFire[ Player ] )
+        {
+            flDamage = g_pDmgPrim
+        }
+
+        // Make sure that we are not ending attack
+        if( g_bInAttack[ Player ] != 3 )
+        {
+            // Secondary attack can pop you up in the air.Not primary attack!
+            if( !g_bPrimaryFire[ Player ] )
+            {
+                // Current players velocity
+                static Float:flVel[ 3 ], Float:v_forward[ 3 ]
+                pev( Player, pev_velocity, flVel )
+                global_get( glb_v_forward, v_forward )
+
+                // Try to affect only vertical velocity
+                VectorMS( flVel, flDamage * 5.0, v_forward, flVel )
+
+                // Jump!
+                set_pev( Player, pev_velocity, flVel )
+            }
+        }
+
+        // Recoil
+        static Float:flRecoil[ 3 ]
+        flRecoil[ 0 ] = GAUSS_RECOIL
+        set_pev( Player, pev_punchangle, flRecoil )
+
+        // Fire animation
+        UTIL_PlayWeaponAnimation( Player, gauss_fire2 )
+
+        // Fire sound
+        static Float:flResult
+        flResult = 0.5 + flDamage * ( 1.0 / 400.0 )
+
+        if( flResult > 1.0 )
+        {
+            flResult = 1.0
+        }
+
+        emit_sound( Player, CHAN_WEAPON, g_szSoundGaussFire, flResult, ATTN_NORM, 0, 85 + random_num( 0, 31 ) ) //0x1f
+
+        // Get players aimpoint position
+        static Float:vecDest[ 3 ]
+        global_get( glb_v_forward, vecDest )
+
+        // Calculate start position
+        static Float:vecSrc[ 3 ]
+        UTIL_GetGunPosition( Player, vecSrc )
+
+        // Time until aftershock 'static discharge' sound
+        g_fflPlayAfterShock[ Player ] = flGameTime + random_float( 0.3, 0.8 )
+
+        // Fire!
+        Fire( Player, vecSrc, vecDest, flDamage )
     }
-
-    // Recoil
-    static Float:flRecoil[ 3 ]
-    flRecoil[ 0 ] = GAUSS_RECOIL
-    set_pev( Player, pev_punchangle, flRecoil )
-
-    // Fire animation
-    UTIL_PlayWeaponAnimation( Player, gauss_fire2 )
-
-    // Fire sound
-    static Float:flResult
-    flResult = 0.5 + flDamage * ( 1.0 / 400.0 )
-
-    if( flResult > 1.0 )
-    {
-        flResult = 1.0
-    }
-
-    emit_sound( Player, CHAN_WEAPON, g_szSoundGaussFire, flResult, ATTN_NORM, 0, 85 + random_num( 0, 31 ) ) //0x1f
-
-    // Get players aimpoint position
-    static Float:vecDest[ 3 ]
-    global_get( glb_v_forward, vecDest )
-
-    // Calculate start position
-    static Float:vecSrc[ 3 ]
-    UTIL_GetGunPosition( Player, vecSrc )
-
-    // Time until aftershock 'static discharge' sound
-    g_fflPlayAfterShock[ Player ] = flGameTime + random_float( 0.3, 0.8 )
-
-    // Fire!
-    Fire( Player, vecSrc, vecDest, flDamage )
 }
 
 // Fire!
@@ -1359,8 +1364,9 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
                     ExecuteHam( Ham_TakeDamage, pEntity, 0, Player, flDamage, DMG_SONIC )
                     //make sure breakables pop
                     if(is_valid_ent( pEntity) || iHealth < -50)
-
+                    {
                         dllfunc(DLLFunc_Use, pEntity, 0)
+                    }
                 }
 
                 // We should be alive
@@ -1374,9 +1380,12 @@ Fire( Player, Float:vecOrigSrc[ ], Float:vecDir[ ], Float:flDamage )
                 {
                     // Die
                     if(get_pcvar_num(g_debug))server_print("Gauss damage kill")
-                    g_bKilledByLaser[ pEntity ] = true
-                    ExecuteHamB( Ham_Killed, pEntity, Player, 2 )
-                    g_bKilledByLaser[ pEntity ] = false
+                    if(is_user_connected(Player) && pev_valid(pEntity))
+                    {
+                        g_bKilledByLaser[ pEntity ] = true
+                        ExecuteHamB( Ham_Killed, pEntity, Player, 2 )
+                        g_bKilledByLaser[ pEntity ] = false
+                    }
                 }
             }
         }
