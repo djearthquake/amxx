@@ -108,13 +108,14 @@ Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
-bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bC4map;
+bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered;
+static bool:bC4map;
 
-new const c4[][]={"weapon_c4","func_bomb_target","info_bomb_target"};
+static const c4[][]={"weapon_c4","func_bomb_target","info_bomb_target"};
 
-new const SzSuit[]="item_assaultsuit"
+static const SzSuit[]="item_assaultsuit"
 
-new const SzCsAmmo[][]=
+static const SzCsAmmo[][]=
 {
     "ammo_9mm",
     "ammo_357sig",
@@ -123,27 +124,26 @@ new const SzCsAmmo[][]=
     "ammo_50ae"
 };
 
-new const SzAdvert[]="Bind impulse 206 to control bot.";
-new const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
+static const SzAdvert[]="Bind impulse 206 to control bot.";
+static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
 //CONDITION ZERO TYPE BOTS. SPiNX
 @register(ham_bot)
 {
-    RegisterHamFromEntity( Ham_Spawn, ham_bot, "@PlayerSpawn", 1 );
-    RegisterHamFromEntity( Ham_Killed, ham_bot, "@died", 1 );
-    server_print("Respawn ham bot from %N", ham_bot)
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity( Ham_Spawn, ham_bot, "@PlayerSpawn", 1 );
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "@died", 1 );
+        server_print("Respawn ham bot from %N", ham_bot)
+        bRegistered = true;
+    }
 }
 
 public client_authorized(bot, const authid[])
 {
-    if(is_user_connected(bot))
+    if(equal(authid, "BOT") && !bRegistered)
     {
-        new bool:bRegistered;
-        if(equal(authid, "BOT") && !bRegistered)
-        {
-            set_task(0.1, "@register", bot);
-            bRegistered = true;
-        }
+        set_task(0.1, "@register", bot);
     }
 }
 
@@ -379,7 +379,7 @@ public CS_OnBuy(id, item)
     if(is_user_connected(id))
     {
         bIsVip[id] = cs_get_user_vip(id) ? true : false
-
+        set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255) //get everybody unconditionally
         if(!g_JustTook[id])
         {
             set_task(0.1,"@ReSpawn", id)
@@ -392,7 +392,7 @@ public CS_OnBuy(id, item)
     static iDefaultTeamPack,
     SzParaphrase[128], iDust, iKeep, iSound;
     iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
-    if(is_user_alive(id))
+    if(id & id<=MaxClients)
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
@@ -420,7 +420,7 @@ public CS_OnBuy(id, item)
             if(is_user_alive(iBotOwner[id]))
                 g_BackPack[id] = g_BackPack[iBotOwner[id]]
             fm_set_kvd(id, "zhlt_lightflags", "0")
-            set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255)
+            set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255) //some bots missed
 
             if(!iKeep)
                 goto TRADE
