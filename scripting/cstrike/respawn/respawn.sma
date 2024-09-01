@@ -132,7 +132,7 @@ static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 {
     if(is_user_connected(ham_bot))
     {
-        RegisterHamFromEntity( Ham_Spawn, ham_bot, "@PlayerSpawn", 1 );
+        RegisterHamFromEntity( Ham_Spawn, ham_bot, "@BotSpawn", 1 );
         RegisterHamFromEntity( Ham_Killed, ham_bot, "@died", 1 );
         server_print("Respawn ham bot from %N", ham_bot)
         bRegistered = true;
@@ -348,29 +348,17 @@ public CS_OnBuy(id, item)
 
 @BotSpawn(bot)
 {
-    if(is_user_connected(bot) && bIsCtrl[bot])
+    if(is_user_connected(bot))
     {
-        g_iTempCash[bot] = cs_get_user_money(bot)
-        cs_set_user_money(bot, 0, 0)
-        if(is_user_alive(bot))
+        bIsVip[bot] = cs_get_user_vip(bot) ? true : false
+        g_BackPack[bot] = entity_get_int(bot, EV_INT_weapons)
+        if(bIsCtrl[bot])
         {
+            g_iTempCash[bot] = cs_get_user_money(bot)
+            cs_set_user_money(bot, 0, 0)
             server_print("%n was controlled last round", bot)
-            strip_user_weapons(bot)
-            set_task(3.0,"@check_bot_knife", bot)
         }
-    }
-}
-
-@check_bot_knife(id)
-{
-    if(is_user_connected(id))
-    {
-        if(!user_has_weapon(id, CSW_KNIFE))
-        {
-            log_amx "%N had no knife!", id
-            client_print iBotOwner[id], print_chat,  "%n had no knife!", id
-            set_task(2.0,"@ReSpawn", id)
-        }
+        set_task(0.1,"@ReSpawn", bot)
     }
 }
 
@@ -378,8 +366,8 @@ public CS_OnBuy(id, item)
 {
     if(is_user_connected(id))
     {
+        g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
-        set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255) //get everybody unconditionally
         if(!g_JustTook[id])
         {
             set_task(0.1,"@ReSpawn", id)
@@ -392,7 +380,7 @@ public CS_OnBuy(id, item)
     static iDefaultTeamPack,
     SzParaphrase[128], iDust, iKeep, iSound;
     iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
-    if(id & id<=MaxClients)
+    if(is_user_connected(id))
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         if(!iSpawnBackpackCT || !iSpawnBackpackT)
@@ -400,8 +388,6 @@ public CS_OnBuy(id, item)
             static iTeam; iTeam = get_user_team(id)
             if(iTeam == 1 && !iSpawnBackpackT)
             {
-                //g_T_spawn++
-                //if(!user_has_weapon(id, CSW_C4) &&  g_T_spawn == 4)
                 if(!user_has_weapon(id, CSW_C4))
                 {
                     iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
@@ -438,15 +424,16 @@ public CS_OnBuy(id, item)
             }
             if(!iKeep)
             {
+                g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
                 if(cs_get_user_shield(id))
                 {
-                    formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", id, iBotOwned[id], "weapon_shield");
+                    formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", id, iBotOwned[id], "shield");
                     client_print iBotOwner[id], print_chat,  SzParaphrase
                     give_item(iBotOwned[id], "weapon_shield");
                 }
 
                 iDefaultTeamPack = get_user_team(id) == 1 ? iSpawnBackpackT :  iSpawnBackpackCT
-                g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
+
                 if(is_user_alive(id))
                 {
                     strip_user_weapons(id)
@@ -455,23 +442,22 @@ public CS_OnBuy(id, item)
                         if(iDefaultTeamPack & 1<<iArms)
                         if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
                         {
-                            if(equal(SzWeaponClassname, "weapon_c4"))
+                            if(!equal(SzWeaponClassname, "weapon_c4") || !equal(SzWeaponClassname, "weapon_null"))
                             {
-                                return
-                            }
-                            give_item(id, SzWeaponClassname)
+                                give_item(id, SzWeaponClassname)
 
-                            if(containi(SzWeaponClassname, "item_")!=charsmin)
-                                replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
-                            if(containi(SzWeaponClassname, "weapon_")!=charsmin)
-                                replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
-                            client_print id, print_chat,  SzWeaponClassname
+                                if(containi(SzWeaponClassname, "item_")!=charsmin)
+                                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                                if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                                    replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+                                client_print id, print_chat,  SzWeaponClassname
+                            }
                         }
                         TRADE:
                         if(bIsCtrl[id])
                         {
                             strip_user_weapons(id) //double-pistol bugfix
-                            new Float:fBuyOrigin[3];
+                            static Float:fBuyOrigin[3];
                             pev(id, pev_origin, fBuyOrigin)
 
                             for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
@@ -482,15 +468,16 @@ public CS_OnBuy(id, item)
                                     if(!equal(SzWeaponClassname, "weapon_c4") || !equal(SzWeaponClassname, "weapon_null"))
                                     {
                                         give_item(id, SzWeaponClassname)
+
+                                        if(containi(SzWeaponClassname, "item_")!=charsmin)
+                                            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                                        if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                                            replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+
+                                        is_user_connected(iBotOwner[id]) ? formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname) :
+                                        formatex(SzParaphrase, charsmax(SzParaphrase), "Disconnected player returned %n's %s.", id, SzWeaponClassname)
+                                        client_print( 0, print_chat,  SzParaphrase);
                                     }
-
-                                    if(containi(SzWeaponClassname, "item_")!=charsmin)
-                                        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
-                                    if(containi(SzWeaponClassname, "weapon_")!=charsmin)
-                                        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
-
-                                    is_user_connected(iBotOwner[id]) ? formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", iBotOwner[id], id, SzWeaponClassname) :
-                                    formatex(SzParaphrase, charsmax(SzParaphrase), "Disconnected player returned %n's %s.", id, SzWeaponClassname) & client_print( 0, print_chat,  SzParaphrase);
                                 }
                             }
 
