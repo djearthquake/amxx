@@ -5,13 +5,13 @@
 #include fakemeta
 #include fakemeta_util
 
-new const medkit[]   = "models/w_medkit.mdl"
-new const smallkit1[] = "items/smallmedkit1.wav"
-new const smallkit2[] = "items/smallmedkit2.wav"
-new const ent_type[] = "item_healthkit"
+static const medkit[]   = "models/w_medkit.mdl"
+static const smallkit1[] = "items/smallmedkit1.wav"
+static const smallkit2[] = "items/smallmedkit2.wav"
+static const ent_type[] = "item_healthkit"
 
 new g_ent;
-new bool:bDust
+static bool:bC4
 
 public plugin_init()
 {
@@ -34,9 +34,13 @@ public plugin_cfg()
     register_clcmd("fix_boxes","@fix_boxes", ADMIN_SLAY, "- break on trigger not melee.");
     register_clcmd("hard_boxes","@ent_hardener", ADMIN_SLAY, "- make unbreakable.");
 
-    static mname[MAX_PLAYERS];
-    get_mapname(mname, charsmax(mname) )
-    bDust = containi(mname, "dust") != -1 ? true:false
+    bC4 = has_map_ent_class("func_bomb_target") ||  has_map_ent_class("info_bomb_target")? true : false
+
+    if(bC4)
+    {
+        server_print ("C4 map!!")
+    }
+
 }
 
 @ent_changing_function(iPlayer, entity_we_touched)
@@ -45,7 +49,13 @@ public plugin_cfg()
     {
         DispatchKeyValue(entity_we_touched, "explodemagnitude", "10") //make it hurt
         DispatchKeyValue(entity_we_touched, "spawnobject", "2") //make medkit
+        DispatchKeyValue(entity_we_touched, "health", "15") //make medkit
         DispatchKeyValue(entity_we_touched, "gibmodel", medkit)
+        DispatchKeyValue(entity_we_touched, "rendermode", "1")
+        DispatchKeyValue(entity_we_touched, "renderfx", "14")
+        DispatchKeyValue(entity_we_touched, "renderamt", "75")
+        DispatchKeyValue(entity_we_touched, "rendercolor", "5 15 150")
+
         DispatchKeyValue(entity_we_touched, "spawnflags", "256") //walk and touch break do not mix well with a registered touch already
         set_pev(entity_we_touched, pev_classname, "func_medical")
         DispatchSpawn(entity_we_touched); //make gib work
@@ -67,11 +77,8 @@ public plugin_cfg()
 
 @round_end()
 {
-    if(bDust)
-    {
-        @ent_fixer()
-    }
     @ent_remover()
+    set_task(0.2,"@ent_fixer", 2024,_,_,"a", 2)
 }
 
 @clear_medkits(id)
@@ -112,17 +119,51 @@ public plugin_cfg()
 {
     new  ent = MaxClients; while( (ent = find_ent(ent, "func_breakable") ) > MaxClients && pev_valid(ent)>1)
     {
-        set_pev(ent, pev_health, 5)
-        set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+        set_pev(ent, pev_classname, "func_breakable")
+        DispatchKeyValue(ent, "spawnobject", "0")
+
+        DispatchKeyValue(ent, "renderamt", "100")
+        DispatchKeyValue(ent, "renderfx", "0")
+        DispatchKeyValue(ent, "rendercolor", "0 0 0")
+        set_pev(ent, pev_health, 5.0)
+
+        if(bC4)
+        {
+            set_pev(ent, pev_rendermode, kRenderNormal)
+            set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+        }
+        else
+        {
+            DispatchKeyValue(ent, "rendermode", "2")
+        }
+
         DispatchSpawn(ent); //make trigger only work
         g_ent++
     }
+
     ent = MaxClients; while( (ent = find_ent(ent, "func_medical") ) > MaxClients && pev_valid(ent)>1)
     {
         set_pev(ent, pev_classname, "func_breakable")
-        set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+        DispatchKeyValue(ent, "spawnobject", "0")
+
+        DispatchKeyValue(ent, "renderamt", "100"
+        DispatchKeyValue(ent, "renderfx", "0")
+        DispatchKeyValue(ent, "rendercolor", "0 0 0")
+        set_pev(ent, pev_health, 5.0)
+
+        if(bC4)
+        {
+            set_pev(ent, pev_rendermode, kRenderNormal)
+            set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+        }
+        else
+        {
+            DispatchKeyValue(ent, "rendermode", "2")
+        }
+
         DispatchSpawn(ent); //make trigger only work
         g_ent++
+
     }
 }
 
@@ -141,8 +182,8 @@ public plugin_cfg()
         //https://twhl.info/wiki/page/func_breakable
         fm_set_kvd(ent, "material", "7");
         fm_set_kvd(ent, "renderamt", "75");
-        fm_set_kvd(ent, "rendermode", "2");
-        fm_set_kvd(ent, "renderfx", "0");
+        fm_set_kvd(ent, "rendermode", "1");
+        fm_set_kvd(ent, "renderfx", "14");
         fm_set_kvd(ent, "rendercolor", "0 255 255")
         set_pev(ent, pev_classname, "SPiNX Glass")
         DispatchSpawn(ent); //make unbreakable
