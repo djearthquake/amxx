@@ -15,7 +15,7 @@ new bool:bDust
 
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.5", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.51", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -47,7 +47,7 @@ public plugin_cfg()
         DispatchKeyValue(entity_we_touched, "spawnobject", "2") //make medkit
         DispatchKeyValue(entity_we_touched, "gibmodel", medkit)
         DispatchKeyValue(entity_we_touched, "spawnflags", "256") //walk and touch break do not mix well with a registered touch already
-        set_pev(entity_we_touched, pev_classname, "Breakable Medical")
+        set_pev(entity_we_touched, pev_classname, "func_medical")
         DispatchSpawn(entity_we_touched); //make gib work
 
         if(is_user_connected(iPlayer))
@@ -112,6 +112,14 @@ public plugin_cfg()
 {
     new  ent = MaxClients; while( (ent = find_ent(ent, "func_breakable") ) > MaxClients && pev_valid(ent)>1)
     {
+        set_pev(ent, pev_health, 5)
+        set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+        DispatchSpawn(ent); //make trigger only work
+        g_ent++
+    }
+    ent = MaxClients; while( (ent = find_ent(ent, "func_medical") ) > MaxClients && pev_valid(ent)>1)
+    {
+        set_pev(ent, pev_classname, "func_breakable")
         set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
         DispatchSpawn(ent); //make trigger only work
         g_ent++
