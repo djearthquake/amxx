@@ -42,6 +42,7 @@ public chute_think(id)
             {
                 set_user_gravity(id, 1.0)
             }
+            goto EXIT
         }
         if(button & IN_USE|AUTO)
         {
@@ -53,8 +54,8 @@ public chute_think(id)
             if(get_pcvar_num(pParaModel))
             {
                 entity_set_vector(id, EV_VEC_velocity, velocity)
-                //emessage_begin( MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0 );
-                emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY);
+                emessage_begin( MSG_PVS, SVC_TEMPENTITY);
+                //emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY);
                 ewrite_byte(TE_PLAYERATTACHMENT)
                 ewrite_byte(id)
                 ewrite_coord(-MAX_AUTHID_LENGTH)
@@ -69,6 +70,7 @@ public chute_think(id)
             set_user_gravity(id, 1.0);
         }
     }
+    EXIT:
     return PLUGIN_HANDLED_MAIN;
 }
 
