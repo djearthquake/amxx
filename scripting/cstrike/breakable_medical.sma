@@ -125,10 +125,16 @@ public plugin_cfg()
         DispatchKeyValue(ent, "renderamt", "100")
         DispatchKeyValue(ent, "renderfx", "0")
         DispatchKeyValue(ent, "rendercolor", "0 0 0")
+
+        //DispatchKeyValue(ent, "gibmodel", "")
+        //DispatchKeyValue(ent, "material", "2")
         set_pev(ent, pev_health, 5.0)
 
         if(bC4)
         {
+            //DispatchKeyValue(ent, "rendermode", "0")
+            //DispatchKeyValue(ent, "renderamt", "255")
+            //set_ent_rendering(ent, kRenderNormal, 0, 0, 0, kRenderNormal, 0)
             set_pev(ent, pev_rendermode, kRenderNormal)
             set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
         }
@@ -146,13 +152,19 @@ public plugin_cfg()
         set_pev(ent, pev_classname, "func_breakable")
         DispatchKeyValue(ent, "spawnobject", "0")
 
-        DispatchKeyValue(ent, "renderamt", "100"
+        DispatchKeyValue(ent, "renderamt", "100")
         DispatchKeyValue(ent, "renderfx", "0")
         DispatchKeyValue(ent, "rendercolor", "0 0 0")
+
+        //DispatchKeyValue(ent, "gibmodel", "")
+        //DispatchKeyValue(ent, "material", "2")
         set_pev(ent, pev_health, 5.0)
 
         if(bC4)
         {
+            //DispatchKeyValue(ent, "rendermode", "0")
+            //DispatchKeyValue(ent, "renderamt", "255")
+            //set_ent_rendering(ent, kRenderNormal, 0, 0, 0, kRenderNormal, 0)
             set_pev(ent, pev_rendermode, kRenderNormal)
             set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
         }
