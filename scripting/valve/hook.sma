@@ -52,8 +52,12 @@
 #include <engine_stocks>
 #include <fakemeta>
 #include <fakemeta_util>
+
 #tryinclude gearbox
-#define HLW_KNIFE           0x0019
+#if !defined HLW_KNIFE
+#define HLW_KNIFE           25 //0x0019
+#endif
+
 #include <hamsandwich>
 #include <xs>
 #define message_begin_f(%1,%2,%3,%4) engfunc(EngFunc_MessageBegin, %1, %2, %3, %4)
@@ -327,8 +331,8 @@ public plugin_precache()
     bOF_run  = equal(mod_name, "gearbox") ? true : false
     if(bOF_run)
     {
-        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
-        RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
+        ///RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Pre" , 0 );
+        ///RegisterHam( Ham_Weapon_SecondaryAttack, "weapon_knife", "_SecondaryAttack_Post", 1 );
     }
     // Hook Model
     precache_model(RPG)
@@ -769,7 +773,11 @@ public fwTouch(ptr, ptd)
 {
     if(pev_valid(hook_painted_ent)>1)
     {
-        set_pev(hook_painted_ent, pev_rendermode, kRenderNormal);
+        set_pev(hook_painted_ent, pev_rendermode, kRenderTransTexture)
+        //https://www.amxmodx.org/api/amxconst#rendering-modes-i-e-for-set-user-rendering
+        set_pev(hook_painted_ent, pev_renderfx, 0)
+        set_pev(hook_painted_ent, pev_renderamt, 100.0)
+        set_pev(hook_painted_ent, pev_rendercolor, Float:{0.0, 0.0, 0.0});
     }
 }
 
