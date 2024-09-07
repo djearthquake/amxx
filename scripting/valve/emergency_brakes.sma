@@ -1,9 +1,12 @@
 /*Automatic braking of Half-Life cars and trains in relation to team mate distance by cvar.*/
+#include amxmodx
+
+#if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
+    #error Wrong Amxx version!
+#endif
 
 //uncomment to add purchase requirements
 #define CSTRIKE
-
-#include amxmodx
 
 #if defined CSTRIKE
     #include cstrike
@@ -68,6 +71,7 @@ public plugin_init()
     }
 
     cvar_range = register_cvar("brake_range", "250")
+
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
 
     server_print "%i trains modified!",g_fun_train
