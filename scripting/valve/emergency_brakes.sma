@@ -7,6 +7,7 @@
 
 #if defined CSTRIKE
     #include cstrike
+    #include hamsandwich
     new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost;
 #endif
 
@@ -47,7 +48,7 @@ const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.3", "SPiNX" );
+    register_plugin( "Auto Braking", "0.0.4", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -75,6 +76,7 @@ public plugin_init()
     #if defined CSTRIKE
         register_clcmd ( "buy_brakes", "buy_brakes", 0, " - Automatic brakes." );
         g_item_cost = register_cvar("brakes_cost", "2500" )
+        RegisterHam(Ham_Killed, "player", "no_brakes");
     #endif
 }
 
@@ -222,5 +224,10 @@ public buy_brakes(Client)
         }
     }
     return PLUGIN_HANDLED;
+}
+
+public no_brakes(id)
+{
+    g_brake_owner[id] = false
 }
 #endif
