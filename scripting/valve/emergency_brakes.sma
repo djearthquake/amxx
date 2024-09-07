@@ -61,11 +61,11 @@ public plugin_init()
     {
         bLoco = true
     }
-    else 
+    else
     {
         pause "d"
     }
-    
+
     cvar_range = register_cvar("brake_range", "250")
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
 
@@ -82,7 +82,7 @@ public client_command(id)
 {
     static iRange; iRange = get_pcvar_num(cvar_range)
     if(iRange)
-    
+
     #if defined CSTRIKE
         if(g_brake_owner[id])
     #endif
@@ -114,7 +114,6 @@ public client_command(id)
                                 DispatchKeyValue(g_mod_car[id], WOT,0)
                                 :set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
                                 client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
-                                
                             }
                             else
                             {
