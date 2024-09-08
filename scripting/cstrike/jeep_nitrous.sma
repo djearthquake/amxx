@@ -7,18 +7,19 @@
 #include fun
 
 #define MAX_NAME_LENGTH 32
+#define MAX_PLAYERS     32
 #define MAX_CMD_LENGTH 128
 #define charsmin        -1
 #define iCOLOR random_num(1,255)
 #define JEEP 7594
 
-new const prefix[] = { "!g[!tGarage!g]!n" }
+static const prefix[] = { "!g[!tGarage!g]!n" }
 
 new iArmor[MAX_PLAYERS +1], g_mod_car[MAX_PLAYERS + 1],
 g_owned_car[MAX_PLAYERS][4], g_price_fuel, g_saytxt,
 bool:bSet[MAX_PLAYERS + 1], bool:bRegisteredCar[MAX_PLAYERS + 1], iVehicular[MAX_PLAYERS + 1]
 
-new const CARS[]= "func_vehicle"
+static const CARS[]= "func_vehicle"
 static m_acceleration, m_speed, m_flVolume;
 
 //Stages
@@ -32,14 +33,14 @@ static m_acceleration, m_speed, m_flVolume;
 #define BLOWER1 9
 #define BLOWER2 11
 #define BLOWER3 15
-new g_hotroded, g_kills, g_iNitrous, g_sprite
+static g_hotroded, g_kills, g_iNitrous, g_sprite, g_brakes
 
 const LINUX_DIFF = 5;
 const LINUX_OFFSET_WEAPONS = 4;
 public plugin_precache(){g_sprite = precache_model("sprites/smoke.spr");}
 public plugin_init()
 {
-    register_plugin("Jeep Nitrous", "1.6", ".sρiηX҉.");
+    register_plugin("Jeep Nitrous", "1.62", ".sρiηX҉.");
 
     if(!find_ent(MaxClients, CARS))
     {
@@ -58,6 +59,8 @@ public plugin_init()
     m_acceleration = (find_ent_data_info("CFuncVehicle", "m_acceleration")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
     m_flVolume = (find_ent_data_info("CFuncVehicle", "m_flVolume") /LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+
+    g_brakes = (is_plugin_loaded("emergency_brakes.amxx",true)!=charsmin)
 }
 
 public pfn_touch(ptr, ptd)
@@ -82,9 +85,9 @@ public pfn_touch(ptr, ptd)
 
 public plugin_log()
 {
-    new szDummy[ 32 ];
+    new szDummy[ MAX_PLAYERS ];
     read_logargv(2,szDummy, charsmax(szDummy))
-    if(containi(szDummy, "vehicle") != -1)
+    if(containi(szDummy, "vehicle") != charsmin)
     {
         new victim = get_loguser_index()
         new iOwner = pev(iVehicular[victim], pev_owner) - 50
@@ -106,9 +109,9 @@ public plugin_log()
     }
 }
 stock get_loguser_index() {
-new loguser[80], name[32]
-read_logargv(0, loguser, 79)
-parse_loguser(loguser, name, 31)
+new loguser[80], name[MAX_PLAYERS]
+read_logargv(0, loguser, charsmax(loguser))
+parse_loguser(loguser, name, charsmax(name))
 return get_user_index(name);
 }
 
@@ -187,8 +190,10 @@ public driving_think()
                                         static Accel; Accel = get_pdata_int(g_mod_car[iPlayer], m_acceleration, LINUX_DIFF);
                                         static fSpeed; fSpeed = get_pdata_int(g_mod_car[iPlayer], m_speed, LINUX_DIFF);
                                         static Float:fVol; fVol = get_pdata_float(g_mod_car[iPlayer], m_flVolume, LINUX_DIFF);
-
-                                        client_print iPlayer, print_center, "%f|%i|%f", fSpeed, Accel, fVol //max
+                                        if(!g_brakes)
+                                        {
+                                            client_print iPlayer, print_center, "%f|%i|%f", fSpeed, Accel, fVol //max
+                                        }
                                     }
                                 }
                             }
@@ -242,52 +247,53 @@ stock is_driving(iPlayer)
         new Float:scanTime = 1.7;
         new effect = 2;
 
-        message_begin ( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, id )
-        write_byte(TE_TEXTMESSAGE);
-        write_byte(0);      //(channel)
-        write_short(FixedSigned16(xTex,1<<13));  //(x) -1 = center)
-        write_short(FixedSigned16(yTex,1<<13));  //(y) -1 = center)
-        write_byte(effect);  //(effect) 0 = fade in/fade out, 1 is flickery credits, 2 is write out (training room)
-        write_byte(0);  //(red) - text color
-        write_byte(255);  //(green)
-        write_byte(64);  //(blue)
-        write_byte(200);  //(alpha)
-        write_byte(255);  //(red) - effect color
-        write_byte(0);  //(green)
-        write_byte(0);  //(blue)
-        write_byte(25);  //(alpha)
-        write_short(FixedUnsigned16(fadeInTime,1<<8));
-        write_short(FixedUnsigned16(fadeOutTime,1<<8));
-        write_short(FixedUnsigned16(holdTime,1<<8));
+        emessage_begin ( MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, id )
+        ewrite_byte(TE_TEXTMESSAGE);
+        ewrite_byte(0);      //(channel)
+        ewrite_short(FixedSigned16(xTex,1<<13));  //(x) -1 = center)
+        ewrite_short(FixedSigned16(yTex,1<<13));  //(y) -1 = center)
+        ewrite_byte(effect);  //(effect) 0 = fade in/fade out, 1 is flickery credits, 2 is write out (training room)
+        ewrite_byte(0);  //(red) - text color
+        ewrite_byte(255);  //(green)
+        ewrite_byte(64);  //(blue)
+        ewrite_byte(200);  //(alpha)
+        ewrite_byte(255);  //(red) - effect color
+        ewrite_byte(0);  //(green)
+        ewrite_byte(0);  //(blue)
+        ewrite_byte(25);  //(alpha)
+        ewrite_short(FixedUnsigned16(fadeInTime,1<<8));
+        ewrite_short(FixedUnsigned16(fadeOutTime,1<<8));
+        ewrite_short(FixedUnsigned16(holdTime,1<<8));
         if (effect == 2)
-            write_short(FixedUnsigned16(scanTime,1<<8));
-        //[optional] write_short(fxtime) time the highlight lags behing the leading text in effect 2
-        write_string("Nitrous  ☄☄☄  shot..."); //(text message) 512 chars max string size
-        message_end();
+            ewrite_short(FixedUnsigned16(scanTime,1<<8));
+        //[optional] ewrite_short(fxtime) time the highlight lags behing the leading text in effect 2
+        ewrite_string("Nitrous  ☄☄☄  shot..."); //(text message) 512 chars max string size
+        emessage_end();
     }
 }
 
 public fn_shield_proximity2(iPlayer,iCar)
 {
-    if(is_user_alive(iPlayer) && is_user_bot(iPlayer))
+    if(is_user_alive(iPlayer) /*&& !is_user_bot(iPlayer)*/) ///bots and czero running
+    //FATAL ERROR (shutting down): Tried to create a message with a bogus message type ( 0 ) ???
     {
         iVehicular[iPlayer] = iCar
-        message_begin(0,23);
-        write_byte(TE_BEAMRING)
-        write_short(iPlayer)
-        write_short(iCar)
-        write_short(g_sprite)
-        write_byte(10)  //starting frame
-        write_byte(1) //rate
-        write_byte(random_num(1,6)) //life
-        write_byte(random_num(5,50)) //width
-        write_byte(random_num(1,100)) //amp
-        write_byte(iCOLOR)  //Red
-        write_byte(iCOLOR) //Green
-        write_byte(iCOLOR) //blue
-        write_byte(random_num(1,5)) //bright
-        write_byte(1) //speed
-        message_end();
+        emessage_begin(MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, iCar)
+        ewrite_byte(TE_BEAMRING)
+        ewrite_short(iPlayer)
+        ewrite_short(iCar)
+        ewrite_short(g_sprite)
+        ewrite_byte(10)  //starting frame
+        ewrite_byte(1) //rate
+        ewrite_byte(random_num(1,6)) //life
+        ewrite_byte(random_num(5,50)) //width
+        ewrite_byte(random_num(1,100)) //amp
+        ewrite_byte(iCOLOR)  //Red
+        ewrite_byte(iCOLOR) //Green
+        ewrite_byte(iCOLOR) //blue
+        ewrite_byte(random_num(1,5)) //bright
+        ewrite_byte(1) //speed
+        emessage_end();
     }
     return PLUGIN_HANDLED;
 }
@@ -471,6 +477,8 @@ stock client_printc(const id, const input[], any:...)
     }
 }
 
+
+///beta code
 /*
 new const ACCEL[]= "acceleration"
 new const VRMM[]= "speed"
