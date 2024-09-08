@@ -51,7 +51,7 @@ const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.4", "SPiNX" );
+    register_plugin( "Auto Braking", "0.0.5", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -233,5 +233,10 @@ public buy_brakes(Client)
 public no_brakes(id)
 {
     g_brake_owner[id] = false
+}
+
+public client_disconnected(id)
+{
+    no_brakes(id)
 }
 #endif
