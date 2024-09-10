@@ -1,17 +1,19 @@
 /*Automatic braking of Half-Life cars and trains in relation to team mate distance by cvar.*/
 #include amxmodx
 
-#if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
+#if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM < 190
     #error Wrong Amxx version!
 #endif
 
-//uncomment to add purchase requirements
+#define NAMED_PLUGIN "plugin.amxx"  /*add a plugin to block center chat*/
+///uncomment to add purchase requirements
 #define CSTRIKE
 
 #if defined CSTRIKE
     #include cstrike
     #include hamsandwich
-    new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost;
+    new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost, g_nitrous;
+    static g_saytxt;
 #endif
 
 #include engine_stocks
@@ -51,7 +53,7 @@ const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.5", "SPiNX" );
+    register_plugin( "Auto Braking", "0.0.6", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -78,9 +80,11 @@ public plugin_init()
     server_print "%i paths modified!",g_path_corn
 
     #if defined CSTRIKE
-        register_clcmd ( "buy_brakes", "buy_brakes", 0, " - Automatic brakes." );
+        register_clcmd ( "buy_brakes", "buy_brakes", 0, " - Automatic brakes." )
         g_item_cost = register_cvar("brakes_cost", "2500" )
-        RegisterHam(Ham_Killed, "player", "no_brakes");
+        RegisterHam(Ham_Killed, "player", "no_brakes")
+        g_saytxt = get_user_msgid("SayText")
+        g_nitrous = (is_plugin_loaded(NAMED_PLUGIN,true)!=charsmin)
     #endif
 }
 
@@ -92,7 +96,7 @@ public client_command(id)
     #if defined CSTRIKE
         if(g_brake_owner[id])
     #endif
-    is_driving(id) ?  remove_task(id) : set_task(0.1, "@brake_think", id, _,_, "b");
+    is_driving(id) ?  remove_task(id) : set_task(0.2, "@brake_think", id, _,_, "b");
 }
 
 @brake_think(id)
@@ -119,7 +123,11 @@ public client_command(id)
                                 bLoco ?
                                 DispatchKeyValue(g_mod_car[id], WOT,0)
                                 :set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
-                                client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
+
+                                if(!g_nitrous)
+                                {
+                                    client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
+                                }
                             }
                             else
                             {
@@ -208,7 +216,8 @@ public buy_brakes(Client)
 
                 if(tmp_money < get_pcvar_num(g_item_cost))
                 {
-                    client_print(Client, print_center, "You can't afford brakes %s!", name);
+                    //client_print(Client, print_center, "You can't afford brakes %s!", name);
+                    client_printc(Client, "!tYou !ncan't !gafford !tbrakes!n!");
                     client_print(0, print_chat, "Hey guys %s keeps trying to buy brakes they can't afford!", name);
                     return PLUGIN_HANDLED;
                 }
@@ -216,13 +225,15 @@ public buy_brakes(Client)
                 {
                     cs_set_user_money(Client, tmp_money - get_pcvar_num(g_item_cost));
                     g_brake_owner[Client] = true;
-                    client_print(Client, print_center, "You bought brakes!");
+                    //client_print(Client, print_center, "You bought brakes!");
+                    client_printc(Client, "!nYou !gbought !tbrakes!n!");
                 }
 
             }
             else
             {
-                client_print(Client, print_center, "You ALREADY OWN a brakes...");
+                //client_print(Client, print_center, "You ALREADY OWN brakes...");
+                client_printc(Client, "!nYou !nALREADY !tOWN !gbrakes!n!");
                 client_print(0, print_chat, "Hey guys %s keeps trying to buy brakes and already owns them!", name);
             }
         }
@@ -238,5 +249,26 @@ public no_brakes(id)
 public client_disconnected(id)
 {
     no_brakes(id)
+}
+
+stock client_printc(const id, const input[], any:...)
+{
+    new count = 1, players[MAX_PLAYERS];
+    static msg[191];
+    vformat(msg, charsmax(msg), input, 3);
+
+    replace_all(msg, charsmax(msg), "!g", "^x04"); // Green Color
+    replace_all(msg, charsmax(msg), "!n", "^x01"); // Default Color
+    replace_all(msg, charsmax(msg), "!t", "^x03"); // Team Color
+
+    id ? (players[0] = id) : get_players(players, count, "ch");
+
+    for (new i = 0; i < count; i++)
+    {
+        emessage_begin(MSG_ONE_UNRELIABLE, g_saytxt, _, players[i]);
+        ewrite_byte(players[i]);
+        ewrite_string(msg);
+        emessage_end();
+    }
 }
 #endif
