@@ -46,14 +46,15 @@ static g_fun_train, g_path_corn
 
 static bool:bLoco
 static m_speed
-static g_mod_car[MAX_PLAYERS +1]
+new g_mod_car[MAX_PLAYERS +1],
+bool:bSet[MAX_PLAYERS + 1]
 
 const LINUX_DIFF = 5;
 const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.7", "SPiNX" );
+    register_plugin( "Auto Braking", "0.0.8", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -96,7 +97,8 @@ public client_command(id)
     #if defined CSTRIKE
         if(g_brake_owner[id])
     #endif
-    is_driving(id) ?  remove_task(id) : set_task(0.2, "@brake_think", id, _,_, "b");
+
+    is_driving(id) ? remove_task(id) : set_task(0.1, "@brake_think", id, _,_, "b")
 }
 
 @brake_think(id)
@@ -152,10 +154,21 @@ public pfn_touch(ptr, ptd)
     {
         if(is_user_alive(ptr) && pev_valid(ptd))
         {
-            static iPlayer;iPlayer = ptr
-            if(is_driving(iPlayer))
+            if(!g_mod_car[ptr])
             {
+                static iPlayer;iPlayer = ptr
                 g_mod_car[iPlayer] = ptd
+
+                if(is_driving(iPlayer) && !bSet[iPlayer])
+                {
+                    g_mod_car[iPlayer] = ptd
+                    bSet[iPlayer] = true
+                }
+                else
+                {
+                    g_mod_car[iPlayer] = 0
+                    bSet[iPlayer] = false
+                }
             }
         }
     }
@@ -194,7 +207,7 @@ stock is_driving(iPlayer)
 {
     if(is_user_alive(iPlayer))
     {
-        return bLoco ? pev(iPlayer,pev_flags) & FL_ONTRAIN : cs_get_user_driving(iPlayer)
+        return pev(iPlayer,pev_flags) & FL_ONTRAIN
     }
     return PLUGIN_HANDLED
 }
