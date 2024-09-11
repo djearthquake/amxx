@@ -122,11 +122,10 @@ public client_command(id)
 
                             if( iDistance < iRange)
                             {
-                                bLoco ?
-                                DispatchKeyValue(g_mod_car[id], WOT,0)
-                                :set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
+                                bLoco? DispatchKeyValue(g_mod_car[id], WOT,0) :
+                                set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
 
-                                if(!g_nitrous && bLoco)
+                                if(!g_nitrous/* && bLoco*/)
                                 {
                                     client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
                                 }
