@@ -53,7 +53,7 @@ const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.6", "SPiNX" );
+    register_plugin( "Auto Braking", "0.0.7", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -124,7 +124,7 @@ public client_command(id)
                                 DispatchKeyValue(g_mod_car[id], WOT,0)
                                 :set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
 
-                                if(!g_nitrous)
+                                if(!g_nitrous && bLoco)
                                 {
                                     client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
                                 }
@@ -194,7 +194,7 @@ stock is_driving(iPlayer)
 {
     if(is_user_alive(iPlayer))
     {
-        return pev(iPlayer,pev_flags) & FL_ONTRAIN
+        return bLoco ? pev(iPlayer,pev_flags) & FL_ONTRAIN : cs_get_user_driving(iPlayer)
     }
     return PLUGIN_HANDLED
 }
