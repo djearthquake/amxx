@@ -1,5 +1,7 @@
 /*Automatic braking of Half-Life cars and trains in relation to team mate distance by cvar.*/
 #include amxmodx
+#include fakemeta_util
+#include fun
 
 #if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM < 190
     #error Wrong Amxx version!
@@ -12,6 +14,7 @@
 #if defined CSTRIKE
     #include cstrike
     #include hamsandwich
+    new bool:bRegistered
     new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost, g_nitrous;
     static g_saytxt;
 #endif
@@ -44,16 +47,17 @@ static const realfast[]= "1132"
 
 static g_fun_train, g_path_corn
 
-static bool:bLoco
-static m_speed
+static bool:bLoco, g_score, g_deathmsg
+static m_speed, g_teams, bool:bStrike
 new g_mod_car[MAX_PLAYERS +1]
+new bool:g_airbourne[MAX_PLAYERS +1]
 
 const LINUX_DIFF = 5;
 const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "1.0.0", "SPiNX" );
+    register_plugin( "Auto Braking", "1.0.1", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -81,6 +85,15 @@ public plugin_init()
 
     server_print "%i trains modified!",g_fun_train
     server_print "%i paths modified!",g_path_corn
+
+    g_score = get_user_msgid("ScoreInfo");
+    g_deathmsg = get_user_msgid("DeathMsg")
+
+    static modname[MAX_PLAYERS];
+    get_modname(modname, charsmax(modname))
+    bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
+
+    g_teams            =  bStrike ? get_cvar_pointer("mp_friendlyfire") : get_cvar_pointer("mp_teamplay")
 
     #if defined CSTRIKE
         register_clcmd ( "buy_brakes", "buy_brakes", 0, " - Automatic brakes." )
@@ -131,9 +144,16 @@ public plugin_init()
                             {
                                 static Float:Origin[3]
                                 pev(iPlayer, pev_origin, Origin)
-                                Origin[2] += 700.0
+                                Origin[2] += 200.0
 
                                 set_pev(iPlayer, pev_origin, Origin)
+                                if(!g_airbourne[iPlayer])
+                                {
+                                    g_airbourne[iPlayer] = true
+                                    bStrike ? set_msg_block(g_deathmsg, BLOCK_SET) : set_msg_block(g_deathmsg, BLOCK_ONCE);
+                                    fakedamage(iPlayer,"vehicle",400.0,DMG_CRUSH) //|DMG_ALWAYSGIB)
+                                    log_kill(id,iPlayer,"vehicle",1);
+                                }
                             }
 
                         }
@@ -243,12 +263,38 @@ public buy_brakes(Client)
 public no_brakes(id)
 {
     g_brake_owner[id] = false
+    if(g_airbourne[id])
+    {
+        client_print 0, print_chat, "%n was killed by vehicle!", id
+        g_airbourne[id] = false
+    }
 }
 
 public client_disconnected(id)
 {
     no_brakes(id)
+    g_airbourne[id] = false
 }
+
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "no_brakes", 1 );
+        bRegistered = true;
+        server_print("E-brake bot from %N", ham_bot)
+    }
+}
+
+public client_authorized(id, const authid[])
+{
+    if(equal(authid, "BOT") && !bRegistered)
+    {
+        set_task(0.1, "@register", id);
+    }
+}
+
 
 stock client_printc(const id, const input[], any:...)
 {
@@ -271,3 +317,94 @@ stock client_printc(const id, const input[], any:...)
     }
 }
 #endif
+
+stock log_kill(killer, victim, weapon[], headshot)
+{
+
+    if (containi(weapon,"vehicle") > -1)
+        set_msg_block(g_deathmsg, BLOCK_SET);
+
+    static killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+    get_user_team(killer, killers_team, charsmax(killers_team));
+    get_user_team(victim, victims_team, charsmax(victims_team));
+
+    if(is_user_connected(killer))
+    {
+       //Scoring
+        if(get_pcvar_num(g_teams) == 1 || bStrike )
+        {
+
+            if(!equal(killers_team,victims_team))
+            {
+                set_user_frags(killer,get_user_frags(killer) +1)
+            }
+            else //if(equal(killers_team,victims_team))
+            {
+                set_user_frags(killer,get_user_frags(killer) -1);
+            }
+        }
+
+        else
+
+        fm_set_user_frags(killer,get_user_frags(killer) +1);
+        ///////////////////////////////////////////////////
+
+        set_msg_block(g_deathmsg, BLOCK_SET);
+
+        set_msg_block(g_deathmsg, BLOCK_NOT);
+
+
+        emessage_begin(MSG_BROADCAST, g_deathmsg, {0,0,0}, 0);
+        ewrite_byte(killer);
+        ewrite_byte(victim);
+
+        if(bStrike)
+            ewrite_byte(headshot);
+        if( (get_pcvar_num(g_teams) == 1 || bStrike)
+        &&
+        equal(killers_team,victims_team))
+            ewrite_string("teammate");
+        else
+            ewrite_string(weapon)
+        emessage_end();
+
+        //Logging the message as seen on console.
+        new kname[MAX_PLAYERS+1], vname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1], vauthid[MAX_PLAYERS+1], kteam[10], vteam[10]
+
+        get_user_name(killer, kname, charsmax(kname))
+        get_user_team(killer, kteam, charsmax(kteam))
+        get_user_authid(killer, kauthid, charsmax(kauthid))
+
+        get_user_name(victim, vname, charsmax(vname))
+        get_user_team(victim, vteam, charsmax(vteam))
+        get_user_authid(victim, vauthid, charsmax(vauthid))
+
+        log_message("^"%s<%d><%s><%s>^" killed ^"%s<%d><%s><%s>^" with ^"%s^"",
+        kname, get_user_userid(killer), kauthid, kteam,
+        vname, get_user_userid(victim), vauthid, vteam, weapon)
+        pin_scoreboard(killer);
+    }
+
+}
+
+public pin_scoreboard(killer)
+{
+    if(is_user_connected(killer))
+    {
+        emessage_begin(MSG_BROADCAST,g_score)
+        ewrite_byte(killer);
+        ewrite_short(get_user_frags(killer));
+        //ewrite_short(get_user_deaths(killer));
+        #define DEATHS 422
+        new dead = get_pdata_int(killer, DEATHS)
+        ewrite_short(dead);
+
+        if(bStrike)
+        {
+            ewrite_short(0); //TFC CLASS
+            ewrite_short(get_user_team(killer));
+        }
+        emessage_end();
+    }
+
+}
