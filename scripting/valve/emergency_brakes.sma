@@ -53,7 +53,7 @@ const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.9", "SPiNX" );
+    register_plugin( "Auto Braking", "1.0.0", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -73,6 +73,8 @@ public plugin_init()
     }
 
     register_touch("func_vehicle", "player", "@jeep")
+    register_touch("func_tracktrain", "player", "@jeep")
+
     cvar_range = register_cvar("brake_range", "150")
 
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
@@ -108,11 +110,12 @@ public plugin_init()
                 {
                     if(iPlayer != id)
                     {
-                        if(get_user_team(iPlayer) == get_user_team(id))
-                        {
-                            static iDistance; iDistance = get_entity_distance(g_mod_car[id], iPlayer)
+                        static iDistance; iDistance = get_entity_distance(g_mod_car[id], iPlayer)
 
-                            if( iDistance < iRange)
+                        if(iDistance < iRange)
+                        {
+
+                            if(get_user_team(iPlayer) == get_user_team(id))
                             {
                                 bLoco? DispatchKeyValue(g_mod_car[id], WOT,0) :
                                 set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
@@ -124,12 +127,21 @@ public plugin_init()
                                     client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
                                 }
                             }
-                            else
+                            else /*Throw enemies up in the air*/
                             {
-                                if(!bLoco)
-                                {
-                                    set_pdata_float(g_mod_car[id], m_speed, GO_SPEED, LINUX_DIFF);
-                                }
+                                static Float:Origin[3]
+                                pev(iPlayer, pev_origin, Origin)
+                                Origin[2] += 700.0
+
+                                set_pev(iPlayer, pev_origin, Origin)
+                            }
+
+                        }
+                        else
+                        {
+                            if(!bLoco)
+                            {
+                                set_pdata_float(g_mod_car[id], m_speed, GO_SPEED, LINUX_DIFF);
                             }
                         }
                     }
