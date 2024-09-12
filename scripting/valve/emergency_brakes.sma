@@ -29,6 +29,9 @@
 #define IDLE_SPEED 0.1
 #define GO_SPEED 1200.0
 
+//task
+#define PRINTING 2024
+
 new cvar_range;
 
 static const CARS[]= "func_vehicle"
@@ -50,14 +53,15 @@ static g_fun_train, g_path_corn
 static bool:bLoco, g_score, g_deathmsg
 static m_speed, g_teams, bool:bStrike
 new g_mod_car[MAX_PLAYERS +1]
-new bool:g_airbourne[MAX_PLAYERS +1]
+new bool:b_Airbourne[MAX_PLAYERS +1]
+new bool:bPrinting[MAX_PLAYERS +1]
 
 const LINUX_DIFF = 5;
 const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "1.0.1", "SPiNX" );
+    register_plugin( "Auto Braking", "1.0.2", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -66,18 +70,17 @@ public plugin_init()
     if(find_ent(MaxClients, CARS))
     {
         bLoco = false
+        register_touch("func_vehicle", "player", "@jeep")
     }
     else if(find_ent(MaxClients, LOCO))
     {
         bLoco = true
+        register_touch("func_tracktrain", "player", "@jeep")
     }
     else
     {
         pause "d"
     }
-
-    register_touch("func_vehicle", "player", "@jeep")
-    register_touch("func_tracktrain", "player", "@jeep")
 
     cvar_range = register_cvar("brake_range", "150")
 
@@ -135,9 +138,11 @@ public plugin_init()
 
                                 set_pev(g_mod_car[id], pev_velocity, 0)
 
-                                if(!g_nitrous && bLoco)
+                                if(!g_nitrous && !bPrinting[id])
                                 {
-                                    client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
+                                    bPrinting[id] = true
+                                    client_print(id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
+                                    set_task(3.0, "@end_task", id+PRINTING)
                                 }
                             }
                             else /*Throw enemies up in the air*/
@@ -147,11 +152,11 @@ public plugin_init()
                                 Origin[2] += 200.0
 
                                 set_pev(iPlayer, pev_origin, Origin)
-                                if(!g_airbourne[iPlayer])
+                                if(!b_Airbourne[iPlayer])
                                 {
-                                    g_airbourne[iPlayer] = true
+                                    b_Airbourne[iPlayer] = true
                                     bStrike ? set_msg_block(g_deathmsg, BLOCK_SET) : set_msg_block(g_deathmsg, BLOCK_ONCE);
-                                    fakedamage(iPlayer,"vehicle",400.0,DMG_CRUSH) //|DMG_ALWAYSGIB)
+                                    fakedamage(iPlayer,"vehicle",400.0,DMG_CRUSH |DMG_ALWAYSGIB)
                                     log_kill(id,iPlayer,"vehicle",1);
                                 }
                             }
@@ -169,6 +174,13 @@ public plugin_init()
             }
         }
     }
+}
+
+@end_task(Tsk)
+{
+    static id
+    id = Tsk-PRINTING
+    bPrinting[id] = false
 }
 
 @jeep(iCar, iPlayer)
@@ -263,17 +275,17 @@ public buy_brakes(Client)
 public no_brakes(id)
 {
     g_brake_owner[id] = false
-    if(g_airbourne[id])
+    if(b_Airbourne[id])
     {
         client_print 0, print_chat, "%n was killed by vehicle!", id
-        g_airbourne[id] = false
+        b_Airbourne[id] = false
     }
 }
 
 public client_disconnected(id)
 {
     no_brakes(id)
-    g_airbourne[id] = false
+    b_Airbourne[id] = false
 }
 
 //CONDITION ZERO TYPE BOTS. SPiNX
