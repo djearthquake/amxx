@@ -46,15 +46,14 @@ static g_fun_train, g_path_corn
 
 static bool:bLoco
 static m_speed
-new g_mod_car[MAX_PLAYERS +1],
-bool:bSet[MAX_PLAYERS + 1]
+new g_mod_car[MAX_PLAYERS +1]
 
 const LINUX_DIFF = 5;
 const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "0.0.8", "SPiNX" );
+    register_plugin( "Auto Braking", "0.0.9", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -73,6 +72,7 @@ public plugin_init()
         pause "d"
     }
 
+    register_touch("func_vehicle", "player", "@jeep")
     cvar_range = register_cvar("brake_range", "250")
 
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
@@ -89,22 +89,14 @@ public plugin_init()
     #endif
 }
 
-public client_command(id)
+@brake_think(id)
 {
     static iRange; iRange = get_pcvar_num(cvar_range)
     if(iRange)
 
     #if defined CSTRIKE
-        if(g_brake_owner[id])
+    if(g_brake_owner[id])
     #endif
-
-    is_driving(id) ? remove_task(id) : set_task(0.1, "@brake_think", id, _,_, "b")
-}
-
-@brake_think(id)
-{
-    static iRange; iRange = get_pcvar_num(cvar_range)
-    if(iRange)
 
     if(is_user_alive(id))
     {
@@ -125,7 +117,9 @@ public client_command(id)
                                 bLoco? DispatchKeyValue(g_mod_car[id], WOT,0) :
                                 set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
 
-                                if(!g_nitrous/* && bLoco*/)
+                                set_pev(g_mod_car[id], pev_velocity, 0)
+
+                                if(!g_nitrous && bLoco)
                                 {
                                     client_print( id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
                                 }
@@ -145,31 +139,12 @@ public client_command(id)
     }
 }
 
-public pfn_touch(ptr, ptd)
+@jeep(iCar, iPlayer)
 {
-    static iCar; iCar = get_pcvar_num(cvar_range)
-
-    if(iCar)
+    if(is_driving(iPlayer))
     {
-        if(is_user_alive(ptr) && pev_valid(ptd))
-        {
-            if(!g_mod_car[ptr])
-            {
-                static iPlayer;iPlayer = ptr
-                g_mod_car[iPlayer] = ptd
-
-                if(is_driving(iPlayer) && !bSet[iPlayer])
-                {
-                    g_mod_car[iPlayer] = ptd
-                    bSet[iPlayer] = true
-                }
-                else
-                {
-                    g_mod_car[iPlayer] = 0
-                    bSet[iPlayer] = false
-                }
-            }
-        }
+        g_mod_car[iPlayer] = iCar
+        @brake_think(iPlayer)
     }
 }
 
