@@ -73,7 +73,7 @@ public plugin_init()
     }
 
     register_touch("func_vehicle", "player", "@jeep")
-    cvar_range = register_cvar("brake_range", "250")
+    cvar_range = register_cvar("brake_range", "150")
 
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
 
@@ -82,7 +82,7 @@ public plugin_init()
 
     #if defined CSTRIKE
         register_clcmd ( "buy_brakes", "buy_brakes", 0, " - Automatic brakes." )
-        g_item_cost = register_cvar("brakes_cost", "2500" )
+        g_item_cost = register_cvar("brakes_cost", "500" )
         RegisterHam(Ham_Killed, "player", "no_brakes")
         g_saytxt = get_user_msgid("SayText")
         g_nitrous = (is_plugin_loaded(NAMED_PLUGIN,true)!=charsmin)
@@ -110,7 +110,7 @@ public plugin_init()
                     {
                         if(get_user_team(iPlayer) == get_user_team(id))
                         {
-                            static iDistance; iDistance = get_entity_distance(id, iPlayer)
+                            static iDistance; iDistance = get_entity_distance(g_mod_car[id], iPlayer)
 
                             if( iDistance < iRange)
                             {
