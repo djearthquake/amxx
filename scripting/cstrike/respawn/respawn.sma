@@ -370,7 +370,7 @@ public CS_OnBuy(id, item)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
         if(!g_JustTook[id])
         {
-            set_task(0.1,"@ReSpawn", id)
+            set_task(cs_get_user_shield(id) ? 0.3 : 0.1,"@ReSpawn", id)
         }
     }
 }
