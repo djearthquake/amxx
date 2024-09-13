@@ -5,10 +5,7 @@
 
 #define MAX_CMD_LENGTH 128
 
-///////////////////////////////////////////////////////////
-static const Ent_of_interest[] = "info_gangsta_dm_start" //  <--Spawn class map.
-static const szNewClass[] = "info_player_deathmatch"     //  <--Spawn class mod.
-//////////////////////////////////////////////////////////
+static const szNewClass[] = "info_player_deathmatch"
 
 static const SzSpawns[][]={"info_gangsta_dm_start", "info_italian_start", "info_russian_start"} //GW Mod
 
