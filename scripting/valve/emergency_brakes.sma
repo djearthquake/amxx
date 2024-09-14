@@ -51,7 +51,7 @@ static const realfast[]= "1132"
 static g_fun_train, g_path_corn
 
 static bool:bLoco, g_score, g_deathmsg
-static m_speed, g_teams, bool:bStrike
+static m_speed, g_teams, bool:bStrike, bool:bHost
 new g_mod_car[MAX_PLAYERS +1]
 new bool:b_Airbourne[MAX_PLAYERS +1]
 new bool:bPrinting[MAX_PLAYERS +1]
@@ -61,7 +61,7 @@ const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin( "Auto Braking", "1.0.2", "SPiNX" );
+    register_plugin( "Auto Braking", "1.0.3", "SPiNX" );
 
     #if !defined MaxClients
         #define MaxClients get_maxplayers( )
@@ -81,8 +81,8 @@ public plugin_init()
     {
         pause "d"
     }
-
-    cvar_range = register_cvar("brake_range", "150")
+    bHost  = has_map_ent_class("hostage_entity") ? true : false;
+    cvar_range = register_cvar("brake_range", "135")
 
     m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
 
@@ -126,13 +126,28 @@ public plugin_init()
                 {
                     if(iPlayer != id)
                     {
-                        static iDistance; iDistance = get_entity_distance(g_mod_car[id], iPlayer)
+                        static iDistance;
+
+                        if(bHost)
+                        {
+                            new  ent = MaxClients; while( (ent = find_ent(ent, "hostage_entity") ) >= ent && pev(ent, pev_health)>0.5)
+                            {
+                                iDistance = get_entity_distance(g_mod_car[id], ent)
+                                if(iDistance < 150)
+                                {
+                                    goto STOP
+                                }
+                            }
+                        }
+
+                        iDistance = get_entity_distance(g_mod_car[id], iPlayer)
 
                         if(iDistance < iRange)
                         {
 
                             if(get_user_team(iPlayer) == get_user_team(id))
                             {
+                                STOP:
                                 bLoco? DispatchKeyValue(g_mod_car[id], WOT,0) :
                                 set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
 
@@ -406,15 +421,18 @@ public pin_scoreboard(killer)
         emessage_begin(MSG_BROADCAST,g_score)
         ewrite_byte(killer);
         ewrite_short(get_user_frags(killer));
-        //ewrite_short(get_user_deaths(killer));
-        #define DEATHS 422
-        new dead = get_pdata_int(killer, DEATHS)
-        ewrite_short(dead);
 
         if(bStrike)
         {
+            ewrite_short(get_user_deaths(killer));
             ewrite_short(0); //TFC CLASS
             ewrite_short(get_user_team(killer));
+        }
+        else
+        {
+            #define DEATHS 422
+            static dead; dead = get_pdata_int(killer, DEATHS)
+            ewrite_short(dead);
         }
         emessage_end();
     }
