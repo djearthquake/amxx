@@ -104,8 +104,6 @@ public FnPlant()
         if(pev_valid(g_weapon_c4_index))
         if(g_weapon_c4_index > MaxClients && get_pdata_bool(g_weapon_c4_index, m_bIsC4, UNIX_DIFF, UNIX_DIFF) && pev_valid(g_weapon_c4_index) > 1)
         {
-            set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 215, 0, kRenderGlow, 50)
-
             static Float:fExp
             static Float:fC4_factor
             fExp = get_pcvar_float(g_fExperience_offset)
@@ -175,6 +173,8 @@ public fnDefusal(id)
         if(!Client_C4_adjusted_already[id] && is_user_alive(id))
         {
             c4_from_grenade();
+            set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 1, 255, kRenderGlow, 300)
+
             static Float:fC4_factor
             fC4_factor = get_user_frags(id)*get_pcvar_float(g_fExperience_offset)
             g_weapon_c4_index > MaxClients ? cs_set_c4_explode_time(g_weapon_c4_index,cs_get_c4_explode_time(g_weapon_c4_index)+fC4_factor) : c4_from_grenade()
@@ -208,7 +208,19 @@ public fnDefusal(id)
 
 @count_down()
 {
-    if(get_playersnum())g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+    if(get_playersnum())
+    {
+        g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+
+        c4_from_grenade()
+        switch(g_boomtime)
+        {
+            case   0..5 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 0, 0, kRenderGlow, 150)
+            case  6..10 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 255, 0, kRenderGlow, 100)
+            case 11..20: set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 103, 0, kRenderGlow, 100)
+            default     : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 5, 255, 75, kRenderGlow, 50)
+        }
+    }
 }
 
 public nice(show)
