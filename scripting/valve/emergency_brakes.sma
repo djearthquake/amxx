@@ -1,4 +1,4 @@
-/*Automatic braking of Half-Life cars and trains in relation to team mate distance by cvar.*/
+    /*Automatic braking of Half-Life cars and trains in relation to team mate distance by cvar.*/
 #include amxmodx
 #include fakemeta_util
 #include fun
@@ -15,7 +15,7 @@
     #include cstrike
     #include hamsandwich
     new bool:bRegistered
-    new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost, g_nitrous;
+    new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost;
     static g_saytxt;
 #endif
 
@@ -103,12 +103,13 @@ public plugin_init()
         g_item_cost = register_cvar("brakes_cost", "500" )
         RegisterHam(Ham_Killed, "player", "no_brakes")
         g_saytxt = get_user_msgid("SayText")
-        g_nitrous = (is_plugin_loaded(NAMED_PLUGIN,true)!=charsmin)
     #endif
 }
 
 @brake_think(id)
 {
+    static bool:bHostage;
+    static iDistance;
     static iRange; iRange = get_pcvar_num(cvar_range)
     if(iRange)
 
@@ -120,31 +121,29 @@ public plugin_init()
     {
         if(is_driving(id))
         {
+            if(bHost)
+            {
+                bHostage = false
+                new  ent = MaxClients; while( (ent = find_ent(ent, "hostage_entity") ) >= ent && pev(ent, pev_health)>0.5)
+                {
+                    iDistance = get_entity_distance(g_mod_car[id], ent)
+                    if(iDistance < 150)
+                    {
+                        bHostage = true
+                        goto STOP
+                    }
+                }
+            }
             for (new iPlayer = 1; iPlayer <= MaxClients; iPlayer++)
             {
                 if(is_user_alive(iPlayer))
                 {
                     if(iPlayer != id)
                     {
-                        static iDistance;
-
-                        if(bHost)
-                        {
-                            new  ent = MaxClients; while( (ent = find_ent(ent, "hostage_entity") ) >= ent && pev(ent, pev_health)>0.5)
-                            {
-                                iDistance = get_entity_distance(g_mod_car[id], ent)
-                                if(iDistance < 150)
-                                {
-                                    goto STOP
-                                }
-                            }
-                        }
-
                         iDistance = get_entity_distance(g_mod_car[id], iPlayer)
 
                         if(iDistance < iRange)
                         {
-
                             if(get_user_team(iPlayer) == get_user_team(id))
                             {
                                 STOP:
@@ -153,10 +152,16 @@ public plugin_init()
 
                                 set_pev(g_mod_car[id], pev_velocity, 0)
 
-                                if(!g_nitrous && !bPrinting[id])
+                                if(!bPrinting[id])
                                 {
                                     bPrinting[id] = true
-                                    client_print(id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer)
+
+                                    bHostage
+                                    ?
+                                        client_print(id, print_center, "EMERGENCY BRAKES ENGAGED!^n^nHOSTAGE was nearly ran down!!")
+                                        :
+                                        client_print(id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer )
+
                                     set_task(3.0, "@end_task", id+PRINTING)
                                 }
                             }
@@ -175,14 +180,10 @@ public plugin_init()
                                     log_kill(id,iPlayer,"vehicle",1);
                                 }
                             }
-
                         }
-                        else
+                        else if(!bLoco)
                         {
-                            if(!bLoco)
-                            {
-                                set_pdata_float(g_mod_car[id], m_speed, GO_SPEED, LINUX_DIFF);
-                            }
+                            set_pdata_float(g_mod_car[id], m_speed, GO_SPEED, LINUX_DIFF);
                         }
                     }
                 }
