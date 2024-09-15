@@ -13,9 +13,11 @@ static const ent_type[] = "item_healthkit"
 new g_ent;
 static bool:bC4
 
+static const szFixEnts[][]={"func_breakable", "func_medical"}
+
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.51", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.52", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -54,11 +56,13 @@ public plugin_cfg()
         DispatchKeyValue(entity_we_touched, "rendermode", "1")
         DispatchKeyValue(entity_we_touched, "renderfx", "14")
         DispatchKeyValue(entity_we_touched, "renderamt", "75")
-        DispatchKeyValue(entity_we_touched, "rendercolor", "5 15 150")
+        DispatchKeyValue(entity_we_touched, "rendercolor", "255 255 255")
 
-        DispatchKeyValue(entity_we_touched, "spawnflags", "256") //walk and touch break do not mix well with a registered touch already
+        DispatchKeyValue(entity_we_touched, "spawnflags", "2")
         set_pev(entity_we_touched, pev_classname, "func_medical")
         DispatchSpawn(entity_we_touched); //make gib work
+
+        set_rendering(entity_we_touched, kRenderFxGlowShell, 0, 255, 255, kRenderGlow, 300)
 
         if(is_user_connected(iPlayer))
         {
@@ -117,65 +121,34 @@ public plugin_cfg()
 
 @ent_fixer()
 {
-    new  ent = MaxClients; while( (ent = find_ent(ent, "func_breakable") ) > MaxClients && pev_valid(ent)>1)
+    for(new list;list<sizeof szFixEnts;list++)
     {
-        set_pev(ent, pev_classname, "func_breakable")
-        DispatchKeyValue(ent, "spawnobject", "0")
-
-        DispatchKeyValue(ent, "renderamt", "100")
-        DispatchKeyValue(ent, "renderfx", "0")
-        DispatchKeyValue(ent, "rendercolor", "0 0 0")
-
-        //DispatchKeyValue(ent, "gibmodel", "")
-        //DispatchKeyValue(ent, "material", "2")
-        set_pev(ent, pev_health, 5.0)
-
-        if(bC4)
+        new ent = MaxClients; while( (ent = find_ent(ent, szFixEnts[list]) ) > MaxClients && pev_valid(ent)>1)
         {
-            //DispatchKeyValue(ent, "rendermode", "0")
-            //DispatchKeyValue(ent, "renderamt", "255")
-            //set_ent_rendering(ent, kRenderNormal, 0, 0, 0, kRenderNormal, 0)
-            set_pev(ent, pev_rendermode, kRenderNormal)
-            set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
-        }
-        else
-        {
+            set_pev(ent, pev_classname, "func_breakable")
+            DispatchKeyValue(ent, "spawnobject", "0")
+
+            DispatchKeyValue(ent, "spawnflags", "4")
             DispatchKeyValue(ent, "rendermode", "2")
+            DispatchKeyValue(ent, "renderamt", "100")
+
+            DispatchKeyValue(ent, "renderfx", "0")
+            DispatchKeyValue(ent, "rendercolor", "0 0 0")
+            set_pev(ent, pev_health, 5.0)
+
+            if(bC4)
+            {
+                set_pev(ent, pev_rendermode, kRenderNormal)
+                set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
+            }
+            else
+            {
+                DispatchKeyValue(ent, "rendermode", "2")
+            }
+
+            DispatchSpawn(ent); //make trigger only work
+            g_ent++
         }
-
-        DispatchSpawn(ent); //make trigger only work
-        g_ent++
-    }
-
-    ent = MaxClients; while( (ent = find_ent(ent, "func_medical") ) > MaxClients && pev_valid(ent)>1)
-    {
-        set_pev(ent, pev_classname, "func_breakable")
-        DispatchKeyValue(ent, "spawnobject", "0")
-
-        DispatchKeyValue(ent, "renderamt", "100")
-        DispatchKeyValue(ent, "renderfx", "0")
-        DispatchKeyValue(ent, "rendercolor", "0 0 0")
-
-        //DispatchKeyValue(ent, "gibmodel", "")
-        //DispatchKeyValue(ent, "material", "2")
-        set_pev(ent, pev_health, 5.0)
-
-        if(bC4)
-        {
-            //DispatchKeyValue(ent, "rendermode", "0")
-            //DispatchKeyValue(ent, "renderamt", "255")
-            //set_ent_rendering(ent, kRenderNormal, 0, 0, 0, kRenderNormal, 0)
-            set_pev(ent, pev_rendermode, kRenderNormal)
-            set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
-        }
-        else
-        {
-            DispatchKeyValue(ent, "rendermode", "2")
-        }
-
-        DispatchSpawn(ent); //make trigger only work
-        g_ent++
-
     }
 }
 
