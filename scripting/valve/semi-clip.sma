@@ -14,7 +14,7 @@ new g_iSemiclip, g_cvar_dist, bool:bRegistered;
 
 public plugin_init()
 {
-    register_plugin("Semiclip", "1.13", "ConnorMcLeod|SPiNX")
+    register_plugin("Semiclip", "1.14", "ConnorMcLeod|SPiNX")
 
     g_iSemiclip = register_cvar("sv_semiclip", "1");
 
@@ -74,14 +74,17 @@ public Ham_CBasePlayer_PreThink_Post(id)
     {
         iPlayer = iPlayers[i]
 
-        static SzTeam[MAX_PLAYERS], SzOtherTeam[MAX_PLAYERS];
-        get_user_team(iPlayer, SzTeam, charsmax(SzTeam));
-        get_user_team(id, SzOtherTeam, charsmax(SzOtherTeam));
-
-        if( id != iPlayer && equali(SzTeam, SzOtherTeam))
-
+        if(is_user_alive(iPlayer))
         {
-            set_pev(iPlayer, pev_solid, SOLID_NOT)
+            static SzTeam[MAX_PLAYERS], SzOtherTeam[MAX_PLAYERS];
+            get_user_team(iPlayer, SzTeam, charsmax(SzTeam));
+            get_user_team(id, SzOtherTeam, charsmax(SzOtherTeam));
+
+            if( id != iPlayer && equali(SzTeam, SzOtherTeam))
+            {
+                set_pev(iPlayer, pev_solid, SOLID_NOT)
+            }
+
         }
 
       }
