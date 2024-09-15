@@ -6,7 +6,7 @@ new g_touching_jeep[MAX_PLAYERS +1]
 
 public plugin_init()
 {
-    register_plugin( "Jeep unsticking", "0.0.1", "SPiNX" );
+    register_plugin( "Jeep unsticking", "0.0.2", "SPiNX" );
     register_concmd("unstick","@unstick",0,": Unstick from jeep.");
     register_touch("func_vehicle", "player", "@jeep")
 }
@@ -29,7 +29,10 @@ public plugin_init()
 
 @untouch(id)
 {
-    g_touching_jeep[id] = false
+    if(id & id <=MaxClients)
+    {
+        g_touching_jeep[id] = false
+    }
 }
 
 @jeep(iCar, iPlayer)
