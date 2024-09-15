@@ -31,17 +31,22 @@ new bool:scope_owner[ MAX_PLAYERS + 1 ], bool:scoped[ MAX_PLAYERS + 1 ];
 new g_item_cost, g_szMsgSetFov, g_scope_zoomsound;
 new g_fscope_autotime;
 new buffer[MAX_RESOURCE_PATH_LENGTH];
-
+new bool:bIsBot[MAX_PLAYERS + 1]
 
 const bad_time_to_scope = ( 1<<CSW_HEGRENADE | 1<<CSW_SMOKEGRENADE | 1<<CSW_FLASHBANG );
 
+public client_authorized(id, const authid[])
+{
+    bIsBot[id] = equal(authid, "BOT") ? true : false
+}
+
 public plugin_init()
 {
-    register_plugin( "Buy a Colt Scope!", "1.0", "SPiNX" );
+    register_plugin( "Buy a Colt Scope!", "1.1", "SPiNX" );
     register_forward( FM_CmdStart , "fw_CmdStart", true );
     register_forward(FM_PlayerPreThink, "client_prethink", true);
     register_clcmd ( "buy_scope", "buy_scope", 0, " - universal scope." );
-    RegisterHam(Ham_Killed, "player", "no_scope");
+    RegisterHam(Ham_Killed, "player", "no_scope", 1);
     RegisterHam(Ham_TakeDamage, "player", "@PostTakeDamage", 1);
     g_szMsgSetFov = get_user_msgid ( "SetFOV" );
     g_item_cost = register_cvar("scope_colt_cost", "2500" )
@@ -53,12 +58,12 @@ public buy_scope(Client)
 {
     if(is_user_alive(Client))
     {
-        new name[MAX_PLAYERS];
+        static name[MAX_PLAYERS];
 
         get_user_name(Client,name,charsmax(name));
 
-        new tmp_money = cs_get_user_money(Client);
-        if(is_user_connected(Client))
+        static tmp_money; tmp_money = cs_get_user_money(Client);
+        if(is_user_alive(Client))
         {
             if ( !scope_owner[Client] )
             {
@@ -90,7 +95,7 @@ public buy_scope(Client)
 
 public client_prethink( Client )
 {
-    if(is_user_connected(Client) && !is_user_bot( Client ) )
+    if(is_user_alive(Client) && !bIsBot[ Client ] )
 
     if( scoped[ Client ])
     {
@@ -106,38 +111,30 @@ public client_prethink( Client )
 
 public fw_CmdStart( Client , Handle )
 {
-    static Buttons; Buttons = get_uc( Handle , UC_Buttons );
-    if(!cs_get_user_shield(Client))
-    if( scope_owner[Client] && ( Buttons & IN_ATTACK2 ) )
-
-    if( get_user_weapon( Client ) == CSW_M4A1 || get_user_weapon( Client ) == CSW_AK47 || get_user_weapon( Client ) == CSW_USP || get_user_weapon( Client ) == CSW_FIVESEVEN )
-
+    if(is_user_alive(Client))
     {
+        static Buttons; Buttons = get_uc( Handle , UC_Buttons );
 
+        if(!cs_get_user_shield(Client))
+        {
+            if( scope_owner[Client] && ( Buttons & IN_ATTACK2 ) )
 
-        Buttons &= ~IN_ATTACK2;
-        set_uc( Handle , UC_Buttons , Buttons );
+            if( get_user_weapon( Client ) == CSW_M4A1 || get_user_weapon( Client ) == CSW_AK47 || get_user_weapon( Client ) == CSW_USP || get_user_weapon( Client ) == CSW_FIVESEVEN )
+            {
+                Buttons &= ~IN_ATTACK2;
+                set_uc( Handle , UC_Buttons , Buttons );
 
-        if(scoped[Client])
-            set_task(0.3,"@regular", Client )
+                set_task(0.3, scoped[Client] ? "@regular" : "@zoom" , Client )
+                return FMRES_SUPERCEDE;
+            }
 
-        else
-            set_task(0.3,"@zoom", Client )
-
-
-        return FMRES_SUPERCEDE;
-
-
+            if( get_user_weapon( Client ) == CSW_KNIFE || get_user_weapon( Client ) == CSW_SMOKEGRENADE || get_user_weapon( Client ) == CSW_FLASHBANG || get_user_weapon( Client ) == CSW_HEGRENADE)
+            {
+                set_fov ( Client, 90);
+            }
+        }
     }
-
-
-    if( get_user_weapon( Client ) == CSW_KNIFE || get_user_weapon( Client ) == CSW_SMOKEGRENADE || get_user_weapon( Client ) == CSW_FLASHBANG || get_user_weapon( Client ) == CSW_HEGRENADE)
-
-        set_fov ( Client, 90);
-
-
     return FMRES_HANDLED;
-
 }
 
 @zoom( Client )
@@ -152,36 +149,43 @@ public fw_CmdStart( Client , Handle )
 
 @running( Client )
 {
-    set_fov ( Client, 55);
-    scoped[Client] = true;
+    if(is_user_alive(Client) && !bIsBot[Client])
+    {
+        set_fov ( Client, 55);
+        scoped[Client] = true;
 
-    set_task( get_pcvar_float(g_fscope_autotime), "@regular", Client )
+        set_task( get_pcvar_float(g_fscope_autotime), "@regular", Client )
+    }
 }
 
 @regular( Client )
 {
-    if(task_exists( Client ))
-        remove_task( Client );
-    set_fov ( Client, 90);
+    if(is_user_alive(Client) && !bIsBot[Client])
+    {
+        if(task_exists( Client ))
+            remove_task( Client );
+        set_fov ( Client, 90);
+        get_pcvar_string(g_scope_zoomsound, buffer, charsmax(buffer))
+        client_cmd(Client, "spk %s", buffer)
+    }
     scoped[Client] = false;
-    get_pcvar_string(g_scope_zoomsound, buffer, charsmax(buffer))
-    client_cmd(Client, "spk %s", buffer)
 }
 
 @PostTakeDamage( Client )
-if( scoped[Client] )
-    @running( Client )
-
+{
+    if( is_user_alive(Client) && scoped[Client] )
+        @running( Client )
+}
 
 public client_putinserver( Client )
-
+{
     scope_owner[Client] = false;
-
+}
 
 public no_scope( Client )
-
+{
     scope_owner[Client] = false && @regular( Client );
-
+}
 
 public set_fov ( iClient, iValue )
 {
