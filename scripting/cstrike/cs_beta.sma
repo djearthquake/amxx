@@ -35,9 +35,8 @@
 #include <amxmisc>
 #define MAXHOSSIEDISTANCE       80.0 // This isn't really used anymore. Plugin should now make use of the real max distance player <> hostage.
 
-new g_MAXPLAYERS, g_Speed
-new XiNopunch, XiHostageP, XiFreeze, XiHostageUse, XiWalk, XiEnable, XiJump, XiUsage
-new bool:movespeed
+new bool:movespeed, bool:bIsBot[MAX_PLAYERS + 1], bool:bEnabled
+new XiNopunch, XiHostageP, XiFreeze, XiHostageUse, XiWalk, XiEnable, XiJump, XiUsage,g_MAXPLAYERS, g_Speed, g_beta_think;
 
 public plugin_init()
 {
@@ -51,17 +50,18 @@ public plugin_init()
     XiWalk =register_cvar("c4_walk", "1")
     XiNopunch = register_cvar("no_punch", "1")
 
-    register_cvar("sbhopper_version", "1.1", FCVAR_SERVER)
+    register_cvar("sbhopper_version", "1.2", FCVAR_SERVER)
 
     XiEnable = register_cvar("bh_enabled", "1")
     XiJump = register_cvar("bh_autojump", "1")
     XiUsage = register_cvar("bh_showusage", "1")
     XiFreeze = get_cvar_pointer("mp_freezetime")
+
     register_touch("player","monster_hostage","hostage_push")
     register_touch("player","hostage_entity","hostage_push")
     register_touch("player","monster_scientist","hostage_push")
 
-    register_forward(FM_EmitSound, "forward_emitsound", true)
+    ///register_forward(FM_EmitSound, "forward_emitsound", true)
     register_message(get_user_msgid("HudTextArgs"), "hook_hudtext")
     g_Speed = get_cvar_pointer("sv_maxspeed")
     set_pcvar_float(g_Speed, 450.0)
@@ -85,13 +85,13 @@ client_use(id)
 {
     if(get_pcvar_num(XiHostageUse))
     {
-        new hitEnt, bodyPart, Float:distance
+        static hitEnt, bodyPart, Float:distance
         distance = get_user_aiming(id, hitEnt, bodyPart)
         if (hitEnt == 0 || distance > MAXHOSSIEDISTANCE)
             return FMRES_IGNORED
 
         // Do different stuff depending on the entity in aim.
-        new classname[MAX_NAME_LENGTH]
+        static classname[MAX_NAME_LENGTH]
         entity_get_string(hitEnt, EV_SZ_classname, classname, charsmax(classname))
         if (equal(classname, "hostage_entity"))
         {
@@ -156,9 +156,9 @@ public bombSpeed()
 {
     movespeed=true
 }
-public client_PreThink(id)
+public cs_beta_think(id)
 {
-    if(is_user_connected(id) && is_user_alive(id))
+    if(is_user_alive(id))
     {
         set_user_maxspeed(id, get_user_weapon(id) == CSW_KNIFE ? 450.0 : 272.0)
         new buttons = get_user_button ( id )
@@ -204,7 +204,7 @@ public is_hostage(id)
 {
     if(pev_valid(id))
     {
-        new szClassname[MAX_NAME_LENGTH]
+        static szClassname[MAX_NAME_LENGTH]
         entity_get_string(id,EV_SZ_classname,szClassname,charsmax(szClassname))
         return (equali(szClassname,"monster_scientist")||
         equali(szClassname,"hostage_entity"))
@@ -232,16 +232,37 @@ public hostage_push ( ptr, ptd )
     }
 }
 
-public client_authorized(id)
+public client_authorized(id, const authid[])
 {
-    if(!is_user_bot(id))
-
-        set_task(30.0, "showUsage", id)
+    bIsBot[id] = equal(authid, "BOT") ? true : false
 }
 
+public client_putinserver(id)
+{
+    if(!bIsBot[id])
+    {
+        set_task(30.0, "showUsage", id)
+    }
+    if(!bEnabled)
+    {
+        bEnabled = true
+        g_beta_think = register_forward(FM_PlayerPreThink, "cs_beta_think", true)
+        server_print "Enabling cs_beta..."
+    }
+}
+
+public client_disconnected(id)
+{
+    if(!get_playersnum())
+    {
+        unregister_forward(FM_PlayerPreThink, g_beta_think, true)
+        bEnabled = false
+    }
+}
 public showUsage(id)
 {
     if(get_pcvar_num(XiEnable) && get_pcvar_num(XiUsage))
+    if(is_user_connected(id))
     {
         client_print(id, print_chat, get_pcvar_num(XiJump) ?
             "[AMX] Auto bunny hopping is enabled on this server. Just hold down jump to bunny hop.":
