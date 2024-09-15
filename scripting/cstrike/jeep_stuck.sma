@@ -22,7 +22,7 @@ public plugin_init()
         Origin[2] += 100.0
 
         set_pev(id, pev_origin, Origin)
-        set_task 1.5, "@untouch", id, "a", 3
+        set_task 1.5, "@untouch", id,_,_, "a", 3
     }
     return PLUGIN_HANDLED
 }
