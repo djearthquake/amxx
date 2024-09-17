@@ -16,13 +16,15 @@ public handlesay(id)
 {
     if(is_user_connected(id))
     {
-        new iFrags_Needed = get_pcvar_num(XFrags_needed)
-        new iFrags = get_user_frags(id)
-        new rtv_minimum = iFrags_Needed - 1
-        new Menu_DESIGN_privledges = iFrags_Needed
-
-        if(is_user_admin(id) || iPlayers() < (iFrags_Needed / 2) || get_user_time(id) > 120) //People leave if alone on map and can't RTV.
+        static iFrags_Needed; iFrags_Needed = get_pcvar_num(XFrags_needed)
+        static iFrags; iFrags = get_user_frags(id)
+        static rtv_minimum; rtv_minimum = iFrags_Needed - 1
+        static Menu_DESIGN_privledges; Menu_DESIGN_privledges = iFrags_Needed
+        if(is_user_admin(id) || get_user_time(id) > 120 ||
+        iPlayers() < (iFrags_Needed / 2)) //People leave if alone on map and can't RTV.
+        {
             iFrags = (iFrags++) //Admin partial boost.
+        }
         if(iFrags >= rtv_minimum && iFrags < Menu_DESIGN_privledges)
         /*Standard*/
         {
@@ -51,7 +53,12 @@ public handlesay(id)
         else
         /*Explain*/
         {
-            client_print id,print_chat,"Need %i more frags to RTV or %i more to votemap menu access!", (rtv_minimum - iFrags), (Menu_DESIGN_privledges - iFrags)
+            static iMore
+            iMore = rtv_minimum - iFrags
+            if(iMore>0)
+            {
+                client_print id,print_chat,"Need %i more frags to RTV or %i more to votemap menu access!", iMore, (Menu_DESIGN_privledges - iFrags)
+            }
             set_task(2.0, "displayHud", id , .flags = "b");
         }
     }
@@ -103,15 +110,15 @@ stock iPlayers()
 public displayHud(id)
 if(is_user_connected(id))
 {
-    new SzClientFragHUDMessage[ MAX_RESOURCE_PATH_LENGTH ];
+    static SzClientFragHUDMessage[ MAX_RESOURCE_PATH_LENGTH ];
 
     id = is_user_alive(id) ? id : pev(id, pev_iuser2)
     formatex(SzClientFragHUDMessage, charsmax(SzClientFragHUDMessage), "Player: %n^n", id);
 
-    new iFrags_Needed = get_pcvar_num(XFrags_needed)
-    new iFrags = get_user_frags(id)
+    static iFrags_Needed; iFrags_Needed = get_pcvar_num(XFrags_needed)
+    static iFrags; iFrags = get_user_frags(id)
 
-    new rtv_minimum = iFrags_Needed - 1
+    static rtv_minimum; rtv_minimum = iFrags_Needed - 1
 
     if(is_user_admin(id) || iPlayers() < (iFrags_Needed / 2) || get_user_time(id) > 120) //People leave if alone on map and can't RTV.
         iFrags = (iFrags + 3) //Admin partial boost.
@@ -125,7 +132,8 @@ if(is_user_connected(id))
     //new Menu_DESIGN_privledges = iFrags_Needed
     format(SzClientFragHUDMessage, charsmax(SzClientFragHUDMessage), "%i frags until RTV.", rtv_minimum - iFrags);
     set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-    if(rtv_minimum - iFrags)
+    static iMore; iMore = rtv_minimum - iFrags
+    if(iMore>0)
     {
         show_hudmessage(id, SzClientFragHUDMessage)
     }
