@@ -63,7 +63,7 @@ public plugin_init()
 
     g_mapName=ArrayCreate(MAX_NAME_LENGTH);
 
-    new MenuName[MAX_RESOURCE_PATH_LENGTH]
+    static MenuName[MAX_RESOURCE_PATH_LENGTH]
 
     format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
     register_menucmd(register_menuid(MenuName), (charsmin^(charsmin<<(SELECTMAPS+2))), "countVote")
@@ -82,7 +82,7 @@ public plugin_init()
     get_localinfo("lastMap", g_lastMap, charsmax(g_lastMap))
     set_localinfo("lastMap", "")
 
-    new maps_ini_file[MAX_RESOURCE_PATH_LENGTH]
+    static maps_ini_file[MAX_RESOURCE_PATH_LENGTH]
     get_configsdir(maps_ini_file, charsmax(maps_ini_file));
     format(maps_ini_file, charsmax(maps_ini_file), "%s/maps.ini", maps_ini_file);
 
@@ -163,11 +163,23 @@ public plugin_init()
 
 @rtv(id)
 {
-    g_rtv=true
-    change_task(987456,1.0)
-    ///gungame 2023
+    static timeleft; timeleft = get_timeleft()
+    ///Initial edit was due to HL gungame in 2023.
     if(is_user_connected(id))
-        server_print "%s|%n called RTV", PLUGIN, id
+    {
+        log_amx "%s|%n called RTV.", PLUGIN, id
+
+        g_rtv=true
+
+        if(timeleft>120)
+        {
+            task_exists(VOTE_MAP_TASK) ? change_task(VOTE_MAP_TASK,1.0) : set_task(checktime, "voteNextmap")
+        }
+        else
+        {
+            client_print(id, print_chat, "Map pick already completed. Changing levels in %i seconds.", timeleft)
+        }
+    }
 }
 
 public checkVotes()
@@ -241,11 +253,11 @@ public checkVotes()
 
     if(g_rtv)
     {
-        remove_task(987456)
+        remove_task(VOTE_MAP_TASK)
         if(g_mp_chattime < 2)
             g_mp_chattime = 5
 
-        set_task(float(g_mp_chattime),"@changemap",987456,smap,charsmax(smap))
+        set_task(float(g_mp_chattime),"@changemap",VOTE_MAP_TASK,smap,charsmax(smap))
         if(is_plugin_loaded("spectate.amxx",true)!=charsmin)
         {
             @op4_spec()
@@ -317,9 +329,9 @@ bool:isInMenu(id)
 //        amxclient_cmd(players[m],random_map_pick()) //hooks all with unknown command
         #endif
 
-        new custom;
+        static custom;
         custom = random_num(1,5)
-        new formated[MAX_NAME_LENGTH]
+        static formated[MAX_NAME_LENGTH]
         formatex(formated,charsmax(formated),"%i", custom) //humans
 
         //server_print "Trying amxclient_cmd..."
@@ -345,9 +357,9 @@ public client_command(id)
 
 stock random_map_pick()
 {
-    new custom;
+    static custom;
     custom = random_num(1,5)
-    new formated[MAX_NAME_LENGTH]
+    static formated[MAX_NAME_LENGTH]
     formatex(formated,charsmax(formated),"menuselect %i", custom) //humans
     //formatex(formated,charsmax(formated),"slot%i", custom)
     return formated;
@@ -355,8 +367,8 @@ stock random_map_pick()
 
 public voteNextmap()
 {
-    new timeleft = get_timeleft()
-    new votetime, chatime
+    static timeleft; timeleft = get_timeleft()
+    static votetime, chatime
     chatime = g_mp_chattime
     //new captures
     //captures = get_pcvar_num(Pcvar_captures)
@@ -367,11 +379,11 @@ public voteNextmap()
     votetime = g_votetime
     chatime = g_mp_chattime
     #endif
-    new smap[MAX_NAME_LENGTH]
-    new vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
+    static smap[MAX_NAME_LENGTH]
+    static vote_menu_display; vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
     if(g_rtv)
     {
-        change_task(987456,30.0)
+        change_task(VOTE_MAP_TASK,30.0)
         goto AHEAD_LINE
     }
 
@@ -385,7 +397,7 @@ public voteNextmap()
 
         log_amx"HL server frag limit map change"
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        remove_task(987456)
+        remove_task(VOTE_MAP_TASK)
         return
     }
 
@@ -393,7 +405,7 @@ public voteNextmap()
     {
         if(get_pcvar_num(Pcvar_captures) <2)
         {
-            remove_task(987456)
+            remove_task(VOTE_MAP_TASK)
             log_amx"CTF point map change"
             //@changemap(smap)
             callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
@@ -466,14 +478,14 @@ public voteNextmap()
     }
 
     AHEAD_LINE:
-    if (g_selected)
+    if(g_selected)
         return
 
     g_selected = true
-    new menu[MAX_MENU_LENGTH], a, mkeys = (1<<SELECTMAPS + 1)
+    static menu[MAX_MENU_LENGTH], a, mkeys; mkeys = (1<<SELECTMAPS + 1)
 
-    new pos = format(menu, charsmax(menu), g_coloredMenus ? "\y%L:\w^n^n" : "%L:^n^n", LANG_SERVER, "CHOOSE_NEXTM")
-    new dmax = (g_mapNums > SELECTMAPS) ? SELECTMAPS : g_mapNums
+    static pos; pos = format(menu, charsmax(menu), g_coloredMenus ? "\y%L:\w^n^n" : "%L:^n^n", LANG_SERVER, "CHOOSE_NEXTM")
+    static dmax; dmax = (g_mapNums > SELECTMAPS) ? SELECTMAPS : g_mapNums
 
     for (g_mapVoteNum = 0; g_mapVoteNum < dmax; ++g_mapVoteNum)
     {
@@ -492,7 +504,7 @@ public voteNextmap()
     g_voteCount[SELECTMAPS] = 0
     g_voteCount[SELECTMAPS + 1] = 0
 
-    new mapname[MAX_NAME_LENGTH]
+    static mapname[MAX_NAME_LENGTH]
     get_mapname(mapname, charsmax(mapname))
 
     if ((g_wins + g_rnds) == 0 && (get_cvar_float("mp_timelimit") < get_pcvar_float(g_max)))
@@ -502,7 +514,7 @@ public voteNextmap()
     }
 
     format(menu[pos], charsmax(menu), "%d. %L", SELECTMAPS+2, LANG_SERVER, "NONE")
-    new MenuName[MAX_RESOURCE_PATH_LENGTH]
+    static MenuName[MAX_RESOURCE_PATH_LENGTH]
 
     format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
     show_menu(0, mkeys, menu, 15, MenuName)
@@ -522,7 +534,7 @@ stock bool:ValidMap(mapname[])
         return true;
     }
     // If the is_map_valid check failed, check the end of the string
-    new len = strlen(mapname) - 4;
+    static len; len = strlen(mapname) - 4;
 
     // The mapname was too short to possibly house the .bsp extension
     if (len < 0)
@@ -550,14 +562,14 @@ loadSettings(filename[])
     if (!file_exists(filename))
         return 0
 
-    new szText[MAX_NAME_LENGTH]
-    new currentMap[MAX_NAME_LENGTH]
+    static szText[MAX_NAME_LENGTH]
+    static currentMap[MAX_NAME_LENGTH]
 
-    new buff[MAX_USER_INFO_LENGTH];
+    static buff[MAX_USER_INFO_LENGTH];
 
     get_mapname(currentMap, charsmax(currentMap))
 
-    new fp=fopen(filename,"r");
+    static fp; fp=fopen(filename,"r");
 
     while (!feof(fp))
     {
