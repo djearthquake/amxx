@@ -51,7 +51,7 @@ new g_lastMap[MAX_PLAYERS]
 new g_coloredMenus
 new bool:g_selected = false
 new bool:g_rtv = false
-new bool:bOF_run, bool:bHL_run
+static bool:bOF_run, bool:bHL_run
 new g_mp_chattime, g_auto_pick, g_hlds_logging, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
 new Float:checktime
 
@@ -91,7 +91,7 @@ public plugin_init()
     if (loadSettings(maps_ini_file))
     {
         checktime = cstrike_running() ? 15.0 : 2.0 ;
-        set_task(checktime, "voteNextmap", VOTE_MAP_TASK, "", 0, "b")
+        set_task(checktime, "voteNextmap", VOTE_MAP_TASK, _, _, "b")
     }
 
 #if AMXX_VERSION_NUM == 182
@@ -173,7 +173,7 @@ public plugin_init()
 
         if(timeleft>120)
         {
-            task_exists(VOTE_MAP_TASK) ? change_task(VOTE_MAP_TASK,1.0) : set_task(checktime, "voteNextmap")
+            task_exists(VOTE_MAP_TASK) ? change_task(VOTE_MAP_TASK,1.0) : set_task(checktime, "voteNextmap", VOTE_MAP_TASK, _, _, "b")
         }
         else
         {
