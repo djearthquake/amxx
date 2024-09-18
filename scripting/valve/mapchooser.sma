@@ -51,7 +51,7 @@ new g_lastMap[MAX_PLAYERS]
 new g_coloredMenus
 new bool:g_selected = false
 new bool:g_rtv = false
-static bool:bOF_run, bool:bHL_run
+static bool:bOF_run, bool:bHL_run, bool:bStrike
 new g_mp_chattime, g_auto_pick, g_hlds_logging, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
 new Float:checktime
 
@@ -67,13 +67,17 @@ public plugin_init()
 
     format(MenuName, charsmax(MenuName), "%L", "en", "CHOOSE_NEXTM")
     register_menucmd(register_menuid(MenuName), (charsmin^(charsmin<<(SELECTMAPS+2))), "countVote")
+
     #if !defined create_cvar
     #define create_cvar register_cvar
     #endif
-    if( is_running("gearbox") == 1)
-            bOF_run = true
 
-    bHL_run = is_running("gearbox") || is_running("valve")
+    static modname[MAX_PLAYERS];
+    get_modname(modname, charsmax(modname))
+
+    bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
+    bHL_run = equali(modname, "gearbox") || equali(modname, "valve") ? true : false
+    bOF_run = equali(modname, "gearbox") ? true : false
 
     g_max       = create_cvar("amx_extendmap_max", "90")
     g_step      = create_cvar("amx_extendmap_step", "15")
@@ -127,7 +131,7 @@ public plugin_init()
         bind_pcvar_num(get_cvar_pointer("amx_vote_time"),g_votetime)
     if(get_cvar_pointer("log"))
         bind_pcvar_num(get_cvar_pointer("log"),g_hlds_logging)
-    if(cstrike_running() || get_cvar_pointer("mp_teamplay"))
+    if(bStrike || get_cvar_pointer("mp_teamplay"))
         register_event("TeamScore", "team_score", "a")
 #endif
 
@@ -141,7 +145,7 @@ public plugin_init()
         {
             if(!g_hlds_logging)
             {
-                server_cmd "log on"
+                console_cmd 0, "log on"
                 log_amx "Logging is required for Capture the Flag!"
             }
             fm_set_kvd(info_detect, "map_score_max", "0")
@@ -196,16 +200,16 @@ public checkVotes()
         static mapname[MAX_NAME_LENGTH]
         get_mapname(mapname, charsmax(mapname))
 
-        new Float:steptime = get_pcvar_float(g_step)
+        static Float:steptime; steptime = get_pcvar_float(g_step)
 
         //Half-Life Frags
-        new timeleft = get_timeleft()
+        static timeleft;timeleft = get_timeleft()
         if(g_frags && g_frags_remaining && timeleft > 129)
         {
-            log_amx"Setting frags"
-            if(B_op4c_map)
+            if(B_op4c_map && get_pcvar_num(Pcvar_captures) < 3 )
             {
                 set_cvar_num("mp_fraglimit", 0)
+                log_amx"Setting frags"
                 goto FLAGMAP
             }
             set_cvar_num("mp_fraglimit", g_frags + floatround(steptime))
@@ -318,51 +322,33 @@ bool:isInMenu(id)
 @auto_map_pick()
 {
     log_amx "auto-picking maps"
-    new players[MAX_PLAYERS]
-    new playercount
 
-    get_players(players,playercount) //"di"
-
-    for (new m=0; m<playercount; ++m)
+    for (new m=1; m<=MaxClients; ++m)
+    if(is_user_connected(m))
     {
-        #if defined amxclient_cmd
-//        amxclient_cmd(players[m],random_map_pick()) //hooks all with unknown command
-        #endif
+        if(is_user_bot(m))
+        {
+            client_cmd(m,random_map_pick())
 
-        static custom;
-        custom = random_num(1,5)
-        static formated[MAX_NAME_LENGTH]
-        formatex(formated,charsmax(formated),"%i", custom) //humans
-
-        //server_print "Trying amxclient_cmd..."
-///        console_cmd(players[m],"menuselect", formated) //random_map_pick())
-        //server_print "Trying console_cmd..."
-        client_cmd(players[m],random_map_pick()) //humans only
-        //server_print "Trying client_cmd..."
-/////////////        engclient_cmd(players[m],random_map_pick()) //joke
-        ///engclient_cmd(players[m],"menuselect", formated)
-        //server_print "Trying engclient..."
-        //Trying old
+        }
+        else if(is_user_admin(m) && !get_user_frags(m))
+        {
+            client_cmd(m,random_map_pick())
+        }
     }
 }
 
-/*
-public client_command(id)
-{
-    if(is_user_bot(id) || !is_user_bot(id))
-        return PLUGIN_CONTINUE
-    return PLUGIN_CONTINUE
-}
- */
-
 stock random_map_pick()
 {
-    static custom;
-    custom = random_num(1,5)
     static formated[MAX_NAME_LENGTH]
-    formatex(formated,charsmax(formated),"menuselect %i", custom) //humans
-    //formatex(formated,charsmax(formated),"slot%i", custom)
+    //formatex(formated,charsmax(formated),"menuselect %i", _Random()) //humans
+    formatex(formated,charsmax(formated),"slot%i", _Random())
     return formated;
+}
+
+stock _Random()
+{
+    return random_num(1,5)
 }
 
 public voteNextmap()
@@ -380,43 +366,36 @@ public voteNextmap()
     chatime = g_mp_chattime
     #endif
     static smap[MAX_NAME_LENGTH]
-    static vote_menu_display; vote_menu_display = cstrike_running() ? 129 : chatime + (votetime*2)
+    static vote_menu_display; vote_menu_display = bStrike ? 129 : chatime + (votetime*2)
+
     if(g_rtv)
     {
         change_task(VOTE_MAP_TASK,30.0)
         goto AHEAD_LINE
     }
-
-    if(g_frags > 0 && g_frags_remaining == 1)
+    if(!bStrike)
     {
-        if(B_op4c_map)
-        {
-            set_cvar_num("mp_fraglimit", 0)
-            return
-        }
+    if(get_pcvar_num(Pcvar_captures) < 2)
+    {
+        remove_task(VOTE_MAP_TASK)
+        log_amx"CTF point map change"
 
+        B_op4c_map = false
+        g_selected = true
+        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+        return
+    }
+
+    if(g_frags && g_frags_remaining == 1)
+    {
         log_amx"HL server frag limit map change"
         callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
         remove_task(VOTE_MAP_TASK)
         return
     }
-
-    if(bOF_run && get_pcvar_num(Pcvar_captures)) //bind it?
-    {
-        if(get_pcvar_num(Pcvar_captures) <2)
-        {
-            remove_task(VOTE_MAP_TASK)
-            log_amx"CTF point map change"
-            //@changemap(smap)
-            callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-            B_op4c_map = false
-            return
-        }
     }
-
     if (g_selected)
         return
-
 
     #if AMXX_VERSION_NUM == 182
     if(g_wins & get_pcvar_num(g_wins))
@@ -431,15 +410,26 @@ public voteNextmap()
             return
         }
     }
-    else if(bOF_run && get_pcvar_num(Pcvar_captures))
+    else if(B_op4c_map)
     {
+        #if AMXX_VERSION_NUM == 182
+        if(g_frags && get_pcvar_num(g_frags_remaining))
+        #else
+        if(g_frags)
+        #endif
+        {
+            set_cvar_num("mp_fraglimit", 0)
+            log_amx("Set frags to 0 for mapchooser to function.")
+            g_selected = false
+            return
+        }
+
         if( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) )
         {
             g_selected = false
             return
         }
     }
-
     #if AMXX_VERSION_NUM == 182
     else if(g_rnds & get_pcvar_num(g_rnds))
     #else
@@ -525,8 +515,8 @@ public voteNextmap()
     client_cmd(0, "spk Gman/Gman_Choose2")
     log_amx("Vote: Voting for the nextmap started")
     log_amx "Map vote conducted with %i sec remaining.",timeleft
-
 }
+
 stock bool:ValidMap(mapname[])
 {
     if ( is_map_valid(mapname) )
@@ -619,7 +609,7 @@ public pfn_keyvalue( ent )
 {
     if (is_running("gearbox") == 1 && !b_set_caps)
     {
-        new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
+        static Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
 
         copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
 
