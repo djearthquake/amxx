@@ -36,11 +36,11 @@
 #define charsmin                  -1
 
 new Array:g_mapName;
-new g_mapNums;
-new Pcvar_captures
-new g_counter
-new bool:b_set_caps
-new bool:B_op4c_map
+new g_mapNums
+new Pcvar_captures;
+new g_counter;
+new bool:b_set_caps;
+static bool:B_op4c_map;
 
 new g_nextName[SELECTMAPS]
 new g_voteCount[SELECTMAPS + 2]
@@ -48,12 +48,12 @@ new g_mapVoteNum
 new g_teamScore[2]
 new g_lastMap[MAX_PLAYERS]
 
-new g_coloredMenus
-new bool:g_selected = false
-new bool:g_rtv = false
+static g_coloredMenus;
+new bool:g_selected = false;
+new bool:g_rtv = false;
 static bool:bOF_run, bool:bHL_run, bool:bStrike
-new g_mp_chattime, g_auto_pick, g_hlds_logging, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime
-new Float:checktime
+new g_mp_chattime, g_auto_pick, g_hlds_logging, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime;
+new Float:checktime;
 
 public plugin_init()
 {
@@ -94,7 +94,7 @@ public plugin_init()
         get_cvar_string("mapcyclefile", maps_ini_file, charsmax(maps_ini_file))
     if (loadSettings(maps_ini_file))
     {
-        checktime = cstrike_running() ? 15.0 : 2.0 ;
+        checktime = bStrike ? 15.0 : 2.0 ;
         set_task(checktime, "voteNextmap", VOTE_MAP_TASK, _, _, "b")
     }
 
@@ -375,24 +375,29 @@ public voteNextmap()
     }
     if(!bStrike)
     {
-    if(get_pcvar_num(Pcvar_captures) < 2)
-    {
-        remove_task(VOTE_MAP_TASK)
-        log_amx"CTF point map change"
+        if(bOF_run)
+        {
+            if(get_pcvar_num(Pcvar_captures) < 2)
+            {
+                remove_task(VOTE_MAP_TASK)
+                log_amx"CTF point map change"
 
-        B_op4c_map = false
-        g_selected = true
-        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        return
-    }
-
-    if(g_frags && g_frags_remaining == 1)
-    {
-        log_amx"HL server frag limit map change"
-        callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
-        remove_task(VOTE_MAP_TASK)
-        return
-    }
+                B_op4c_map = false
+                g_selected = true
+                callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+                return
+            }
+        }
+        if(bHL_run)
+        {
+            if(g_frags && g_frags_remaining == 1)
+            {
+                log_amx"HL server frag limit map change"
+                callfunc_begin("changeMap","nextmap.amxx")?callfunc_end():@changemap(smap)
+                remove_task(VOTE_MAP_TASK)
+                return
+            }
+        }
     }
     if (g_selected)
         return
@@ -593,6 +598,15 @@ public team_score()
 
     read_data(1, team, charsmax(team))
     g_teamScore[(team[0]=='C') ? 0 : 1] = read_data(2)
+}
+
+public client_command(id)
+{
+    if(g_selected && get_timeleft()>240)
+    {
+        g_selected = false
+        log_amx("Freeing up system to vote again.")
+    }
 }
 
 public plugin_end()
