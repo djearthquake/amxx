@@ -1,9 +1,10 @@
 #include amxmodx
 #include cstrike
+#include fakemeta
 #include hamsandwich
 
 #define PLUGIN   "Blade make Terrorist"
-#define VERSION  "1.0.2"
+#define VERSION  "1.0.3"
 #define AUTHOR   "SPiNX"
 #define URL      "github.com/djearthquake"
 #define MAX_PLAYERS 32
@@ -66,6 +67,11 @@ public plugin_end()
             {
                 iKnife[iVictim] = 0
                 cs_set_user_team(iVictim, 1)
+
+                static Float:fOrigin[3]
+                pev(iVictim, pev_origin, fOrigin)
+                ExecuteHamB(Ham_CS_RoundRespawn, iVictim);
+                set_pev(iVictim, pev_origin, fOrigin)
             }
         }
     }
