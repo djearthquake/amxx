@@ -3,7 +3,7 @@
 #include hamsandwich
 
 #define PLUGIN   "Blade make Terrorist"
-#define VERSION  "1.0.1"
+#define VERSION  "1.0.2"
 #define AUTHOR   "SPiNX"
 #define URL      "github.com/djearthquake"
 #define MAX_PLAYERS 32
@@ -24,11 +24,11 @@ public plugin_init()
     Xcvar = register_cvar("enable_knife_infection", "1")
 }
 
-//CONDITION ZERO TYPE BOTS. SPiNX
 @register(ham_bot)
 {
     if(is_user_connected(ham_bot))
     {
+        bRegistered = true;
         RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "@PostTakeDamage", 1 );
         server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
     }
@@ -38,7 +38,6 @@ public client_authorized(id, const authid[])
 {
     if(equal(authid, "BOT")  && !bRegistered)
     {
-        bRegistered = true;
         if(get_cvar_pointer("bot_quota"))
         {
             set_task(0.1, "@register", id);
