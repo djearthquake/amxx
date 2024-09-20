@@ -38,16 +38,12 @@ public client_authorized(id, const authid[])
 {
     if(equal(authid, "BOT")  && !bRegistered)
     {
-        if(get_cvar_pointer("bot_quota"))
-        {
-            set_task(0.1, "@register", id);
-        }
+        set_task(0.1, "@register", id);
     }
 }
 
 public plugin_end()
 {
-    //DisableHamForward(XBotDamage)
     DisableHamForward(XDamage)
 }
 
@@ -55,7 +51,6 @@ public plugin_end()
 {
 
     static iCvar; iCvar = get_pcvar_num(Xcvar)
-    //iCvar ?  EnableHamForward(XBotDamage) :  DisableHamForward(XBotDamage)
     iCvar ?  EnableHamForward(XDamage)    :  DisableHamForward(XDamage)
     static iKnife[MAX_PLAYERS]
     if(is_user_connected(iAttacker) && is_user_connected(iVictim))
