@@ -623,7 +623,7 @@ public plugin_end()
         bRegistered = true;
         RegisterHamFromEntity(Ham_Spawn, ham_bot, "ham_player_spawn", 1);
         RegisterHamFromEntity(Ham_Killed, ham_bot, "ham_player_killed_pre", 0);
-        RegisterHamFromEntity(Ham_Killed, ham_bot,"ham_player_killed_post", 1);
+        RegisterHamFromEntity(Ham_Killed, ham_bot, "ham_player_killed_post", 1);
         server_print("Gungame bot from %N", ham_bot)
     }
 }
@@ -761,6 +761,7 @@ public client_disconnected(id)
     stats_clear_struct(playerStats[id]);
 }
 
+/*
 // someone joins, monitor ham hooks
 public client_putinserver(id)
 {
@@ -792,6 +793,7 @@ public czbot_hook_ham(id)
         if(is_user_alive(id)) ham_player_spawn(id);
     }
 }
+*/
 
 // remove a save
 public clear_save(taskid)
