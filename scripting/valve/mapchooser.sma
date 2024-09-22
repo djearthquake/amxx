@@ -602,14 +602,17 @@ public team_score()
 
 public client_command(id)
 {
-    #if AMXX_VERSION_NUM == 182
-    if(g_selected && get_timeleft()>240 && bStrike || bHL_run && get_cvar_pointer("mp_fraglimit"))
-    #else
-    if(g_selected && get_timeleft()>240 && bStrike || bHL_run && g_frags)
-    #endif
+    if(g_selected && get_timeleft()>240)
     {
-        g_selected = false
-        log_amx("Freeing up system to vote again.")
+        #if AMXX_VERSION_NUM == 182
+        if(bStrike || bHL_run && get_cvar_pointer("mp_fraglimit"))
+        #else
+        if(bStrike || bHL_run && g_frags)
+        #endif
+        {
+            g_selected = false
+            log_amx("Freeing up system to vote again.")
+        }
     }
 }
 
