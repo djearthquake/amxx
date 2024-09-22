@@ -377,6 +377,17 @@ public voteNextmap()
     {
         if(bOF_run)
         {
+            #if AMXX_VERSION_NUM == 182
+            if(g_frags && get_pcvar_num(g_frags_remaining))
+            #else
+            if(g_frags)
+            #endif
+            {
+                set_cvar_num("mp_fraglimit", 0)
+                log_amx("Set frags to 0 for mapchooser to function.")
+                g_selected = false
+                return
+            }
             if(get_pcvar_num(Pcvar_captures) < 2)
             {
                 remove_task(VOTE_MAP_TASK)
@@ -417,18 +428,6 @@ public voteNextmap()
     }
     else if(B_op4c_map)
     {
-        #if AMXX_VERSION_NUM == 182
-        if(g_frags && get_pcvar_num(g_frags_remaining))
-        #else
-        if(g_frags)
-        #endif
-        {
-            set_cvar_num("mp_fraglimit", 0)
-            log_amx("Set frags to 0 for mapchooser to function.")
-            g_selected = false
-            return
-        }
-
         if( get_pcvar_num(Pcvar_captures) > 3 && timeleft > (vote_menu_display + chatime + (votetime*2) ) )
         {
             g_selected = false
