@@ -620,6 +620,7 @@ public plugin_end()
 {
     if(is_user_connected(ham_bot))
     {
+        bRegistered = true;
         RegisterHamFromEntity(Ham_Spawn, ham_bot, "ham_player_spawn", 1);
         RegisterHamFromEntity(Ham_Killed, ham_bot, "ham_player_killed_pre", 0);
         RegisterHamFromEntity(Ham_Killed, ham_bot,"ham_player_killed_post", 1);
@@ -633,7 +634,6 @@ public client_authorized(id, const authid[])
     if(equal(authid, "BOT") && !bRegistered)
     {
         set_task(0.1, "@register", id);
-        bRegistered = true;
     }
     clear_values(id);
 
