@@ -1,14 +1,12 @@
 /*Fix bots shooting at sky.*/
 #include amxmodx
-#include engine_stocks
 #include fakemeta_util
-#define  charsmin          -1
 
 public plugin_init()
 {
-    register_plugin("op4ctf_specfix","0.0.2","SPiNX");
+    register_plugin("op4ctf_specfix","0.0.3","SPiNX");
     {
-        if(!find_ent(charsmin,"info_ctfdetect"))
+        if(!has_map_ent_class("info_ctfdetect"))
         {
             pause "a";
         }
