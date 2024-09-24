@@ -625,6 +625,9 @@ public client_command(id)
         if(bStrike || bHL_run && g_frags)
         #endif
         {
+            set_cvar_num("mp_fraglimit", 0)
+            log_amx("Set frags to 0.")
+
             g_selected = false
             log_amx("Freeing up system to vote again.")
         }
