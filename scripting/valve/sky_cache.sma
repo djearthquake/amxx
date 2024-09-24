@@ -12,12 +12,12 @@ static const SzSkySides[][]={
 
 public plugin_init()
 {
-    register_plugin( "SkyyCacher", "0.1", "SPiNX" );
+    register_plugin( "SkyyCacher", "0.2", "SPiNX" );
 }
 
 public plugin_precache()
 {
-    static szSky[MAX_PLAYERS], szSkyfile[MAX_PLAYERS];
+    static szSky[MAX_PLAYERS], szSkyfile[MAX_RESOURCE_PATH_LENGTH];
 
     get_cvar_string("sv_skyname", szSky, charsmax(szSky))
 
@@ -29,5 +29,3 @@ public plugin_precache()
         file_exists(szSkyfile) ? precache_generic(szSkyfile) : log_amx("Missing: %s", szSkyfile)
     }
 }
-
-
