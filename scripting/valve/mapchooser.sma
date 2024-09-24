@@ -382,6 +382,7 @@ public voteNextmap()
             #else
             if(g_frags)
             #endif
+            if(B_op4c_map)
             {
                 set_cvar_num("mp_fraglimit", 0)
                 log_amx("Set frags to 0 for mapchooser to function.")
@@ -514,7 +515,22 @@ public voteNextmap()
     show_menu(0, mkeys, menu, 15, MenuName)
     set_task(15.0, "checkVotes")
     //AUTOPICK MAPS FOR DEBUGGING ETC
-    if(get_pcvar_num(g_auto_pick))set_task(2.0,"@auto_map_pick")
+
+    static auto; auto = get_pcvar_num(g_auto_pick)
+
+    if(auto == 1)
+    {
+        set_task(2.0,"@auto_map_pick")
+    }
+    else if(auto>1)
+    {
+        static iFun;iFun = random(1)
+        if(iFun)
+        {
+            set_task(2.0,"@auto_map_pick")
+        }
+    }
+
     client_print(0, print_chat, "%L", LANG_SERVER, "TIME_CHOOSE")
     client_cmd(0, "spk Gman/Gman_Choose2")
     log_amx("Vote: Voting for the nextmap started")
