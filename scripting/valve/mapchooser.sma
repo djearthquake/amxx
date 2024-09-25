@@ -51,7 +51,7 @@ new g_lastMap[MAX_PLAYERS]
 static g_coloredMenus;
 new bool:g_selected = false;
 new bool:g_rtv = false;
-static bool:bOF_run, bool:bHL_run, bool:bStrike
+static bool:bOF_run, bool:bHL_run, bool:bStrike, bool:bFreed;
 new g_mp_chattime, g_auto_pick, g_hlds_logging, g_max, g_step, g_rnds, g_wins, g_frags, g_frags_remaining, g_timelim, g_votetime;
 new Float:checktime;
 
@@ -615,21 +615,20 @@ public team_score()
     g_teamScore[(team[0]=='C') ? 0 : 1] = read_data(2)
 }
 
-public client_command(id)
+public client_putinserver(id)
 {
+    if(!bFreed)
     if(g_selected && get_timeleft()>240)
     {
         #if AMXX_VERSION_NUM == 182
-        if(bStrike || bHL_run && get_cvar_pointer("mp_fraglimit"))
+        if(bStrike || bHL_run && get_cvar_num("mp_fragsleft")>3)
         #else
-        if(bStrike || bHL_run && g_frags)
+        if(bStrike || bHL_run && g_frags_remaining>3)
         #endif
         {
-            set_cvar_num("mp_fraglimit", 0)
-            log_amx("Set frags to 0.")
-
             g_selected = false
             log_amx("Freeing up system to vote again.")
+            bFreed = true
         }
     }
 }
