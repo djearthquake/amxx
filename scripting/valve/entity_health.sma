@@ -38,10 +38,6 @@ and more contents do not do this.
  *V1.0 Merge breakable HP with player HP script.
 */
 
-
-new HamHook:XhookDamage,HamHook:XhookDamage_alt
-new bool:go_ahead, bool:break_away
-
 #include amxmodx
 #include amxmisc
 #include engine
@@ -55,12 +51,19 @@ new bool:go_ahead, bool:break_away
 #define MAX_NAME_LENGTH 32
 #define MAX_CMD_LENGTH 128
 
+#if !defined MaxClients
+new MaxClients
+#endif
+
 #if AMXX_VERSION_NUM == 182;
-new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]//, buffer[MAX_CMD_LENGTH], SzClass[MAX_CMD_LENGTH];
+new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]//, buffer[MAX_CMD_LENGTH], SzClass[MAX_CMD_LENGTH]
 #endif
 
 new The_Value_Copy[ MAX_CMD_LENGTH ],The_Value_Copy_copywrite[ MAX_CMD_LENGTH ]
 #define client_disconnect client_disconnected
+
+new HamHook:XhookDamage,HamHook:XhookDamage_alt
+new bool:go_ahead, bool:break_away
 
 new const ents_with_health_native[][]={"func_breakable", "func_pushable"} // "item_airtank"
 
@@ -68,18 +71,22 @@ new const ents_with_health_native[][]={"func_breakable", "func_pushable"} // "it
 
 new const REPLACE[][] = {"monster_", "func_", "item_"} //for printing announcments
 
-new g_getakill;
+new g_getakill
 new g_teams
-new g_SzMonster_class[MAX_NAME_LENGTH]
+new g_SzMonster_class[MAX_NAME_LENGTH];
 
 new bool:g_b_SzKilling_Monster[MAX_PLAYERS + 1]
 new bool:bsetTrie
 
-new Trie:g_mnames
+new Trie:g_mnames;
 
 public plugin_init()
 {
-    register_plugin("Entity Health","1.21","SPiNX");
+    #if !defined MaxClients
+    MaxClients = get_playersnum()
+    #endif
+
+    register_plugin("Entity Health","1.22","SPiNX");
     register_event("Damage","@event_damage","be")
     g_teams            = !cstrike_running() ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
 
@@ -87,7 +94,6 @@ public plugin_init()
 
     if(log)
     {
-
         @sub_init()
 
         if(log > 3)
@@ -102,19 +108,17 @@ public plugin_init()
     //Misc items that carry HP
     for(new list; list < sizeof ents_with_health_native; ++list)
     {
-        ent = find_ent(charsmin,ents_with_health_native[list])
+        ent = find_ent(MaxClients,ents_with_health_native[list])
 
         if(ent > get_maxplayers())
         {
             break_away = true
-            log_amx "Found %s", ents_with_health_native[list]
+            static szClass[MAX_NAME_LENGTH]
+            pev(ent, pev_classname, szClass, charsmax(szClass))
+            log_amx "Found %s", szClass
 
-            #if AMXX_VERSION_NUM == 182
-            XhookDamage_alt = RegisterHam(Ham_TakeDamage,ents_with_health_native[list],"Ham_TakeDamage_player", 1)
-
-            #else
             XhookDamage_alt = RegisterHamFromEntity(Ham_TakeDamage,ent,"Ham_TakeDamage_player", 1)
-            #endif
+
             if (!get_pcvar_num(g_getakill))
                DisableHamForward(XhookDamage_alt)
 
@@ -131,12 +135,11 @@ public plugin_init()
     new log = get_pcvar_num(g_getakill);if(log>3)log_amx "Damage call from %n", id
     #endif
 
-    if(is_user_connected(id) && is_user_alive(id))
+    if(is_user_alive(id))
     {
         new victim = id;new killer = get_user_attacker(victim);
         if(pev_valid(killer) && pev_valid(victim))
         {
-            //new health = pev(victim,pev_health)
             entity_get_string(victim,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
 
             if (killer == victim && is_user_alive(killer) && !is_user_bot(killer))
@@ -231,16 +234,17 @@ public client_putinserver(id)
     if(equal(ClientName[id],""))
         get_user_name(id,ClientName[id],charsmax(ClientName[]))
 #endif
+
 public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits)
 {
     new iShowKills = get_pcvar_num(g_getakill)
     if(iShowKills)
     if(is_user_alive(idattacker) && idattacker != this_ent)
     {
-    #if AMXX_VERSION_NUM == 182;
+        #if AMXX_VERSION_NUM == 182;
         if(equal(ClientName[idattacker],""))
             get_user_name(idattacker,ClientName[idattacker],charsmax(ClientName[]))
-    #endif
+        #endif
 
         entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
 
@@ -256,6 +260,8 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
 
         if((iFlag  || (health - damage) < -10.0) && !g_b_SzKilling_Monster[killer])
         {
+            if(pev_valid(this_ent))
+                set_pev(this_ent, pev_deadflag, DEAD_DEAD)
             g_b_SzKilling_Monster[killer] = true
 
             if(iShowKills > 2)
@@ -264,7 +270,8 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
                 if(!is_user_bot(this_ent))
                     SetHamParamInteger(5, DMG_ALWAYSGIB) //otherwise multi kills on corpse!
                 temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
-                if(pev_valid(temp_npc)>1)
+                //if(pev_valid(temp_npc)>1) //failing amxx 182
+                if(pev_valid(temp_npc))
                 {
                     static szRejectReason[128]
                     new effects = pev(temp_npc, pev_effects)
@@ -275,9 +282,10 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
                     }
                     victim = temp_npc
                     log_kill(killer, victim, weapon, 1)
-                    @fake_death(victim,idattacker)
+                    pev(this_ent, pev_classname, g_SzMonster_class,charsmax(g_SzMonster_class))
+                    @fake_death(victim,idattacker, g_SzMonster_class)
 
-                    if(get_pcvar_num(g_getakill) > 3)
+                    if(iShowKills > 3)
                         client_print killer, print_chat, "made a fake player!"
 
                     return
@@ -326,14 +334,12 @@ public pin_scoreboard(killer, victim)
 
 }
 
-@fake_death(this_ent,idattacker)
+@fake_death(this_ent,idattacker, g_SzMonster_class[MAX_NAME_LENGTH])
 {
-    entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
-
     for ( new MENT; MENT < sizeof REPLACE; ++MENT )
         replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], "");
 
-    if( is_user_connected(idattacker) && is_user_alive(idattacker) && !is_user_bot(idattacker) && pev_valid(this_ent)>1)
+    if(is_user_alive(idattacker) && !is_user_bot(idattacker) && pev_valid(this_ent))
     #if AMXX_VERSION_NUM == 182;
     client_print 0, print_center, "%s slayed a %s", ClientName[idattacker],g_SzMonster_class
     #else
@@ -461,6 +467,7 @@ public pfn_keyvalue( ent )
                     {
                         TrieSetCell(g_mnames, "monster_babycrab",2)
                         XhookDamage = RegisterHam(Ham_TakeDamage,"monster_babycrab","Ham_TakeDamage_player", 1)
+
                         log_amx "Added babycrab!"
                     }
                 }
@@ -484,7 +491,6 @@ public plugin_end()
     }
     if(break_away)
     {
-
         if(XhookDamage_alt)
         {
             DisableHamForward(XhookDamage_alt)
