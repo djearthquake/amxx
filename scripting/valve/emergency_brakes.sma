@@ -1,3 +1,33 @@
+    /*Automatic braking of Half-Life cars and trains in relation to team mate distance by cvar.*/
+#include amxmodx
+#include fakemeta_util
+#include fun
+
+#if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM < 190
+    #error Wrong Amxx version!
+#endif
+
+#define NAMED_PLUGIN "plugin.amxx"  /*add a plugin to block center chat*/
+///uncomment to add purchase requirements
+#define CSTRIKE
+
+#if defined CSTRIKE
+    #include cstrike
+    #include hamsandwich
+    new bool:bRegistered
+    new bool:g_brake_owner[MAX_PLAYERS +1], g_item_cost;
+    static g_saytxt;
+#endif
+
+#include engine_stocks
+#include fakemeta
+
+#define MAX_NAME_LENGTH 32
+#define MAX_CMD_LENGTH 128
+#define charsmin        -1
+
+#define IDLE_SPEED 0.1
+#define GO_SPEED 1200.0
 ///Maps with monsters can load other custom maps. Some stock maps like boot_camp and op4_demise which are vanilla crash server later even with disabled hooks!
 
 /*
@@ -62,442 +92,414 @@ new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH], buffer[MAX_CMD_LENGTH], SzClass[
 new The_Value_Copy[ MAX_CMD_LENGTH ],The_Value_Copy_copywrite[ MAX_CMD_LENGTH ]
 #define client_disconnect client_disconnected
 
-new const ents_with_health_native[][]={"func_breakable", "func_pushable"} // "item_airtank"
 
-//new const ents_given_health_or_acct[][]={"func_door", "momentary_door", "func_door_rotating"}
+//task
+#define PRINTING 2024
 
-new const REPLACE[][] = {"monster_", "func_", "item_"} //for printing announcments
+new cvar_range;
 
-new g_getakill;
-new g_teams
-new g_SzMonster_class[MAX_NAME_LENGTH]
+static const CARS[]= "func_vehicle"
+static const LOCO[] ="func_tracktrain"
+static const TRAIN[]= "func_train"
 
-new bool:g_b_SzKilling_Monster[MAX_PLAYERS + 1]
-new bool:bsetTrie
+static const CORNER[]= "path_corner"
+static const BOOST[]= "yaw_speed"
+static const WOT[]= "speed"
+static const LIFE[]= "damage"
 
-new Trie:g_mnames
+//Speed stages
+///static const norm[]= "500"
+static const fast[]= "820"
+static const realfast[]= "1132"
+
+static g_fun_train, g_path_corn
+
+static bool:bLoco, g_score, g_deathmsg
+static m_speed, g_teams, bool:bStrike, bool:bHost
+new g_mod_car[MAX_PLAYERS +1]
+new bool:b_Airbourne[MAX_PLAYERS +1]
+new bool:bPrinting[MAX_PLAYERS +1]
+
+const LINUX_DIFF = 5;
+const LINUX_OFFSET_WEAPONS = 4;
 
 public plugin_init()
 {
-    register_plugin("Entity Health","1.21","SPiNX");
-    register_event("Damage","@event_damage","be")
-    g_teams            = !cstrike_running() ? get_cvar_pointer("mp_teamplay") : get_cvar_pointer("mp_friendlyfire")
+    register_plugin( "Auto Braking", "1.0.3", "SPiNX" );
 
-    new log = get_pcvar_num(g_getakill)
+    #if !defined MaxClients
+        #define MaxClients get_maxplayers( )
+    #endif
 
-    if(log)
+    if(find_ent(MaxClients, CARS))
     {
-
-        @sub_init()
-
-        if(log > 3)
-            log_amx "init"
+        bLoco = false
+        register_touch("func_vehicle", "player", "@jeep")
     }
+    else if(find_ent(MaxClients, LOCO))
+    {
+        bLoco = true
+        register_touch("func_tracktrain", "player", "@jeep")
+    }
+    else
+    {
+        pause "d"
+    }
+    bHost  = has_map_ent_class("hostage_entity") ? true : false;
+    cvar_range = register_cvar("brake_range", "135")
 
+    m_speed = (find_ent_data_info("CFuncVehicle", "m_speed")/LINUX_OFFSET_WEAPONS) - LINUX_DIFF
+
+    server_print "%i trains modified!",g_fun_train
+    server_print "%i paths modified!",g_path_corn
+
+    g_score = get_user_msgid("ScoreInfo");
+    g_deathmsg = get_user_msgid("DeathMsg")
+
+    static modname[MAX_PLAYERS];
+    get_modname(modname, charsmax(modname))
+    bStrike = equali(modname, "cstrike") || equali(modname, "czero") ? true : false
+
+    g_teams            =  bStrike ? get_cvar_pointer("mp_friendlyfire") : get_cvar_pointer("mp_teamplay")
+
+    #if defined CSTRIKE
+        register_clcmd ( "buy_brakes", "buy_brakes", 0, " - Automatic brakes." )
+        g_item_cost = register_cvar("brakes_cost", "500" )
+        RegisterHam(Ham_Killed, "player", "no_brakes")
+        g_saytxt = get_user_msgid("SayText")
+    #endif
 }
 
-@sub_init()
+@brake_think(id)
 {
-    new ent;new log = get_pcvar_num(g_getakill);if(log>4)log_amx "sub-init"
-    //Misc items that carry HP
-    for(new list; list < sizeof ents_with_health_native; ++list)
+    static bool:bHostage;
+    static iDistance;
+    static iRange; iRange = get_pcvar_num(cvar_range)
+    if(iRange)
+
+    #if defined CSTRIKE
+    if(g_brake_owner[id])
+    #endif
+
+    if(is_user_alive(id))
     {
-        ent = find_ent(charsmin,ents_with_health_native[list])
-
-        if(ent > get_maxplayers())
+        if(is_driving(id))
         {
-            break_away = true
-            log_amx "Found %s", ents_with_health_native[list]
+            if(bHost)
+            {
+                bHostage = false
+                new  ent = MaxClients; while( (ent = find_ent(ent, "hostage_entity") ) >= ent && pev(ent, pev_health)>0.5)
+                {
+                    iDistance = get_entity_distance(g_mod_car[id], ent)
+                    if(iDistance < 150)
+                    {
+                        bHostage = true
+                        goto STOP
+                    }
+                }
+            }
+            for (new iPlayer = 1; iPlayer <= MaxClients; iPlayer++)
+            {
+                if(is_user_alive(iPlayer))
+                {
+                    if(iPlayer != id)
+                    {
+                        iDistance = get_entity_distance(g_mod_car[id], iPlayer)
 
-            #if AMXX_VERSION_NUM == 182
-            XhookDamage_alt = RegisterHam(Ham_TakeDamage,ents_with_health_native[list],"Ham_TakeDamage_player", 1)
+                        if(iDistance < iRange)
+                        {
+                            if(get_user_team(iPlayer) == get_user_team(id))
+                            {
+                                STOP:
+                                bLoco? DispatchKeyValue(g_mod_car[id], WOT,0) :
+                                set_pdata_float(g_mod_car[id], m_speed, IDLE_SPEED, LINUX_DIFF);
 
-            #else
-            XhookDamage_alt = RegisterHamFromEntity(Ham_TakeDamage,ent,"Ham_TakeDamage_player", 1)
-            #endif
-            if (!get_pcvar_num(g_getakill))
-               DisableHamForward(XhookDamage_alt)
+                                set_pev(g_mod_car[id], pev_velocity, 0)
 
+                                if(!bPrinting[id])
+                                {
+                                    bPrinting[id] = true
+
+                                    bHostage
+                                    ?
+                                        client_print(id, print_center, "EMERGENCY BRAKES ENGAGED!^n^nHOSTAGE was nearly ran down!!")
+                                        :
+                                        client_print(id, print_center, "EMERGENCY BRAKES ENGAGED!^n^n%n was nearly ran down!!", iPlayer )
+
+                                    set_task(3.0, "@end_task", id+PRINTING)
+                                }
+                            }
+                            else /*Throw enemies up in the air*/
+                            {
+                                static Float:Origin[3]
+                                pev(iPlayer, pev_origin, Origin)
+                                Origin[2] += 200.0
+
+                                set_pev(iPlayer, pev_origin, Origin)
+                                if(!b_Airbourne[iPlayer])
+                                {
+                                    b_Airbourne[iPlayer] = true
+                                    bStrike ? set_msg_block(g_deathmsg, BLOCK_SET) : set_msg_block(g_deathmsg, BLOCK_ONCE);
+                                    fakedamage(iPlayer,"vehicle",400.0,DMG_CRUSH |DMG_ALWAYSGIB)
+                                    log_kill(id,iPlayer,"vehicle",1);
+                                }
+                            }
+                        }
+                        else if(!bLoco)
+                        {
+                            set_pdata_float(g_mod_car[id], m_speed, GO_SPEED, LINUX_DIFF);
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-@event_damage(id)
+@end_task(Tsk)
 {
-    #if AMXX_VERSION_NUM == 182;
-    new log = get_pcvar_num(g_getakill);if(log>3)log_amx "Damage call from %s", ClientName[id]
+    static id
+    id = Tsk-PRINTING
+    bPrinting[id] = false
+}
 
-    #else
-    new log = get_pcvar_num(g_getakill);if(log>3)log_amx "Damage call from %n", id
-    #endif
-
-    if(is_user_connected(id) && is_user_alive(id))
+@jeep(iCar, iPlayer)
+{
+    if(is_driving(iPlayer))
     {
-        new victim = id;new killer = get_user_attacker(victim);
-        if(pev_valid(killer) && pev_valid(victim))
+        g_mod_car[iPlayer] = iCar
+        @brake_think(iPlayer)
+    }
+}
+
+public pfn_keyvalue( ent )
+{
+    static Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ];
+    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
+
+    if(containi(Classname,CORNER) > charsmin || containi(Classname,TRAIN) > charsmin || containi(Classname,LOCO) > charsmin)
+    {
+        if(equali(key,BOOST))
         {
-            //new health = pev(victim,pev_health)
-            entity_get_string(victim,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
+            DispatchKeyValue(BOOST,realfast)
+            g_path_corn++
+        }
+        else if(equali(key,LIFE))
+            DispatchKeyValue(LIFE,"-1")
 
-            if (killer == victim && is_user_alive(killer) && !is_user_bot(killer))
-                client_print killer,print_center,"CAREFUL!"
+        else if(equali(key,WOT))
+        {
+            DispatchKeyValue(WOT,fast)
+            g_fun_train++
+        }
+        else if(equali(key,"volume"))
+            DispatchKeyValue("volume","0")///emit something else later
+    }
+    if(containi(Classname,"ambient_generic") > charsmin)
 
-            else
+    if(equali(key,"message") && equali(value,"ambience/warn3.wav"))
+        DispatchKeyValue("message","ambience/warn2.wav")
+}
+
+stock is_driving(iPlayer)
+{
+    if(is_user_alive(iPlayer))
+    {
+        return pev(iPlayer,pev_flags) & FL_ONTRAIN
+    }
+    return PLUGIN_HANDLED
+}
+
+#if defined CSTRIKE
+public buy_brakes(Client)
+{
+    if(is_user_alive(Client))
+    {
+        static name[MAX_PLAYERS];
+
+        get_user_name(Client,name,charsmax(name));
+
+        static tmp_money; tmp_money = cs_get_user_money(Client);
+        if(is_user_connected(Client))
+        {
+            if ( !g_brake_owner[Client] )
             {
-                if(pev_valid(killer) || pev_valid(victim) && is_user_connected(killer))
-                    entity_get_string(killer,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
 
-                if(equali(g_SzMonster_class, "player") && is_user_connected(victim))
+                if(tmp_money < get_pcvar_num(g_item_cost))
                 {
-                    if(is_user_connected(killer) && is_user_connected(victim))
-                    {
-                        #if AMXX_VERSION_NUM == 182;
-
-                        killer != victim ?
-                            client_print( 0, print_center, "%s|%i^n^n is being hit by^n^n %s|%i", ClientName[victim], pev(victim,pev_health), ClientName[killer], pev(killer,pev_health) )
-                            :
-                            client_print( 0, print_center, "%s|%i^n^nis doing it to themself!", ClientName[victim], pev(victim,pev_health) )
-                        #else
-
-                        killer != victim ?
-                            client_print( 0, print_center, "%n|%i^n^n is being hit by^n^n%n|%i", victim, pev(victim,pev_health), killer, pev(killer,pev_health) )
-                            :
-                            client_print( 0, print_center, "%n|%i^n^nis doing it to themself!", victim, pev(victim,pev_health) )
-                        #endif
-                    }
-                    else
-                    {
-                        server_print "Attack trap caught!"
-                        log_amx "Attack trap caught!"
-                    }
-
-                }
-                else if(containi(g_SzMonster_class, "monster") > charsmin)
-                {
-                    if(pev_valid(victim))
-                        #if AMXX_VERSION_NUM == 182;
-                        client_print 0,print_center,"%s is being blasted^n^nby a %s with HP: %i^n^n %s HP:%i",ClientName[victim], g_SzMonster_class, pev(killer,pev_health), ClientName[victim], pev(victim,pev_health)
-                        #else
-                        client_print 0,print_center,"%n is being blasted^n^nby a %s with HP: %i^n^n%n HP:%i",victim, g_SzMonster_class, pev(killer,pev_health), victim, pev(victim,pev_health)
-                        #endif
-                }
-
-                else if(containi(g_SzMonster_class, "ammo") > charsmin ||containi(g_SzMonster_class, "item") > charsmin ||containi(g_SzMonster_class, "weapon") > charsmin)
-                {
-                    #if AMXX_VERSION_NUM == 182;
-                    client_print( 0,print_center,"%s is being given^n^n %s", ClientName[victim], g_SzMonster_class)
-                    #else
-                    client_print( 0,print_center,"%n is being given ^n^n %s", victim, g_SzMonster_class)
-                    #endif
+                    //client_print(Client, print_center, "You can't afford brakes %s!", name);
+                    client_printc(Client, "!tYou !ncan't !gafford !tbrakes!n!");
+                    client_print(0, print_chat, "Hey guys %s keeps trying to buy brakes they can't afford!", name);
+                    return PLUGIN_HANDLED;
                 }
                 else
                 {
-                    new temp_local_buffer[32]
-                    new Shooter = pev(killer,pev_owner)
-                    if(pev_valid(Shooter))
-                    {
-                        entity_get_string(Shooter,EV_SZ_classname,temp_local_buffer,charsmax(temp_local_buffer))
-                        #if AMXX_VERSION_NUM == 182;
-                        client_print( 0,print_center,"%s is being hit by^n^n %s^n^nfrom %s", ClientName[victim], g_SzMonster_class, temp_local_buffer)
-                        #else
-                        client_print( 0,print_center,"%n is being hit by^n^n %s^n^nfrom %s", victim, g_SzMonster_class, temp_local_buffer)
-                        #endif
-
-                    }
-                    else
-                    {
-                        new shootable = pev(killer,pev_health)
-                        #if AMXX_VERSION_NUM == 182;
-                        shootable != 0 ?
-                        client_print( 0,print_center,"%s is being hit by^n^n %s^n^nwith health %i", ClientName[victim], g_SzMonster_class, shootable)
-                        :
-                        client_print( 0,print_center,"%s is being attacked by^n^n %s", ClientName[victim], g_SzMonster_class)
-                        #else
-                        shootable != 0 ?
-                        client_print( 0,print_center,"%n is being hit by^n^n %s^n^nwith health %i", victim, g_SzMonster_class, shootable)
-                        :
-                        client_print( 0,print_center,"%n is being attacked by^n^n %s", victim, g_SzMonster_class)
-                        #endif
-
-                    }
-                }
-            }
-        }
-    }
-    return PLUGIN_CONTINUE;
-}
-#if AMXX_VERSION_NUM == 182;
-public client_putinserver(id)
-    if(equal(ClientName[id],""))
-        get_user_name(id,ClientName[id],charsmax(ClientName[]))
-#endif
-public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits)
-{
-    new iShowKills = get_pcvar_num(g_getakill)
-    if(iShowKills)
-    if(is_user_alive(idattacker) && idattacker != this_ent)
-    {
-    #if AMXX_VERSION_NUM == 182;
-        if(equal(ClientName[idattacker],""))
-            get_user_name(idattacker,ClientName[idattacker],charsmax(ClientName[]))
-    #endif
-
-        entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
-
-        for ( new MENT; MENT < sizeof REPLACE; ++MENT )
-            replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], "");
-
-        new Float:health = entity_get_float(this_ent,EV_FL_health)
-        new killer = idattacker
-        new victim = this_ent
-        new temp_npc
-        new weapon = get_user_weapon(killer)
-        new iFlag = pev(victim, pev_deadflag)
-
-        if((iFlag  || (health - damage) < -10.0) && !g_b_SzKilling_Monster[killer])
-        {
-            g_b_SzKilling_Monster[killer] = true
-
-            if(iShowKills > 2)
-            {
-
-                if(!is_user_bot(this_ent))
-                    SetHamParamInteger(5, DMG_ALWAYSGIB) //otherwise multi kills on corpse!
-                temp_npc = engfunc(EngFunc_CreateFakeClient,g_SzMonster_class)
-                if(pev_valid(temp_npc)>1)
-                {
-                    static szRejectReason[128]
-                    new effects = pev(temp_npc, pev_effects)
-                    dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"127.0.0.1",szRejectReason)
-                    if(is_user_connected(temp_npc))
-                    {
-                        set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
-                    }
-                    victim = temp_npc
-                    log_kill(killer, victim, weapon, 1)
-                    @fake_death(victim,idattacker)
-
-                    if(get_pcvar_num(g_getakill) > 3)
-                        client_print killer, print_chat, "made a fake player!"
-
-                    return
+                    cs_set_user_money(Client, tmp_money - get_pcvar_num(g_item_cost));
+                    g_brake_owner[Client] = true;
+                    //client_print(Client, print_center, "You bought brakes!");
+                    client_printc(Client, "!nYou !gbought !tbrakes!n!");
                 }
 
             }
-            if(iShowKills > 1)
+            else
             {
-                log_kill(killer, victim, weapon, 1)
-                return
+                //client_print(Client, print_center, "You ALREADY OWN brakes...");
+                client_printc(Client, "!nYou !nALREADY !tOWN !gbrakes!n!");
+                client_print(0, print_chat, "Hey guys %s keeps trying to buy brakes and already owns them!", name);
             }
-
         }
-
     }
+    return PLUGIN_HANDLED;
+}
 
-    GetHamReturnStatus() != HAM_SUPERCEDE
+public no_brakes(id)
+{
+    g_brake_owner[id] = false
+    if(b_Airbourne[id])
+    {
+        client_print 0, print_chat, "%n was killed by vehicle!", id
+        b_Airbourne[id] = false
+    }
+}
+
+public client_disconnected(id)
+{
+    no_brakes(id)
+    b_Airbourne[id] = false
+}
+
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "no_brakes", 1 );
+        bRegistered = true;
+        server_print("E-brake bot from %N", ham_bot)
+    }
+}
+
+public client_authorized(id, const authid[])
+{
+    if(equal(authid, "BOT") && !bRegistered)
+    {
+        set_task(0.1, "@register", id);
+    }
 }
 
 
-public pin_scoreboard(killer, victim)
+stock client_printc(const id, const input[], any:...)
 {
-    if(is_user_connected(killer) && get_pcvar_num(g_getakill) > 2)
+    new count = 1, players[MAX_PLAYERS];
+    static msg[191];
+    vformat(msg, charsmax(msg), input, 3);
+
+    replace_all(msg, charsmax(msg), "!g", "^x04"); // Green Color
+    replace_all(msg, charsmax(msg), "!n", "^x01"); // Default Color
+    replace_all(msg, charsmax(msg), "!t", "^x03"); // Team Color
+
+    id ? (players[0] = id) : get_players(players, count, "ch");
+
+    for (new i = 0; i < count; i++)
     {
-        //Scoring
-        fm_set_user_frags(killer,get_user_frags(killer) +1);
-        #define DEATHS 422 //OP4 CS
-        new deaths = get_pdata_int(killer, DEATHS)
-        new frags = get_user_frags(killer)
-
-        emessage_begin(MSG_BROADCAST,get_user_msgid("ScoreInfo"))
-        ewrite_byte(killer);
-        ewrite_short(frags)
-        ewrite_short(deaths)
-
-        if(cstrike_running()) //if(is_running("cstrike") == 1) //missed CZ!
-        {
-            ewrite_short(0); //TFC CLASS
-            ewrite_short(get_user_team(killer));
-        }
+        emessage_begin(MSG_ONE_UNRELIABLE, g_saytxt, _, players[i]);
+        ewrite_byte(players[i]);
+        ewrite_string(msg);
         emessage_end();
-
-        if(get_pcvar_num(g_getakill) > 3)
-            client_print killer, print_chat, "monster kill counted!"
     }
-
 }
+#endif
 
-@fake_death(this_ent,idattacker)
+stock log_kill(killer, victim, weapon[], headshot)
 {
-    entity_get_string(this_ent,EV_SZ_classname,g_SzMonster_class,charsmax(g_SzMonster_class))
 
-    for ( new MENT; MENT < sizeof REPLACE; ++MENT )
-        replace(g_SzMonster_class,charsmax(g_SzMonster_class), REPLACE[MENT], "");
+    if (containi(weapon,"vehicle") > -1)
+        set_msg_block(g_deathmsg, BLOCK_SET);
 
-    if( is_user_connected(idattacker) && is_user_alive(idattacker) && !is_user_bot(idattacker) && pev_valid(this_ent)>1)
-    #if AMXX_VERSION_NUM == 182;
-    client_print 0, print_center, "%s slayed a %s", ClientName[idattacker],g_SzMonster_class
-    #else
-    client_print 0, print_center, "%n slayed a %s", idattacker,g_SzMonster_class
-    #endif
-
-    set_task(1.0,"@ok",idattacker)
-    set_task(0.5,"@disco",this_ent)
-}
-
-@disco(victim)
-{
-    if(is_user_connected(victim))
-    server_cmd( "kick #%d ^"temp_bot^"", get_user_userid(victim) );
-}
-
-
-@ok(killer)
-if(is_user_connected(killer))
-{
-    g_b_SzKilling_Monster[killer] = false
-}
-
-stock log_kill(killer, victim, weapon, headshot)
-{
-    new weapon_name[MAX_NAME_LENGTH]
-
-    new killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
+    static killers_team[MAX_PLAYERS], victims_team[MAX_PLAYERS];
     get_user_team(killer, killers_team, charsmax(killers_team));
     get_user_team(victim, victims_team, charsmax(victims_team));
 
     if(is_user_connected(killer))
     {
-        get_weaponname(weapon,weapon_name,charsmax(weapon_name))
+       //Scoring
+        if(get_pcvar_num(g_teams) == 1 || bStrike )
+        {
 
-        replace(weapon_name, charsmax(weapon_name), "weapon_", "")
+            if(!equal(killers_team,victims_team))
+            {
+                set_user_frags(killer,get_user_frags(killer) +1)
+            }
+            else //if(equal(killers_team,victims_team))
+            {
+                set_user_frags(killer,get_user_frags(killer) -1);
+            }
+        }
 
-        emessage_begin(MSG_BROADCAST, get_user_msgid("DeathMsg"), {0,0,0}, 0);
+        else
+
+        fm_set_user_frags(killer,get_user_frags(killer) +1);
+        ///////////////////////////////////////////////////
+
+        set_msg_block(g_deathmsg, BLOCK_SET);
+
+        set_msg_block(g_deathmsg, BLOCK_NOT);
+
+
+        emessage_begin(MSG_BROADCAST, g_deathmsg, {0,0,0}, 0);
         ewrite_byte(killer);
         ewrite_byte(victim);
 
-        if(cstrike_running())
+        if(bStrike)
             ewrite_byte(headshot);
-        if( (get_pcvar_num(g_teams) == 1 || cstrike_running())
+        if( (get_pcvar_num(g_teams) == 1 || bStrike)
         &&
         equal(killers_team,victims_team))
             ewrite_string("teammate");
         else
-            ewrite_string(weapon_name)
+            ewrite_string(weapon)
         emessage_end();
 
         //Logging the message as seen on console.
-        new kname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1]
-        get_user_authid(killer, kauthid, charsmax(kauthid))
+        new kname[MAX_PLAYERS+1], vname[MAX_PLAYERS+1], kauthid[MAX_PLAYERS+1], vauthid[MAX_PLAYERS+1], kteam[10], vteam[10]
+
         get_user_name(killer, kname, charsmax(kname))
-        log_message("^"%s<%d><%s>^" killed ^"%s^" with ^"%s^"", kname, get_user_userid(killer), kauthid, g_SzMonster_class, weapon_name)
-        if(get_pcvar_num(g_getakill) > 1)
-        {
-            pin_scoreboard(killer, victim)
+        get_user_team(killer, kteam, charsmax(kteam))
+        get_user_authid(killer, kauthid, charsmax(kauthid))
 
-        }
+        get_user_name(victim, vname, charsmax(vname))
+        get_user_team(victim, vteam, charsmax(vteam))
+        get_user_authid(victim, vauthid, charsmax(vauthid))
 
+        log_message("^"%s<%d><%s><%s>^" killed ^"%s<%d><%s><%s>^" with ^"%s^"",
+        kname, get_user_userid(killer), kauthid, kteam,
+        vname, get_user_userid(victim), vauthid, vteam, weapon)
+        pin_scoreboard(killer);
     }
 
 }
 
-public pfn_keyvalue( ent )
+public pin_scoreboard(killer)
 {
-    go_ahead = false
-
-    if(!bsetTrie)
+    if(is_user_connected(killer))
     {
-        g_mnames = TrieCreate()
-        bsetTrie = true
-        g_getakill = register_cvar("monster_kill", "0")
+        emessage_begin(MSG_BROADCAST,g_score)
+        ewrite_byte(killer);
+        ewrite_short(get_user_frags(killer));
 
-        if(get_pcvar_num(g_getakill) > 3)
+        if(bStrike)
         {
-            server_print "^n^n^n...Monster Trie made...^n^n"
+            ewrite_short(get_user_deaths(killer));
+            ewrite_short(0); //TFC CLASS
+            ewrite_short(get_user_team(killer));
         }
-
-    }
-
-    new Classname[  MAX_NAME_LENGTH ], key[ MAX_NAME_LENGTH ], value[ MAX_CMD_LENGTH ]
-    copy_keyvalue( Classname, charsmax(Classname), key, charsmax(key), value, charsmax(value) )
-
-    if(containi(Classname,"monster") > charsmin || equali(key,"monstertype") || containi(Classname,"monster") > charsmin)
-    go_ahead = true
-
-    else
-    {
-        goto DIVERT
-    }
-    if(get_pcvar_num(g_getakill) && go_ahead)
-    {
-
-        if(containi(Classname,"monster_") > charsmin || equali(key,"monstertype") && go_ahead)
+        else
         {
-            equali(key,"monstertype") && go_ahead ? copy(The_Value_Copy, charsmax(The_Value_Copy), value) : copy(The_Value_Copy, charsmax(The_Value_Copy), Classname)
-
-            if(equali(The_Value_Copy,"monstermaker") || equali(The_Value_Copy, The_Value_Copy_copywrite))
-            goto DIVERT
-
-            if(The_Value_Copy[0] != EOS && containi(The_Value_Copy,"monster_") > charsmin)
-            {
-                copy(The_Value_Copy_copywrite, charsmax(The_Value_Copy_copywrite), Classname)
-
-                if(TrieKeyExists(g_mnames,The_Value_Copy))
-                {
-                    log_amx "%s is already in the table.", The_Value_Copy
-                    return
-                }
-                else if(!TrieKeyExists(g_mnames,The_Value_Copy))
-                {
-                    TrieSetCell(g_mnames,The_Value_Copy,1)
-                    log_amx "Found %s.", The_Value_Copy
-                }
-                new iTemp = 1
-                if(TrieGetCell(g_mnames,The_Value_Copy, iTemp) == true)
-                {
-                    TrieSetCell(g_mnames,The_Value_Copy,2)
-                    XhookDamage = RegisterHam(Ham_TakeDamage,The_Value_Copy,"Ham_TakeDamage_player", 1)
-
-                    if(equali(The_Value_Copy,"monster_bigmomma"))
-                    {
-                        TrieSetCell(g_mnames, "monster_babycrab",2)
-                        XhookDamage = RegisterHam(Ham_TakeDamage,"monster_babycrab","Ham_TakeDamage_player", 1)
-                        log_amx "Added babycrab!"
-                    }
-                }
-            }
-       }
-    }
-    DIVERT:
-}
-
-public plugin_end()
-{
-
-    if(bsetTrie)
-    {
-        if(XhookDamage)
-        {
-            TrieDestroy(g_mnames)
-            DisableHamForward(XhookDamage)
-            log_amx "Disabling monster HP"
+            #define DEATHS 422
+            static dead; dead = get_pdata_int(killer, DEATHS)
+            ewrite_short(dead);
         }
+        emessage_end();
     }
-    if(break_away)
-    {
 
-        if(XhookDamage_alt)
-        {
-            DisableHamForward(XhookDamage_alt)
-            log_amx "Disabling breakable HP"
-            break_away=false
-        }
-    }
-    go_ahead = false
-}
-
-public HamFilter(Ham:which, HamError:err, const reason[])
-{
-    if (which == Ham_TakeDamage && err == HAM_FUNC_NOT_CONFIGURED)
-        return PLUGIN_HANDLED
-    return HAM_IGNORED
 }
