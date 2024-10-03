@@ -56,7 +56,7 @@ new bool:go_ahead, bool:break_away
 #define MAX_CMD_LENGTH 128
 
 #if AMXX_VERSION_NUM == 182;
-new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH], buffer[MAX_CMD_LENGTH], SzClass[MAX_CMD_LENGTH];
+new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH]//, buffer[MAX_CMD_LENGTH], SzClass[MAX_CMD_LENGTH];
 #endif
 
 new The_Value_Copy[ MAX_CMD_LENGTH ],The_Value_Copy_copywrite[ MAX_CMD_LENGTH ]
@@ -185,7 +185,7 @@ public plugin_init()
                 else if(containi(g_SzMonster_class, "ammo") > charsmin ||containi(g_SzMonster_class, "item") > charsmin ||containi(g_SzMonster_class, "weapon") > charsmin)
                 {
                     #if AMXX_VERSION_NUM == 182;
-                    client_print( 0,print_center,"%s is being given^n^n %s", ClientName[victim], g_SzMonster_class
+                    client_print( 0,print_center,"%s is being given^n^n %s", ClientName[victim], g_SzMonster_class)
                     #else
                     client_print( 0,print_center,"%n is being given ^n^n %s", victim, g_SzMonster_class)
                     #endif
@@ -269,7 +269,7 @@ public Ham_TakeDamage_player(this_ent, ent, idattacker, Float:damage, damagebits
                     static szRejectReason[128]
                     new effects = pev(temp_npc, pev_effects)
                     dllfunc(DLLFunc_ClientConnect,temp_npc,g_SzMonster_class,"127.0.0.1",szRejectReason)
-                    if(is_user_connected(temp_npc)
+                    if(is_user_connected(temp_npc))
                     {
                         set_pev(temp_npc, pev_effects, (effects | EF_NODRAW ));
                     }
