@@ -4,15 +4,18 @@
 #include fakemeta
 
 #define MAX_PLAYERS     32
-#define charsmin       -1
+#define charsmin        -1
 
 #if !defined MaxClients
-new MaxClients
+new MaxClients;
 #endif
 
 #if !defined MaxClients
 MaxClients = get_playersnum()
 #endif
+
+static g_spot
+new bool:bRegistered
 
 static const grunt_sounds[][]=
 {
@@ -49,9 +52,6 @@ static const grunt_sounds[][]=
     "zombie/claw_miss1.wav"
 };
 
-static g_spot;
-new bool:bRegistered;
-
 public plugin_init()
 {
     register_plugin("Grunt Dropper","0.2","SPiNX");
@@ -70,7 +70,7 @@ public Event_Damage(victim, inflictor, attacker, Float:damage, damagebits)
         }
         if(is_user_connected(victim))
         {
-            client_print(victim, print_center, "%s did %i",   szClass, floatround(damage))
+            client_print(victim, print_center, "%s did %i damage.", szClass, floatround(damage))
         }
     }
 }
