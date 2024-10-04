@@ -4,7 +4,7 @@
 #include fakemeta
 
 #define MAX_PLAYERS     32
-#define charsmin                  -1
+#define charsmin       -1
 
 #if !defined MaxClients
 new MaxClients
