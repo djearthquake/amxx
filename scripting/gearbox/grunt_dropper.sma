@@ -4,19 +4,17 @@
 #include fakemeta
 
 #define MAX_PLAYERS     32
-#define charsmin        -1
+#define charsmin       -1
 
 #if !defined MaxClients
-new MaxClients;
+new MaxClients
 #endif
 
 #if !defined MaxClients
 MaxClients = get_playersnum()
 #endif
 
-static g_spot
-new bool:bRegistered
-
+static const szMonster[]="monster_human_grunt"
 static const grunt_sounds[][]=
 {
     "hgrunt/affirmative!.wav",
@@ -52,10 +50,14 @@ static const grunt_sounds[][]=
     "zombie/claw_miss1.wav"
 };
 
+static g_spot;
+new bool:bRegistered;
+
 public plugin_init()
 {
-    register_plugin("Grunt Dropper","0.2","SPiNX");
+    register_plugin("Grunt Dropper","0.3","SPiNX");
     RegisterHam(Ham_TakeDamage, "player", "Event_Damage", 1);
+    register_touch("player", szMonster, "@adjust_touch")
 }
 
 public Event_Damage(victim, inflictor, attacker, Float:damage, damagebits)
@@ -92,9 +94,9 @@ public plugin_cfg()
 
 @grunt_dropper()
 {
-    if(!find_ent(MaxClients, "monster_human_grunt"))
+    if(!find_ent(MaxClients, szMonster))
     {
-        static ent; ent = create_entity("monster_human_grunt")
+        static ent; ent = create_entity(szMonster)
         DispatchSpawn(ent);
 
         g_spot = find_ent(g_spot, "info_player_deathmatch")
@@ -111,13 +113,30 @@ public plugin_cfg()
         if(!bRegistered)
         {
             bRegistered = true
-            if(find_ent(MaxClients, "monster_human_grunt"))
+            if(find_ent(MaxClients, szMonster))
             {
                 RegisterHamFromEntity(Ham_TakeDamage,ent,"@Ham_TakeDamage", 1)
                 RegisterHamFromEntity(Ham_Killed,ent,"@Ham_Died", 1)
                 RegisterHamFromEntity(Ham_Spawn,ent,"@Ham_Born", 1)
             }
         }
+    }
+}
+
+@adjust_touch(iPlayer, iMonster)
+{
+    if(pev_valid(iMonster) && !task_exists(iMonster))
+    {
+        set_task(5.0, "@fix_touch", iMonster)
+        set_pev(iMonster, pev_solid, SOLID_NOT)
+    }
+}
+
+@fix_touch(iMonster)
+{
+    if(pev_valid(iMonster))
+    {
+        set_pev(iMonster, pev_solid, SOLID_SLIDEBOX)
     }
 }
 
