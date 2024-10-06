@@ -2,9 +2,8 @@
 #include amxmisc
 #include engine
 #include fakemeta
-#include fakemeta_util
 #include fun
-//#include hamsandwich
+#include hamsandwich
 
 #define MAX_PLAYERS                    32
 #define MAX_RESOURCE_PATH_LENGTH       64
@@ -16,7 +15,7 @@
 #define charsmin                      -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.7"
+#define VERSION "1.0.8"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -58,7 +57,9 @@ new SzSpecName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
 new Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3]
 new /*Float:g_Velocity[MAX_PLAYERS + 1][3],*/ g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1]
 
-new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH]
+static const ent_type[]="player_weaponstrip"
+
+new SzClientName[MAX_PLAYERS + 1][MAX_NAME_LENGTH];
 
 #define IS_THERE (1<<IN_SCORE)
 
@@ -152,8 +153,29 @@ public handle_say(id, blah[MAX_USER_INFO_LENGTH])
 {
     OK && bFirstPerson[id] && g_spectating[id] )
     {
-        fm_strip_user_weapons(id)
+        @strip(id)
     }
+}
+
+
+@strip(id)
+{
+    if(is_user_alive(id))
+    {
+        static iStrip; iStrip = find_ent_by_tname(MaxClients, "stripper")
+        if(iStrip)
+        {
+            ExecuteHam(Ham_Use,iStrip,id,id,USE_ON,0.0)
+        }
+        else
+        {
+            static ent; ent = create_entity(ent_type)
+            DispatchKeyValue( ent, "targetname", "stripper" )
+            DispatchSpawn(ent);
+            @strip(id)
+        }
+    }
+    return PLUGIN_HANDLED
 }
 
 public client_impulse(id)
@@ -224,7 +246,7 @@ public client_prethink( id )
                 if(cvar_gg)
                 {
                     //set_view(id, CAMERA_NONE)
-                    fm_strip_user_weapons(id)
+                    @strip(id)
                     //entity_set_float(id, EV_FL_fov, 100.0)
                 }
             }
@@ -235,7 +257,7 @@ public client_prethink( id )
 
                 static effects; effects = pev(id, pev_effects)
                 set_pev(id, pev_effects, (effects | EF_NODRAW))
-                fm_strip_user_weapons(id)
+                @strip(id)
 
                 g_spectating[id] = true
 
@@ -675,7 +697,7 @@ public plugin_end()
                         server_print"About to reconnect %N", id
                         dllfunc(DLLFunc_SpectatorConnect, id)
 
-                        fm_strip_user_weapons(id)
+                        @strip(id)
 
                         server_print "%s GOING TO SPEC", SzClientName[id]
 
@@ -702,7 +724,7 @@ public plugin_end()
                         {
                             if(g_spectating[id])
                             {
-                                fm_strip_user_weapons(id)
+                                @strip(id)
                                 if(cvar_gg)
                                     set_view(id, CAMERA_NONE)
                             }
@@ -785,7 +807,7 @@ public client_command(id)
             if( ( !equal(szArgCmd, "say")  && (!equal(szArgCmd1, "!spec") /*ok play/spec*/|| !equal(szArgCmd1, "!spec_switch" )) /*ok spec cam*/ ) )
             {
                 set_user_godmode(id,true)
-                fm_strip_user_weapons(id)
+                @strip(id)
 
                 if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "!spec_switch") || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec") ||  equal(szArgCmd, "scoreboard") )
                     goto SKIP
