@@ -164,7 +164,11 @@ public plugin_cfg()
 @Ham_Died(index)
 {
     client_print 0, print_chat, "Grunt died."
-    set_pev(index, pev_flags, FL_KILLME)
+    if(pev_valid(index))
+    {
+        set_pev(index, pev_solid, SOLID_NOT)
+        set_pev(index, pev_flags, FL_KILLME)
+    }
 }
 
 @Ham_Born(index)
