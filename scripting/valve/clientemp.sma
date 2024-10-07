@@ -417,7 +417,7 @@ public plugin_precache()
     {
         change_task(iQUEUE, 10.0)
         client_cmd(id,"spk buttons/bell1.wav");
-        server_print "Turning on queue per request by %s.",ClientName[id]
+        server_print "Turning on queue per request by %s.", ClientName[id]
     }
     return PLUGIN_HANDLED;
 }
@@ -453,6 +453,7 @@ public client_putinserver(id)
     if(is_user_connected(id) && !is_user_bot(id))
     {
         get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT );
+        get_user_name(id,ClientName[id],charsmax(ClientName[]))
         get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
 
         b_Bot[id] = is_user_bot(id) ? true : false
@@ -491,6 +492,14 @@ public client_putinserver(id)
         return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
+}
+
+public client_infochanged(id)
+{
+    if(is_user_connected(id))
+    {
+        get_user_name(id,ClientName[id],charsmax(ClientName[]))
+    }
 }
 
 @country_finder(Tsk)
@@ -1433,7 +1442,6 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             new retask = (total)*2
             new queued_task = (total)*3
             server_print "Total players for math adj to: %i", total
-            get_user_name(client,ClientName[client],charsmax(ClientName[]))
             server_print "We STILL need %s's temp already.",ClientName[client]
             server_print "QUEUE NEXT::ID:%d %s",client, ClientName[client]
             change_task(iQUEUE, 30.0)
