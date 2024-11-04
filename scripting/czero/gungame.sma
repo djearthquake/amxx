@@ -986,12 +986,6 @@ public event_new_round()
 
     if(!ggActive) return;
 
-    new iEnt = fm_find_ent_by_class(MaxClients, "game_player_equip")
-    if(pev_valid(iEnt))
-    {
-        fm_remove_entity(iEnt)
-        log_amx("Removed ent to play Gungame.")
-    }
     // we should probably warmup...
     // don't ask me where I'm getting this from.
     if(shouldWarmup)
@@ -3815,7 +3809,6 @@ public toggle_gungame(taskid)
 
         remove_task(TASK_WARMUP_CHECK);
     }
-
     // we need to get these stats (GunGame is on, we don't have them, and we aren't in the process of getting them)
 #if defined SQL
     if(ggActive && !task_exists(TASK_GET_TOP_PLAYERS)) stats_get_top_players(); // there is no statsArray for SQL
@@ -6891,6 +6884,16 @@ public autovote_result()
                     vSuccess = 1; // means that we will be playing GunGame
             }
             else if(ggActive) vSuccess = 1;
+
+            if(vSuccess)
+            {
+                new iEnt = fm_find_ent_by_class(MaxClients, "game_player_equip")
+                if(pev_valid(iEnt))
+                {
+                    fm_remove_entity(iEnt)
+                    log_amx("Removed ent to play Gungame.")
+                }
+            }
 
             if(vSuccess && !ggActive)
             {
