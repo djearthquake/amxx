@@ -52,7 +52,7 @@
 
 
 // defines to be left alone
-new const GG_VERSION[] =    "2.13d";
+static const GG_VERSION[] =    "2.13e";
 #define LANG_PLAYER_C       -76 // for gungame_print (arbitrary number)
 #define TNAME_SAVE      pev_noise3 // for blocking game_player_equip and player_weaponstrip
 #define WINSOUNDS_SIZE      (MAX_WINSOUNDS*MAX_WINSOUND_LEN)+1 // for gg_sound_winner
@@ -84,13 +84,13 @@ new const GG_VERSION[] =    "2.13d";
 #define M4A1_DRAWANIM   5
 
 // saves memory???
-new const WEAPON_HEGRENADE[]    = "weapon_hegrenade";
-new const WEAPON_KNIFE[]    = "weapon_knife";
-new const WEAPON_GLOCK18[]  = "weapon_glock18";
-new const HEGRENADE[]       = "hegrenade";
-new const KNIFE[]           = "knife";
-new const BRASS_BELL_SOUND[]    = "gungame/gg_brass_bell.wav";
-new const KILL_DING_SOUND[] = "buttons/bell1.wav";
+static const WEAPON_HEGRENADE[]    = "weapon_hegrenade";
+static const WEAPON_KNIFE[]    = "weapon_knife";
+static const WEAPON_GLOCK18[]  = "weapon_glock18";
+static const HEGRENADE[]       = "hegrenade";
+static const KNIFE[]           = "knife";
+static const BRASS_BELL_SOUND[]    = "gungame/gg_brass_bell.wav";
+static const KILL_DING_SOUND[] = "buttons/bell1.wav";
 
 new bool:bRegistered; //cz hambot
 
@@ -201,12 +201,12 @@ enum saveData
 // misc
 new weapons_menu, scores_menu, level_menu, warmup = -1, warmupWeapon[24], voted, won, trailSpr, roundEnded,
 menuText[512], dummy[2], tempSave[TEMP_SAVES][saveData], czero, maxPlayers, mapIteration = 1, cfgDir[32],
-autovoted, autovotes[3], autovote_mode, roundsElapsed, gameCommenced, cycleNum = -1, czbot_hams, mp_friendlyfire,
+autovoted, autovotes[3], autovote_mode, roundsElapsed, gameCommenced, cycleNum = -1, /*czbot_hams,*/ mp_friendlyfire,
 winSounds[MAX_WINSOUNDS][MAX_WINSOUND_LEN+1], numWinSounds, currentWinSound, hudSyncWarmup, hudSyncReqKills,
 hudSyncLDisplay, shouldWarmup, ggActive, teamLevel[3], teamLvlWeapon[3][24], teamScore[3], bombMap, hostageMap,
 bombStatus[4], c4planter, Float:spawns[MAX_SPAWNS][9], spawnCount, csdmSpawnCount, hudSyncCountdown,
 weaponName[MAX_WEAPONS+1][24], Float:weaponGoal[MAX_WEAPONS+1], weaponNum, initTeamplayStr[32], initTeamplayInt = -1,
-bot_quota, spareName[32], sqlInit, galileoID = -1;
+/*bot_quota,*/ spareName[32], sqlInit, galileoID = -1;
 
 // stats file stuff
 new sfStatsStruct[statsData], lastStatsMode = -909;
@@ -476,12 +476,13 @@ public plugin_init()
     // remember the mod
     new modName[7];
     get_modname(modName,6);
+    /*
     if(equal(modName,"czero"))
     {
         czero = 1;
         bot_quota = get_cvar_pointer("bot_quota");
     }
-
+    */
     // identify this as a bomb map
     if(fm_find_ent_by_class(maxPlayers,"info_bomb_target") || fm_find_ent_by_class(1,"func_bomb_target"))
         bombMap = 1;
@@ -985,6 +986,12 @@ public event_new_round()
 
     if(!ggActive) return;
 
+    new iEnt = fm_find_ent_by_class(MaxClients, "game_player_equip")
+    if(pev_valid(iEnt))
+    {
+        fm_remove_entity(iEnt)
+        log_amx("Removed ent to play Gungame.")
+    }
     // we should probably warmup...
     // don't ask me where I'm getting this from.
     if(shouldWarmup)
@@ -995,10 +1002,16 @@ public event_new_round()
 
     if(warmup <= 0)
     {
-        new leader = get_leader();
+        static leader; leader = get_leader();
 
-        if(equal(lvlWeapon[leader],HEGRENADE)) play_sound_by_cvar(0,gg_sound_nade);
-        else if(equal(lvlWeapon[leader],KNIFE)) play_sound_by_cvar(0,gg_sound_knife);
+        if(equal(lvlWeapon[leader],HEGRENADE))
+        {
+            play_sound_by_cvar(0,gg_sound_nade);
+        }
+        else if(equal(lvlWeapon[leader],KNIFE))
+        {
+            play_sound_by_cvar(0,gg_sound_knife);
+        }
     }
 
     // reset leader display
@@ -5506,7 +5519,11 @@ stock change_level(id,value,just_joined=0,show_message=1,always_score=0,play_sou
     {
         new sound_cvar;
         if(nade) sound_cvar = gg_sound_nade;
-        else if(equal(lvlWeapon[id],KNIFE)) sound_cvar = gg_sound_knife;
+        else if(equal(lvlWeapon[id],KNIFE))
+        {
+            sound_cvar = gg_sound_knife;
+            console_cmd 0, "sv_airaccelerate -5" //bad for ladders though 2024 SPiNX
+        }
 
         if(sound_cvar)
         {
