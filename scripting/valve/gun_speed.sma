@@ -2,15 +2,18 @@
 #include <amxmisc>
 #include <engine_stocks>
 #include <fakemeta>
-#include <gearbox>
+//#include <gearbox>
 #include <hamsandwich>
 #include <xs>
 
 #define charsmin                  -1
 #define ACCESS_LEVEL    ADMIN_USER|ADMIN_CFG
 #define VOTE_ACCESS     ADMIN_USER|ADMIN_CFG
+#define HLW_SNIPER          25
 
-#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_CROWBAR | 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_RPG |1 <<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_GAUSS | 1<<HLW_PENGUIN )
+//#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_CROWBAR | 1<<HLW_EGON | 1<<HLW_HANDGRENADE | 1<<HLW_TRIPMINE | 1<<HLW_RPG |1 <<HLW_SATCHEL | 1<<HLW_SNARK | 1<<HLW_GRAPPLE | 1<<HLW_PIPEWRENCH  | 1<<HLW_KNIFE | 1<<HLW_DISPLACER | 1<<HLW_GAUSS | 1<<HLW_PENGUIN )
+//const NOCLIP_WPN_BS    = ((1<<CSW_HEGRENADE)|(1<<CSW_SMOKEGRENADE)|(1<<CSW_FLASHBANG)|(1<<CSW_KNIFE)|(1<<CSW_C4))
+#define NO_RECOIL_WEAPONS_BITSUM ((1<<CSW_HEGRENADE)|(1<<CSW_SMOKEGRENADE)|(1<<CSW_FLASHBANG)|(1<<CSW_KNIFE)|(1<<CSW_C4))
 
 //#define NO_RECOIL_WEAPONS_BITSUM  (1<<HLW_NONE | 1<<HLW_SATCHEL | 1<<HLW_DISPLACER | 1<<HLW_GAUSS)
 
@@ -34,7 +37,7 @@ const LINUX_DIFF = 5;
 #define MAG_ARSEN   1000
 
 #define PLUGIN  "Gun Speed"
-#define VERSION "1.0.2"
+#define VERSION "1.0.3"
 #define AUTHOR "SPiNX"
 /* VARIABLES */
 
@@ -61,12 +64,12 @@ new
     //pcvars[HLW_SPORE + 1];
     pcvars[HLW_SNIPER + 1];
 
-new const SzAmmo[][]={"ammo_9mmclip", "ammo_9mmbox", "ammo_gaussclip", "ammo_357", "ammo_crossbow", "ammo_buckshot", "ammo_556", "ammo_762"}
+static const SzAmmo[][]={"ammo_9mmclip", "ammo_9mmbox", "ammo_gaussclip", "ammo_357", "ammo_crossbow", "ammo_buckshot", "ammo_556", "ammo_762"};
 
 new HamHook:XhookReloadPre, HamHook:XhookReloadPost, HamHook:XhookPrimaryAPre, HamHook:XhookPrimaryAPos;
 
-new bool:bAccess[MAX_PLAYERS + 1]
-new votekeys = (1<<0)|(1<<1)
+new bool:bAccess[MAX_PLAYERS + 1], bool:bRegistered
+new votekeys = (1<<0)|(1<<1);
 
 @dim(iMsgId, iDest, id)
 {
@@ -166,25 +169,14 @@ public plugin_init()
     register_menucmd(register_menuid("Gunspeed?"),votekeys,"voteGunspeed")
 }
 
-
-//CONDITION ZERO TYPE BOTS. SPiNX
-@register(ham_bot)
-{
-    RegisterHamFromEntity( Ham_Spawn, ham_bot, "@spawn", 1 );
-    RegisterHamFromEntity( Ham_Killed, ham_bot, "@death", 1 );
-    server_print("Gunspeed ham bot from %N", ham_bot)
-}
-
-public client_authorized(id, const authid[])
+public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        new bool:bRegistered;
-        bIsBot[id] = equal(authid, "BOT") ? true : false
-        if(bIsBot[id] && !bRegistered)
+        b_Bot[id] = is_user_bot(id) ? true : false
+        if(b_Bot[id] && !bRegistered)
         {
-            //set_task(0.1, "@register", id); //will retest ham later. During anniversary udpate there were some issues.
-            bRegistered = true;
+            set_task(0.1, "@register", id);
         }
     }
 }
@@ -211,7 +203,7 @@ public event_active_weapon(player)
 
 @spawn(player)
 {
-    if(g_Speed > 0.0 && bAccess[player] /*&& !b_Bot[player]*/ && is_user_connected(player))
+    if(g_Speed > 0.0 && bAccess[player] && !b_Bot[player] && is_user_connected(player))
     {
         if(XhookPrimaryAPre)
             EnableHamForward(XhookPrimaryAPre)
@@ -233,7 +225,7 @@ public event_active_weapon(player)
 
 @delayed_ammo_give(player)
 {
-    if(is_user_alive(player))
+    if(is_user_alive(player) && !gbCS)
     {
         ///server_print "%n spawned gunspeed ammo", player
         set_pdata_int( player, CART_PARABELUM, MAG_BOX )
@@ -501,4 +493,13 @@ public plugin_end()
 
     if(XhookReloadPost)
         DisableHamForward(XhookReloadPost)
+}
+
+@register(ham_bot)
+{//HAM BOTS. SPiNX
+    if(is_user_connected(ham_bot))
+    {
+        bRegistered = true;
+    }
+    server_print("%s from %N", PLUGIN, ham_bot)
 }
