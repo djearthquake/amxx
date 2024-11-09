@@ -42,7 +42,7 @@
   Commands:
 
     say buy_parachute   -   buys a parachute (CStrike ONLY)
-    saw sell_parachute  -   sells your parachute (75% of the purchase price)
+    say sell_parachute  -   sells your parachute (75% of the purchase price)
     say give_parachute <nick, #userid or @team>  -  gives your parachute to the player
 
     amx_parachute <nick, #userid or @team>  -  gives a player a free parachute (CStrike ONLY)
@@ -146,7 +146,7 @@ public plugin_init()
 
     static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name))
-    if(equal(mod_name, "cstrike"))
+    if(equal(mod_name, "cstrike") || equal(mod_name, "czero"))
     {
         gCStrike = true
     }
