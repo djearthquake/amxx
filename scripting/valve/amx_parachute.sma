@@ -1,7 +1,7 @@
 /******************************************************************************/
 #define PLUGIN "Parachute"
 #define AUTHOR "SPiNX"
-#define VERSION "1.8.6"
+#define VERSION "1.8.7"
 
 /*******************************************************************************
     Original AMX Author: KRoTaL
@@ -251,19 +251,22 @@ public plugin_precache()
 {
     if(is_user_connected(ham_bot))
     {
+        bRegistered = true;
         RegisterHamFromEntity( Ham_Spawn, ham_bot, "newSpawn", 1 );
         RegisterHamFromEntity( Ham_Killed, ham_bot, "death_event", 1 );
         server_print("Parachute ham bot from %N", ham_bot)
     }
 }
 
-public client_authorized(id, const authid[])
+public client_putinserver(id)
 {
-    bIsBot[id] = equal(authid, "BOT") ? true : false
-    if(bIsBot[id] && !bRegistered)
+    if(is_user_connected(id))
     {
-        set_task(0.1, "@register", id);
-        bRegistered = true;
+        bIsBot[id] = is_user_bot(id) ? true : false
+        if(bIsBot[id] && !bRegistered)
+        {
+            set_task(0.1, "@register", id);
+        }
     }
 }
 
