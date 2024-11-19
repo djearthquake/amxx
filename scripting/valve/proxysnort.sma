@@ -62,7 +62,7 @@
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8"
+#define VERSION "1.8.1"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -84,7 +84,7 @@
 #define charsmin                  -1
 #define FCVAR_NOEXTRAWHITEPACE     512 // Automatically strips trailing/leading white space from the string value
 
-#pragma dynamic 9600000 // local cache growing
+//#pragma dynamic 9600000 // local cache growing
 
 new const SzGet[]="GET /v2/%s?key=%s&inf=1&vpn=1&risk=1&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
 //new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
@@ -128,8 +128,6 @@ public plugin_init()
     g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
     g_cvar_debugger         = register_cvar("proxy_debug", "0");
     //proxy_action: 0 is rename. 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
-    //Want more ask! Love to put them in SVC_FINALE. They are frozen people can shoot them and text slowly comes across.
-    g_clientemp_version     = get_cvar_pointer("temp_queue_weight") ? get_cvar_pointer("temp_queue_weight") : 0
     //g_maxPlayers = get_maxplayers()
     //Tag positive findings by mod.
     static mod_name[MAX_NAME_LENGTH]
@@ -341,6 +339,7 @@ stock get_user_profile(id)
     get_user_ip(id,Ip,charsmax(Ip),1);
     return authid, Ip, name
 }
+
 @handle_proxy_user(id)
 {
     if(!g_testing[id])
@@ -389,7 +388,9 @@ stock get_user_profile(id)
     {
         get_user_profile(id)
         if(get_pcvar_num(g_cvar_debugger) > 1)
+        {
             server_print "%s %s by %s:reading the socket", PLUGIN, VERSION, AUTHOR
+        }
         #if AMXX_VERSION_NUM != 182
         if(socket_is_readable(g_proxy_socket, 0))
         #endif
@@ -397,57 +398,67 @@ stock get_user_profile(id)
         if(!equal(g_proxy_socket_buffer, ""))
         {
             if(get_pcvar_num(g_cvar_debugger) > 2)
-                server_print "%s", g_proxy_socket_buffer
-            //Proxy user treatments
-            if (containi(g_proxy_socket_buffer, "yes") != charsmin || containi(g_proxy_socket_buffer, "Compromised") != charsmin)
             {
-                Data[SzProxy] = 1
-                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[ SzProxy ])
-                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-                @file_data(SzSave)
-                server_print "Proxy sniff...%s|%s", Ip, authid
-                log_amx "%s, %s uses a proxy!", name, authid
+                server_print "%s", g_proxy_socket_buffer
+            }
+            //Proxy user treatments
+            if(containi(g_proxy_socket_buffer, "yes") != charsmin || containi(g_proxy_socket_buffer, "Compromised") != charsmin)
+            {
                 if(!g_testing[id])
-                //task per data wasn't being saved, kicking too quickly
+                {
+                    //task per data wasn't being saved, kicking too quickly
                     set_task(1.0,"@handle_proxy_user",id);
+                    Data[SzProxy] = 1
+                    formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[ SzProxy ])
+                    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                    @file_data(SzSave)
+                    server_print "Proxy sniff...%s|%s", Ip, authid
+                    log_amx "%s, %s uses a proxy!", name, authid
+                }
             }
             //What if they aren't on proxy or VPN?
-            if (containi(g_proxy_socket_buffer, "no") != charsmin && containi(g_proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
+            else if(containi(g_proxy_socket_buffer, "no") != charsmin && containi(g_proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
             {
-                Data[SzProxy] = 0
-                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[SzProxy])
-                @file_data(SzSave)
-                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
-                server_print "No proxy found on %s, %s error-free",name,authid
-                if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
-                    g_has_been_checked[id] = true //stop double prints
-                g_processing[id] = false
+                if(!g_testing[id])
+                {
+                    Data[SzProxy] = 0
+                    formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[SzProxy])
+                    @file_data(SzSave)
+                    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
+                    server_print "No proxy found on %s, %s error-free",name,authid
+                    if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
+                        g_has_been_checked[id] = true //stop double prints
+                    g_processing[id] = false
+                }
             }
-            if (containi(g_proxy_socket_buffer, "no") != charsmin  && containi(g_proxy_socket_buffer, "error") != charsmin )
+            else if (containi(g_proxy_socket_buffer, "no") != charsmin  && containi(g_proxy_socket_buffer, "error") != charsmin )
             {
-                Data[SzProxy] = 0
-                formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
-                @file_data(SzSave)
-                TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-                server_print "No proxy found on %s, %s with error on packet",name,authid
-                client_print 0, print_console, "No proxy found on %s, with error on packet", name
+                if(!g_testing[id])
+                {
+                    Data[SzProxy] = 0
+                    formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
+                    @file_data(SzSave)
+                    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                    server_print "No proxy found on %s, %s with error on packet",name,authid
+                    client_print 0, print_console, "No proxy found on %s, with error on packet", name
+                }
             }
             //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
-            if (containi(g_proxy_socket_buffer, "error") != charsmin  && containi(g_proxy_socket_buffer, "message") != charsmin )
+            else if (containi(g_proxy_socket_buffer, "error") != charsmin  && containi(g_proxy_socket_buffer, "message") != charsmin )
             {
                 static msg[MAX_CMD_LENGTH];
                 copyc(msg, charsmax(msg), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "message") + 11], '"');
                 server_print "Message is: %s",msg
             }
             //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
-            if (containi(g_proxy_socket_buffer, "^"provider^"") > charsmin)
+            else if (containi(g_proxy_socket_buffer, "^"provider^"") > charsmin)
             {
                 copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "^"provider^"") + 10], ',');
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
             }
-            if (containi(g_proxy_socket_buffer, "er^"") > charsmin)
+            else if (containi(g_proxy_socket_buffer, "er^"") > charsmin)
             {
                 copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "er^"") + 4], ',');
                 //Misc data and stats
@@ -457,17 +468,20 @@ stock get_user_profile(id)
 
             if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
             {
-                Data[SzIsp] = provider
-
                 if(!g_testing[id])
-                    TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+                {
+                    Data[SzIsp] = provider
 
-                if(get_pcvar_num(g_cvar_debugger) > 2 )
-                    server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
-                set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
-                for (new admin=1; admin<=MaxClients; ++admin)
-                if (is_user_connected(admin) && is_user_admin(admin))
-                    show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+                    if(!g_testing[id])
+                        TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
+
+                    if(get_pcvar_num(g_cvar_debugger) > 2 )
+                        server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+                    set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
+                    for (new admin=1; admin<=MaxClients; ++admin)
+                    if (is_user_connected(admin) && is_user_admin(admin))
+                        show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+                }
             }
             if (containi(g_proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
