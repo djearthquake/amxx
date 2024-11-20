@@ -62,7 +62,7 @@
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8.2"
+#define VERSION "1.8.3"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -119,6 +119,7 @@ enum _:Client_proxy
     iRisk[ 4 ]
 }
 new Data[ Client_proxy ]
+
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
@@ -138,6 +139,7 @@ public plugin_init()
     g_already_checked = TrieCreate()
     ReadProxyFromFile( )
 }
+
 @init_proxy_file()
 {
     static SzLoopback[] = "127.0.0.1"
@@ -165,7 +167,7 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         b_Bot[id] = is_user_bot(id) ? true : false
-        if(!b_Bot[id])
+        if(!b_Bot[id] && !g_processing[id])
         {
             @proxy_begin(id)
         }
@@ -174,12 +176,12 @@ public client_putinserver(id)
 
 @proxy_begin(id)
 {
-    if(is_user_connected(id) && !g_processing[id])
+    if(is_user_connected(id))
     {
         if(!g_has_been_checked[id])
         {
-            get_user_profile(id)
             g_processing[id] = true
+            get_user_profile(id)
             static SzLoopback[] = "127.0.0.1"
             get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
             new total = iPlayers()
@@ -299,13 +301,13 @@ public client_proxycheck(Ip[], id)
     }
     return PLUGIN_CONTINUE;
 }
+
 @write_web(text[MAX_CMD_LENGTH], reader)
 {
     static id; id = reader - USERWRITE;
     if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
-            //set_task(10.0,"@proxy_begin",id)
             set_task(5.0,"@proxy_begin",id)
         else
             IS_SOCKET_IN_USE = true
@@ -582,6 +584,7 @@ stock get_user_profile(id)
     }
     return PLUGIN_HANDLED
 }
+
 @client_mark_socket(id)
 {
     IS_SOCKET_IN_USE = false;
@@ -601,17 +604,20 @@ stock get_user_profile(id)
         server_print "%s | %s unlocking socket!", PLUGIN, name
     }
 }
+
 @mark_socket(work[MAX_PLAYERS])
 {
     IS_SOCKET_IN_USE = false;
     if(!equal(work, ""))
     server_print "%s | %s unlocking socket!", PLUGIN, work
 }
+
 @lock_socket()
 {
     IS_SOCKET_IN_USE = true
     server_print "%s other plugin locking socket!", PLUGIN
 }
+
 @needan(keymissing)
 {
     new id = keymissing - ADMIN
@@ -635,6 +641,7 @@ stock get_user_profile(id)
         }
     }
 }
+
 @file_data(SzSave[MAX_CMD_LENGTH])
 {
     server_print "%s|trying save", PLUGIN
@@ -643,6 +650,7 @@ stock get_user_profile(id)
     add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
     write_file(szFilePath, SzSave)
 }
+
 public ReadProxyFromFile( )
 {
     new szDataFromFile[ MAX_CMD_LENGTH ]
@@ -721,6 +729,7 @@ public bright_message()
     ewrite_string(MESSAGE);
     emessage_end();
 }
+
 stock FixedSigned16( Float:value, scale )
 // Converts floating-point number to signed 16-bit fixed-point representation
 {
@@ -732,6 +741,7 @@ stock FixedSigned16( Float:value, scale )
         Output = -32768;
     return  Output;
 }
+
 stock FixedUnsigned16( Float:value, scale )
 // Converts floating-point number to unsigned 16-bit fixed-point representation
 {
@@ -743,6 +753,7 @@ stock FixedUnsigned16( Float:value, scale )
         Output = 0xFFFF;
     return  Output;
 }
+
 stock players_who_see_effects()
 {
     new players[MAX_PLAYERS], playercount, SEE;
@@ -751,6 +762,7 @@ stock players_who_see_effects()
     return SEE;
     return PLUGIN_CONTINUE;
 }
+
 stock iPlayers()
 {
     new players[ MAX_PLAYERS ],iHeadcount;get_players(players,iHeadcount,"ch")
