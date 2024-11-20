@@ -5,7 +5,7 @@
 /**
 *    Proxy Snort. Handles proxy users using proxycheck.io and GoldSrc.
 *
-*    Copyleft (C) March 2020-2023 .sρiηX҉.
+*    Copyleft (C) March 2020-2040 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -56,13 +56,17 @@
 *    Change log 1.7 to 1.8
 *   -Discontinue regex module usage. Found leak.
 *
+*    11/20/2024 SPiNX
+*    Change log 1.8.0 to 1.8.5
+*   -Bugfix and optimize with Hellfire/CSLover pen testing.
+*
 */
 #include <amxmodx>
 #include <amxmisc>
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8.4"
+#define VERSION "1.8.5"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
