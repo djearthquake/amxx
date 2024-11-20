@@ -62,7 +62,7 @@
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8.1"
+#define VERSION "1.8.2"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -108,6 +108,8 @@ new Trie:g_already_checked;
 new g_clientemp_version;
 new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
 new SzSave[MAX_CMD_LENGTH];
+
+new bool:b_Bot[MAX_PLAYERS+1]
 enum _:Client_proxy
 {
     SzAddress[ MAX_IP_LENGTH_V6 ],
@@ -159,16 +161,24 @@ public client_disconnected(id)
 }
 
 public client_putinserver(id)
-    @proxy_begin(id)
+{
+    if(is_user_connected(id))
+    {
+        b_Bot[id] = is_user_bot(id) ? true : false
+        if(!b_Bot[id])
+        {
+            @proxy_begin(id)
+        }
+    }
+}
 
 @proxy_begin(id)
 {
     if(is_user_connected(id) && !g_processing[id])
     {
-        if(is_user_bot(id) || g_has_been_checked[id] || id == 0)
-            return PLUGIN_HANDLED_MAIN
-        if(!is_user_bot(id) && id > 0)
+        if(!g_has_been_checked[id])
         {
+            get_user_profile(id)
             g_processing[id] = true
             static SzLoopback[] = "127.0.0.1"
             get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
@@ -231,7 +241,7 @@ public client_putinserver(id)
 public client_proxycheck(Ip[], id)
 {
     if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id] && g_processing[id])
-    if ( !is_user_bot(id) ){
+    if ( !b_Bot[id] ){
     //Use my updated version of Amxx 1.10 as this is controlled at the C++ level. Regex mod has a memory leak.
     /*
     {
@@ -334,9 +344,12 @@ public client_proxycheck(Ip[], id)
 
 stock get_user_profile(id)
 {
-    get_user_name(id,name,charsmax(name) );
-    get_user_authid(id,authid,charsmax(authid) );
-    get_user_ip(id,Ip,charsmax(Ip),1);
+    if(is_user_connected(id))
+    {
+        get_user_name(id,name,charsmax(name) );
+        get_user_authid(id,authid,charsmax(authid) );
+        get_user_ip(id,Ip,charsmax(Ip),1);
+    }
     return authid, Ip, name
 }
 
@@ -344,7 +357,6 @@ stock get_user_profile(id)
 {
     if(!g_testing[id])
     {
-        get_user_profile(id)
         new iAction = get_pcvar_num(g_cvar_iproxy_action)
         static const SzMsg[]="Anonymizing is NOT allowed!"
 
@@ -384,9 +396,8 @@ stock get_user_profile(id)
 {
     static id; id = proxy_snort - USERREAD
     if( id > 0 && !g_has_been_checked[id] )
-    if(!is_user_bot(id))
+    if(!b_Bot[id])
     {
-        get_user_profile(id)
         if(get_pcvar_num(g_cvar_debugger) > 1)
         {
             server_print "%s %s by %s:reading the socket", PLUGIN, VERSION, AUTHOR
@@ -402,7 +413,7 @@ stock get_user_profile(id)
                 server_print "%s", g_proxy_socket_buffer
             }
             //Proxy user treatments
-            if(containi(g_proxy_socket_buffer, "yes") != charsmin || containi(g_proxy_socket_buffer, "Compromised") != charsmin)
+            if(containi(g_proxy_socket_buffer, "^"yes^"") != charsmin || containi(g_proxy_socket_buffer, "Compromised") != charsmin)
             {
                 if(!g_testing[id])
                 {
@@ -417,7 +428,7 @@ stock get_user_profile(id)
                 }
             }
             //What if they aren't on proxy or VPN?
-            else if(containi(g_proxy_socket_buffer, "no") != charsmin && containi(g_proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
+            else if(containi(g_proxy_socket_buffer, "^"no^"") != charsmin && containi(g_proxy_socket_buffer, "error") == charsmin && !g_has_been_checked[id])
             {
                 if(!g_testing[id])
                 {
@@ -431,7 +442,7 @@ stock get_user_profile(id)
                     g_processing[id] = false
                 }
             }
-            else if (containi(g_proxy_socket_buffer, "no") != charsmin  && containi(g_proxy_socket_buffer, "error") != charsmin )
+            else if (containi(g_proxy_socket_buffer, "^"no^"") != charsmin  && containi(g_proxy_socket_buffer, "error") != charsmin )
             {
                 if(!g_testing[id])
                 {
@@ -483,7 +494,7 @@ stock get_user_profile(id)
                         show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
                 }
             }
-            if (containi(g_proxy_socket_buffer, "risk") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
+            if (containi(g_proxy_socket_buffer, "^"risk^"") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
             {
                 server_print "Copying the risk score."
 
@@ -510,7 +521,7 @@ stock get_user_profile(id)
                         if (is_user_connected(admin) && is_user_admin(admin))
                             client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
                 }
-                if (containi(g_proxy_socket_buffer, "type") != charsmin)
+                if (containi(g_proxy_socket_buffer, "^"type^"") != charsmin)
                 {
                     copyc(type, charsmax(type), g_proxy_socket_buffer[containi(g_proxy_socket_buffer,"^"type^":")+7],',')
                     remove_quotes(type)
