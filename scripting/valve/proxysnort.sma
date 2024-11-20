@@ -179,54 +179,18 @@ public client_putinserver(id)
 
         if(!b_Bot[id] && !g_processing[id])
         {
-            if(equal(ClientIP[id], ""))
-            {
-                get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
-            }
-            if(equal(ClientName[id], "" ))
-            {
-                get_user_name(id, ClientName[id], charsmax(ClientName[]))
-            }
-            if(equal(ClientAuth[id], ""))
-            {
-                get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
-            }
+            get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+            get_user_name(id, ClientName[id], charsmax(ClientName[]))
+            get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
+
             @proxy_begin(id)
         }
     }
 }
 
-public client_authorized(id, const authid[])
-{
-    b_Bot[id] = equal(authid, "BOT") ? true : false
-    if(!equal(authid, ""))
-    {
-        copy(ClientAuth[id],charsmax(ClientAuth[]), authid);
-    }
-}
-
-#if defined client_connectex
-public client_connectex(id, const name[], const ip[], reason[128])
-{
-    copyc(ClientIP[id], charsmax(ClientIP[]), ip, ':')
-    reason = (containi(ip, SzLoopback) > charsmin) ? "IP address misread!" : "Bad STEAMID!"
-    copy(ClientName[id],charsmax(ClientName[]), name)
-    return PLUGIN_CONTINUE
-}
-#else
-public client_connect(id)
-{
-    if(is_user_connected(id)
-    {
-        get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
-        get_user_name(id, ClientName[id], charsmax(ClientName[])
-    }
-}
-#endif
-
 @proxy_begin(id)
 {
-    if(id)
+    if(is_user_connected(id))
     {
         if(!g_has_been_checked[id])
         {
