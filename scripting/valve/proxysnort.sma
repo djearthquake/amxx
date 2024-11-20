@@ -56,11 +56,15 @@
 *    Change log 1.7 to 1.8
 *   -Discontinue regex module usage. Found leak.
 *
+*    01/24/2024 SPiNX
+*    -Added test command. !Proxy <IP>
+*
 *    11/20/2024 SPiNX
 *    Change log 1.8.0 to 1.8.5
 *   -Bugfix and optimize with Hellfire/CSLover pen testing.
 *
 */
+
 #include <amxmodx>
 #include <amxmisc>
 //#include <regex>
@@ -687,7 +691,7 @@ public ReadProxyFromFile( )
             Data[ SzProxy ], charsmax( Data[SzProxy] )
         )
         if(debugger)
-            server_print "Read %s,%i^n^nfrom file",Data[ SzAddress ], Data[ SzProxy ]
+            server_print "Read %s, %i^n^nfrom file",Data[ SzAddress ], str_to_num(Data[ SzProxy ])
         str_to_num(Data[ SzProxy ])
         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
     }
