@@ -62,7 +62,7 @@
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8.3"
+#define VERSION "1.8.4"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -86,30 +86,34 @@
 
 //#pragma dynamic 9600000 // local cache growing
 
-new const SzGet[]="GET /v2/%s?key=%s&inf=1&vpn=1&risk=1&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
+static SzLoopback[] = "127.0.0.1"
+static const SzGet[]="GET /v2/%s?key=%s&inf=1&vpn=1&risk=1&tag=%s,%s HTTP/1.1^nHost: proxycheck.io^n^n"
 //new iResult, Regex:hPattern, szError[MAX_AUTHID_LENGTH], iReturnValue;
 new g_cvar_token, token[MAX_PLAYERS + 1], g_cvar_tag, tag[MAX_PLAYERS + 1];
 // Just proxy or vpn yes or no length MAX_MENU_LENGTH
 //to be able to get the risk and risk type
 new g_proxy_socket_buffer[ MAX_MENU_LENGTH - MAX_IP_LENGTH_V6 ]
 
-new name[MAX_NAME_LENGTH], Ip[MAX_IP_LENGTH_V6], ip[MAX_IP_LENGTH_V6], authid[ MAX_AUTHID_LENGTH + 1 ];
 new provider[MAX_RESOURCE_PATH_LENGTH], type[ MAX_NAME_LENGTH ];
 new g_proxy_socket, g_cvar_iproxy_action, g_cvar_admin;
-new const MESSAGE[] = "Proxysnort by Spinx"
+static const MESSAGE[] = "Proxysnort by Spinx"
 new risk[ 4 ];
 new g_cvar_debugger;
 new bool:IS_SOCKET_IN_USE;
 new bool:g_has_been_checked[MAX_PLAYERS + 1];
 new bool:g_processing[MAX_PLAYERS + 1];
 new bool:g_testing[MAX_PLAYERS + 1];
+new bool:b_Bot[MAX_PLAYERS+1]
+new bool:b_Admin[MAX_PLAYERS+1]
 
 new Trie:g_already_checked;
-new g_clientemp_version;
-new ClientAuth[MAX_PLAYERS+1][MAX_AUTHID_LENGTH];
+static g_clientemp_version;
+new ClientAuth[MAX_AUTHID_LENGTH][MAX_PLAYERS+1];
+new ClientIP[MAX_IP_LENGTH][MAX_PLAYERS+1];
+new ClientName[MAX_NAME_LENGTH][MAX_PLAYERS+1]
 new SzSave[MAX_CMD_LENGTH];
 
-new bool:b_Bot[MAX_PLAYERS+1]
+
 enum _:Client_proxy
 {
     SzAddress[ MAX_IP_LENGTH_V6 ],
@@ -128,21 +132,25 @@ public plugin_init()
     g_cvar_token            = register_cvar("sv_proxycheckio-key", "null", FCVAR_PROTECTED|FCVAR_NOEXTRAWHITEPACE|FCVAR_SPONLY);
     g_cvar_tag              = register_cvar("sv_proxytag", "GoldSrc", FCVAR_PRINTABLEONLY);
     g_cvar_admin            = register_cvar("proxy_admin", "1"); //check admins
-    g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
     g_cvar_debugger         = register_cvar("proxy_debug", "0");
+    g_cvar_iproxy_action    = register_cvar("proxy_action", "1");
     //proxy_action: 0 is rename. 1 is kick. 2 is banip. 3 is banid. 4 is warn-only. 5 is log-only (silent).
-    //g_maxPlayers = get_maxplayers()
+
+    #if !defined MaxClients
+    new MaxClients = get_maxplayers()
+    #endif
+
     //Tag positive findings by mod.
     static mod_name[MAX_NAME_LENGTH]
     get_modname(mod_name, charsmax(mod_name));
     set_pcvar_string(g_cvar_tag, mod_name);
+
     g_already_checked = TrieCreate()
     ReadProxyFromFile( )
 }
 
 @init_proxy_file()
 {
-    static SzLoopback[] = "127.0.0.1"
     Data[SzAddress] = SzLoopback
     Data[ SzProxy ] = 1
     if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
@@ -167,37 +175,77 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         b_Bot[id] = is_user_bot(id) ? true : false
+        b_Admin[id] = is_user_admin(id) ? true : false
+
         if(!b_Bot[id] && !g_processing[id])
         {
+            if(equal(ClientIP[id], ""))
+            {
+                get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+            }
+            if(equal(ClientName[id], "" ))
+            {
+                get_user_name(id, ClientName[id], charsmax(ClientName[]))
+            }
+            if(equal(ClientAuth[id], ""))
+            {
+                get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
+            }
             @proxy_begin(id)
         }
     }
 }
 
+public client_authorized(id, const authid[])
+{
+    b_Bot[id] = equal(authid, "BOT") ? true : false
+    if(!equal(authid, ""))
+    {
+        copy(ClientAuth[id],charsmax(ClientAuth[]), authid);
+    }
+}
+
+#if defined client_connectex
+public client_connectex(id, const name[], const ip[], reason[128])
+{
+    copyc(ClientIP[id], charsmax(ClientIP[]), ip, ':')
+    reason = (containi(ip, SzLoopback) > charsmin) ? "IP address misread!" : "Bad STEAMID!"
+    copy(ClientName[id],charsmax(ClientName[]), name)
+    return PLUGIN_CONTINUE
+}
+#else
+public client_connect(id)
+{
+    if(is_user_connected(id)
+    {
+        get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
+        get_user_name(id, ClientName[id], charsmax(ClientName[])
+    }
+}
+#endif
+
 @proxy_begin(id)
 {
-    if(is_user_connected(id))
+    if(id)
     {
         if(!g_has_been_checked[id])
         {
             g_processing[id] = true
-            get_user_profile(id)
-            static SzLoopback[] = "127.0.0.1"
-            get_user_ip( id, ip, charsmax( ip ), WITHOUT_PORT )
             new total = iPlayers()
-            Data[SzAddress] = ip
-            if(equali(ip,SzLoopback))
-                client_proxycheck(ip,id)
+            Data[SzAddress] = ClientIP[id]
+            if(equali(ClientIP[id],SzLoopback))
+            {
+                client_proxycheck(ClientIP[id],id)
+            }
             else if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
             {
-                //new Float:retask = (float(total++)*3.0)
                 new Float:retask = (float(total++)*1.5)
                 new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
                 server_print "%s task input time = %f", PLUGIN,task_expand
-                Data[SzAddress] = ip
+                Data[SzAddress] = ClientIP[id]
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if(!task_exists(id) && g_processing[id])
-                    set_task(task_expand , "client_proxycheck", id, ip, charsmax(ip))
+                    set_task(task_expand , "client_proxycheck", id, ClientIP[id], charsmax(ClientIP[]))
             }
             else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
             {
@@ -221,9 +269,8 @@ public client_putinserver(id)
 @proxy_test(id,level,cid)
 {
     static iArg1[MAX_IP_LENGTH]
-    static SzLoopback[] = "127.0.0.1"
 
-    if( !cmd_access ( id, level, cid, 1 ) || !is_user_connected(id) || equali(ip,SzLoopback) )
+    if( !cmd_access ( id, level, cid, 1 ) || !is_user_connected(id) || equali(ClientIP[id],SzLoopback) )
         return PLUGIN_HANDLED;
 
     g_has_been_checked[id] = false
@@ -242,8 +289,8 @@ public client_putinserver(id)
 
 public client_proxycheck(Ip[], id)
 {
-    if(is_user_admin(id) && get_pcvar_num(g_cvar_admin) || !is_user_admin(id) && !g_has_been_checked[id] && g_processing[id])
-    if ( !b_Bot[id] ){
+    if(b_Admin[id]  && get_pcvar_num(g_cvar_admin) || !b_Admin[id] && !g_has_been_checked[id] && g_processing[id])
+    if (!b_Bot[id] ){
     //Use my updated version of Amxx 1.10 as this is controlled at the C++ level. Regex mod has a memory leak.
     /*
     {
@@ -276,11 +323,11 @@ public client_proxycheck(Ip[], id)
         */
         get_pcvar_string(g_cvar_token, token, charsmax (token));
         static Soc_O_ErroR2, constring[ MAX_USER_INFO_LENGTH ];
-        if ( equal(token, "null") || equal(token, "") && is_user_admin(id) )
+        if ( equal(token, "null") || equal(token, "") && b_Admin[id] )
             set_task(40.0, "@needan", id+ADMIN);
         if(get_pcvar_num(g_cvar_debugger) > 1)
             server_print"%s %s by %s:Starting to open socket!", PLUGIN, VERSION, AUTHOR
-        get_user_authid(id,authid,charsmax (authid));
+        get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]));
         #if defined SOCK_NON_BLOCKING
             g_proxy_socket = socket_open("proxycheck.io", 80, SOCKET_TCP, Soc_O_ErroR2, SOCK_NON_BLOCKING|SOCK_LIBC_ERRORS);
         #else
@@ -288,7 +335,7 @@ public client_proxycheck(Ip[], id)
         #endif
         get_pcvar_string(g_cvar_token, token, charsmax(token));
         get_pcvar_string(g_cvar_tag, tag, charsmax(tag));
-        formatex(constring,charsmax(constring), SzGet, Ip, token, tag, authid);
+        formatex(constring,charsmax(constring), SzGet,  g_testing[id] ? Ip: ClientIP[id], token, tag, ClientAuth[id]);
         if(!task_exists(id+USERWRITE))
             set_task(1.0, "@write_web", id+USERWRITE, constring, charsmax(constring) );
         if(get_pcvar_num(g_cvar_debugger) > 2 )
@@ -305,13 +352,14 @@ public client_proxycheck(Ip[], id)
 @write_web(text[MAX_CMD_LENGTH], reader)
 {
     static id; id = reader - USERWRITE;
-    if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
+    //if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
+    if(!g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
             set_task(5.0,"@proxy_begin",id)
         else
             IS_SOCKET_IN_USE = true
-        server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, name
+        server_print "%s %s by %s is locking socket for proxy check.^n^n",PLUGIN, VERSION, AUTHOR, ClientName[id]
         if(is_plugin_loaded(WEATHER_SCRIPT,true)!=charsmin && g_clientemp_version && get_pcvar_num(g_clientemp_version))
         {
             if(callfunc_begin("@lock_socket",WEATHER_SCRIPT))
@@ -320,14 +368,14 @@ public client_proxycheck(Ip[], id)
             }
         }
         if(get_pcvar_num(g_cvar_debugger) > 1 )
-            server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, name
+            server_print "%s %s by %s:Is the %s socket writable?^n^n", PLUGIN, VERSION, AUTHOR, ClientName[id]
         #if AMXX_VERSION_NUM != 182
         if (socket_is_writable(g_proxy_socket, 0))
         #endif
         socket_send(g_proxy_socket,text,charsmax (text));
         if(get_pcvar_num(g_cvar_debugger) > 1 )
         {
-            server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, name
+            server_print "%s %s by %s:Yes! Writing to the socket of %s^n^n", PLUGIN, VERSION, AUTHOR, ClientName[id]
         }
     }
     set_task(10.0,"@unlock", 2023)
@@ -344,17 +392,6 @@ public client_proxycheck(Ip[], id)
     }
 }
 
-stock get_user_profile(id)
-{
-    if(is_user_connected(id))
-    {
-        get_user_name(id,name,charsmax(name) );
-        get_user_authid(id,authid,charsmax(authid) );
-        get_user_ip(id,Ip,charsmax(Ip),1);
-    }
-    return authid, Ip, name
-}
-
 @handle_proxy_user(id)
 {
     if(!g_testing[id])
@@ -367,8 +404,8 @@ stock get_user_profile(id)
         if (iAction <= 4)
         {
             for (new admin=1; admin<=MaxClients; ++admin)
-                if (is_user_connected(admin) && is_user_admin(admin))
-                    client_print admin,print_chat,"%s, %s uses a proxy!", name, authid
+                if(is_user_connected(admin) && b_Admin[admin])
+                    client_print admin,print_chat,"%s, %s uses a proxy!", ClientName[id], ClientAuth[id]
 
             client_cmd( 0,"spk ^"bad entry detected^"" )
         }
@@ -379,16 +416,16 @@ stock get_user_profile(id)
             switch(iAction)
             {
                 case 0:   set_user_info(id, "name", "Anon")
-                case 1:   server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
-                case 2:   server_cmd( "amx_addban ^"%s^" ^"0^" ^"%s^"", Ip, SzMsg)
-                case 3:   server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", authid, SzMsg)
-                default:  server_cmd( "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg)
+                case 1:   console_cmd(0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
+                case 2:   console_cmd(0, "amx_addban ^"%s^" ^"0^" ^"%s^"", ClientIP[id], SzMsg)
+                case 3:   console_cmd(0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientAuth[id], SzMsg)
+                default:  console_cmd(0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientIP[id], SzMsg)
             }
 
         }
         else if(is_user_connecting(id))
         {
-            server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", Ip, SzMsg
+            server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientIP[id], SzMsg
             server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg) //test kick downloaders
         }
     }
@@ -425,8 +462,8 @@ stock get_user_profile(id)
                     formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[ SzProxy ])
                     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                     @file_data(SzSave)
-                    server_print "Proxy sniff...%s|%s", Ip, authid
-                    log_amx "%s, %s uses a proxy!", name, authid
+                    server_print "Proxy sniff...%s|%s", ClientIP[id], ClientAuth[id]
+                    log_amx "%s, %s uses a proxy!", ClientName[id], ClientAuth[id]
                 }
             }
             //What if they aren't on proxy or VPN?
@@ -438,7 +475,7 @@ stock get_user_profile(id)
                     formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ], Data[SzProxy])
                     @file_data(SzSave)
                     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data)
-                    server_print "No proxy found on %s, %s error-free",name,authid
+                    server_print "No proxy found on %s, %s error-free", ClientName[id], ClientAuth[id]
                     if(!get_pcvar_num(g_cvar_debugger)) //need double print as it is a debugger passing point anyway to get all trivial details like risk and provider. Can whois later honestly.
                         g_has_been_checked[id] = true //stop double prints
                     g_processing[id] = false
@@ -452,8 +489,8 @@ stock get_user_profile(id)
                     formatex(SzSave,charsmax(SzSave),"^"%s^" ^"%i^"", Data[ SzAddress ],Data[SzProxy])
                     @file_data(SzSave)
                     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
-                    server_print "No proxy found on %s, %s with error on packet",name,authid
-                    client_print 0, print_console, "No proxy found on %s, with error on packet", name
+                    server_print "No proxy found on %s, %s with error on packet", ClientName[id], ClientAuth[id]
+                    client_print 0, print_console, "No proxy found on %s, with error on packet", ClientName[id]
                 }
             }
             //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
@@ -469,14 +506,14 @@ stock get_user_profile(id)
                 copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "^"provider^"") + 10], ',');
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
-                    server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
+                    server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider
             }
             else if (containi(g_proxy_socket_buffer, "er^"") > charsmin)
             {
                 copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "er^"") + 4], ',');
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
-                    server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider
+                    server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider
             }
 
             if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
@@ -489,11 +526,11 @@ stock get_user_profile(id)
                         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
 
                     if(get_pcvar_num(g_cvar_debugger) > 2 )
-                        server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+                        server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider);
                     set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
                     for (new admin=1; admin<=MaxClients; ++admin)
-                    if (is_user_connected(admin) && is_user_admin(admin))
-                        show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, name, provider);
+                    if (is_user_connected(admin) && b_Admin[admin])
+                        show_hudmessage(admin, "%s %s %s | %s uses^n^n %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider);
                 }
             }
             if (containi(g_proxy_socket_buffer, "^"risk^"") != charsmin && get_pcvar_num(g_cvar_iproxy_action) <= 4 )
@@ -515,13 +552,13 @@ stock get_user_profile(id)
                 if (!equal(risk, "") && get_pcvar_num(g_cvar_debugger) )
                 {
                     new iRisk_conv = str_to_num(Data[iRisk])
-                    server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
+                    server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, ClientName[id], iRisk_conv
                     if(get_pcvar_num(g_cvar_debugger) > 2 )
-                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
+                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, ClientName[id], iRisk_conv
 
                     for (new admin=1; admin<=MaxClients; ++admin)
-                        if (is_user_connected(admin) && is_user_admin(admin))
-                            client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, name, iRisk_conv
+                        if (is_user_connected(admin) && b_Admin[admin])
+                            client_print admin,print_chat,"%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, ClientName[id], iRisk_conv
                 }
                 if (containi(g_proxy_socket_buffer, "^"type^"") != charsmin)
                 {
@@ -537,9 +574,9 @@ stock get_user_profile(id)
                         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
 
                         for (new admin=1; admin<=MaxClients; ++admin)
-                        if (is_user_connected(admin) && is_user_admin(admin))
-                            client_print admin, print_chat, "%s is on %s.", name, Data[SzType]
-                        log_amx "%s %s %s",Ip, authid, Data[SzType]
+                        if (is_user_connected(admin) && b_Admin[admin])
+                            client_print admin, print_chat, "%s is on %s.", ClientName[id], Data[SzType]
+                        log_amx "%s %s %s",ClientIP[id], ClientAuth[id], Data[SzType]
                     }
                 }
                 g_has_been_checked[id] = true
@@ -561,7 +598,7 @@ stock get_user_profile(id)
                 if(get_pcvar_num(g_cvar_debugger) > 4 )bright_message();
                 if (equal(g_proxy_socket_buffer, "") && get_pcvar_num(g_cvar_debugger) )
                 {
-                    server_print "Buffer is now blank for %s|%s",name,authid
+                    server_print "Buffer is now blank for %s|%s", ClientName[id], ClientAuth[id]
                 }
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s by %s:finished reading the socket", PLUGIN, VERSION, AUTHOR
@@ -601,7 +638,7 @@ stock get_user_profile(id)
     }
     if(is_user_connected(id))
     {
-        server_print "%s | %s unlocking socket!", PLUGIN, name
+        server_print "%s | %s unlocking socket!", PLUGIN, ClientName[id]
     }
 }
 
@@ -621,18 +658,18 @@ stock get_user_profile(id)
 @needan(keymissing)
 {
     new id = keymissing - ADMIN
-    if ( is_user_admin(id) )
+    if ( b_Admin[id] )
     {
         if ( cstrike_running() || is_running("dod") == 1 )
         {
-            new motd[MAX_CMD_LENGTH];
+            static motd[MAX_CMD_LENGTH];
             format(motd, charsmax (motd), "<html><meta http-equiv='Refresh' content='0; URL=https://proxycheck.io/'><body BGCOLOR='#FFFFFF'><br><center>Null proxy key detected.</center></html>");
             show_motd(id, motd, "Invalid API key!");
         }
         else
         {
             for (new admin=1; admin<=MaxClients; ++admin)
-            if (is_user_connected(admin) && is_user_admin(admin))
+            if (is_user_connected(admin) && b_Admin[admin])
             {
                 client_print admin,print_chat,"Check your API key validity!"
                 client_print admin,print_center,"Null sv_proxycheckio-key detected. %s %s %s", AUTHOR, PLUGIN,VERSION
@@ -645,7 +682,7 @@ stock get_user_profile(id)
 @file_data(SzSave[MAX_CMD_LENGTH])
 {
     server_print "%s|trying save", PLUGIN
-    new szFilePath[ MAX_CMD_LENGTH ]
+    static szFilePath[ MAX_CMD_LENGTH ]
     get_configsdir( szFilePath, charsmax( szFilePath ) )
     add( szFilePath, charsmax( szFilePath ), "/proxy_checked.ini" )
     write_file(szFilePath, SzSave)
