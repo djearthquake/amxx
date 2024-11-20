@@ -113,7 +113,6 @@ new ClientIP[MAX_IP_LENGTH][MAX_PLAYERS+1];
 new ClientName[MAX_NAME_LENGTH][MAX_PLAYERS+1]
 new SzSave[MAX_CMD_LENGTH];
 
-
 enum _:Client_proxy
 {
     SzAddress[ MAX_IP_LENGTH_V6 ],
@@ -122,6 +121,7 @@ enum _:Client_proxy
     SzProxy[ 4 ],
     iRisk[ 4 ]
 }
+
 new Data[ Client_proxy ]
 
 public plugin_init()
@@ -175,15 +175,17 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         b_Bot[id] = is_user_bot(id) ? true : false
-        b_Admin[id] = is_user_admin(id) ? true : false
 
-        if(!b_Bot[id] && !g_processing[id])
+        if(!b_Bot[id])
         {
+            b_Admin[id] = is_user_admin(id) ? true : false
             get_user_ip( id, ClientIP[id], charsmax( ClientIP[] ), WITHOUT_PORT )
             get_user_name(id, ClientName[id], charsmax(ClientName[]))
             get_user_authid(id, ClientAuth[id], charsmax(ClientAuth[]))
-
-            @proxy_begin(id)
+            if(!g_processing[id])
+            {
+                @proxy_begin(id)
+            }
         }
     }
 }
@@ -201,7 +203,7 @@ public client_putinserver(id)
             {
                 client_proxycheck(ClientIP[id],id)
             }
-            else if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
+            if(!TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ))
             {
                 new Float:retask = (float(total++)*1.5)
                 new Float:task_expand = floatround(random_float(retask+1.0,retask+2.0), floatround_ceil)*1.0
@@ -209,23 +211,21 @@ public client_putinserver(id)
                 Data[SzAddress] = ClientIP[id]
                 TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                 if(!task_exists(id) && g_processing[id])
+                {
                     set_task(task_expand , "client_proxycheck", id, ClientIP[id], charsmax(ClientIP[]))
+                }
             }
-            else if (TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
+            else if(TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 1)
             {
                 @handle_proxy_user(id)
                 server_print "[%s] %s is NOT ok^n^nRisk:%i", PLUGIN, Data[ SzAddress ], Data[iRisk]
             }
-            else
-                server_print "[%s] %s is ok^n^n%s", PLUGIN, Data[ SzAddress ],Data[SzIsp]
+            else if(TrieGetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data ) && str_to_num(Data[ SzProxy ]) == 0)
+            {
+                server_print(  b_Admin[id] ? "[%s][ADMIN] %s is ok^n^n" : "[%s]%s is ok^n^n" , PLUGIN, Data[ SzAddress ])
+            }
+            return PLUGIN_CONTINUE
         }
-        else
-        {
-            get_user_authid(id,ClientAuth[id],charsmax(ClientAuth[]))
-            if(!equali(ClientAuth[id], "BOT"))
-                @handle_proxy_user(id)
-        }
-        return PLUGIN_CONTINUE
     }
     return PLUGIN_HANDLED
 }
@@ -316,7 +316,6 @@ public client_proxycheck(Ip[], id)
 @write_web(text[MAX_CMD_LENGTH], reader)
 {
     static id; id = reader - USERWRITE;
-    //if(is_user_connected(id)/*on server*/ || is_user_connecting(id)/*downloading*/ && id > 0/*not the server*/ && !g_has_been_checked[id])
     if(!g_has_been_checked[id])
     {
         if(IS_SOCKET_IN_USE)
@@ -380,19 +379,21 @@ public client_proxycheck(Ip[], id)
             switch(iAction)
             {
                 case 0:   set_user_info(id, "name", "Anon")
-                case 1:   console_cmd(0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
-                case 2:   console_cmd(0, "amx_addban ^"%s^" ^"0^" ^"%s^"", ClientIP[id], SzMsg)
-                case 3:   console_cmd(0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientAuth[id], SzMsg)
-                default:  console_cmd(0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientIP[id], SzMsg)
+                case 1:   console_cmd(0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg)&&console_cmd(0, "amx_addban ^"%s^" ^"15^" ^"%s^"", ClientIP[id], SzMsg)
+                case 2:   console_cmd(0, "amx_addban ^"%s^" ^"0^" ^"%s^"", ClientIP[id], SzMsg)&&console_cmd(0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
+                case 3:   console_cmd(0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientAuth[id], SzMsg)&&console_cmd(0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
+                default:  console_cmd(0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientIP[id], SzMsg)&&console_cmd(0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg)
             }
+
 
         }
         else if(is_user_connecting(id))
         {
-            server_cmd "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientIP[id], SzMsg
-            server_cmd( "kick #%d ^"%s^"", get_user_userid(id), SzMsg) //test kick downloaders
+            console_cmd 0, "amx_addban ^"%s^" ^"60^" ^"%s^"", ClientIP[id], SzMsg
+            console_cmd 0, "kick #%d ^"%s^"", get_user_userid(id), SzMsg //test kick downloaders
         }
     }
+    return PLUGIN_HANDLED
 }
 
 @read_web(proxy_snort)
@@ -454,7 +455,8 @@ public client_proxycheck(Ip[], id)
                     @file_data(SzSave)
                     TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
                     server_print "No proxy found on %s, %s with error on packet", ClientName[id], ClientAuth[id]
-                    client_print 0, print_console, "No proxy found on %s, with error on packet", ClientName[id]
+                    //client_print 0, print_console, "No proxy found on %s, with error on packet", ClientName[id]
+                    //print_console has stability issues.
                 }
             }
             //Handle erroneous IP's like 127.0.0.1 and print message as could be query limits as well when erroring.
@@ -490,7 +492,7 @@ public client_proxycheck(Ip[], id)
                         TrieSetArray( g_already_checked, Data[ SzAddress ], Data, sizeof Data )
 
                     if(get_pcvar_num(g_cvar_debugger) > 2 )
-                        server_cmd("amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider);
+                        console_cmd(0, "amx_tsay yellow %s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider);
                     set_hudmessage(random_num(0,255),random_num(0,255),random_num(0,255), -1.0, 0.55, 1, 2.0, 3.0, 0.7, 0.8, 3);  //charsmin auto makes flicker
                     for (new admin=1; admin<=MaxClients; ++admin)
                     if (is_user_connected(admin) && b_Admin[admin])
@@ -518,7 +520,7 @@ public client_proxycheck(Ip[], id)
                     new iRisk_conv = str_to_num(Data[iRisk])
                     server_print "%s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, ClientName[id], iRisk_conv
                     if(get_pcvar_num(g_cvar_debugger) > 2 )
-                        server_cmd "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, ClientName[id], iRisk_conv
+                        console_cmd 0, "amx_csay red %s %s by %s | %s's risk is %i.",PLUGIN, VERSION, AUTHOR, ClientName[id], iRisk_conv
 
                     for (new admin=1; admin<=MaxClients; ++admin)
                         if (is_user_connected(admin) && b_Admin[admin])
