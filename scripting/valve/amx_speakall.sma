@@ -1,8 +1,13 @@
 /*Make speak commands public.*/
 
 #include amxmodx
+
 #define MAX_CMD_LENGTH        128
 #define MAX_PLAYES            32
+
+#if !defined MaxClients
+new MaxClients = get_maxplayers()
+#endif
 
 new iBot[MAX_PLAYERS+1];
 
@@ -10,10 +15,6 @@ public plugin_init()
 {
     register_plugin("SPEAK ALL", "0.0.1", "SPiNX");
     register_concmd("amx_speakall","@speakall",0,": Vox speak.");
-
-    #if !defined MaxClients
-    new MaxClients = get_maxplayers()
-    #endif
 }
 
 @speakall(id, szArgCmd1[MAX_CMD_LENGTH])
