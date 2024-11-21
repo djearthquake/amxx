@@ -6,14 +6,14 @@
 #define MAX_PLAYES            32
 
 #if !defined MaxClients
-new MaxClients = get_maxplayers()
+static MaxClients; MaxClients = get_maxplayers()
 #endif
 
 new iBot[MAX_PLAYERS+1];
 
 public plugin_init()
 {
-    register_plugin("SPEAK ALL", "0.0.1", "SPiNX");
+    register_plugin("SPEAK ALL", "0.0.2", "SPiNX");
     register_concmd("amx_speakall","@speakall",0,": Vox speak.");
 }
 
