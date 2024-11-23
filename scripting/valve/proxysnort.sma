@@ -70,7 +70,7 @@
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8.5"
+#define VERSION "1.8.6"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -482,12 +482,18 @@ public client_proxycheck(Ip[], id)
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider
             }
-            else if (containi(g_proxy_socket_buffer, "er^"") > charsmin)
+            else if (containi(g_proxy_socket_buffer, "^"") > charsmin)
             {
                 copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "er^"") + 4], ',');
                 //Misc data and stats
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider
+            }
+            else if (containi(g_proxy_socket_buffer, "^"No valid IP Addresses supplied.^"") > charsmin)
+            {
+                g_has_been_checked[id] = true
+                @handle_proxy_user(id)
+                server_print "%s %s %s | %s shows 'No valid IP Addresses supplied.'",PLUGIN, VERSION, AUTHOR, ClientName[id]
             }
 
             if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
