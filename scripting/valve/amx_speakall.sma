@@ -31,16 +31,16 @@ public client_putinserver( id )
 
         for(new i=1; i <= g_iHighestClientIndex; ++i )
         {
-            if((g_bConnected & ( 1 << i ))&(g_bBot | ( 1 << i )))
+           if((g_bConnected & ( 1 << i ))&(g_bBot | ( 1 << i )))
             {
                 console_cmd( i, "speak ^"%s^"", szArgCmd1 );
             }
-            #if AMXX_VERSION_NUM != 182
-            server_print( "%N spoke %s.", id, szArgCmd1 );
-            #else
-            server_print( "%d spaketh %s.", get_user_userid(id), szArgCmd1 );
-            #endif
         }
+        #if AMXX_VERSION_NUM != 182
+        server_print( "%N spoke %s.", id, szArgCmd1 );
+        #else
+        server_print( "%d spaketh %s.", get_user_userid(id), szArgCmd1 );
+        #endif
     }
     return PLUGIN_HANDLED;
 }
