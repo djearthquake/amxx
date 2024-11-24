@@ -482,7 +482,7 @@ public client_proxycheck(Ip[], id)
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider
             }
-            else if (containi(g_proxy_socket_buffer, "^"") > charsmin)
+            else if (containi(g_proxy_socket_buffer, "er^"") > charsmin)
             {
                 copyc(provider, charsmax(provider), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "er^"") + 4], ',');
                 //Misc data and stats
