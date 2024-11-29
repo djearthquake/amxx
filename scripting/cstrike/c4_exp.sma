@@ -257,7 +257,10 @@ public fnDefusal(id)
 {
     if(get_playersnum())
     {
-        g_boomtime && get_pcvar_num(g_timer) ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+        if(get_pcvar_num(g_timer))
+        {
+            g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+        }
 
         c4_from_grenade()
         switch(g_boomtime)
