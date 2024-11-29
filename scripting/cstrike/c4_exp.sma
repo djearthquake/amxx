@@ -279,28 +279,30 @@ public fnDefusal(id)
     if(pev_valid(g_weapon_c4_index))
     {
         pev(g_weapon_c4_index, pev_origin, fOrigin)
-        emessage_begin ( MSG_ONE, SVC_TEMPENTITY, { 0, 0, 0 }, players_who_see_effects() )
-
-        //emessage_begin ( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
-        ewrite_byte(TE_BEAMTORUS)
-        ewrite_coord_f(fOrigin[0]);
-        ewrite_coord_f(fOrigin[1]);
-        ewrite_coord_f(fOrigin[2] + 16);
-        ewrite_coord_f(fOrigin[0]);
-        ewrite_coord_f(fOrigin[1]);
-        ewrite_coord_f(fOrigin[2] + 200);
-        ewrite_short(g_radar);
-        ewrite_byte(1); //start frame
-        ewrite_byte(32); //frame rate
-        ewrite_byte(255); //life in .1
-        ewrite_byte(2); //line Width .1
-        ewrite_byte(1); //noise amp .1
-        ewrite_byte(r);
-        ewrite_byte(g);
-        ewrite_byte(b);
-        ewrite_byte(254);  //brightness
-        ewrite_byte(2); //scroll speed
-        emessage_end();
+        new ok_show_sfx = players_who_see_effects()
+        if(ok_show_sfx)
+        {
+            emessage_begin ( MSG_ONE, SVC_TEMPENTITY, { 0, 0, 0 }, ok_show_sfx )
+            ewrite_byte(TE_BEAMTORUS)
+            ewrite_coord_f(fOrigin[0]);
+            ewrite_coord_f(fOrigin[1]);
+            ewrite_coord_f(fOrigin[2] + 16);
+            ewrite_coord_f(fOrigin[0]);
+            ewrite_coord_f(fOrigin[1]);
+            ewrite_coord_f(fOrigin[2] + 200);
+            ewrite_short(g_radar);
+            ewrite_byte(1); //start frame
+            ewrite_byte(32); //frame rate
+            ewrite_byte(255); //life in .1
+            ewrite_byte(2); //line Width .1
+            ewrite_byte(1); //noise amp .1
+            ewrite_byte(r);
+            ewrite_byte(g);
+            ewrite_byte(b);
+            ewrite_byte(254);  //brightness
+            ewrite_byte(2); //scroll speed
+            emessage_end();
+        }
     }
     return PLUGIN_HANDLED
 }
@@ -310,7 +312,7 @@ stock players_who_see_effects()
 
     for(new i=1; i <= MaxClients; ++i )
     {
-        if(is_user_alive(i) && bRadarOwner[i])
+        if(is_user_connected(i) && bRadarOwner[i])
         {
             return i;
         }
