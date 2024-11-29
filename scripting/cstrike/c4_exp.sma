@@ -9,7 +9,7 @@
 #include fakemeta_util
 #include hamsandwich
 
-#define IDENTIFY register_plugin("c4 Experience","1.25","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.26","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -41,7 +41,7 @@ new g_weapon_c4_index, g_maxPlayers, g_debug;
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
 new bool:Client_C4_adjusted_already[MAX_PLAYERS+1];
 new bool:bRadarOwner[MAX_PLAYERS+1]
-new g_radar_cost
+new g_radar_cost, g_timer;
 new bool:bIsBot[MAX_PLAYERS + 1];
 new bool:bRegistered;
 
@@ -66,6 +66,7 @@ public plugin_init()
         register_logevent("FnPlant",3,"2=Planted_The_Bomb");
         register_event("BarTime", "fnDefusal", "be", "1=5", "1=10");
         g_debug = register_cvar("c4_debug", "0")
+        g_timer = register_cvar("c4_timer", "0")
         g_radar_cost = register_cvar("radar_cost", "500")
         RegisterHam(Ham_Killed, "player", "no_radar", 1);
 
@@ -256,7 +257,7 @@ public fnDefusal(id)
 {
     if(get_playersnum())
     {
-        g_boomtime ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+        g_boomtime && get_pcvar_num(g_timer) ? client_print( 0, print_center, "Explode time:%i", --g_boomtime) : client_print( 0, print_center, "BOOM!")
 
         c4_from_grenade()
         switch(g_boomtime)
