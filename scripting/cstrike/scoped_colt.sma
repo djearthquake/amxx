@@ -32,17 +32,13 @@ new g_item_cost, g_szMsgSetFov, g_scope_zoomsound;
 new g_fscope_autotime;
 new buffer[MAX_RESOURCE_PATH_LENGTH];
 new bool:bIsBot[MAX_PLAYERS + 1]
+new bool:bRegistered;
 
 const bad_time_to_scope = ( 1<<CSW_HEGRENADE | 1<<CSW_SMOKEGRENADE | 1<<CSW_FLASHBANG );
 
-public client_authorized(id, const authid[])
-{
-    bIsBot[id] = equal(authid, "BOT") ? true : false
-}
-
 public plugin_init()
 {
-    register_plugin( "Buy a Colt Scope!", "1.1", "SPiNX" );
+    register_plugin( "Buy a Colt Scope!", "1.1.1", "SPiNX" );
     register_forward( FM_CmdStart , "fw_CmdStart", true );
     register_forward(FM_PlayerPreThink, "client_prethink", true);
     register_clcmd ( "buy_scope", "buy_scope", 0, " - universal scope." );
@@ -180,6 +176,26 @@ public fw_CmdStart( Client , Handle )
 public client_putinserver( Client )
 {
     scope_owner[Client] = false;
+    if(is_user_connected( Client ))
+    {
+        bIsBot[ Client ] = is_user_bot( Client ) ? true : false
+        if(bIsBot[ Client ] && !bRegistered)
+        {
+            set_task(0.1, "@register", Client);
+        }
+    }
+}
+
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        bRegistered = true;
+        RegisterHamFromEntity( Ham_TakeDamage, ham_bot, "@PostTakeDamage", 1 );
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "no_scope", 1 );
+        server_print("Colt Scope ham bot from %N", ham_bot)
+    }
 }
 
 public no_scope( Client )
