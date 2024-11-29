@@ -255,11 +255,13 @@ public fnDefusal(id)
 
 @count_down()
 {
+    --g_boomtime
     if(get_playersnum())
     {
         new Cvar = get_pcvar_num(g_timer)
+        if(Cvar)
         {
-            g_boomtime ? client_print( 0, print_center, Cvar ? "Explode time:%i":"", --g_boomtime) : client_print( 0, print_center, "BOOM!")
+            g_boomtime ? client_print( 0, print_center,"Explode time:%i",g_boomtime) : client_print( 0, print_center, "BOOM!")
         }
 
         c4_from_grenade()
