@@ -310,7 +310,7 @@ stock players_who_see_effects()
 
     for(new i=1; i <= MaxClients; ++i )
     {
-        if(bRadarOwner[i])
+        if(is_user_alive(i) && bRadarOwner[i])
         {
             return i;
         }
