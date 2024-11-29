@@ -7,8 +7,9 @@
 #include engine_stocks
 #include fakemeta
 #include fakemeta_util
+#include hamsandwich
 
-#define IDENTIFY register_plugin("c4 Experience","1.24","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.25","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -33,14 +34,22 @@ static m_bIsC4, m_flNextBeep, m_flNextFreqInterval, m_flDefuseCountDown, m_fAtte
 
 new g_fExperience_offset;
 static Float:g_fUninhibited_Walk = 272.0;
-new g_fire;
+static g_fire;
+static g_radar;
 new g_boomtime;
 new g_weapon_c4_index, g_maxPlayers, g_debug;
 new ClientName[MAX_PLAYERS+1][MAX_NAME_LENGTH];
 new bool:Client_C4_adjusted_already[MAX_PLAYERS+1];
+new bool:bRadarOwner[MAX_PLAYERS+1]
+new g_radar_cost
+new bool:bIsBot[MAX_PLAYERS + 1];
+new bool:bRegistered;
 
 public plugin_precache()
-g_fire = precache_model("sprites/laserbeam.spr");
+{
+    g_fire = precache_model("sprites/laserbeam.spr");
+    g_radar = precache_model("sprites/zerogxplode.spr");
+}
 
 public plugin_init()
 {
@@ -57,6 +66,11 @@ public plugin_init()
         register_logevent("FnPlant",3,"2=Planted_The_Bomb");
         register_event("BarTime", "fnDefusal", "be", "1=5", "1=10");
         g_debug = register_cvar("c4_debug", "0")
+        g_radar_cost = register_cvar("radar_cost", "500")
+        RegisterHam(Ham_Killed, "player", "no_radar", 1);
+
+
+        register_clcmd ( "buy_radar", "buy_radar", 0, " - C4 radar." );
 
         g_fExperience_offset = register_cvar("exp_offset",  "1.03");
         m_bIsC4 = find_ent_data_info("CGrenade", "m_bIsC4") + UNIX_DIFF
@@ -76,15 +90,47 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
+        bIsBot[id] = is_user_bot(id) ? true : false
         Client_C4_adjusted_already[id] = false
         get_user_name(id,ClientName[id],charsmax(ClientName[]))
+        bRadarOwner[id] = false
+        if(bIsBot[id] && !bRegistered)
+        {
+            set_task(0.1, "@register", id);
+        }
     }
+}
+
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        bRegistered = true;
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "no_radar", 1 );
+        server_print("C4 exp ham bot from %N", ham_bot)
+    }
+}
+
+public client_disconnected(id)
+{
+    bRadarOwner[id] = false
 }
 
 public client_infochanged(id)
 {
     if(is_user_connected(id))
+    {
         get_user_name(id,ClientName[id],charsmax(ClientName[]))
+    }
+}
+
+public no_radar(id)
+{
+    if(bRadarOwner[id])
+    {
+        bRadarOwner[id] = false
+    }
 }
 
 #if !defined get_pdata_bool
@@ -186,8 +232,8 @@ public fnDefusal(id)
                 g_boomtime = iBoom_time
             }
 
-            static Float:fplayervector[3];
-            entity_get_vector(id, EV_VEC_origin, fplayervector);
+            static Float:fplayerfOrigin[3];
+            entity_get_vector(id, EV_VEC_origin, fplayerfOrigin);
             client_print 0, print_chat, "C4 timer is now %i seconds due to the expertise of %s.", g_boomtime,ClientName[id]
 
             set_task(0.1, "nice", id+911, _, _, "b");
@@ -215,12 +261,57 @@ public fnDefusal(id)
         c4_from_grenade()
         switch(g_boomtime)
         {
-            case   0..5 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 0, 0, kRenderGlow, 150)
-            case  6..10 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 255, 0, kRenderGlow, 100)
-            case 11..20: set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 103, 0, kRenderGlow, 100)
-            default     : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 5, 255, 75, kRenderGlow, 50)
+            case   0..5 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 0, 0, kRenderGlow, 150)&@c4_radar(255,0,0)
+            case  6..10 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 255, 0, kRenderGlow, 100)&@c4_radar(255,255,0)
+            case 11..20 : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 255, 103, 0, kRenderGlow, 100)&@c4_radar(255,103,0)
+            default     : set_rendering(g_weapon_c4_index, kRenderFxGlowShell, 5, 255, 75, kRenderGlow, 50)&@c4_radar(5,255,75)
         }
     }
+}
+
+@c4_radar(r,g,b)
+{
+    static Float:fOrigin[3]
+    if(pev_valid(g_weapon_c4_index))
+    {
+        pev(g_weapon_c4_index, pev_origin, fOrigin)
+        emessage_begin ( MSG_ONE, SVC_TEMPENTITY, { 0, 0, 0 }, players_who_see_effects() )
+
+        //emessage_begin ( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
+        ewrite_byte(TE_BEAMTORUS)
+        ewrite_coord_f(fOrigin[0]);
+        ewrite_coord_f(fOrigin[1]);
+        ewrite_coord_f(fOrigin[2] + 16);
+        ewrite_coord_f(fOrigin[0]);
+        ewrite_coord_f(fOrigin[1]);
+        ewrite_coord_f(fOrigin[2] + 200);
+        ewrite_short(g_radar);
+        ewrite_byte(1); //start frame
+        ewrite_byte(32); //frame rate
+        ewrite_byte(255); //life in .1
+        ewrite_byte(2); //line Width .1
+        ewrite_byte(1); //noise amp .1
+        ewrite_byte(r);
+        ewrite_byte(g);
+        ewrite_byte(b);
+        ewrite_byte(254);  //brightness
+        ewrite_byte(2); //scroll speed
+        emessage_end();
+    }
+    return PLUGIN_HANDLED
+}
+
+stock players_who_see_effects()
+{
+
+    for(new i=1; i <= MaxClients; ++i )
+    {
+        if(bRadarOwner[i])
+        {
+            return i;
+        }
+    }
+    return PLUGIN_CONTINUE;
 }
 
 public nice(show)
@@ -347,6 +438,46 @@ stock c4_from_grenade()
 
         for (new admin=1; admin<=g_maxPlayers; admin++)
         if (is_user_connected(admin) && has_flag(admin, ADMIN_FLAG))
+        {
             client_print admin, print_chat, "Interval:%f|Beep:%f|Attn:%f|Count:%f", fInterval, fBeep, fAttn, fCount
+        }
     }
+}
+
+public buy_radar(Client)
+{
+    if(is_user_alive(Client))
+    {
+        static name[MAX_PLAYERS];
+
+        get_user_name(Client,name,charsmax(name));
+
+        static tmp_money; tmp_money = cs_get_user_money(Client);
+        if(is_user_alive(Client))
+        {
+            if ( !bRadarOwner[Client] )
+            {
+
+                if(tmp_money < get_pcvar_num(g_radar_cost))
+                {
+                    client_print(Client, print_center, "You can't afford a scope %s!", name);
+                    client_print(0, print_chat, "Hey guys %s keeps trying to buy scope they can't afford!", name);
+                    return PLUGIN_HANDLED;
+                }
+                else
+                {
+                    cs_set_user_money(Client, tmp_money - get_pcvar_num(g_radar_cost));
+                    bRadarOwner[Client] = true;
+                    client_print(Client, print_center, "You bought c4 radar!");
+                }
+
+            }
+            else
+            {
+                client_print(Client, print_center, "You ALREADY OWN C4 radar...");
+                client_print(0, print_chat, "Hey guys %s keeps trying to buy C4 radar and already owns one!", name);
+            }
+        }
+    }
+    return PLUGIN_HANDLED;
 }
