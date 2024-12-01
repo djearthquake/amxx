@@ -117,7 +117,7 @@ new bool:b_Admin[MAX_PLAYERS+1]
 new Trie:g_already_checked;
 static g_clientemp_version;
 new ClientAuth[MAX_AUTHID_LENGTH][MAX_PLAYERS+1];
-new ClientIP[MAX_IP_LENGTH][MAX_PLAYERS+1];
+new ClientIP[MAX_IP_LENGTH_V6][MAX_PLAYERS+1];
 new ClientName[MAX_NAME_LENGTH][MAX_PLAYERS+1]
 new SzSave[MAX_CMD_LENGTH];
 
