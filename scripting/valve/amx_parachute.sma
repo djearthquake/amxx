@@ -37,6 +37,7 @@
     1.8.4 SPiNX - Thurs 10 Apr 2023 AM - Players can now set rip cord depth. setinfo "auto_rip" "1000"
     1.8.5 SPiNX - Fri 28 Jun 2024 AM - Reduce turbulence regarding chute's adjustment. Remove needs for defines across mods.
     1.8.6 SPiNX - Wed 21 Aug 2024 PM - Drop HamBots.
+    1.8.6 SPiNX - Tues 10 Dec 2024 AM - address pev run-time on line 350.
     1.9    What is it going to be?  Please comment.
 
   Commands:
@@ -345,7 +346,7 @@ public parachute_reset(id)
 {
     static iDebug; iDebug = get_pcvar_num(g_debug)
     static szClass[MAX_NAME_LENGTH]
-    if(pev_valid(iWhatever && pev_valid(iChute)))
+    if(pev_valid(iWhatever) && pev_valid(iChute))
     {
         pev(iWhatever, pev_classname, szClass, charsmax(szClass))
         static id; id = pev(iChute, pev_owner)
@@ -523,7 +524,8 @@ public parachute_think(flags, id, button, oldbutton, iDrop)
 
                     if (velocity[2] < 0.0)
                     {
-                        if(para_ent[id] <= 0)
+                        //if(para_ent[id] <= 0)
+                        if(para_ent[id] <= 0 && is_user_alive(id))
                         {
                             new Float:minbox[3] = { -Parachute_size, -Parachute_size, -Parachute_size }
                             new Float:maxbox[3] = { Parachute_size, Parachute_size, Parachute_size }
