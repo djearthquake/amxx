@@ -70,7 +70,7 @@
 //#include <regex>
 #include <sockets>
 #define PLUGIN "ProxySnort"
-#define VERSION "1.8.6"
+#define VERSION "1.8.7"
 #define AUTHOR "SPiNX"
 #define USER 7007
 #define USERREAD 5009
@@ -472,6 +472,8 @@ public client_proxycheck(Ip[], id)
             {
                 static msg[MAX_CMD_LENGTH];
                 copyc(msg, charsmax(msg), g_proxy_socket_buffer[containi(g_proxy_socket_buffer, "message") + 11], '"');
+                g_has_been_checked[id] = true
+                @handle_proxy_user(id)
                 server_print "Message is: %s",msg
             }
             //Example of a potentially more reliable 'City ID' or 'Country on Name' as per MaxMind database is updated via proxycheck.io. Provider is echoed.
@@ -489,13 +491,6 @@ public client_proxycheck(Ip[], id)
                 if(get_pcvar_num(g_cvar_debugger))
                     server_print "%s %s %s | %s uses %s for an ISP.",PLUGIN, VERSION, AUTHOR, ClientName[id], provider
             }
-            else if (containi(g_proxy_socket_buffer, "^"No valid IP Addresses supplied.^"") > charsmin)
-            {
-                g_has_been_checked[id] = true
-                @handle_proxy_user(id)
-                server_print "%s %s %s | %s shows 'No valid IP Addresses supplied.'",PLUGIN, VERSION, AUTHOR, ClientName[id]
-            }
-
             if (get_pcvar_num(g_cvar_iproxy_action) <= 4  && get_pcvar_num(g_cvar_debugger) && !equali(provider,""))
             {
                 if(!g_testing[id])
