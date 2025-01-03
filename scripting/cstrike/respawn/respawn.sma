@@ -43,7 +43,7 @@
 *.__)|   || \|/  \
 *
 *    Respawn from bots.
-*    Copyleft (C) Nov 2020-2024 .sρiηX҉.
+*    Copyleft (C) Nov 2020-2025 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -91,6 +91,8 @@
 #endif
 
 new
+//bool
+bool:bCTprov, bool:bTprov,
 //Cvars
 g_dust, g_humans, g_keep, g_sound_reminder, g_stuck,
 //Strings
@@ -139,17 +141,9 @@ static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
     }
 }
 
-public client_authorized(bot, const authid[])
-{
-    if(equal(authid, "BOT") && !bRegistered)
-    {
-        set_task(0.1, "@register", bot);
-    }
-}
-
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.53", "SPiNX");
+    register_plugin("Repawn from bots", "1.55", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1")
@@ -333,7 +327,19 @@ public bomb_dropped()
 
 public client_putinserver(id)
 {
-    bIsBot[id] = is_user_connected(id) && is_user_bot(id)
+	if(is_user_connected(id))
+	{
+	    bIsBot[id] = is_user_bot(id) ? true : false
+	    if(bIsBot[id] && !bRegistered)
+	    {
+	        set_task(0.1, "@register", id);
+		}
+	}
+}
+
+public client_disconnected(id)
+{
+	bIsBot[id] = false
 }
 
 public CS_OnBuyAttempt(id)
@@ -377,7 +383,7 @@ public CS_OnBuy(id, item)
 
 @ReSpawn(id)
 {
-    static iDefaultTeamPack,
+    new iDefaultTeamPack,
     SzParaphrase[128], iDust, iKeep, iSound;
     iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
     if(is_user_connected(id))
@@ -388,15 +394,17 @@ public CS_OnBuy(id, item)
             static iTeam; iTeam = get_user_team(id)
             if(iTeam == 1 && !iSpawnBackpackT)
             {
-                if(!user_has_weapon(id, CSW_C4))
+                if(!user_has_weapon(id, CSW_C4) && !bTprov)
                 {
+                    bTprov=true
                     iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
                     server_print "RESPAWN| Grabbed default provisions from T, %N",id
                 }
 
             }
-            else if(iTeam == 2 && !iSpawnBackpackCT )
+            else if(iTeam == 2 && !iSpawnBackpackCT && !bCTprov)
             {
+                bCTprov=true
                 iSpawnBackpackCT = entity_get_int(id, EV_INT_weapons)
                 server_print "RESPAWN| Grabbed default provisions from CT, %N",id
             }
@@ -432,7 +440,7 @@ public CS_OnBuy(id, item)
                     give_item(iBotOwned[id], "weapon_shield");
                 }
 
-                iDefaultTeamPack = get_user_team(id) == 1 ? iSpawnBackpackT :  iSpawnBackpackCT
+                iDefaultTeamPack = get_user_team(id) == 1 ? iSpawnBackpackT : iSpawnBackpackCT
 
                 if(is_user_alive(id))
                 {
