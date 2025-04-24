@@ -91,14 +91,12 @@
 #endif
 
 new
-//bool
-bool:bCTprov, bool:bTprov,
 //Cvars
 g_dust, g_humans, g_keep, g_sound_reminder, g_stuck,
 //Strings
 SzWeaponClassname[MAX_NAME_LENGTH], bots_name[ MAX_NAME_LENGTH + 1 ],
 //Integers
-iSpawnBackpackCT, iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_PLAYERS+1], alive_bot, arm, ammo, magazine, wpnid, iMaxplayers,
+g_iSpawnBackpackCT, g_iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_PLAYERS+1], alive_bot, arm, ammo, magazine, wpnid, iMaxplayers,
 
 //Global variables
 g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor,
@@ -389,23 +387,21 @@ public CS_OnBuy(id, item)
     if(is_user_connected(id))
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
-        if(!iSpawnBackpackCT || !iSpawnBackpackT)
+        if(!g_iSpawnBackpackCT || !g_iSpawnBackpackT)
         {
             static iTeam; iTeam = get_user_team(id)
-            if(iTeam == 1 && !iSpawnBackpackT)
+            if(iTeam == 1 && !g_iSpawnBackpackT)
             {
-                if(!user_has_weapon(id, CSW_C4) && !bTprov)
+                if(!user_has_weapon(id, CSW_C4))
                 {
-                    bTprov=true
-                    iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
+                    g_iSpawnBackpackT = entity_get_int(id, EV_INT_weapons)
                     server_print "RESPAWN| Grabbed default provisions from T, %N",id
                 }
 
             }
-            else if(iTeam == 2 && !iSpawnBackpackCT && !bCTprov)
+            else if(iTeam == 2 && !g_iSpawnBackpackCT )
             {
-                bCTprov=true
-                iSpawnBackpackCT = entity_get_int(id, EV_INT_weapons)
+                g_iSpawnBackpackCT = entity_get_int(id, EV_INT_weapons)
                 server_print "RESPAWN| Grabbed default provisions from CT, %N",id
             }
         }
@@ -440,7 +436,7 @@ public CS_OnBuy(id, item)
                     give_item(iBotOwned[id], "weapon_shield");
                 }
 
-                iDefaultTeamPack = get_user_team(id) == 1 ? iSpawnBackpackT : iSpawnBackpackCT
+                iDefaultTeamPack = get_user_team(id) == 1 ? g_iSpawnBackpackT : g_iSpawnBackpackCT
 
                 if(is_user_alive(id))
                 {
