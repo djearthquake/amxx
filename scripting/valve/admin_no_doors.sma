@@ -35,7 +35,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-    register_plugin("Command 'hide doors'", "0.0.1", "SPiNX")
+    register_plugin("Command 'hide doors'", "0.0.2", "SPiNX")
     new HasEnt
 
     if(bCS)
@@ -75,6 +75,17 @@ public plugin_init()
 public plugin_cfg()
 {
     register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
+    if(!bCS)
+    {
+        static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
+        if(contain(mapname, "ook_PrivateBeachV") != FM_NULLENT)
+        {
+            remove_entity( find_ent_by_model( FM_NULLENT, "func_door", "*1" ) );
+            remove_entity( find_ent_by_model( FM_NULLENT, "func_door", "*4" ) );
+            remove_entity( find_ent_by_model( FM_NULLENT, "func_ladder", "*2" ) );
+            remove_entity( find_ent_by_model( FM_NULLENT, "func_ladder", "*3" ) );
+        }
+    }
 }
 
 public client_authorized(id, const authid[])
@@ -105,6 +116,7 @@ public FwdShouldCollide( const iTouched, const iOther )
 {
     if(g_players_online)
     {
+        if(iOther > 0 && iOther <= MaxClients)
         //Semi-Clip only after bot touches door otherwise they wallbang too easily.
         if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
         {
@@ -401,3 +413,9 @@ public car_owner(ptr, ptd)
         }
     }
 }
+
+/*
+ * Changelog
+ * --------------
+ * 4/28/25 - Add filter to forward to prevent door stock from run-time error. -SPiNX
+ */
