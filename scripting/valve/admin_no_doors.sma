@@ -14,6 +14,10 @@
 #define UNLOCK 8
 #define PROP 32
 
+#define PLUGIN  "Command 'hide doors'"
+#define VERSION "0.0.3"
+#define AUTHOR  "SPiNX"
+
 new g_Ability, g_Locked, g_Prop
 new g_mod_car[MAX_PLAYERS + 1], bool:g_BotOpenDoor[MAX_PLAYERS + 1], g_AI, g_players_online;
 
@@ -35,7 +39,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-    register_plugin("Command 'hide doors'", "0.0.2", "SPiNX")
+    register_plugin(PLUGIN, VERSION, AUTHOR)
     new HasEnt
 
     if(bCS)
@@ -61,7 +65,10 @@ public plugin_init()
     {
         register_touch("player", SzClass[list], "touched")
         if(has_map_ent_class(SzClass[list]))
+        {
+            server_print("%s|%s by %s FOUND %s", PLUGIN, VERSION, AUTHOR, SzClass[list])
             HasEnt++
+        }
     }
     if(!HasEnt)
     {
