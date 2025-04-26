@@ -1,4 +1,4 @@
-// vim: set ts=4 sw=4 tw=99 noet:
+    // vim: set ts=4 sw=4 tw=99 noet:
 //
 // AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
 // Copyright (C) The AMX Mod X Development Team.
@@ -285,15 +285,15 @@ public cmdVoteMap(id, level, cid)
 
     if (g_validMaps == 0)
     {
-        new lMaps[16]
+        static lMaps[16]
 
         format(lMaps, charsmax(lMaps), "%L", id, (argc == 2) ? "MAP_IS" : "MAPS_ARE")
         console_print(id, "%L", id, "GIVEN_NOT_VALID", lMaps)
         return PLUGIN_HANDLED
     }
 
-    new menu_msg[256], len = 0
-    new keys = 0
+    static menu_msg[256], len = 0
+    static keys; keys = 0
 
     if (g_validMaps > 1)
     {
@@ -311,12 +311,12 @@ public cmdVoteMap(id, level, cid)
         format(menu_msg[len], charsmax(menu_msg) - len, "^n0.  %L", LANG_SERVER, "NONE")
         g_yesNoVote = 0
     } else {
-        new lChangeMap[128], lYes[16], lNo[16]
+        new lChangeMap[64], lYes[16], lNo[16]
 
         format(lChangeMap, charsmax(lChangeMap), "%L", LANG_SERVER, "CHANGE_MAP_TO")
         format(lYes, charsmax(lYes), "%L", LANG_SERVER, "YES")
         format(lNo, charsmax(lNo), "%L", LANG_SERVER, "NO")
-        format(menu_msg, charsmax(menu_msg), g_coloredMenus ? "\y%s %s?\w^n^n1.  %s^n2.  %s" : "%s %s?^n^n1.  %s^n2.  %s", lChangeMap, g_optionName[0], lYes, lNo)
+        format(menu_msg, charsmax(menu_msg), g_coloredMenus ? "\y%s%s?\w^n^n1.  %s^n2.  %s" : "%s^n^n%s?^n^n1.  %s^n2.  %s", lChangeMap, g_optionName[0], lYes, lNo)
         keys = MENU_KEY_1|MENU_KEY_2
         g_yesNoVote = 1
     }
