@@ -15,10 +15,10 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "0.0.3"
+#define VERSION "0.0.4"
 #define AUTHOR  "SPiNX"
 
-new g_Ability, g_Locked, g_Prop
+new g_Ability, g_Locked, g_Prop, g_doors, g_pack, g_plugin
 new g_mod_car[MAX_PLAYERS + 1], bool:g_BotOpenDoor[MAX_PLAYERS + 1], g_AI, g_players_online;
 
 static bool:bCS, bool:bHost, bool:bCar;
@@ -40,6 +40,7 @@ public plugin_precache()
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
+    g_plugin = register_cvar("admin_no_door", "0")
     new HasEnt
 
     if(bCS)
@@ -55,7 +56,7 @@ public plugin_init()
         }
     }
     
-    register_forward(FM_AddToFullPack, "AddToFullPack_Post", 1)
+    g_pack = register_forward(FM_AddToFullPack, "AddToFullPack_Post", 1)
 
     register_clcmd("door_access","build_power",ADMIN_KICK,"Gives/takes user ability to run through doors.")
     register_clcmd("door_lock","build_lock",ADMIN_KICK,"Gives/takes ability to use doors.")
@@ -79,9 +80,15 @@ public plugin_init()
     }
 }
 
+public plugin_end()
+{
+    unregister_forward(FM_ShouldCollide, g_doors, 0)
+    unregister_forward(FM_AddToFullPack, g_pack, 1)
+}
+
 public plugin_cfg()
 {
-    register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
+    g_doors = register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
     if(!bCS)
     {
         static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
@@ -121,6 +128,7 @@ public client_disconnected(id)
 
 public FwdShouldCollide( const iTouched, const iOther )
 {
+    if(get_pcvar_num(g_plugin))
     if(g_players_online)
     {
         if(iOther > 0 && iOther <= MaxClients)
