@@ -15,7 +15,7 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "0.0.4"
+#define VERSION "0.0.5"
 #define AUTHOR  "SPiNX"
 
 new g_Ability, g_Locked, g_Prop, g_doors, g_pack, g_plugin
@@ -88,7 +88,6 @@ public plugin_end()
 
 public plugin_cfg()
 {
-    g_doors = register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
     if(!bCS)
     {
         static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
@@ -116,6 +115,7 @@ public client_putinserver(id)
     ClearPlayerBit(g_Locked, id);
     ClearPlayerBit(g_Prop, id);
     g_players_online =get_playersnum()
+    g_doors = register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
 }
 
 public client_disconnected(id)
@@ -129,56 +129,62 @@ public client_disconnected(id)
 public FwdShouldCollide( const iTouched, const iOther )
 {
     if(get_pcvar_num(g_plugin))
-    if(g_players_online)
     {
-        if(iOther > 0 && iOther <= MaxClients)
-        //Semi-Clip only after bot touches door otherwise they wallbang too easily.
-        if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
+        if(g_players_online)
         {
-            forward_return( FMV_CELL, 0 );
-            return FMRES_SUPERCEDE;
-            
-        }
-        if(!bCS)return FMRES_IGNORED;
-        {
-            if(!bHost)return FMRES_IGNORED;
+            if(iOther > 0 && iOther <= MaxClients)
+            //Semi-Clip only after bot touches door otherwise they wallbang too easily.
+            if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
             {
-                //Door Bot/Hostage Semi-clip
-                if(isDoor( iTouched ) && is_hostage(iOther))
-                {
-                    forward_return( FMV_CELL, 0 );
-                    return FMRES_SUPERCEDE;
-                }
-                //Bots can't shoot Hostage
-                if(is_hostage(iTouched) && CheckPlayerBit(g_AI, iOther))
-                {
-                    forward_return( FMV_CELL, 0 );
-                    return FMRES_SUPERCEDE;
-                }
+                forward_return( FMV_CELL, 0 );
+                return FMRES_SUPERCEDE;
+                
             }
-            if(!bCar)return FMRES_IGNORED;
+            if(!bCS)return FMRES_IGNORED;
             {
-                if(isCar(iTouched))
+                if(!bHost)return FMRES_IGNORED;
                 {
-                    //Car/Hostage Semi-clip
-                    if(is_hostage(iOther))
+                    //Door Bot/Hostage Semi-clip
+                    if(isDoor( iTouched ) && is_hostage(iOther))
                     {
                         forward_return( FMV_CELL, 0 );
                         return FMRES_SUPERCEDE;
                     }
-                    new driver = pev(iTouched, pev_owner)-50
-                    if(is_user_alive(driver) && is_user_alive(iOther))
+                    //Bots can't shoot Hostage
+                    if(is_hostage(iTouched) && CheckPlayerBit(g_AI, iOther))
                     {
-                        //Vehicular Team Semi-clip 
-                        if(get_user_team(driver) == get_user_team(iOther))
+                        forward_return( FMV_CELL, 0 );
+                        return FMRES_SUPERCEDE;
+                    }
+                }
+                if(!bCar)return FMRES_IGNORED;
+                {
+                    if(isCar(iTouched))
+                    {
+                        //Car/Hostage Semi-clip
+                        if(is_hostage(iOther))
                         {
                             forward_return( FMV_CELL, 0 );
                             return FMRES_SUPERCEDE;
+                        }
+                        new driver = pev(iTouched, pev_owner)-50
+                        if(is_user_alive(driver) && is_user_alive(iOther))
+                        {
+                            //Vehicular Team Semi-clip 
+                            if(get_user_team(driver) == get_user_team(iOther))
+                            {
+                                forward_return( FMV_CELL, 0 );
+                                return FMRES_SUPERCEDE;
+                            }
                         }
                     }
                 }
             }
         }
+    }
+    else
+    {
+        unregister_forward(FM_ShouldCollide, g_doors, 0)
     }
     return FMRES_IGNORED;
 }
