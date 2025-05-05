@@ -15,7 +15,7 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "0.0.5"
+#define VERSION "0.0.6"
 #define AUTHOR  "SPiNX"
 
 new g_Ability, g_Locked, g_Prop, g_doors, g_pack, g_plugin
@@ -123,7 +123,7 @@ public client_disconnected(id)
     ClearPlayerBit(g_Ability, id);
     ClearPlayerBit(g_Locked, id);
     ClearPlayerBit(g_Prop, id);
-    g_players_online =get_playersnum()
+    g_players_online = get_playersnum()
 }
 
 public FwdShouldCollide( const iTouched, const iOther )
@@ -132,13 +132,15 @@ public FwdShouldCollide( const iTouched, const iOther )
     {
         if(g_players_online)
         {
-            if(iOther > 0 && iOther <= MaxClients)
-            //Semi-Clip only after bot touches door otherwise they wallbang too easily.
-            if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
+            if(iTouched)
+            if(iOther && iOther <= MaxClients)
             {
-                forward_return( FMV_CELL, 0 );
-                return FMRES_SUPERCEDE;
-                
+                //Semi-Clip only after bot touches door otherwise they wallbang too easily.
+                if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
+                {
+                    forward_return( FMV_CELL, 0 );
+                    return FMRES_SUPERCEDE;
+                }
             }
             if(!bCS)return FMRES_IGNORED;
             {
@@ -213,10 +215,13 @@ public touched(id, ent)
         {
             set_pev(ent, pev_spawnflags, PROP)
         }
-        if(CheckPlayerBit(g_AI, id))
+        if(isDoor(ent) && CheckPlayerBit(g_AI, id))
         {
             g_BotOpenDoor[id] = true
-            set_task(1.5, "@bot_door", id)
+            if(!task_exists(id))
+            {
+                set_task(1.5, "@bot_door", id)
+            }
         }
     }
 }
@@ -439,4 +444,5 @@ public car_owner(ptr, ptd)
  * Changelog
  * --------------
  * 4/28/25 - Add filter to forward to prevent door stock from run-time error. -SPiNX
+ * 5/05/25 - Loosen previously made filter to allow hostages again. -SPiNX
  */
