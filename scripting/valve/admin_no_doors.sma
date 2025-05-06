@@ -15,13 +15,15 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "0.0.6"
+#define VERSION "0.0.7"
 #define AUTHOR  "SPiNX"
 
 new g_Ability, g_Locked, g_Prop, g_doors, g_pack, g_plugin
 new g_mod_car[MAX_PLAYERS + 1], bool:g_BotOpenDoor[MAX_PLAYERS + 1], g_AI, g_players_online;
+new g_cvar_doortime;
 
 static bool:bCS, bool:bHost, bool:bCar;
+new bool:bReg;
 static const SzClass[][] =
 {
     "momentary_door", "func_door_rotating",
@@ -40,6 +42,7 @@ public plugin_precache()
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
+    g_cvar_doortime = register_cvar("bot_doorclip", "1.5")
     g_plugin = register_cvar("admin_no_door", "0")
     new HasEnt
 
@@ -115,7 +118,11 @@ public client_putinserver(id)
     ClearPlayerBit(g_Locked, id);
     ClearPlayerBit(g_Prop, id);
     g_players_online =get_playersnum()
-    g_doors = register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
+    if(!bReg)
+    {
+        bReg = true
+        g_doors = register_forward(FM_ShouldCollide, "FwdShouldCollide", 0)
+    }
 }
 
 public client_disconnected(id)
@@ -184,10 +191,6 @@ public FwdShouldCollide( const iTouched, const iOther )
             }
         }
     }
-    else
-    {
-        unregister_forward(FM_ShouldCollide, g_doors, 0)
-    }
     return FMRES_IGNORED;
 }
 
@@ -220,7 +223,7 @@ public touched(id, ent)
             g_BotOpenDoor[id] = true
             if(!task_exists(id))
             {
-                set_task(1.5, "@bot_door", id)
+                set_task(get_pcvar_float(g_cvar_doortime), "@bot_door", id)
             }
         }
     }
@@ -344,7 +347,12 @@ public build_power(id,level,cid)
                 client_print id, print_chat, "Removed door traversal from %n.", id
             }
             else
-            {
+            {/*
+ * Changelog
+ * --------------
+ * 4/28/25 - Add filter to forward to prevent door stock from run-time error. -SPiNX
+ * 5/05/25 - Loosen previously made filter to allow hostages again. -SPiNX
+ */
                 SetPlayerBit(g_Ability, id)
                 client_print id, print_chat, "Added door traversal to %n.", id
             }
@@ -445,4 +453,5 @@ public car_owner(ptr, ptd)
  * --------------
  * 4/28/25 - Add filter to forward to prevent door stock from run-time error. -SPiNX
  * 5/05/25 - Loosen previously made filter to allow hostages again. -SPiNX
+ * 5/06/25 - Fix forward from being overly registered. -SPiNX
  */
