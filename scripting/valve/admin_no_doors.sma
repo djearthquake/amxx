@@ -44,7 +44,7 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR)
     g_cvar_doortime = register_cvar("bot_doorclip", "1.5")
     g_plugin = register_cvar("admin_no_door", "0")
-    g_cvar_shootH = register_cvar("bullproof_hostages", "0")
+    g_cvar_shootH = register_cvar("hostage_ff", "0")
     new HasEnt
 
     if(bCS)
@@ -143,6 +143,7 @@ public FwdShouldCollide( const iTouched, const iOther )
         if(iTouched)
         {
             //Semi-Clip only after bot touches door otherwise they wallbang too easily.
+            if(iOther<=MaxClients)
             if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
             {
                 forward_return( FMV_CELL, 0 );
