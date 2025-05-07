@@ -15,12 +15,12 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "0.0.7"
+#define VERSION "0.0.8"
 #define AUTHOR  "SPiNX"
 
 new g_Ability, g_Locked, g_Prop, g_doors, g_pack, g_plugin
 new g_mod_car[MAX_PLAYERS + 1], bool:g_BotOpenDoor[MAX_PLAYERS + 1], g_AI, g_players_online;
-new g_cvar_doortime;
+new g_cvar_doortime, g_cvar_shootH;
 
 static bool:bCS, bool:bHost, bool:bCar;
 new bool:bReg;
@@ -44,6 +44,7 @@ public plugin_init()
     register_plugin(PLUGIN, VERSION, AUTHOR)
     g_cvar_doortime = register_cvar("bot_doorclip", "1.5")
     g_plugin = register_cvar("admin_no_door", "0")
+    g_cvar_shootH = register_cvar("bullproof_hostages", "0")
     new HasEnt
 
     if(bCS)
@@ -117,7 +118,7 @@ public client_putinserver(id)
     ClearPlayerBit(g_Ability, id);
     ClearPlayerBit(g_Locked, id);
     ClearPlayerBit(g_Prop, id);
-    g_players_online =get_playersnum()
+    g_players_online = get_playersnum()
     if(!bReg)
     {
         bReg = true
@@ -138,19 +139,19 @@ public FwdShouldCollide( const iTouched, const iOther )
     if(get_pcvar_num(g_plugin))
     {
         if(g_players_online)
+        //All Mods and maps with doors.
+        if(iTouched)
         {
-            if(iTouched)
-            if(iOther && iOther <= MaxClients)
+            //Semi-Clip only after bot touches door otherwise they wallbang too easily.
+            if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
             {
-                //Semi-Clip only after bot touches door otherwise they wallbang too easily.
-                if(isDoor( iTouched ) && CheckPlayerBit(g_AI, iOther ) && g_BotOpenDoor[iOther])
-                {
-                    forward_return( FMV_CELL, 0 );
-                    return FMRES_SUPERCEDE;
-                }
+                forward_return( FMV_CELL, 0 );
+                return FMRES_SUPERCEDE;
             }
+
             if(!bCS)return FMRES_IGNORED;
             {
+                //Applies to CS/CZ only.
                 if(!bHost)return FMRES_IGNORED;
                 {
                     //Door Bot/Hostage Semi-clip
@@ -159,13 +160,30 @@ public FwdShouldCollide( const iTouched, const iOther )
                         forward_return( FMV_CELL, 0 );
                         return FMRES_SUPERCEDE;
                     }
-                    //Bots can't shoot Hostage
-                    if(is_hostage(iTouched) && CheckPlayerBit(g_AI, iOther))
+                    new iGod = get_pcvar_num(g_cvar_shootH)
+                    if(is_hostage(iTouched) && iGod)
                     {
-                        forward_return( FMV_CELL, 0 );
-                        return FMRES_SUPERCEDE;
+                        //Bots can't shoot Hostage
+                        if(CheckPlayerBit(g_AI, iOther))
+                        {
+                            if(iGod)
+                            {
+                                forward_return( FMV_CELL, 0 );
+                                return FMRES_SUPERCEDE;
+                            }
+                        }
+                        else
+                        {
+                            //Humans can't attack Hostage
+                            if(iGod>1)
+                            {
+                                forward_return( FMV_CELL, 0 );
+                                return FMRES_SUPERCEDE;
+                            }
+                        }
                     }
                 }
+                //Applies to jeep maps only
                 if(!bCar)return FMRES_IGNORED;
                 {
                     if(isCar(iTouched))
@@ -180,6 +198,7 @@ public FwdShouldCollide( const iTouched, const iOther )
                         if(is_user_alive(driver) && is_user_alive(iOther))
                         {
                             //Vehicular Team Semi-clip 
+                            if(driver != iOther)
                             if(get_user_team(driver) == get_user_team(iOther))
                             {
                                 forward_return( FMV_CELL, 0 );
@@ -347,12 +366,7 @@ public build_power(id,level,cid)
                 client_print id, print_chat, "Removed door traversal from %n.", id
             }
             else
-            {/*
- * Changelog
- * --------------
- * 4/28/25 - Add filter to forward to prevent door stock from run-time error. -SPiNX
- * 5/05/25 - Loosen previously made filter to allow hostages again. -SPiNX
- */
+            {
                 SetPlayerBit(g_Ability, id)
                 client_print id, print_chat, "Added door traversal to %n.", id
             }
@@ -390,7 +404,7 @@ public AddToFullPack_Post(es_handle,e,ent,host,hostflags,player,pSet)
 
 stock bool:isDoor(ent)
 {
-    if(pev_valid(ent))
+    if(ent>MaxClients && pev_valid(ent))
     {
         static szClassName[MAX_PLAYERS];
         pev(ent, pev_classname, szClassName, charsmax(szClassName));
@@ -454,4 +468,5 @@ public car_owner(ptr, ptd)
  * 4/28/25 - Add filter to forward to prevent door stock from run-time error. -SPiNX
  * 5/05/25 - Loosen previously made filter to allow hostages again. -SPiNX
  * 5/06/25 - Fix forward from being overly registered. -SPiNX
+ * 5/07/25 - Work on filters for jeep and hostage again since updates. -SPiNX
  */
