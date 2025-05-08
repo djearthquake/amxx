@@ -15,8 +15,11 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "0.0.8"
+#define VERSION "0.0.9"
 #define AUTHOR  "SPiNX"
+
+#define LOSS_THRESHOLD 2.0
+#define PING_THRESHOLD 250
 
 new g_Ability, g_Locked, g_Prop, g_doors, g_pack, g_plugin
 new g_mod_car[MAX_PLAYERS + 1], bool:g_BotOpenDoor[MAX_PLAYERS + 1], g_AI, g_players_online;
@@ -81,6 +84,10 @@ public plugin_init()
         {
             pause("a")
         }
+    }
+    else
+    {
+        set_task 15.0, "@check_lag", 2025, _, _, "b"
     }
 }
 
@@ -463,6 +470,28 @@ public car_owner(ptr, ptd)
     }
 }
 
+@check_lag()
+{
+    static iLoss, iPing
+    if(get_pcvar_num(g_plugin))
+    
+    for(new list = 1 ;list <= MaxClients;++list)
+    {
+        if(is_user_connected(list))
+        {
+            get_user_ping(list, iPing, iLoss)
+            server_print("%s %s by %s | LAG CHECKING: %N-->L=%i|P=%i", PLUGIN, VERSION, AUTHOR, list, iLoss, iPing)
+            if(iLoss > LOSS_THRESHOLD || iPing > PING_THRESHOLD)
+            {
+                set_pcvar_num(g_plugin, 0)
+                log_amx("Paused Collide forward.")
+            }
+        }
+    }
+    return PLUGIN_HANDLED
+}
+
+
 /*
  * Changelog
  * --------------
@@ -470,4 +499,5 @@ public car_owner(ptr, ptd)
  * 5/05/25 - Loosen previously made filter to allow hostages again. -SPiNX
  * 5/06/25 - Fix forward from being overly registered. -SPiNX
  * 5/07/25 - Work on filters for jeep and hostage again since updates. -SPiNX
+ * 5/08/25 - Pause the forward when it gets too aggressive. Will reduce it next revise. -SPiNX
  */
