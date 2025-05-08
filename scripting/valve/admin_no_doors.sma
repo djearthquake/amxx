@@ -142,6 +142,48 @@ public build_lock(id,level,cid)
     return PLUGIN_HANDLED;
 }
 
+public build_power(id,level,cid)
+{
+    if(!cmd_access ( id, level, cid, 1 ))
+        return PLUGIN_HANDLED;
+
+    static Szbuffer[MAX_NAME_LENGTH]
+    read_argv(1,Szbuffer,charsmax(Szbuffer))
+
+    new target = get_user_index(Szbuffer)
+
+    if(is_user_connected(id))
+    {
+        if(equal(Szbuffer, ""))
+        {
+            if(CheckPlayerBit(g_Ability, id))
+            {
+                ClearPlayerBit(g_Ability, id)
+                client_print id, print_chat, "Removed door traversal from %n.", id
+            }
+            else
+            {
+                SetPlayerBit(g_Ability, id)
+                client_print id, print_chat, "Added door traversal to %n.", id
+            }
+        }
+        else if(is_user_connected(target))
+        {
+            if(CheckPlayerBit(g_Ability, target))
+            {
+                ClearPlayerBit(g_Ability, target)
+                client_print id, print_chat, "Removed 'door walk-through' ability from %n.", target
+            }
+            else
+            {
+                SetPlayerBit(g_Ability, target)
+                client_print id, print_chat, "Added 'door walk-through' to %n.", target
+            }
+        }
+    }
+    return PLUGIN_HANDLED;
+}
+
 public build_prop(id,level,cid)
 {
     if(!cmd_access ( id, level, cid, 1 ))
@@ -217,48 +259,6 @@ public touched(id, ent)
             }
         }
     }
-}
-
-public build_power(id,level,cid)
-{
-    if(!cmd_access ( id, level, cid, 1 ))
-        return PLUGIN_HANDLED;
-
-    static Szbuffer[MAX_NAME_LENGTH]
-    read_argv(1,Szbuffer,charsmax(Szbuffer))
-
-    new target = get_user_index(Szbuffer)
-
-    if(is_user_connected(id))
-    {
-        if(equal(Szbuffer, ""))
-        {
-            if(CheckPlayerBit(g_Ability, id))
-            {
-                ClearPlayerBit(g_Ability, id)
-                client_print id, print_chat, "Removed door traversal from %n.", id
-            }
-            else
-            {
-                SetPlayerBit(g_Ability, id)
-                client_print id, print_chat, "Added door traversal to %n.", id
-            }
-        }
-        else if(is_user_connected(target))
-        {
-            if(CheckPlayerBit(g_Ability, target))
-            {
-                ClearPlayerBit(g_Ability, target)
-                client_print id, print_chat, "Removed 'door walk-through' ability from %n.", target
-            }
-            else
-            {
-                SetPlayerBit(g_Ability, target)
-                client_print id, print_chat, "Added 'door walk-through' to %n.", target
-            }
-        }
-    }
-    return PLUGIN_HANDLED;
 }
 
 public AddToFullPack_Post(es_handle,e,ent,host,hostflags,player,pSet)
