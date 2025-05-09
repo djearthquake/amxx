@@ -15,10 +15,10 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define AUTHOR  "SPiNX"
 
-new g_Ability, g_Locked, g_Prop, g_doors, g_pack, bool:g_BotOpenDoor[MAX_PLAYERS + 1], g_cvar_doortime, g_AI;
+new g_Ability, g_Locked, g_Prop, g_pack, g_AI;
 
 static const SzClass[][] =
 {
@@ -37,7 +37,6 @@ public plugin_init()
     register_clcmd("door_prop","build_prop",ADMIN_KICK,"Gives/takes ability to prop open doors.")
 
     g_pack = register_forward(FM_AddToFullPack, "AddToFullPack_Post", 1)
-    g_cvar_doortime = register_cvar("bot_doorclip", "1.5")
 }
 
 public plugin_cfg()
@@ -60,7 +59,6 @@ public plugin_cfg()
 
 public plugin_end()
 {
-    unregister_forward(FM_ShouldCollide, g_doors, 0)
     unregister_forward(FM_AddToFullPack, g_pack, 1)
 }
 
@@ -84,11 +82,6 @@ public client_disconnected(id)
     ClearPlayerBit(g_Ability, id);
     ClearPlayerBit(g_Locked, id);
     ClearPlayerBit(g_Prop, id);
-}
-
-@bot_door(iBot)
-{
-    g_BotOpenDoor[iBot] = false
 }
 
 public seal_door(ent)
@@ -134,7 +127,7 @@ public build_lock(id,level,cid)
             }
             else
             {
-                SetPlayerBit(g_Ability, target)
+                SetPlayerBit(g_Locked, target)
                 client_print id, print_chat, "Removed door access from %n.", target
             }
         }
@@ -228,16 +221,8 @@ public build_prop(id,level,cid)
 
 public touched(id, ent)
 {
-    if(is_user_alive(id))
+    if(id<=MaxClients)
     {
-        if(CheckPlayerBit(g_Locked, id))
-        {
-            set_pev(ent, pev_spawnflags, LOCK)
-        }
-        else
-        {
-            set_pev(ent, pev_spawnflags, 0)
-        }
         if(CheckPlayerBit(g_Ability, id))
         {
             set_pev(ent, pev_movetype, MOVETYPE_NONE)
@@ -245,20 +230,23 @@ public touched(id, ent)
             set_pev(ent, pev_spawnflags, SF_DOOR_SILENT)
             set_task(0.3, "seal_door", ent)
         }
-        //if(has_flag(id, ACCESS_LEVEL))
         if(CheckPlayerBit(g_Prop, id))
         {
             set_pev(ent, pev_spawnflags, PROP)
         }
-        if(isDoor(ent) && CheckPlayerBit(g_AI, id))
-        {
-            g_BotOpenDoor[id] = true
-            if(!task_exists(id))
-            {
-                set_task(get_pcvar_float(g_cvar_doortime), "@bot_door", id)
-            }
-        }
+        return PLUGIN_CONTINUE
     }
+    return PLUGIN_HANDLED
+}
+
+public pfn_touch(touched, toucher)
+{
+    if(isDoor(touched))
+    {
+        if(CheckPlayerBit(g_Locked, toucher))
+            return PLUGIN_HANDLED;
+    }
+    return PLUGIN_CONTINUE;
 }
 
 public AddToFullPack_Post(es_handle,e,ent,host,hostflags,player,pSet)
