@@ -14,7 +14,7 @@ new g_iSemiclip, g_cvar_dist, bool:bRegistered;
 
 public plugin_init()
 {
-    register_plugin("Semiclip", "1.14", "ConnorMcLeod|SPiNX")
+    register_plugin("Semiclip", "1.15", "ConnorMcLeod|SPiNX")
 
     g_iSemiclip = register_cvar("sv_semiclip", "1");
 
@@ -30,13 +30,14 @@ public FM_client_AddToFullPack_Post(es, e, iEnt, id, hostflags, player, pSet)
 {
     if(is_user_alive(id) && is_user_alive(player))
     {
-        static SzTeam[MAX_PLAYERS], SzOtherTeam[MAX_PLAYERS];
+        new SzTeam[MAX_PLAYERS], SzOtherTeam[MAX_PLAYERS];
         get_user_team(iEnt, SzTeam, charsmax(SzTeam));
         get_user_team(id, SzOtherTeam, charsmax(SzOtherTeam));
+        if(pev(player, pev_movetype) != MOVETYPE_FLY)
         if( player && id != iEnt && get_orig_retval() && is_user_alive(id) && equali(SzTeam, SzOtherTeam))
         {
-            static Float:fDist; fDist = get_pcvar_num(g_cvar_dist)*1.0
-            static Float:flDistance; flDistance = entity_range(id, iEnt)
+            new Float:fDist; fDist = get_pcvar_num(g_cvar_dist)*1.0
+            new Float:flDistance; flDistance = entity_range(id, iEnt)
             if( flDistance < fDist )
             {
                 set_es(es, ES_RenderMode, kRenderTransAlpha)
@@ -57,13 +58,21 @@ public FM_client_AddToFullPack_Post(es, e, iEnt, id, hostflags, player, pSet)
     }
 }
 
+public client_putinserver(id)
+{
+    if(is_user_bot(id) && !bRegistered)
+    {
+        set_task(0.2, "@register", id);
+    }
+}
+/*
 public client_authorized(id, const authid[])
 {
     if(equal(authid, "BOT") && !bRegistered)
     {
         set_task(0.1, "@register", id);
     }
-}
+}*/
 
 public Ham_CBasePlayer_PreThink_Pre(id)
 {
