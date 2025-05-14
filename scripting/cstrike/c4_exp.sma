@@ -9,7 +9,7 @@
 #include fakemeta_util
 #include hamsandwich
 
-#define IDENTIFY register_plugin("c4 Experience","1.26","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.27","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -199,6 +199,19 @@ public FnPlant()
 
                 if(get_pcvar_num(g_debug))
                     set_task(0.1,"@c4_status",3400,_,_,"b")
+
+                //Give spec a show
+                for (new spec=1; spec<=MaxClients; ++spec)
+                {
+                    static flags
+                    flags = pev(spec, pev_flags)
+                    if(flags & FL_SPECTATOR)
+                
+                    if(!bRadarOwner[spec])
+                    {
+                        bRadarOwner[spec] = true
+                    }
+                }
             }
             else
             {
