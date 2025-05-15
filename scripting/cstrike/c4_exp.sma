@@ -199,16 +199,14 @@ public FnPlant()
 
                 if(get_pcvar_num(g_debug))
                     set_task(0.1,"@c4_status",3400,_,_,"b")
-
                 //Give spec a show
-                for (new spec=1; spec<=MaxClients; ++spec)
+                for (new spec; spec<=MaxClients; spec++)
                 {
-                    static flags
-                    flags = pev(spec, pev_flags)
+                    new flags = pev(spec, pev_flags)
                     if(flags & FL_SPECTATOR)
-                
-                    if(!bRadarOwner[spec])
+                    //if(!bRadarOwner[spec])
                     {
+                        server_print "%n is spec...", spec
                         bRadarOwner[spec] = true
                     }
                 }
@@ -287,52 +285,42 @@ public fnDefusal(id)
         }
     }
 }
-
 @c4_radar(r,g,b)
 {
     static Float:fOrigin[3]
     if(pev_valid(g_weapon_c4_index))
     {
         pev(g_weapon_c4_index, pev_origin, fOrigin)
-        new ok_show_sfx = players_who_see_effects()
-        if(ok_show_sfx)
+        for(new i=1; i <= MaxClients; ++i )
         {
-            emessage_begin ( MSG_ONE, SVC_TEMPENTITY, { 0, 0, 0 }, ok_show_sfx )
-            ewrite_byte(TE_BEAMTORUS)
-            ewrite_coord_f(fOrigin[0]);
-            ewrite_coord_f(fOrigin[1]);
-            ewrite_coord_f(fOrigin[2] + 16);
-            ewrite_coord_f(fOrigin[0]);
-            ewrite_coord_f(fOrigin[1]);
-            ewrite_coord_f(fOrigin[2] + 200);
-            ewrite_short(g_radar);
-            ewrite_byte(1); //start frame
-            ewrite_byte(32); //frame rate
-            ewrite_byte(255); //life in .1
-            ewrite_byte(2); //line Width .1
-            ewrite_byte(1); //noise amp .1
-            ewrite_byte(r);
-            ewrite_byte(g);
-            ewrite_byte(b);
-            ewrite_byte(254);  //brightness
-            ewrite_byte(2); //scroll speed
-            emessage_end();
+            if(is_user_connected(i) && bRadarOwner[i])
+            {
+                //debug
+                ///server_print("%n is seeing radar...", i)
+                emessage_begin ( MSG_ONE, SVC_TEMPENTITY, { 0, 0, 0 }, i )
+                ewrite_byte(TE_BEAMTORUS)
+                ewrite_coord_f(fOrigin[0]);
+                ewrite_coord_f(fOrigin[1]);
+                ewrite_coord_f(fOrigin[2] + 16);
+                ewrite_coord_f(fOrigin[0]);
+                ewrite_coord_f(fOrigin[1]);
+                ewrite_coord_f(fOrigin[2] + 200);
+                ewrite_short(g_radar);
+                ewrite_byte(1); //start frame
+                ewrite_byte(32); //frame rate
+                ewrite_byte(255); //life in .1
+                ewrite_byte(2); //line Width .1
+                ewrite_byte(1); //noise amp .1
+                ewrite_byte(r);
+                ewrite_byte(g);
+                ewrite_byte(b);
+                ewrite_byte(254);  //brightness
+                ewrite_byte(2); //scroll speed
+                emessage_end();
+            }
         }
     }
     return PLUGIN_HANDLED
-}
-
-stock players_who_see_effects()
-{
-
-    for(new i=1; i <= MaxClients; ++i )
-    {
-        if(is_user_connected(i) && bRadarOwner[i])
-        {
-            return i;
-        }
-    }
-    return PLUGIN_CONTINUE;
 }
 
 public nice(show)
