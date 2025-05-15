@@ -9,7 +9,7 @@
 #include fakemeta_util
 #include hamsandwich
 
-#define IDENTIFY register_plugin("c4 Experience","1.27","SPiNX")
+#define IDENTIFY register_plugin("c4 Experience","1.28","SPiNX")
 #define MAX_IP_LENGTH              16
 #define MAX_NAME_LENGTH            32
 #define MAX_PLAYERS                32
@@ -293,7 +293,7 @@ public fnDefusal(id)
         pev(g_weapon_c4_index, pev_origin, fOrigin)
         for(new i=1; i <= MaxClients; ++i )
         {
-            if(is_user_connected(i) && bRadarOwner[i])
+            if(is_user_connected(i) && bRadarOwner[i] || !is_user_alive(i) && !is_user_bot(i))
             {
                 //debug
                 ///server_print("%n is seeing radar...", i)
