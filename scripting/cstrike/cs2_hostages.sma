@@ -31,7 +31,6 @@ stock hostage_one(id)
 {
     new ihostie, Float:Origin[3];
     
-
     if(is_user_alive(id))
     {
         new ent = find_ent(FM_NULLENT, "func_hostage_rescue")
