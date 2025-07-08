@@ -4,11 +4,11 @@
 
 static const szHostages[][]={"hostage_entity", "monster_scientist"};
 
-new g_cvar
+new g_cvar, bool:bRescuing;
 
 public plugin_init()
 {
-    register_plugin("CS2 HOSTAGES", "0.0.1", "SPiNX")
+    register_plugin("CS2 HOSTAGES", "0.0.2", "SPiNX")
     register_logevent("logevent_hostage_rescued",3,"2=Rescued_A_Hostage");
     g_cvar = register_cvar("cs2_hostages", "1")
 }
@@ -19,8 +19,9 @@ public logevent_hostage_rescued()
     if(cvar)
     {
         new id = get_loguser_index();
-        if(is_user_connected(id))
+        if(is_user_alive(id) && !bRescuing)
         {
+            bRescuing = true
             hostage_one(id)
         }
     }
@@ -29,22 +30,28 @@ public logevent_hostage_rescued()
 stock hostage_one(id)
 {
     new ihostie, Float:Origin[3];
-    new bool:printed;
+    
 
     if(is_user_alive(id))
     {
-        pev(id, pev_origin, Origin);
-
+        new ent = find_ent(FM_NULLENT, "func_hostage_rescue")
+        if(ent)
+        {
+            get_brush_entity_origin(ent, Origin)
+        }
+        else
+        {
+            pev(id, pev_origin, Origin);
+        }
         for(new gang; gang <sizeof(szHostages);gang++)
         {
             while((ihostie = find_ent(ihostie, szHostages[gang])))
             {
                 set_pev(ihostie, pev_origin, Origin);
             }
-            if(!printed)
+            if(bRescuing)
             {
-                printed = true
-                client_print 0, print_chat, "%n saved the hostages!", id;
+                bRescuing = false
             }
 
         }
