@@ -110,6 +110,7 @@ Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
 bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered;
 static bool:bC4map;
+static g_mod[MAX_NAME_LENGTH];
 
 static const c4[][]={"weapon_c4","func_bomb_target","info_bomb_target"};
 
@@ -175,6 +176,7 @@ public plugin_init()
             bC4map = true
         }
     }
+    get_modname(g_mod, charsmax(g_mod))
 }
 
 stock get_loguser_index()
@@ -325,19 +327,23 @@ public bomb_dropped()
 
 public client_putinserver(id)
 {
-	if(is_user_connected(id))
-	{
-	    bIsBot[id] = is_user_bot(id) ? true : false
-	    if(bIsBot[id] && !bRegistered)
-	    {
-	        set_task(0.1, "@register", id);
-		}
-	}
+    if(!equal(g_mod, "czero"))
+    {
+            bRegistered = true
+    }
+    if(is_user_connected(id))
+    {
+        bIsBot[id] = is_user_bot(id) ? true : false
+        if(bIsBot[id] && !bRegistered)
+        {
+            set_task(0.1, "@register", id);
+        }
+    }
 }
 
 public client_disconnected(id)
 {
-	bIsBot[id] = false
+    bIsBot[id] = false
 }
 
 public CS_OnBuyAttempt(id)
@@ -372,7 +378,7 @@ public CS_OnBuy(id, item)
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
-        if(!g_JustTook[id])
+        if(!g_JustTook[id] && !g_bot_controllers)
         {
             set_task(cs_get_user_shield(id) ? 0.3 : 0.1,"@ReSpawn", id)
         }
