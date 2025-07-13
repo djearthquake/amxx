@@ -5,13 +5,45 @@
 
 static const szHostages[][]={"hostage_entity", "monster_scientist"};
 
-new g_cvar, bool:bRescuing;
+new g_cvar, bool:bRescuing, bool:bGetarea, Float:g_origin[3];
 
 public plugin_init()
 {
-    register_plugin("CS2 HOSTAGES", "0.0.3", "SPiNX")
+    register_plugin("CS2 HOSTAGES", "0.0.4", "SPiNX")
     register_logevent("logevent_hostage_rescued",3,"2=Rescued_A_Hostage");
     g_cvar = register_cvar("cs2_hostages", "1")
+
+    static rescue_area; rescue_area=0;
+    rescue_area  = find_ent(MaxClients, "func_hostage_rescue")
+    
+    if(rescue_area)
+    {
+        get_brush_entity_origin(rescue_area, g_origin)
+        bGetarea = true
+    }
+    else
+    {
+        rescue_area  = find_ent(MaxClients, "info_hostage_rescue")
+    }
+    if(rescue_area)
+    {
+        get_brush_entity_origin(rescue_area, g_origin)
+        bGetarea = true
+    }
+    if(!bGetarea)
+    {
+        RegisterHam(Ham_Spawn, "player", "@spawn", 1)
+    }
+}
+
+@spawn(id)
+{
+    if(!bGetarea)
+    if(is_user_alive(id) && get_user_team(id) ==2)
+    {
+        bGetarea = true
+        pev(id, pev_origin, g_origin)
+    }
 }
 
 public logevent_hostage_rescued()
@@ -23,41 +55,24 @@ public logevent_hostage_rescued()
         if(is_user_alive(id) && !bRescuing)
         {
             bRescuing = true
-            hostage_one(id)
+            @hostage_one(id)
         }
     }
 }
 
-public hostage_one(id)
+@hostage_one(id)
 {
-    new ihostie, Float:Origin[3];
+    new ihostie;
 
     if(is_user_alive(id))
     {
-        new ent = find_ent(MaxClients, "func_hostage_rescue")
-        if(ent)
-        {
-            get_brush_entity_origin(ent, Origin)
-        }
-        else
-        {
-            ent = find_ent(MaxClients, "info_hostage_rescue")
-            if(ent)
-            {
-                get_brush_entity_origin(ent, Origin)
-            }
-            else
-            {
-                pev(id, pev_origin, Origin);
-            }
-        }
         for(new gang; gang <sizeof(szHostages);gang++)
         {
             while((ihostie = find_ent(ihostie, szHostages[gang])))
             {
                 #define TOGGLE "3"
+                set_pev(ihostie, pev_origin, g_origin);
                 ExecuteHam(Ham_Use, ihostie, id, id, TOGGLE, 1.0);
-                set_pev(ihostie, pev_origin, Origin);
             }
             if(bRescuing)
             {
