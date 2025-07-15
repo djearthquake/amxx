@@ -374,7 +374,7 @@ public CS_OnBuy(id, item)
 
 @PlayerSpawn(id)
 {
-    set_task(0.5, "@PlayerSpawn_",id)
+    set_task(0.1, "@PlayerSpawn_",id)
 }
 
 @PlayerSpawn_(id)
@@ -870,3 +870,4 @@ stock COLOR()
     new iRandom = random(256)
     return iRandom
 }
+
