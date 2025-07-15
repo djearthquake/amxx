@@ -37,7 +37,7 @@ const LINUX_DIFF = 5;
 #define MAG_ARSEN   1000
 
 #define PLUGIN  "Gun Speed"
-#define VERSION "1.0.3"
+#define VERSION "1.0.4"
 #define AUTHOR "SPiNX"
 /* VARIABLES */
 
@@ -500,6 +500,6 @@ public plugin_end()
     if(is_user_connected(ham_bot))
     {
         bRegistered = true;
+        server_print("%s from %N", PLUGIN, ham_bot)
     }
-    server_print("%s from %N", PLUGIN, ham_bot)
 }
