@@ -374,6 +374,15 @@ public CS_OnBuy(id, item)
 
 @PlayerSpawn(id)
 {
+    set_task(0.5, "@PlayerSpawn_",id)
+}
+
+@PlayerSpawn_(id)
+{
+    if(bIsBot[id])
+    {
+        @BotSpawn(id)
+    }
     if(is_user_connected(id))
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
