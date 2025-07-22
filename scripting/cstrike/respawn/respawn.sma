@@ -142,7 +142,7 @@ static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.55", "SPiNX");
+    register_plugin("Repawn from bots", "1.56", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1")
@@ -858,11 +858,24 @@ public stuck_timer(dead_spec)
             client_cmd(dead_spec, "spk common/menu1.wav")
             g_counter[dead_spec]++
         }
+        client_cmd( dead_spec, "+forward");
+        set_task(1.0, "@stop", dead_spec, "b");
 
         set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
-
+        @stop(dead_spec);
     }
 
+}
+
+@stop(id)
+{
+    if(is_user_connected(id))
+    {
+        client_cmd id, "+forward;wait;-forward;-forward"
+        //client_print id, print_chat, "Trying stop you"
+        entity_set_float(id, EV_FL_friction, FRICTION_NOT);
+        remove_task(id)
+    }
 }
 
 stock COLOR()
@@ -870,4 +883,3 @@ stock COLOR()
     new iRandom = random(256)
     return iRandom
 }
-
