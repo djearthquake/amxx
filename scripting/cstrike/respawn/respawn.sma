@@ -92,7 +92,7 @@
 
 new
 //Cvars
-g_dust, g_humans, g_keep, g_sound_reminder, g_stuck,
+g_dust, g_humans, g_keep, g_sound_reminder, g_stuck, g_freeze,
 //Strings
 SzWeaponClassname[MAX_NAME_LENGTH], bots_name[ MAX_NAME_LENGTH + 1 ],
 //Integers
@@ -142,19 +142,20 @@ static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.56", "SPiNX");
+    register_plugin("Repawn from bots", "1.57", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1")
     g_keep = register_cvar("respawn_keep", "0")
     g_sound_reminder = register_cvar("respawn_sound", "1")
     g_stuck = register_cvar("respawn_unstick", "0.3")
+    g_freeze = get_cvar_pointer("mp_freezetime")
     //Ham
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
-    register_event("ResetHUD", "@BotSpawn", "bg")
+    //register_event("ResetHUD", "@BotSpawn", "bg")
     register_logevent("round_start", 2, "1=Round_Start")
     register_logevent("round_end", 2, "1=Round_End")
     register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
@@ -547,27 +548,30 @@ public CS_OnBuy(id, item)
 public round_start()
 {
     cool_down_active = false
-    set_msg_block( g_cor, BLOCK_NOT );
-    if(g_bot_controllers)
+    if(!g_freeze)
     {
-        client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
-    }
-    if(bC4map && g_c4_client)
-    {
-        is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
-
-        if(user_has_weapon(g_c4_client, CSW_C4))
+        set_msg_block( g_cor, BLOCK_NOT );
+        if(g_bot_controllers)
         {
-            engclient_cmd(g_c4_client, "drop", "weapon_c4")
+            client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
         }
-        else
+        if(bC4map && g_c4_client)
         {
-            @c4_check()
+            is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
+    
+            if(user_has_weapon(g_c4_client, CSW_C4))
+            {
+                engclient_cmd(g_c4_client, "drop", "weapon_c4")
+            }
+            else
+            {
+                @c4_check()
+            }
         }
+        g_bot_controllers = 0;
+        g_c4_client = 0;
+        g_IS_PLANTING = 0;
     }
-    g_bot_controllers = 0;
-    g_c4_client = 0;
-    g_IS_PLANTING = 0;
 }
 
 public round_end()
@@ -579,6 +583,30 @@ public round_end()
         {
              g_JustTook[iPlayer] = false
         }
+    }
+    if(g_freeze)
+    {
+        set_msg_block( g_cor, BLOCK_NOT );
+        if(g_bot_controllers)
+        {
+            client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
+        }
+        if(bC4map && g_c4_client)
+        {
+            is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
+    
+            if(user_has_weapon(g_c4_client, CSW_C4))
+            {
+                engclient_cmd(g_c4_client, "drop", "weapon_c4")
+            }
+            else
+            {
+                @c4_check()
+            }
+        }
+        g_bot_controllers = 0;
+        g_c4_client = 0;
+        g_IS_PLANTING = 0;
     }
 }
 
