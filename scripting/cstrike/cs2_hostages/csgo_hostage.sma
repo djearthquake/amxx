@@ -21,6 +21,7 @@ static const CARRY_MODEL[]       = "models/csgo_hostage/p_hostage_back.mdl";
 static const HOSTAGE_CLASSNAME[] = "hostage_entity";
 
 static const szHostageResMsg[]   = "HOSTAGE RESCUE ZONE^n^nBring the hostages here!";
+//static const szHostages[][]      ={"hostage_entity", "monster_scientist"};
 static const  Float:fNullOrigin[3] = {0.0, 0.0, 0.0};
 
 static const szCZsuffixes[][] ={"A",  "B",  "C", "D"};
@@ -454,6 +455,7 @@ stock colored()
 public FnPlant()
 {
     bPlanted = true
+    //static Float:origin[3] = fNullOrigin;
     for (new id = 1; id <= MaxClients; id++)
     {
         //For PodBot bug on Jeep when rescuing and C4 is planted they freeze.
@@ -725,7 +727,7 @@ public fw_PlayerThink(id) {
         engfunc(EngFunc_SetOrigin, hostage, offset);
         set_pev(hostage, pev_angles, Float:{0.0, 0.0, 0.0});
     }
-
+/*
     static Float:fArmsLen; fArmsLen = 100.0;
     if(g_fake_rescue)
     if(entity_range(id, g_fake_rescue) <= fArmsLen)
@@ -738,6 +740,12 @@ public fw_PlayerThink(id) {
         {
             @hostage_one(id)
         }
+    }
+    */
+
+    if(entity_range(id, g_fake_rescue) <= 100.0 || entity_range(id, g_fake_rescue2) <= 100.0 || entity_range(id, g_fake_rescue3) <= 100.0 || entity_range(id, g_fake_rescue4) <= 100.0 )
+    {
+        @hostage_one(id)
     }
 
     new stabby = get_user_weapon(id) == CSW_KNIFE
@@ -777,7 +785,7 @@ public fw_HostageTouch(ent, id)
             set_pev(ent, pev_owner, id)
         if(pev(ent, pev_owner, id)!=id)
             return HAM_SUPERCEDE;
-        //stop others from stealing/messing model on carrier
+        //maybe stop others from stealing/messing model on carrier
         if(g_CarriedHostage[ent] || g_bCarryingHostage[id])
         {
             if(is_user_alive(id))
@@ -997,31 +1005,35 @@ public hostage_kill()
     new ent = cs_get_hostage_entid(hid)
 
     new Float:origin[3];
-    pev(ent,pev_origin, origin)
-
-    if(origin[0] != fNullOrigin[0] && origin[1] != fNullOrigin[1])
-    if(entity_range(ent,g_rescue_area)>750.0)
+    if(ent & g_rescue_area)
+    if(pev_valid(ent) && pev_valid(g_rescue_area))
     {
-        entity_get_vector(ent,EV_VEC_origin,Pos);
-        entity_get_vector(ent,EV_VEC_angles,Axis);
-
-        @hostage_splatter(Pos, Axis)
-
-        client_cmd 0, "spk radio/hosdown.wav"
-
-        new rPick = random_num(1,25);
-        new SzCry[MAX_PLAYERS];
-        formatex(SzCry, charsmax(SzCry), rPick < 10 ? "spk scientist/scream0%i.wav" : "spk scientist/scream%i.wav", rPick)
-
-        client_cmd 0, "%s",SzCry;
-    }
-
-    new owner = pev(ent, pev_owner)
-    if(owner && pev_valid(ent))
-    {
-        set_pev(ent, pev_owner, 0)
-        RemoveHostageOnBack(owner)
-        set_pev(ent, pev_origin, fNullOrigin)
+        pev(ent,pev_origin, origin)
+    
+        if(origin[0] != fNullOrigin[0] && origin[1] != fNullOrigin[1])
+        if(entity_range(ent,g_rescue_area)>750.0)
+        {
+            entity_get_vector(ent,EV_VEC_origin,Pos);
+            entity_get_vector(ent,EV_VEC_angles,Axis);
+    
+            @hostage_splatter(Pos, Axis)
+    
+            client_cmd 0, "spk radio/hosdown.wav"
+    
+            new rPick = random_num(1,25);
+            new SzCry[MAX_PLAYERS];
+            formatex(SzCry, charsmax(SzCry), rPick < 10 ? "spk scientist/scream0%i.wav" : "spk scientist/scream%i.wav", rPick)
+    
+            client_cmd 0, "%s",SzCry;
+        }
+    
+        new owner = pev(ent, pev_owner)
+        if(owner && pev_valid(ent))
+        {
+            set_pev(ent, pev_owner, 0)
+            RemoveHostageOnBack(owner)
+            set_pev(ent, pev_origin, fNullOrigin)
+        }
     }
 }
 
