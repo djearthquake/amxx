@@ -697,7 +697,7 @@ public initialize_hostages() {
 
 @shutup(id)
 {
-    if(is_user_connected(id))
+    if(is_user_connected(id) && !bIsBot[id])
     {
         client_cmd id, "stopsound";
     }
@@ -705,7 +705,7 @@ public initialize_hostages() {
 
 /* ========== Player Think Functions ========== */
 public fw_PlayerThink(id) {
-    if (!is_user_alive(id))
+    if (!is_user_alive(id) || bIsBot[id])
         return;
 
     // Restore speed after freeze time if not carrying
@@ -727,7 +727,7 @@ public fw_PlayerThink(id) {
         engfunc(EngFunc_SetOrigin, hostage, offset);
         set_pev(hostage, pev_angles, Float:{0.0, 0.0, 0.0});
     }
-/*
+
     static Float:fArmsLen; fArmsLen = 100.0;
     if(g_fake_rescue)
     if(entity_range(id, g_fake_rescue) <= fArmsLen)
@@ -741,13 +741,6 @@ public fw_PlayerThink(id) {
             @hostage_one(id)
         }
     }
-    */
-
-    if(entity_range(id, g_fake_rescue) <= 100.0 || entity_range(id, g_fake_rescue2) <= 100.0 || entity_range(id, g_fake_rescue3) <= 100.0 || entity_range(id, g_fake_rescue4) <= 100.0 )
-    {
-        @hostage_one(id)
-    }
-
     new stabby = get_user_weapon(id) == CSW_KNIFE
     new Float:speed = get_pcvar_float(g_carryspeed)
     new crouch = pev(id, pev_button) & IN_DUCK & pev(id, pev_oldbuttons) & IN_DUCK
@@ -1011,22 +1004,27 @@ public hostage_kill()
         pev(ent,pev_origin, origin)
     
         if(origin[0] != fNullOrigin[0] && origin[1] != fNullOrigin[1])
-        if(entity_range(ent,g_rescue_area)>750.0)
+        if(entity_range(ent,g_rescue_area)>1000.0) //should not see death effects during rescue.
         {
             entity_get_vector(ent,EV_VEC_origin,Pos);
             entity_get_vector(ent,EV_VEC_angles,Axis);
     
             @hostage_splatter(Pos, Axis)
     
-            client_cmd 0, "spk radio/hosdown.wav"
+            for (new id = 1; id <= MaxClients; id++)
+            {
+                if(is_user_connected(id) && !bIsBot[id])
+                {
+                    client_cmd id, "spk radio/hosdown.wav"
     
-            new rPick = random_num(1,25);
-            new SzCry[MAX_PLAYERS];
-            formatex(SzCry, charsmax(SzCry), rPick < 10 ? "spk scientist/scream0%i.wav" : "spk scientist/scream%i.wav", rPick)
-    
-            client_cmd 0, "%s",SzCry;
+                    new rPick = random_num(1,25);
+                    new SzCry[MAX_PLAYERS];
+                    formatex(SzCry, charsmax(SzCry), rPick < 10 ? "spk scientist/scream0%i.wav" : "spk scientist/scream%i.wav", rPick)
+            
+                    client_cmd id, "%s",SzCry;
+                }
+            }
         }
-    
         new owner = pev(ent, pev_owner)
         if(owner && pev_valid(ent))
         {
