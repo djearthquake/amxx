@@ -7,7 +7,7 @@
 #include <engine>
 
 #define PLUGIN             "CSGO Hostage Mode"
-#define VERSION            "1.2.2"
+#define VERSION            "1.2.3"
 #define AUTHOR             "mjf_0.0|SPiNX"
 
 #define MAX_PLAYERS        32
@@ -83,7 +83,18 @@ static g_mod[MAX_NAME_LENGTH];
 }
 
 /* ========== Plugin Initialization ========== */
-public plugin_precache() {
+public plugin_precache()
+{
+    new mname[MAX_PLAYERS];
+    get_mapname(mname, charsmax(mname));
+    g_bHostageMap = containi(mname,"cs_") > FM_NULLENT || equal(mname, "de_jeepathon2k") ? true : false
+    server_print("%s", mname)
+
+    if(!g_bHostageMap)
+    {
+        pause("c");
+    }
+
     if (!file_exists(HOSTAGE_MODEL)) {
         log_amx("[Hostage] ERROR: Missing model %s", HOSTAGE_MODEL);
         pause("d")
@@ -97,7 +108,8 @@ public plugin_precache() {
     precache_model(CARRY_MODEL);
 
     get_modname(g_mod, charsmax(g_mod));
-    if(equal(g_mod, "czero"))
+
+    if(equal(g_mod, "czero") && g_bHostageMap)
     {
         for(new lot;lot < sizeof szCZsuffixes;++lot)
         {
@@ -111,13 +123,17 @@ public plugin_precache() {
 
 public plugin_init() {
     register_plugin(PLUGIN, VERSION, AUTHOR);
-    bCsBeta = get_cvar_num("hostage_use") ? true : false
+    
     // Detect if current map is a hostage map
-    g_bHostageMap = has_map_ent_class(HOSTAGE_CLASSNAME) || has_map_ent_class("monster_scientist")
+    //g_bHostageMap = has_map_ent_class(HOSTAGE_CLASSNAME) || has_map_ent_class("monster_scientist")
+    g_bHostageMap = find_ent(MaxClients, HOSTAGE_CLASSNAME) > MaxClients ? true : false;
     if(!g_bHostageMap)
     {
         pause("a");
     }
+
+    bCsBeta = get_cvar_num("hostage_use") ? true : false
+
     g_remove_zones = register_cvar("remove_zones", "0"); //Working left in. No longer needed with fake rescue points.
     //Dual objective maps like de_jeepathon bugfix for PodBot.
     register_logevent("FnPlant",3,"2=Planted_The_Bomb");
@@ -138,7 +154,7 @@ public plugin_init() {
     register_event("HLTV", "event_new_round", "a", "1=0", "2=0");
     register_event("StatusIcon", "@inzone", "be", "1=1", "2=rescue");
     register_event("StatusIcon", "@inzone", "be", "1=1", "2=buyzone");
-    
+
     register_event("HostageK", "hostage_kill", "bc") //Thx VEN
 
     register_forward(FM_PlayerPreThink, "fw_PlayerThink");
@@ -171,11 +187,6 @@ public plugin_init() {
 }
 
 /* ========== Hostage Rescue Zone Functions ========== */
-public plugin_cfg()
-{
-    set_task(0.5, "initialize_hostages");
-}
-
 @find_zone()
 {
 
@@ -196,7 +207,7 @@ public plugin_cfg()
     {
         set_task(0.5, "@remove_zones", 2025)
     }
-    
+
     RegisterHam(Ham_Spawn, "player", "@spawn", 1)
     register_event("StatusIcon", "@inzone", "be", "1=1", "2=buyzone");
 }
@@ -482,7 +493,7 @@ public ShowHostageOnBack(id) {
     {
         new ent = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"));
 
-        if(pev_valid(ent))
+        if(pev_valid(ent) == 2)
         {
             g_bCarryingHostage[id] = true;
             set_pev(ent, pev_classname, HOSTAGE_CLASSNAME);
@@ -630,12 +641,12 @@ public event_new_round() {
 
 public logevent_round_start()
 {
-    set_task(0.5, "initialize_hostages");
+    set_task(1.5, "initialize_hostages");
 }
 
 public initialize_hostages() {
     new ent = MaxClients
-    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME)) > MaxClients) {
+    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME))) {
         if (!pev_valid(ent))
             continue;
 
@@ -664,10 +675,8 @@ public initialize_hostages() {
 
     // Reset player states
     for (new id = 1; id <= MaxClients; id++) {
-        if (!is_user_connected(id))
-            continue;
         set_task(5.0, "@shutup", id)
-        if (g_bCarryingHostage[id]) {
+        if (is_user_connected(id) && g_bCarryingHostage[id]) {
             new hostage = g_CarriedHostage[id];
             if (hostage & pev_valid(hostage)) {
                 static Float:origin[3];
@@ -705,7 +714,7 @@ public initialize_hostages() {
 
 /* ========== Player Think Functions ========== */
 public fw_PlayerThink(id) {
-    if (!is_user_alive(id) || bIsBot[id])
+    if (!is_user_alive(id) || !is_user_connected(id) || bIsBot[id])
         return;
 
     // Restore speed after freeze time if not carrying
@@ -723,7 +732,7 @@ public fw_PlayerThink(id) {
     offset[2] = origin[2];
 
     new hostage = g_CarriedHostage[id];
-    if (pev_valid(hostage)) {
+    if (pev_valid(hostage)==2) {
         engfunc(EngFunc_SetOrigin, hostage, offset);
         set_pev(hostage, pev_angles, Float:{0.0, 0.0, 0.0});
     }
@@ -1002,25 +1011,25 @@ public hostage_kill()
     if(pev_valid(ent) && pev_valid(g_rescue_area))
     {
         pev(ent,pev_origin, origin)
-    
+
         if(origin[0] != fNullOrigin[0] && origin[1] != fNullOrigin[1])
         if(entity_range(ent,g_rescue_area)>1000.0) //should not see death effects during rescue.
         {
             entity_get_vector(ent,EV_VEC_origin,Pos);
             entity_get_vector(ent,EV_VEC_angles,Axis);
-    
+
             @hostage_splatter(Pos, Axis)
-    
+
             for (new id = 1; id <= MaxClients; id++)
             {
                 if(is_user_connected(id) && !bIsBot[id])
                 {
                     client_cmd id, "spk radio/hosdown.wav"
-    
+
                     new rPick = random_num(1,25);
                     new SzCry[MAX_PLAYERS];
                     formatex(SzCry, charsmax(SzCry), rPick < 10 ? "spk scientist/scream0%i.wav" : "spk scientist/scream%i.wav", rPick)
-            
+
                     client_cmd id, "%s",SzCry;
                 }
             }
@@ -1081,7 +1090,7 @@ public fw_PlayerKilled(id, attacker, shouldgib) {
         return;
 
     @shutup(id)
-    
+
     if(bIsBot[id])
     {
         set_msg_block( g_cor, BLOCK_SET );
