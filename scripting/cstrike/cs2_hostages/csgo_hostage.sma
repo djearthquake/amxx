@@ -34,7 +34,7 @@ g_CarriedHostage[MAX_PLAYERS + 1],
 g_CarryCount[MAX_PLAYERS + 1],
 g_carryspeed,
 g_pickuptime,
-gmsgBarTime, g_cor,
+g_cor,
 g_PendingHostage[MAX_PLAYERS + 1],
 g_HostageEnts[MAX_HOSTAGES],
 g_HostageCount,
@@ -66,6 +66,7 @@ bool:bPlanted,
 bool:bInfo,
 bool:bFunc;
 
+static g_status_msg, gmsgBarTime;
 static g_mod[MAX_NAME_LENGTH];
 
 
@@ -148,7 +149,8 @@ public plugin_init() {
 
     // Register events and messages
     gmsgBarTime = get_user_msgid("BarTime");
-    g_cor = get_user_msgid( "ClCorpse" )
+    g_status_msg = get_user_msgid("StatusIcon");
+    g_cor = get_user_msgid( "ClCorpse" );
 
     register_event("TeamInfo", "event_team_switch", "a");
     register_event("HLTV", "event_new_round", "a", "1=0", "2=0");
@@ -161,10 +163,10 @@ public plugin_init() {
 
     register_forward(FM_Use, "fw_UseHostageBlock", 0);
     register_logevent("logevent_round_start", 2, "1=Round_Start");
-    register_logevent("@round_end", 2, "1=Round_End")
+    register_logevent("@round_end", 2, "1=Round_End");
     register_logevent("logevent_hostage_rescued",3,"2=Rescued_A_Hostage");
 
-    register_event("SendAudio", "@hostage_two", "a", "2&%!MRAD_escaped")
+    register_event("SendAudio", "@hostage_two", "a", "2&%!MRAD_escaped");
 
     // Register ham hooks
     RegisterHam(Ham_Use, HOSTAGE_CLASSNAME, "fw_HostageUse", 1);
@@ -178,7 +180,7 @@ public plugin_init() {
 
     if(!equal(g_mod, "czero"))
     {
-            bRegistered = true
+            bRegistered = true;
     }
     @find_zone();
     #if !defined MaxClients
@@ -1218,21 +1220,22 @@ stock drop_carried_hostage(id) {
 }
 
 /* ========== Utility Functions ========== */
-stock show_status_icon(id, const icon[], r, g, b) {
-    if (id < 1 || id > MaxClients || !is_user_connected(id) || !is_user_alive(id) || get_user_team(id) !=2)
-        return;
-
-    new flags = pev(id, pev_flags)
-    if(flags & FL_SPECTATOR)
-        return;
-
-    emessage_begin(MSG_ONE_UNRELIABLE, get_user_msgid("StatusIcon"), _, id);
-    ewrite_byte(1);
-    ewrite_string(icon);
-    ewrite_byte(r);
-    ewrite_byte(g);
-    ewrite_byte(b);
-    emessage_end();
+stock show_status_icon(id, const icon[], r, g, b)
+{
+    if(is_user_alive(id) && get_user_team(id) == 2)
+    {
+        new flags = pev(id, pev_flags)
+        if(flags & FL_SPECTATOR)
+            return;
+    
+        emessage_begin(MSG_ONE_UNRELIABLE, g_status_msg, _, id);
+        ewrite_byte(1);
+        ewrite_string(icon);
+        ewrite_byte(r);
+        ewrite_byte(g);
+        ewrite_byte(b);
+        emessage_end();
+    }
 }
 
 stock show_bar(id, duration) {
