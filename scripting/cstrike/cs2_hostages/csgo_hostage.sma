@@ -7,7 +7,7 @@
 #include <engine>
 
 #define PLUGIN             "CSGO Hostage Mode"
-#define VERSION            "1.2.3"
+#define VERSION            "1.2.4"
 #define AUTHOR             "mjf_0.0|SPiNX"
 
 #define MAX_PLAYERS        32
@@ -58,6 +58,7 @@ bool:g_bRescueEnded,
 bool:g_bHostageMap,
 bool:bCarryingAlready[MAX_PLAYERS + 1],
 bool:bGetarea,
+bool:bClean,
 bool:bCsBeta,
 bool:bPerformingRescue,
 bool:bRegistered,
@@ -75,6 +76,7 @@ static g_mod[MAX_NAME_LENGTH];
 {
     if(is_user_connected(ham_bot))
     {
+        RegisterHamFromEntity( Ham_Spawn, ham_bot, "@spawn", 1);
         RegisterHamFromEntity( Ham_TakeDamage, ham_bot, "fw_PlayerTakeDamage", 0 );
         RegisterHamFromEntity( Ham_Killed, ham_bot, "fw_PlayerKilled", 1 );
 
@@ -458,7 +460,7 @@ stock colored()
         if(g_bCarryingHostage[index])
         {
             FnPlant()
-            client_print(0, print_chat, "Removed %N back carry", index)
+            ///client_print(0, print_chat, "Removed %N back carry", index)
             show_bar(index, 0);
             RemoveHostageOnBack(index)
         }
@@ -494,6 +496,7 @@ public ShowHostageOnBack(id) {
     if(is_user_alive(id))
     {
         new ent = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"));
+        if(ent>MaxClients)
 
         if(pev_valid(ent) == 2)
         {
@@ -553,6 +556,7 @@ public RemoveHostageOnBack(id)
 /* ========== Client Events ========== */
 public client_putinserver(id)
 {
+    if(id&id<=MaxClients)
     if(is_user_connected(id))
     {
         bIsBot[id] = is_user_bot(id) ? true : false
@@ -617,9 +621,16 @@ public event_new_round() {
 @round_end()
 {
     new ent = MaxClients
-    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME)) > MaxClients && pev_valid(ent))
+    new iCount
+    if(!bClean)
     {
-        set_pev(ent, pev_origin, fNullOrigin)
+        while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME)) > MaxClients && pev_valid(ent))
+        {
+            bClean = true
+            iCount++
+            set_pev(ent, pev_origin, fNullOrigin)
+        }
+        server_print "^n^nThere are %i hostages...^n^n", iCount
     }
 
     bPlanted = false
@@ -644,6 +655,7 @@ public event_new_round() {
 public logevent_round_start()
 {
     set_task(1.5, "initialize_hostages");
+    bClean = false
 }
 
 public initialize_hostages() {
