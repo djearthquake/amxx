@@ -894,6 +894,9 @@ public stuck_timer(dead_spec)
         pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
         pev(dead_spec, pev_origin, g_Ouser_origin[dead_spec])
 
+        client_cmd( dead_spec, "+forward;wait");
+        set_task(0.1, "@stop", dead_spec);
+
         bMoving[dead_spec] = pev(dead_spec, pev_flags) & IN_FORWARD ? true : false;
         if(!bMoving[dead_spec])
         if(g_Velocity[dead_spec][0] == 0.0 && g_Velocity[dead_spec][1] == 0.0 && g_Velocity[dead_spec][2] == 0.0 )
@@ -903,8 +906,6 @@ public stuck_timer(dead_spec)
             client_cmd(dead_spec, "spk common/menu1.wav")
             g_counter[dead_spec]++
         }
-        client_cmd( dead_spec, "+forward;wait");
-        set_task(1.0, "@stop", dead_spec);
 
         set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
         @stop(dead_spec);
@@ -916,10 +917,10 @@ public stuck_timer(dead_spec)
 {
     if(is_user_connected(id))
     {
-        client_cmd id, "wait;-forward"
-        client_print id, print_chat, "Trying stop you"
+        client_cmd id, "+forward;wait;-forward"
+        //client_print id, print_chat, "Trying stop you"
         entity_set_float(id, EV_FL_friction, FRICTION_NOT);
-        //remove_task(id)
+        remove_task(id)
     }
 }
 
