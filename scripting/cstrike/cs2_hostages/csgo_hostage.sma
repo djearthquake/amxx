@@ -1344,7 +1344,8 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             }
             bAttacked[id] = false;
 
-            static Float:fArmsLen; fArmsLen = 100.0;
+            static Float:fArmsLen;
+            fArmsLen = get_pcvar_float(g_pick_distance)*1.5
             if(g_fake_rescue)
             if(entity_range(id, g_fake_rescue) <= fArmsLen)
             {
@@ -1360,7 +1361,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             //set follow to g_rescue_area
             set_pev(id, pev_aiment, g_rescue_area);
 
-            if (get_distance_f(bot_origin, g_rescue_origin) <  get_pcvar_float(g_pick_distance) && is_in_rescue_zone(bot_origin)) {
+            if (get_distance_f(bot_origin, g_rescue_origin) <  fArmsLen && is_in_rescue_zone(bot_origin)) {
                 rescue_hostage(id);
                 RemoveHostageOnBack(id);
             }
