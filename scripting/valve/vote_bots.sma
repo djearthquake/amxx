@@ -5,9 +5,9 @@ new votekeys = (1<<0)|(1<<1)|(1<<2)|(1<<3)
 new g_counter[4];
 new g_round_counter
 new XBots
-new bool: gCStrike
-new bool: gCZtrike
-new bool: bFlagMap
+new bool: bCStrike;
+new bool: bCZtrike;
+new bool: bFlagMap;
 
 static const CvarBotDesc[]="- Allow vote for bots."
 static Bots[4][MAX_RESOURCE_PATH_LENGTH]
@@ -31,16 +31,16 @@ public plugin_init()
 
     if(equal(mod_name, "cstrike") || get_cvar_pointer("pb"))
     {
-        gCStrike = true
+        bCStrike = true
     }
     else if(equal(mod_name, "czero") || get_cvar_pointer("bot_quota"))
     {
-        gCZtrike = true
+        bCZtrike = true
     }
     //map
     bFlagMap = containi(mname,"op4c") > charsmin?true:false
     //log_events
-    if(gCStrike)
+    if(bCStrike)
     {
         register_logevent("round_start", 2, "1=Round_Start")
         register_logevent("round_end", 2, "1=Round_End")
@@ -58,13 +58,13 @@ public plugin_init()
 //Admins load up bot commands.
 public plugin_cfg()
 {
-    if(gCZtrike) //cz
+    if(bCZtrike) //cz
     {
         Bots[0] = "bot_quota 5"
         Bots[1] = "bot_quota 11"
         Bots[2] = "bot_quota 0"
     }
-    else if(gCStrike) //cs
+    else if(bCStrike) //cs
     {
         Bots[0] = "pb_minbots 5;pb_maxbots 11"
         Bots[1] = "pb_minbots 11;pb_maxbots 11"
@@ -89,7 +89,7 @@ public round_start()
     if(XBots >1)
     {
         g_round_counter++
-        if(!gCStrike)
+        if(!bCStrike || !bCZtrike)
         {
             round_end();
         }
@@ -104,7 +104,7 @@ public round_end()
         {
             ServerBots()
             g_round_counter = 0;
-            if(!gCStrike)
+            if(!bCStrike || !bCZtrike)
             {
                 fFake_Round = random_float(30.0, 210.0)
                 change_task(2024, fFake_Round)
@@ -116,7 +116,7 @@ public round_end()
 public client_putinserver(id)
 {
     if(XBots)
-    if(!gCStrike && !task_exists(2024))
+    if(!bCStrike || !bCZtrike && !task_exists(2024))
     {
         fFake_Round = random_float(60.0, 120.0)
         set_task(fFake_Round, "round_start", 2024, _,_, "b")
@@ -148,7 +148,7 @@ public client_disconnected()
     if(is_user_connected(list) && is_user_bot(list))
     {
         server_print("Starting purge %N", list)
-        server_cmd("amx_`kick %n ^"Purging bots.^"",list);
+        server_cmd("amx_kick %n ^"Purging bots.^"",list);
     }
     return PLUGIN_HANDLED
 }
@@ -213,6 +213,10 @@ public vote_bot_results()
     {
         XBots = 1
         client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (fill ^"%d^") (no ^"%d^")  Bot fill is now %s.", PLUGIN, VERSION, g_counter[0], g_counter[1], g_counter[2], XBots ? "enabled" : "disabled")
+
+        if(bCStrike)
+            @zero_bots()
+
         console_cmd( 0, Bots[1] )
     }
     else if(g_counter[1] != 0 &&  g_counter[1] == g_counter[0])
