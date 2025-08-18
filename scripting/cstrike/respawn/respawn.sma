@@ -108,7 +108,8 @@ Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
-bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered;
+bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered, bool:bMoving[MAX_PLAYERS + 1],
+bool:bDucking[MAX_PLAYERS + 1];
 static bool:bC4map;
 static g_mod[MAX_NAME_LENGTH];
 
@@ -558,7 +559,7 @@ public round_start()
         if(bC4map && g_c4_client)
         {
             is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
-    
+
             if(user_has_weapon(g_c4_client, CSW_C4))
             {
                 engclient_cmd(g_c4_client, "drop", "weapon_c4")
@@ -594,7 +595,7 @@ public round_end()
         if(bC4map && g_c4_client)
         {
             is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
-    
+
             if(user_has_weapon(g_c4_client, CSW_C4))
             {
                 engclient_cmd(g_c4_client, "drop", "weapon_c4")
@@ -646,6 +647,8 @@ public round_end()
 
                         pev(alive_bot, pev_oldorigin, g_Ouser_origin[alive_bot]);
                         pev(alive_bot, pev_origin, g_user_origin[alive_bot]);
+
+                        bDucking[alive_bot] = pev(alive_bot, pev_flags) & FL_DUCKING  ? true : false;
                     }
                     control_bot(dead_spec);
                 }
@@ -706,15 +709,27 @@ public control_bot(dead_spec)
                 client_print(dead_spec, print_center,"You are now taking the place of %n", alive_bot);
                 client_print(0, print_chat,"%n is taking the place of %n", dead_spec, alive_bot);
                 entity_set_vector(dead_spec, EV_VEC_angles, g_Angles[alive_bot]);
+
+
+                set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
+
+
+                entity_set_int(dead_spec, EV_INT_bInDuck, g_Duck[alive_bot])
+
+                if(bDucking[alive_bot])
+                {
+                    set_pev(dead_spec, pev_flags, pev(dead_spec, pev_flags) | FL_DUCKING)
+                    bDucking[alive_bot] = false
+                }
+
+                set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
+
                 entity_set_vector(dead_spec, EV_VEC_view_ofs, g_Plane[alive_bot]);
                 entity_set_vector(dead_spec, EV_VEC_punchangle, g_Punch[alive_bot]);
                 entity_set_vector(dead_spec, EV_VEC_v_angle, g_Vangle[alive_bot]);
                 entity_set_vector(dead_spec, EV_VEC_movedir, g_Mdir[alive_bot]);
-                set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
-                entity_set_int(dead_spec, EV_INT_bInDuck, g_Duck[alive_bot])
 
-                set_pev(dead_spec, pev_origin, g_user_origin[alive_bot])
-                entity_set_int(dead_spec, EV_INT_fixangle, 0)
+                entity_set_int(dead_spec, EV_INT_fixangle, 1)
                 set_task(2.0, "@check_arms", dead_spec)
                 g_bot_controllers++
             }
@@ -879,6 +894,8 @@ public stuck_timer(dead_spec)
         pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
         pev(dead_spec, pev_origin, g_Ouser_origin[dead_spec])
 
+        bMoving[dead_spec] = pev(dead_spec, pev_flags) & IN_FORWARD ? true : false;
+        if(!bMoving[dead_spec])
         if(g_Velocity[dead_spec][0] == 0.0 && g_Velocity[dead_spec][1] == 0.0 && g_Velocity[dead_spec][2] == 0.0 )
         {
             unstick(dead_spec, get_pcvar_float(g_stuck))
@@ -886,8 +903,8 @@ public stuck_timer(dead_spec)
             client_cmd(dead_spec, "spk common/menu1.wav")
             g_counter[dead_spec]++
         }
-        client_cmd( dead_spec, "+forward");
-        set_task(1.0, "@stop", dead_spec, "b");
+        client_cmd( dead_spec, "+forward;wait");
+        set_task(1.0, "@stop", dead_spec);
 
         set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
         @stop(dead_spec);
@@ -899,10 +916,10 @@ public stuck_timer(dead_spec)
 {
     if(is_user_connected(id))
     {
-        client_cmd id, "+forward;wait;-forward;-forward"
-        //client_print id, print_chat, "Trying stop you"
+        client_cmd id, "wait;-forward"
+        client_print id, print_chat, "Trying stop you"
         entity_set_float(id, EV_FL_friction, FRICTION_NOT);
-        remove_task(id)
+        //remove_task(id)
     }
 }
 
