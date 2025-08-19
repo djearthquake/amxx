@@ -77,7 +77,7 @@
 #include fun
 #include hamsandwich
 
-#include unstick
+#tryinclude unstick
 
 #define FRICTION_NOT    1.0
 #define FRICTION_MUD    1.8
