@@ -66,9 +66,9 @@ public plugin_cfg()
     }
     else if(bCStrike) //cs
     {
-        Bots[0] = "pb_minbots 5;pb_maxbots 11"
+        Bots[0] = "pb remove;pb_minbots 5;pb_maxbots 5"
         Bots[1] = "pb_minbots 11;pb_maxbots 11"
-        Bots[2] = "pb_minbots 0;pb_maxbots 0"
+        Bots[2] = "pb_minbots 0;pb_maxbots 0;pb remove"
     }
     else if(!bFlagMap) //deathmatch
     {
@@ -144,11 +144,11 @@ public client_disconnected()
 @zero_bots()
 {
     server_cmd("jk_botti min_bots 0;jk_botti max_bots 0;HPB_Bot min_bots 0; HPB_Bot max_bots 0")
-    for(new list = 1 ;list <= MaxClients;++list)
+    for(new list = 1;list <= MaxClients;++list)
     if(is_user_connected(list) && is_user_bot(list))
     {
         server_print("Starting purge %N", list)
-        server_cmd("amx_kick %n ^"Purging bots.^"",list);
+        console_cmd(0,"amx_kick %n ^"Purging bots.^"",list);
     }
     return PLUGIN_HANDLED
 }
@@ -213,10 +213,6 @@ public vote_bot_results()
     {
         XBots = 1
         client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (fill ^"%d^") (no ^"%d^")  Bot fill is now %s.", PLUGIN, VERSION, g_counter[0], g_counter[1], g_counter[2], XBots ? "enabled" : "disabled")
-
-        if(bCStrike)
-            @zero_bots()
-
         console_cmd( 0, Bots[1] )
     }
     else if(g_counter[1] != 0 &&  g_counter[1] == g_counter[0])
@@ -231,7 +227,7 @@ public vote_bot_results()
         client_print(0,print_chat,"[%s %s] Voting successfully (yes ^"%d^") (fill ^"%d^") (no ^"%d^")  Bots are now %s.", PLUGIN, VERSION, g_counter[0], g_counter[1], g_counter[2], XBots ? "enabled" : "disabled")
         console_cmd( 0, Bots[2] )
         {
-            @zero_bots()
+            set_task 1.5, "@zero_bots", 2025,_,_,"a", 3
         }
     }
     else if(g_counter[0] == g_counter[1] && g_counter[0] == g_counter[2] || g_counter[0] == g_counter[2] >> g_counter[1] || g_counter[1] == g_counter[2] >> g_counter[0])
