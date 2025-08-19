@@ -77,7 +77,11 @@
 #include fun
 #include hamsandwich
 
+#define STICK
 #tryinclude unstick
+#if !defined unstick
+#define unstick user_slap
+#endif
 
 #define FRICTION_NOT    1.0
 #define FRICTION_MUD    1.8
@@ -901,7 +905,9 @@ public stuck_timer(dead_spec)
         if(!bMoving[dead_spec])
         if(g_Velocity[dead_spec][0] == 0.0 && g_Velocity[dead_spec][1] == 0.0 && g_Velocity[dead_spec][2] == 0.0 )
         {
+            #if defined STICK
             unstick(dead_spec, get_pcvar_float(g_stuck))
+            #endif
             entity_set_float(dead_spec, EV_FL_friction, FRICTION_ICE);
             client_cmd(dead_spec, "spk common/menu1.wav")
             g_counter[dead_spec]++
