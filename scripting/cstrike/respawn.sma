@@ -570,7 +570,7 @@ public round_start()
 public round_end()
 {
     cool_down_active = true
-    for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
+    for(new iPlayer; iPlayer <= iMaxplayers ; ++iPlayer)
     {
         respawner[iPlayer] = 0;
         if( g_JustTook[iPlayer] )
@@ -608,15 +608,6 @@ public round_end()
 {
     if(is_user_connected(dead_spec))
     {
-        new respawns; respawns = get_pcvar_num(g_times)
-
-        respawner[dead_spec]++
-        if(respawner[dead_spec] > respawns)
-        {
-            client_print dead_spec, print_chat, "%s", szMsg
-            client_cmd dead_spec, "spk ^"sorry^";play ^"fvox/blip^""
-            return PLUGIN_HANDLED
-        }
         alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
         if(!bIsBound[dead_spec])
         {
@@ -676,6 +667,7 @@ public round_end()
 
 public control_bot(dead_spec)
 {
+    new respawns; respawns = get_pcvar_num(g_times)
     if(!is_user_alive(dead_spec))
     {
         alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
@@ -689,8 +681,15 @@ public control_bot(dead_spec)
             if(!bIsVip[alive_bot])
 
             if(get_user_team(dead_spec) == get_user_team(alive_bot))
+    
+            if(respawner[dead_spec] > respawns)
+            {
+                client_print dead_spec, print_chat, "%s", szMsg
+                client_cmd dead_spec, "spk ^"sorry there is no time left for your control^";play ^"fvox/blip^""
+                return PLUGIN_HANDLED
+            }
             get_user_velocity(alive_bot, vec)
-            if(bIsBot[alive_bot] && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) && pev(alive_bot, pev_flags) & FL_ONGROUND)
+            if(bIsBot[alive_bot] && pev(alive_bot, pev_button) &~IN_ATTACK || !bIsBot[alive_bot] && get_pcvar_num(g_humans) && (!vec[0] && !vec[1] && !vec[2]))
             {
                 set_user_rendering(alive_bot, kRenderFxNone, 0, 0, 0, kRenderTransTexture,0)
                 entity_set_int(dead_spec, EV_INT_fixangle, 1)
@@ -734,6 +733,7 @@ public control_bot(dead_spec)
                 entity_set_int(dead_spec, EV_INT_fixangle, 1)
                 set_task(2.0, "@check_arms", dead_spec)
                 g_bot_controllers++
+                respawner[dead_spec]++
             }
 
         }
@@ -874,13 +874,19 @@ stock weapon_details(alive_bot)
 
 public pfn_touch(ptr, ptd)
 {
+    static Float:fVelocity[3];
+    new id = ptr
     if(!ptd)
-    if(ptr && ptr<=MaxClients)
-    if(respawner[ptr])
-    if(task_exists(ptr))
+    if(id && id<=MaxClients)
+    if(respawner[id])
+    if(task_exists(id))
     {
-        ExecuteHamB(Ham_CS_RoundRespawn, ptr)
-        client_print ptr, print_chat, "You might be stuck!"
+        pev(id, pev_velocity, fVelocity)
+        if(!fVelocity[0]&&!fVelocity[1]&&!fVelocity[2])
+        {
+            ExecuteHamB(Ham_CS_RoundRespawn, id)
+            client_print id, print_chat, "You might be stuck!"
+        }
     }
 }
 
