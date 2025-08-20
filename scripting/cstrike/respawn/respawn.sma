@@ -111,7 +111,7 @@ static g_mod[MAX_NAME_LENGTH];
 
 static const c4[][]={"weapon_c4","func_bomb_target","info_bomb_target"};
 
-static const SzSuit[]="item_assaultsuit"
+static const SzSuit[]="item_assaultsuit";
 
 static const SzCsAmmo[][]=
 {
@@ -124,20 +124,8 @@ static const SzCsAmmo[][]=
 
 static const SzAdvert[]="Bind impulse 206 to control bot.";
 static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
-static const szMsg[]="No more respawns this round!"
+static const szMsg[]="No more respawns this round!";
 
-
-//CONDITION ZERO TYPE BOTS. SPiNX
-@register(ham_bot)
-{
-    if(is_user_connected(ham_bot))
-    {
-        RegisterHamFromEntity( Ham_Spawn, ham_bot, "@BotSpawn", 1 );
-        RegisterHamFromEntity( Ham_Killed, ham_bot, "@died", 1 );
-        server_print("Respawn ham bot from %N", ham_bot)
-        bRegistered = true;
-    }
-}
 
 public plugin_init()
 {
@@ -622,7 +610,6 @@ public purchase_respawn(Client)
             if(tmp_money < get_pcvar_num(g_item_cost))
             {
                 client_print(Client, print_center, "You can't afford a 'bot respawn' %s!", name);
-                client_print(0, print_chat, "Hey guys %s keeps trying to buy 'bot respawn' they can't afford!", name);
                 return PLUGIN_HANDLED;
             }
             else
@@ -922,6 +909,17 @@ public pfn_touch(ptr, ptd)
     }
 }
 
+//CONDITION ZERO TYPE BOTS. SPiNX
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        RegisterHamFromEntity( Ham_Spawn, ham_bot, "@BotSpawn", 1 );
+        RegisterHamFromEntity( Ham_Killed, ham_bot, "@died", 1 );
+        server_print("Respawn ham bot from %N", ham_bot)
+        bRegistered = true;
+    }
+}
 
 stock COLOR()
 {
