@@ -534,37 +534,25 @@ public CS_OnBuy(id, item)
 
 public round_start()
 {
-    if(!g_freeze)
-    {
-        cool_down_active = false
-        if(g_bot_controllers)
-        {
-            client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
-        }
-    }
-    else
-    {
-        set_task(get_pcvar_float(g_freeze), "@cool")
-    }
+    new freeze = get_pcvar_num(g_freeze);
+    set_task(freeze?1.0:freeze*1.0, "@cool")
+
+    client_print( 0, print_chat, g_bot_controllers ? "%i bots were purchased last round!": SzAdvertAll, g_bot_controllers)
+
     if(bC4map && g_c4_client)
     {
         is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
-
-        if(user_has_weapon(g_c4_client, CSW_C4))
-        {
-            engclient_cmd(g_c4_client, "drop", "weapon_c4")
-        }
-        else
-        {
-            @c4_check()
-        }
+        user_has_weapon(g_c4_client, CSW_C4) ? engclient_cmd(g_c4_client, "drop", "weapon_c4") : @c4_check();
     }
     g_c4_client = 0;
     g_IS_PLANTING = 0;
     g_bot_controllers = 0;
 }
 
-@cool(){cool_down_active = false;}
+@cool()
+{
+    cool_down_active = false;
+}
 
 public round_end()
 {
