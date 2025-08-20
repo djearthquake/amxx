@@ -335,6 +335,7 @@ public client_putinserver(id)
 public client_disconnected(id)
 {
     bIsBot[id] = false
+    bBotOwner[id] = false;
 }
 
 public CS_OnBuyAttempt(id)
@@ -378,9 +379,9 @@ public CS_OnBuy(id, item)
     {
         g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
-        if(!g_JustTook[id] && !g_bot_controllers)
+        if(!g_JustTook[id] && !bBotOwner[id])
         {
-            set_task(cs_get_user_shield(id) ? 0.3 : 0.1,"@ReSpawn", id)
+            set_task(cs_get_user_shield(id) ? 0.3 : 0.2,"@ReSpawn", id)
         }
     }
 }
@@ -424,6 +425,7 @@ public CS_OnBuy(id, item)
         }
         if(bBotUser[id])
         {
+            bBotUser[id] = false;
             if(iSound)
             {
                 client_cmd(id, iKeep ? "spk turret/tu_spinup.wav" : "spk turret/tu_spindown.wav")
@@ -524,7 +526,7 @@ public CS_OnBuy(id, item)
                         }
                     }
                 }
-            }bBotUser[id] = false;
+            }
         }
         @check_arms(id)
     }
@@ -532,35 +534,41 @@ public CS_OnBuy(id, item)
 
 public round_start()
 {
-    cool_down_active = false
     if(!g_freeze)
     {
-        set_msg_block( g_cor, BLOCK_NOT );
+        cool_down_active = false
         if(g_bot_controllers)
         {
             client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
         }
-        if(bC4map && g_c4_client)
-        {
-            is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
-
-            if(user_has_weapon(g_c4_client, CSW_C4))
-            {
-                engclient_cmd(g_c4_client, "drop", "weapon_c4")
-            }
-            else
-            {
-                @c4_check()
-            }
-        }
-        g_bot_controllers = 0;
-        g_c4_client = 0;
-        g_IS_PLANTING = 0;
     }
+    else
+    {
+        set_task(get_pcvar_float(g_freeze), "@cool")
+    }
+    if(bC4map && g_c4_client)
+    {
+        is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
+
+        if(user_has_weapon(g_c4_client, CSW_C4))
+        {
+            engclient_cmd(g_c4_client, "drop", "weapon_c4")
+        }
+        else
+        {
+            @c4_check()
+        }
+    }
+    g_c4_client = 0;
+    g_IS_PLANTING = 0;
+    g_bot_controllers = 0;
 }
+
+@cool(){cool_down_active = false;}
 
 public round_end()
 {
+    set_msg_block( g_cor, BLOCK_NOT );
     cool_down_active = true
     for(new iPlayer; iPlayer <= iMaxplayers ; ++iPlayer)
     {
@@ -571,30 +579,6 @@ public round_end()
              g_JustTook[iPlayer] = false
         }
     }
-    if(g_freeze)
-    {
-        set_msg_block( g_cor, BLOCK_NOT );
-        if(g_bot_controllers)
-        {
-            client_print( 0, print_chat, "%i bots were purchased last round!", g_bot_controllers)
-        }
-        if(bC4map && g_c4_client)
-        {
-            is_user_alive(g_c4_client) ? give_item(g_c4_client, "weapon_c4") : @c4_check()
-
-            if(user_has_weapon(g_c4_client, CSW_C4))
-            {
-                engclient_cmd(g_c4_client, "drop", "weapon_c4")
-            }
-            else
-            {
-                @c4_check()
-            }
-        }
-        g_bot_controllers = 0;
-        g_c4_client = 0;
-        g_IS_PLANTING = 0;
-    }
 }
 
 public purchase_respawn(Client)
@@ -604,8 +588,8 @@ public purchase_respawn(Client)
     {
         get_user_name(Client,name,charsmax(name));
         static tmp_money; tmp_money = cs_get_user_money(Client);
-    
-        if ( !bBotOwner[Client] )
+
+        if (!bBotOwner[Client])
         {
             if(tmp_money < get_pcvar_num(g_item_cost))
             {
@@ -700,7 +684,7 @@ public control_bot(dead_spec)
             if(!bIsVip[alive_bot])
 
             if(get_user_team(dead_spec) == get_user_team(alive_bot))
-    
+
             if(respawner[dead_spec] > respawns)
             {
                 client_print dead_spec, print_chat, "%s", szMsg
