@@ -311,7 +311,6 @@ public bomb_dropped()
                     {
                         client_print 0, print_chat, "Redistributing the c4 to %n.", player1
                         give_item(player1, "weapon_c4");
-                        ////engclient_cmd(player1, "drop", "weapon_c4")
                     }
                 }
             }
@@ -790,7 +789,7 @@ stock weapon_details(alive_bot)
 
         get_user_velocity(dead_spec, vec)
 
-        @cooldown(dead_spec)
+        ///@cooldown(dead_spec)
 
         #define CSW_LAST_WEAPON     CSW_P90
         #define CSI_DEFUSER             33              // Custom
