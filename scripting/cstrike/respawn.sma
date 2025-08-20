@@ -122,8 +122,10 @@ static const SzCsAmmo[][]=
     "ammo_50ae"
 };
 
+//Make translations later.
 static const SzAdvert[]="Bind impulse 206 to control bot.";
 static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
+static const SzAdvertSale[]="Purchasing a bot to respawn costs $%i.";
 static const szMsg[]="No more respawns this round!";
 
 
@@ -381,7 +383,7 @@ public CS_OnBuy(id, item)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
         if(!g_JustTook[id] && !bBotOwner[id])
         {
-            set_task(cs_get_user_shield(id) ? 0.3 : 0.2,"@ReSpawn", id)
+            set_task(cs_get_user_shield(id) ? 0.3 : 0.1,"@ReSpawn", id)
         }
     }
 }
@@ -534,10 +536,11 @@ public CS_OnBuy(id, item)
 
 public round_start()
 {
+    new iCost = get_pcvar_num(g_item_cost)
     new freeze = get_pcvar_num(g_freeze);
     set_task(freeze?1.0:freeze*1.0, "@cool")
 
-    client_print( 0, print_chat, g_bot_controllers ? "%i bots were purchased last round!": SzAdvertAll, g_bot_controllers)
+    client_print( 0, print_chat, g_bot_controllers ? "%i bots were purchased last round!": SzAdvertSale,iCost, g_bot_controllers)
 
     if(bC4map && g_c4_client)
     {
@@ -866,17 +869,20 @@ stock weapon_details(alive_bot)
 public pfn_touch(ptr, ptd)
 {
     static Float:fVelocity[3];
-    new id = ptr
-    if(!ptd)
-    if(id && id<=MaxClients)
-    if(respawner[id])
-    if(task_exists(id))
+    new id = ptr;
+    if(!cool_down_active)
     {
-        pev(id, pev_velocity, fVelocity)
-        if(!fVelocity[0]&&!fVelocity[1]&&!fVelocity[2])
+        if(!ptd)
+        if(id && id<=MaxClients)
+        if(respawner[id])
+        if(task_exists(id))
         {
-            ExecuteHamB(Ham_CS_RoundRespawn, id)
-            client_print id, print_chat, "You might be stuck!"
+            pev(id, pev_velocity, fVelocity)
+            if(!fVelocity[0]&&!fVelocity[1]&&!fVelocity[2])
+            {
+                ExecuteHamB(Ham_CS_RoundRespawn, id)
+                client_print id, print_chat, "You might be stuck!"
+            }
         }
     }
 }
