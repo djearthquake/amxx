@@ -66,6 +66,7 @@
 *    V1.2 to 1.3 -Pause and log plugin if dependecy is not found.
 *    V1.3 to 1.4 -Restart round when no player has C4 post spawn. Remove prefixes on weapon and item when announcing.
 *    V1.4 to 1.5 -Code for cs_set_user_bpammo failing on random weapons. If client has no weapon as a result one is given to stop crash on beginning of next round.
+*    V1.5 to 1.6 -Optimize, bugfix, and remove need for unsticking code.
 */
 
 #include amxmodx
@@ -77,16 +78,6 @@
 #include fun
 #include hamsandwich
 
-#define STICK
-#tryinclude unstick
-#if !defined unstick
-#define unstick user_slap
-#endif
-
-#define FRICTION_NOT    1.0
-#define FRICTION_MUD    1.8
-#define FRICTION_ICE    0.3
-
 #define charsmin -1
 #define MAX_NAME_LENGTH 32
 
@@ -96,24 +87,25 @@
 
 new
 //Cvars
-g_dust, g_humans, g_keep, g_sound_reminder, g_stuck, g_freeze,
+g_dust, g_humans, g_keep, g_sound_reminder, g_freeze,
 //Strings
 SzWeaponClassname[MAX_NAME_LENGTH], bots_name[ MAX_NAME_LENGTH + 1 ],
 //Integers
 g_iSpawnBackpackCT, g_iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_PLAYERS+1], alive_bot, arm, ammo, magazine, wpnid, iMaxplayers,
 
 //Global variables
-g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor,
-g_counter[ MAX_PLAYERS + 1 ], g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_c4_client, g_IS_PLANTING,
+g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor, g_times,
+g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_c4_client, g_IS_PLANTING,
+respawner[MAX_PLAYERS +1],
+
 
 //Floats
 Float:vec[3], Float:g_Angles[MAX_PLAYERS + 1][3], Float:g_Plane[MAX_PLAYERS + 1][3], Float:g_Punch[MAX_PLAYERS + 1][3], Float:g_Vangle[MAX_PLAYERS + 1][3], Float:g_Mdir[MAX_PLAYERS + 1][3],
-Float:g_Velocity[MAX_PLAYERS + 1][3], Float:g_user_origin[MAX_PLAYERS + 1][3],
+Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
-bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered, bool:bMoving[MAX_PLAYERS + 1],
-bool:bDucking[MAX_PLAYERS + 1];
+bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered, bool:bDucking[MAX_PLAYERS + 1];
 static bool:bC4map;
 static g_mod[MAX_NAME_LENGTH];
 
@@ -132,6 +124,8 @@ static const SzCsAmmo[][]=
 
 static const SzAdvert[]="Bind impulse 206 to control bot.";
 static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
+static const szMsg[]="No more respawns this round!"
+
 
 //CONDITION ZERO TYPE BOTS. SPiNX
 @register(ham_bot)
@@ -147,14 +141,14 @@ static const SzAdvertAll[]="Bind impulse 206 to control bot/AFK human.";
 
 public plugin_init()
 {
-    register_plugin("Repawn from bots", "1.57", "SPiNX");
+    register_plugin("Repawn from bots", "1.5.8", "SPiNX");
     //cvars
     g_dust = register_cvar("respawn_dust", "1")
     g_humans = register_cvar("respawn_humans", "1")
     g_keep = register_cvar("respawn_keep", "0")
     g_sound_reminder = register_cvar("respawn_sound", "1")
-    g_stuck = register_cvar("respawn_unstick", "0.3")
     g_freeze = get_cvar_pointer("mp_freezetime")
+    g_times = register_cvar("respawn_times", "3")
     //Ham
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
@@ -512,11 +506,6 @@ public CS_OnBuy(id, item)
                                 give_item(id, "weapon_knife")
                             }
 
-                            /*new iBuyOrigin[3];
-
-                            iBuyOrigin[0] = floatround(fBuyOrigin[0]);
-                            iBuyOrigin[1] = floatround(fBuyOrigin[1]);
-                            iBuyOrigin[2] = floatround(fBuyOrigin[2])*/
                             if(iDust && is_user_connected(iBotOwner[id]))
                             {
                                 emessage_begin_f( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
@@ -584,6 +573,7 @@ public round_end()
     cool_down_active = true
     for(new iPlayer = 1 ; iPlayer <= iMaxplayers ; ++iPlayer)
     {
+        respawner[iPlayer] = 0;
         if( g_JustTook[iPlayer] )
         {
              g_JustTook[iPlayer] = false
@@ -619,6 +609,15 @@ public round_end()
 {
     if(is_user_connected(dead_spec))
     {
+        new respawns; respawns = get_pcvar_num(g_times)
+
+        respawner[dead_spec]++
+        if(respawner[dead_spec] > respawns)
+        {
+            client_print dead_spec, print_chat, "%s", szMsg
+            client_cmd dead_spec, "spk ^"sorry^";play ^"fvox/blip^""
+            return PLUGIN_HANDLED
+        }
         alive_bot = entity_get_int(dead_spec, EV_INT_iuser2)
         if(!bIsBound[dead_spec])
         {
@@ -791,10 +790,7 @@ stock weapon_details(alive_bot)
 
         get_user_velocity(dead_spec, vec)
 
-        if(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0)
-        {
-            set_task(get_pcvar_num(g_stuck)*1.0, "stuck_timer", dead_spec)
-        }
+        @cooldown(dead_spec)
 
         #define CSW_LAST_WEAPON     CSW_P90
         #define CSI_DEFUSER             33              // Custom
@@ -866,69 +862,29 @@ stock weapon_details(alive_bot)
     return PLUGIN_HANDLED
 }
 
-public stuck_timer(dead_spec)
+@cooldown(id)
 {
-    if(is_user_connected(dead_spec) && is_user_alive(dead_spec))
-    {
-        pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
-        if(g_Velocity[dead_spec][0] == 0.0 || g_Velocity[dead_spec][1] == 0.0 )
-        {
-            @stuck(dead_spec)
-            if(g_counter[dead_spec] >= MAX_PLAYERS)
-            {
-                ExecuteHamB(Ham_CS_RoundRespawn, dead_spec);
-                client_print dead_spec, print_chat, "Respawned due to being stuck!"
-                g_counter[dead_spec] = 0
-                remove_task(dead_spec)
-            }
-
-        }
-        else
-        {
-            remove_task(dead_spec)
-            entity_set_float(dead_spec, EV_FL_friction, FRICTION_NOT);
-        }
-    }
-}
-
-@stuck(dead_spec)
-{
-    if(is_user_connected(dead_spec))
-    {
-        pev(dead_spec, pev_velocity, g_Velocity[dead_spec])
-        pev(dead_spec, pev_origin, g_Ouser_origin[dead_spec])
-
-        client_cmd( dead_spec, "+forward;wait");
-        set_task(0.1, "@stop", dead_spec);
-
-        bMoving[dead_spec] = pev(dead_spec, pev_flags) & IN_FORWARD ? true : false;
-        if(!bMoving[dead_spec])
-        if(g_Velocity[dead_spec][0] == 0.0 && g_Velocity[dead_spec][1] == 0.0 && g_Velocity[dead_spec][2] == 0.0 )
-        {
-            #if defined STICK
-            unstick(dead_spec, get_pcvar_float(g_stuck))
-            #endif
-            entity_set_float(dead_spec, EV_FL_friction, FRICTION_ICE);
-            client_cmd(dead_spec, "spk common/menu1.wav")
-            g_counter[dead_spec]++
-        }
-
-        set_task(get_pcvar_float(g_stuck), "stuck_timer", dead_spec)
-        @stop(dead_spec);
-    }
-
-}
-
-@stop(id)
-{
+    static Float:fVelocity[3];
     if(is_user_connected(id))
     {
-        client_cmd id, "+forward;wait;-forward"
-        //client_print id, print_chat, "Trying stop you"
-        entity_set_float(id, EV_FL_friction, FRICTION_NOT);
-        remove_task(id)
+        pev(id, pev_velocity, fVelocity)
+        if(!fVelocity[0]&&!fVelocity[1]&&!fVelocity[2])
+        set_task 0.1, "@cooldown", id
     }
 }
+
+public pfn_touch(ptr, ptd)
+{
+    if(!ptd)
+    if(ptr && ptr<=MaxClients)
+    if(respawner[ptr])
+    if(task_exists(ptr))
+    {
+        ExecuteHamB(Ham_CS_RoundRespawn, ptr)
+        client_print ptr, print_chat, "You might be stuck!"
+    }
+}
+
 
 stock COLOR()
 {
