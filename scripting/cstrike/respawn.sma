@@ -95,7 +95,7 @@ g_iSpawnBackpackCT, g_iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_P
 
 //Global variables
 g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor, g_times,
-g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_c4_client, g_IS_PLANTING,
+g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_c4_spawners, g_c4_client, g_IS_PLANTING, g_item_cost,
 respawner[MAX_PLAYERS +1],
 
 
@@ -105,7 +105,7 @@ Float:g_user_origin[MAX_PLAYERS + 1][3],
 
 //Bools
 bool:bIsBot[MAX_PLAYERS + 1], bool:bIsCtrl[MAX_PLAYERS + 1], bool:bBotUser[MAX_PLAYERS + 1], bool:g_JustTook[MAX_PLAYERS + 1], bool:cool_down_active, bool:bIsBound[MAX_PLAYERS + 1],
-bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered, bool:bDucking[MAX_PLAYERS + 1];
+bool:bIsVip[MAX_PLAYERS + 1], bool:bC4ok, bool:bRegistered, bool:bDucking[MAX_PLAYERS + 1], bool:bBotOwner[MAX_PLAYERS + 1];
 static bool:bC4map;
 static g_mod[MAX_NAME_LENGTH];
 
@@ -149,6 +149,7 @@ public plugin_init()
     g_sound_reminder = register_cvar("respawn_sound", "1")
     g_freeze = get_cvar_pointer("mp_freezetime")
     g_times = register_cvar("respawn_times", "3")
+    g_item_cost = register_cvar("respawn_cost", "2500" )
     //Ham
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
@@ -321,7 +322,10 @@ public bomb_dropped()
 @died(id)
 {
     if(is_user_connected(id) && !cool_down_active && !bIsBound[id])
+    {
         client_print id, print_chat, get_pcvar_num(g_humans) ? SzAdvertAll : SzAdvert
+    }
+    bBotOwner[id] = false;
 }
 
 public client_putinserver(id)
@@ -573,6 +577,7 @@ public round_end()
     for(new iPlayer; iPlayer <= iMaxplayers ; ++iPlayer)
     {
         respawner[iPlayer] = 0;
+        bBotOwner[iPlayer] = false;
         if( g_JustTook[iPlayer] )
         {
              g_JustTook[iPlayer] = false
@@ -604,6 +609,33 @@ public round_end()
     }
 }
 
+public purchase_respawn(Client)
+{
+    static name[MAX_PLAYERS];
+    if(is_user_connected(Client))
+    {
+        get_user_name(Client,name,charsmax(name));
+        static tmp_money; tmp_money = cs_get_user_money(Client);
+    
+        if ( !bBotOwner[Client] )
+        {
+            if(tmp_money < get_pcvar_num(g_item_cost))
+            {
+                client_print(Client, print_center, "You can't afford a 'bot respawn' %s!", name);
+                client_print(0, print_chat, "Hey guys %s keeps trying to buy 'bot respawn' they can't afford!", name);
+                return PLUGIN_HANDLED;
+            }
+            else
+            {
+                cs_set_user_money(Client, tmp_money - get_pcvar_num(g_item_cost));
+                bBotOwner[Client] = true;
+                client_print(Client, print_center, "You bought a 'bot respawn'!");
+            }
+        }
+    }
+    return PLUGIN_HANDLED;
+}
+
 @buy_bot(dead_spec)
 {
     if(is_user_connected(dead_spec))
@@ -614,8 +646,8 @@ public round_end()
             bIsBound[dead_spec] = true
             client_print dead_spec, print_chat, "You have bot control set up!"
         }
-
-        if ( !cool_down_active )
+        purchase_respawn(dead_spec)
+        if ( !cool_down_active && bBotOwner[dead_spec])
         if(is_user_connected(dead_spec) && !bIsVip[alive_bot])
         {
             if(!bIsBot[dead_spec] && !is_user_alive(dead_spec))
