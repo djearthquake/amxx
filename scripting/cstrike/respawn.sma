@@ -145,7 +145,7 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
-    //register_event("ResetHUD", "@BotSpawn", "bg")
+    //register_event("ResetHUD", "@BotSpawn", "bg") //in case Ham no longer works some day.
     register_logevent("round_start", 2, "1=Round_Start")
     register_logevent("round_end", 2, "1=Round_End")
     register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
@@ -311,11 +311,12 @@ public bomb_dropped()
 
 @died(id)
 {
+    bBotOwner[id] = false;
+
     if(is_user_connected(id) && !cool_down_active && !bIsBound[id])
     {
         client_print id, print_chat, get_pcvar_num(g_humans) ? SzAdvertAll : SzAdvert
     }
-    bBotOwner[id] = false;
 }
 
 public client_putinserver(id)
@@ -355,7 +356,6 @@ public CS_OnBuy(id, item)
     if(is_user_connected(bot))
     {
         bIsVip[bot] = cs_get_user_vip(bot) ? true : false
-        g_BackPack[bot] = entity_get_int(bot, EV_INT_weapons)
         if(bIsCtrl[bot])
         {
             g_iTempCash[bot] = cs_get_user_money(bot)
@@ -383,7 +383,7 @@ public CS_OnBuy(id, item)
         bIsVip[id] = cs_get_user_vip(id) ? true : false
         if(!g_JustTook[id] && !bBotOwner[id])
         {
-            set_task(cs_get_user_shield(id) ? 0.3 : 0.1,"@ReSpawn", id)
+            set_task cs_get_user_shield(id) ? 0.3 : 0.1,"@ReSpawn", id
         }
     }
 }
@@ -395,7 +395,7 @@ public CS_OnBuy(id, item)
     iDust = get_pcvar_num(g_dust), iKeep = get_pcvar_num(g_keep), iSound = get_pcvar_num(g_sound_reminder);
     if(is_user_connected(id))
     {
-        g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
+        ///g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
         if(!g_iSpawnBackpackCT || !g_iSpawnBackpackT)
         {
             static iTeam; iTeam = get_user_team(id)
@@ -414,16 +414,26 @@ public CS_OnBuy(id, item)
                 server_print "RESPAWN| Grabbed default provisions from CT, %N",id
             }
         }
+        iDefaultTeamPack = get_user_team(id) == 1 ? g_iSpawnBackpackT : g_iSpawnBackpackCT
         if(bIsCtrl[id])
         {
-            if(is_user_alive(iBotOwner[id]))
-                g_BackPack[id] = g_BackPack[iBotOwner[id]]
             fm_set_kvd(id, "zhlt_lightflags", "0")
             set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransTexture, 255) //some bots missed
 
-            if(!iKeep)
-                goto TRADE
-            goto RECLAIM
+            switch(iKeep)
+            {
+                case 0 : goto TRADE
+                case 1 : goto RECLAIM
+                case 2 : 
+                if(is_user_alive(iBotOwner[id]))
+                {
+                    if(g_BackPack[iBotOwner[id]] != iDefaultTeamPack)
+                    {
+                        g_BackPack[id] = g_BackPack[iBotOwner[id]]
+                    }
+                    goto TRADE;
+                }
+            }
         }
         if(bBotUser[id])
         {
@@ -436,9 +446,8 @@ public CS_OnBuy(id, item)
             {
                 client_print(id, print_chat, iKeep ?  "Respawn with weapons." : "Normal Respawn.")
             }
-            if(!iKeep)
+            if(!iKeep || iKeep==2)
             {
-                g_BackPack[id] = entity_get_int(id, EV_INT_weapons)
                 if(cs_get_user_shield(id))
                 {
                     formatex(SzParaphrase, charsmax(SzParaphrase), "%n returned %n's %s.", id, iBotOwned[id], "shield");
@@ -446,11 +455,13 @@ public CS_OnBuy(id, item)
                     give_item(iBotOwned[id], "weapon_shield");
                 }
 
-                iDefaultTeamPack = get_user_team(id) == 1 ? g_iSpawnBackpackT : g_iSpawnBackpackCT
-
+                if(iKeep && g_BackPack[iBotOwner[id]] != iDefaultTeamPack)
                 if(is_user_alive(id))
                 {
-                    strip_user_weapons(id)
+                    if(!iKeep)
+                    {
+                        strip_user_weapons(id)
+                    }
                     for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
                     {
                         if(iDefaultTeamPack & 1<<iArms)
@@ -536,11 +547,13 @@ public CS_OnBuy(id, item)
 
 public round_start()
 {
-    new iCost = get_pcvar_num(g_item_cost)
     new freeze = get_pcvar_num(g_freeze);
     set_task(freeze?1.0:freeze*1.0, "@cool")
 
-    client_print( 0, print_chat, g_bot_controllers ? "%i bots were purchased last round!": SzAdvertSale,iCost, g_bot_controllers)
+    if(g_bot_controllers )
+    {
+        client_print 0, print_chat, "%i bots were purchased last round!", g_bot_controllers
+    }
 
     if(bC4map && g_c4_client)
     {
@@ -575,21 +588,23 @@ public round_end()
 public purchase_respawn(Client)
 {
     static name[MAX_PLAYERS];
-    if(is_user_connected(Client))
+    new iCost = get_pcvar_num(g_item_cost);
+    if(!is_user_alive(Client))
     {
         get_user_name(Client,name,charsmax(name));
         static tmp_money; tmp_money = cs_get_user_money(Client);
 
         if (!bBotOwner[Client])
         {
-            if(tmp_money < get_pcvar_num(g_item_cost))
+            if(tmp_money < iCost)
             {
                 client_print(Client, print_center, "You can't afford a 'bot respawn' %s!", name);
+                client_print(Client, print_chat, SzAdvertSale,iCost)
                 return PLUGIN_HANDLED;
             }
             else
             {
-                cs_set_user_money(Client, tmp_money - get_pcvar_num(g_item_cost));
+                cs_set_user_money(Client, tmp_money - iCost);
                 bBotOwner[Client] = true;
                 client_print(Client, print_center, "You bought a 'bot respawn'!");
             }
@@ -783,8 +798,6 @@ stock weapon_details(alive_bot)
 
         get_user_velocity(dead_spec, vec)
 
-        ///@cooldown(dead_spec)
-
         #define CSW_LAST_WEAPON     CSW_P90
         #define CSI_DEFUSER             33              // Custom
         #define CSI_NVGS                34              // Custom
@@ -853,38 +866,6 @@ stock weapon_details(alive_bot)
         user_silentkill(alive_bot, 1);
     }
     return PLUGIN_HANDLED
-}
-
-@cooldown(id)
-{
-    static Float:fVelocity[3];
-    if(is_user_connected(id))
-    {
-        pev(id, pev_velocity, fVelocity)
-        if(!fVelocity[0]&&!fVelocity[1]&&!fVelocity[2])
-        set_task 0.1, "@cooldown", id
-    }
-}
-
-public pfn_touch(ptr, ptd)
-{
-    static Float:fVelocity[3];
-    new id = ptr;
-    if(!cool_down_active)
-    {
-        if(!ptd)
-        if(id && id<=MaxClients)
-        if(respawner[id])
-        if(task_exists(id))
-        {
-            pev(id, pev_velocity, fVelocity)
-            if(!fVelocity[0]&&!fVelocity[1]&&!fVelocity[2])
-            {
-                ExecuteHamB(Ham_CS_RoundRespawn, id)
-                client_print id, print_chat, "You might be stuck!"
-            }
-        }
-    }
 }
 
 //CONDITION ZERO TYPE BOTS. SPiNX
