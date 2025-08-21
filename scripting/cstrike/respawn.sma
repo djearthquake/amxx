@@ -454,8 +454,6 @@ public CS_OnBuy(id, item)
                     client_print iBotOwner[id], print_chat,  SzParaphrase
                     give_item(iBotOwned[id], "weapon_shield");
                 }
-
-                if(iKeep && g_BackPack[iBotOwner[id]] != iDefaultTeamPack)
                 if(is_user_alive(id))
                 {
                     if(!iKeep)
