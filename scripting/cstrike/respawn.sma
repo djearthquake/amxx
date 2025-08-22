@@ -81,10 +81,6 @@
 #define charsmin -1
 #define MAX_NAME_LENGTH 32
 
-#if !defined set_ent_rendering
-#define set_ent_rendering set_rendering
-#endif
-
 new
 //Cvars
 g_dust, g_humans, g_keep, g_sound_reminder, g_freeze,
@@ -95,7 +91,7 @@ g_iSpawnBackpackCT, g_iSpawnBackpackT, iBotOwned[MAX_PLAYERS+1], iBotOwner[MAX_P
 
 //Global variables
 g_Ouser_origin[MAX_PLAYERS + 1][3], g_Duck[MAX_PLAYERS + 1], g_BackPack[MAX_PLAYERS + 1], g_cor, g_times,
-g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_IS_PLANTING, g_item_cost, g_c4_client,
+g_iTempCash[MAX_PLAYERS + 1], g_bot_controllers, g_item_cost, g_c4_client,
 respawner[MAX_PLAYERS +1],
 
 //Floats
@@ -147,7 +143,6 @@ public plugin_init()
     register_logevent("round_start", 2, "1=Round_Start")
     register_logevent("round_end", 2, "1=Round_End")
     register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
-    register_logevent("bomb_dropped", 3, "2=Dropped_The_Bomb");
     //control
     register_impulse(206,"@buy_bot")
     //Misc
@@ -167,37 +162,6 @@ stock get_loguser_index()
     return get_user_index(name);
 }
 
-public PLANTING( id )
-{
-    if(is_user_alive(id))
-    {
-        client_print 0, print_chat ,"%n is planting!", g_IS_PLANTING
-    }
-}
-
-public bomb_dropped()
-{
-    new id = get_loguser_index();
-
-    if(is_user_connected(id))
-    {
-        server_print("%N dropped C4...", id)
-    }
-    if(!is_user_alive(id))
-    {
-        new iC4 = find_ent(MaxClients, "weapon_c4")
-        if(iC4)
-        {
-            server_print("We found the dropped C4!")
-
-            if(pev_valid(iC4))
-            {
-                set_task(0.4, "@c4_model", iC4)
-            }
-        }
-    }
-}
-
 public logevent_function_p()
 {
     if(g_bot_controllers)
@@ -212,20 +176,6 @@ public logevent_function_p()
             }
         }
     }
-}
-
-@c4_model()
-{
-    new iC4 = fm_find_ent_by_model(MaxClients, "weaponbox", "models/w_backpack.mdl")
-    if(iC4)
-    {
-        set_task(0.3, "@render", iC4,_,_,"b")
-    }
-}
-
-@render(index)
-{
-    pev_valid(index) ? set_ent_rendering(index, kRenderFxGlowShell, COLOR(), COLOR(), COLOR(), kRenderTransColor, random_num(15,100)) : remove_task(index)
 }
 
 @died(id)
@@ -487,7 +437,6 @@ public round_start()
     {
         client_print 0, print_chat, "%i bots were purchased last round!", g_bot_controllers
     }
-    g_IS_PLANTING = 0;
     g_bot_controllers = 0;
 }
 
@@ -832,10 +781,4 @@ stock weapon_details(alive_bot)
         server_print("Respawn ham bot from %N", ham_bot)
         bRegistered = true;
     }
-}
-
-stock COLOR()
-{
-    new iRandom = random(256)
-    return iRandom
 }
