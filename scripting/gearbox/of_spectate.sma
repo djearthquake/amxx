@@ -35,6 +35,7 @@
 new g_AI /*,maxplayers*/
 new bool:g_spectating[MAX_PLAYERS + 1]
 new bool:bDemo[MAX_PLAYERS +1]
+new bool:bDucking[MAX_PLAYERS + 1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
 new bool:bListening[MAX_PLAYERS + 1]
 new bool:bFirstPerson[MAX_PLAYERS + 1]
@@ -111,6 +112,12 @@ public plugin_init()
     //maxplayers = get_maxplayers()
 }
 
+public plugin_precache()
+{
+        static ent; ent = create_entity(ent_type)
+        DispatchKeyValue( ent, "targetname", "stripper" )
+        DispatchSpawn(ent);
+}
 /*
 public plugin_end()
 {
@@ -407,6 +414,7 @@ public client_putinserver(id)
 
         if(szSpec[0] == '1' && !g_bFlagMap)
         {
+            @strip(id)
             dllfunc(DLLFunc_ClientPutInServer, id)
             set_task(1.0, "@go_spec", id)
         }
@@ -563,6 +571,7 @@ public client_connectex(id, const name[], const ip[], reason[128])
                         {
                             server_print "TAKING OVER BOT/AFK PLAYER!"
                             g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
+                            bDucking[iTarget] = pev(iTarget, pev_flags) & FL_DUCKING  ? true : false;
                             dllfunc(DLLFunc_ClientPutInServer, id)
                             dllfunc(DLLFunc_SpectatorDisconnect, id)
                             g_iViewtype[id]  = 0
@@ -573,6 +582,11 @@ public client_connectex(id, const name[], const ip[], reason[128])
                             entity_set_float(id, EV_FL_fov, 100.0)
                             change_task(id, 60.0) //less spam
                             remove_task(id+MOTD)
+                            if(bDucking[iTarget])
+                            {
+                                set_pev(id, pev_flags, pev(id, pev_flags) | FL_DUCKING)
+                                bDucking[iTarget] = false
+                            }
                             entity_set_int(id, EV_INT_bInDuck, g_Duck[iTarget]);
                             entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
                             entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
