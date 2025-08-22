@@ -206,6 +206,10 @@ public logevent_function_p()
         if(is_user_connected(id))
         {
             g_c4_client = id
+            if(g_bot_controllers)
+            {
+                cs_set_user_plant(id, .plant = 1, .showbombicon = 1)
+            }
         }
     }
 }
@@ -369,8 +373,8 @@ public CS_OnBuy(id, item)
                         if( id == g_c4_client)
                         {
                             give_item(id, "weapon_c4")
-                            cs_set_user_plant(id, 1, 1)
-                            engclient_cmd(id, "drop", "weapon_c4") //if lost in game afterm client death
+                            cs_set_user_plant(id, .plant = 1, .showbombicon = 1)
+                            ///engclient_cmd(id, "drop", "weapon_c4")
                         }
                     }
                     for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
@@ -632,9 +636,6 @@ public control_bot(dead_spec)
                 iBotOwned[dead_spec] = alive_bot;
                 @give_weapons(dead_spec, alive_bot)
 
-                if(get_user_weapon(dead_spec) == CSW_C4)
-                    give_item(dead_spec, "weapon_c4")
-
                 iBotOwner[alive_bot] = dead_spec;
                 set_msg_block( g_cor, BLOCK_SET );
 
@@ -772,8 +773,7 @@ stock weapon_details(alive_bot)
 
                 if(equal(SzWeaponClassname, "weapon_c4"))
                 {
-                    cs_set_user_plant(dead_spec, 1, 1)
-                    //engclient_cmd(g_c4_client, "drop", "weapon_c4") //if lost in game after client death
+                    cs_set_user_plant(dead_spec, .plant = 1, .showbombicon = 1)
                 }
                 if(containi(SzWeaponClassname, "item_")!=charsmin)
                     replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
@@ -800,6 +800,11 @@ stock weapon_details(alive_bot)
         set_user_armor(dead_spec, arm);
         if(is_user_alive(dead_spec))
         {
+            if(get_user_weapon(alive_bot) == CSW_C4)
+            {
+                give_item(dead_spec, "weapon_c4")
+                client_cmd(dead_spec, "weapon_c4")
+            }
             strip_user_weapons(alive_bot)
             user_silentkill(alive_bot, 1);
         }
