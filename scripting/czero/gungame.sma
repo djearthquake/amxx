@@ -607,6 +607,7 @@ public plugin_end()
         new setup[512];
         get_pcvar_string(gg_endmap_setup,setup,511);
         if(setup[0]) server_cmd(setup);
+        console_cmd 0, "sv_airaccelerate 10" //fix 2025 SPiNX  
     }
 }
 
@@ -5516,6 +5517,10 @@ stock change_level(id,value,just_joined=0,show_message=1,always_score=0,play_sou
         {
             sound_cvar = gg_sound_knife;
             console_cmd 0, "sv_airaccelerate -5" //bad for ladders though 2024 SPiNX
+        }
+        else
+        {
+            console_cmd 0, "sv_airaccelerate 10" //fix 2025 SPiNX  
         }
 
         if(sound_cvar)
