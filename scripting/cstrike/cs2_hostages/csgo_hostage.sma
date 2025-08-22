@@ -1,7 +1,6 @@
 #include <amxmodx>
 #include <engine>
 #include <fakemeta>
-#include <fun>
 #include <hamsandwich>
 #include <cstrike>
 #include <engine>
@@ -21,7 +20,6 @@ static const CARRY_MODEL[]       = "models/csgo_hostage/p_hostage_back.mdl";
 static const HOSTAGE_CLASSNAME[] = "hostage_entity";
 
 static const szHostageResMsg[]   = "HOSTAGE RESCUE ZONE^n^nBring the hostages here!";
-//static const szHostages[][]      ={"hostage_entity", "monster_scientist"};
 static const  Float:fNullOrigin[3] = {0.0, 0.0, 0.0};
 
 static const szCZsuffixes[][] ={"A",  "B",  "C", "D"};
@@ -657,6 +655,7 @@ public logevent_round_start()
 {
     set_task(1.5, "initialize_hostages");
     g_range = get_pcvar_float(g_pick_distance)
+    change_task(2025, get_pcvar_float(g_bot_think))
     bClean = false
 }
 
@@ -791,7 +790,7 @@ public fw_UseHostageBlock(ent, idcaller, idactivator, use_type, Float:value) {
     pev(ent, pev_classname, classname, charsmax(classname));
     if (!equal(classname, HOSTAGE_CLASSNAME))
         return FMRES_IGNORED;
-    return FMRES_IGNORED
+    return FMRES_IGNORED;
 }
 
 public fw_HostageTouch(ent, id)
@@ -836,7 +835,7 @@ public fw_HostageUse(ent, idcaller, idactivator, use_type, Float:value) {
     show_bar(idcaller, floatround(get_pcvar_float(g_pickuptime)));
 
     new buffer[4];
-    num_to_str(ent, buffer, charsmax(buffer))
+    num_to_str(ent, buffer, charsmax(buffer));
 
     set_task(0.1, "show_progress_bar", idcaller, buffer, charsmax(buffer), "b");
     return HAM_SUPERCEDE;
@@ -1063,7 +1062,7 @@ stock cs_get_hostage_entid(hid) {
     while ((hent = engfunc(EngFunc_FindEntityByString, hent, field, HOSTAGE_CLASSNAME)) &&
         cs_get_hostage_id(hent) != hid) {}
 
-    return hent
+    return hent;
 }
 
 @hostage_splatter(Float:Pos[], Float:Axis[])
@@ -1228,7 +1227,7 @@ stock drop_carried_hostage(id) {
             client_print id, print_chat, "Must be carrying a hostage to buy them armor!"
         }
     }
-    return PLUGIN_HANDLED
+    return PLUGIN_HANDLED;
 }
 
 /* ========== Utility Functions ========== */
@@ -1315,8 +1314,6 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
 
 /* ========== Bot AI Functions ========== */
 @bot_think() {
-    change_task(2025, get_pcvar_float(g_bot_think))
-
     new Float:bot_origin[3],Float:hostage_pos[3];
 
     for (new id = 1; id <= MaxClients; id++) {
