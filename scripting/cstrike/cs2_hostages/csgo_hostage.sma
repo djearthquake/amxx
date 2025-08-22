@@ -753,15 +753,14 @@ public fw_PlayerThink(id) {
         set_pev(hostage, pev_angles, Float:{0.0, 0.0, 0.0});
     }
 
-    static Float:fArmsLen; fArmsLen = 100.0;
     if(g_fake_rescue)
-    if(entity_range(id, g_fake_rescue) <= fArmsLen)
+    if(entity_range(id, g_fake_rescue) <= g_range)
     {
         @hostage_one(id)
     }
     if(g_fake_rescue2)
     {
-        if(entity_range(id, g_fake_rescue2) <= fArmsLen || entity_range(id, g_fake_rescue3) <= fArmsLen || entity_range(id, g_fake_rescue4) <= fArmsLen )
+        if(entity_range(id, g_fake_rescue2) <= g_range || entity_range(id, g_fake_rescue3) <= g_range || entity_range(id, g_fake_rescue4) <= g_range )
         {
             @hostage_one(id)
         }
@@ -1345,16 +1344,15 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             }
             bAttacked[id] = false;
 
-            static Float:fArmsLen;
-            fArmsLen = g_range*1.5
+            g_range = g_range*1.5
             if(g_fake_rescue)
-            if(entity_range(id, g_fake_rescue) <= fArmsLen)
+            if(entity_range(id, g_fake_rescue) <= g_range)
             {
                 @hostage_one(id)
             }
             if(g_fake_rescue2)
             {
-                if(entity_range(id, g_fake_rescue2) <= fArmsLen || entity_range(id, g_fake_rescue3) <= fArmsLen || entity_range(id, g_fake_rescue4) <= fArmsLen )
+                if(entity_range(id, g_fake_rescue2) <= g_range || entity_range(id, g_fake_rescue3) <= g_range || entity_range(id, g_fake_rescue4) <= g_range )
                 {
                     @hostage_one(id)
                 }
@@ -1362,7 +1360,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             //set follow to g_rescue_area
             set_pev(id, pev_aiment, g_rescue_area);
 
-            if (get_distance_f(bot_origin, g_rescue_origin) <  fArmsLen && is_in_rescue_zone(bot_origin)) {
+            if (get_distance_f(bot_origin, g_rescue_origin) <  g_range && is_in_rescue_zone(bot_origin)) {
                 rescue_hostage(id);
                 RemoveHostageOnBack(id);
             }
