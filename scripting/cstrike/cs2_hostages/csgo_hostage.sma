@@ -41,6 +41,7 @@ g_HostageCount,
 g_rescue_area, g_rescue_area2, g_rescue_area3, g_rescue_area4, g_max_seek,
 g_remove_zones, g_full_rescue, g_hosties_seeker,g_pick_distance, g_bot_think,
 g_fake_rescue, g_fake_rescue2, g_fake_rescue3, g_fake_rescue4, g_freezetime,
+Float:g_range,
 Float:g_rescue_origin[3],
 Float:g_rescue_origin2[3],
 Float:g_rescue_origin3[3],
@@ -655,6 +656,7 @@ public event_new_round() {
 public logevent_round_start()
 {
     set_task(1.5, "initialize_hostages");
+    g_range = get_pcvar_float(g_pick_distance)
     bClean = false
 }
 
@@ -844,10 +846,9 @@ public fw_HostageUse(ent, idcaller, idactivator, use_type, Float:value) {
 public show_progress_bar(ent[], id) {
     if (!is_user_alive(id) || !g_bTryingPickup[id])
         return;
-
     new hostie = str_to_num(ent)
     set_pev(hostie, pev_owner, id)
-    if(entity_range(id, hostie) > get_pcvar_float(g_pick_distance))
+    if(entity_range(id, hostie) > g_range)
     {
         client_print id, print_center, "You are too far to rescue."
         cancel_pickup(id);
@@ -1345,7 +1346,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             bAttacked[id] = false;
 
             static Float:fArmsLen;
-            fArmsLen = get_pcvar_float(g_pick_distance)*1.5
+            fArmsLen = g_range*1.5
             if(g_fake_rescue)
             if(entity_range(id, g_fake_rescue) <= fArmsLen)
             {
@@ -1382,7 +1383,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
 
         ////////FIND AND GRAB CODE
         if (find_nearest_hostage(bot_origin, hostage_pos)) {
-            if (get_distance_f(bot_origin, hostage_pos) <  get_pcvar_float(g_pick_distance)) {
+            if (get_distance_f(bot_origin, hostage_pos) < g_range) {
                 for (new i = 0; i < g_HostageCount; i++) {
                     new hostage = g_HostageEnts[i];
                     if (!pev_valid(hostage) || pev(hostage, pev_iuser1) != 0)
@@ -1391,7 +1392,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                     static Float:ent_origin[3];
                     pev(hostage, pev_origin, ent_origin);
                     if(!g_PendingHostage[id] || !g_iCarryHostageBackEnt[id])
-                    if (get_distance_f(bot_origin, ent_origin) <  get_pcvar_float(g_pick_distance)) {
+                    if (get_distance_f(bot_origin, ent_origin) < g_range) {
                         g_PendingHostage[id] = hostage;
 
                         new iOwner = pev(hostage, pev_owner)
