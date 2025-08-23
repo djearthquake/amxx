@@ -139,7 +139,6 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
-    //register_event("ResetHUD", "@BotSpawn", "bg") //in case Ham no longer works some day.
     register_logevent("round_start", 2, "1=Round_Start")
     register_logevent("round_end", 2, "1=Round_End")
     register_logevent("logevent_function_p", 3, "2=Spawned_With_The_Bomb")
@@ -172,6 +171,7 @@ public logevent_function_p()
             g_c4_client = id
             if(g_bot_controllers)
             {
+                give_item(id, "weapon_c4")  
                 cs_set_user_plant(id, .plant = 1, .showbombicon = 1)
             }
         }
@@ -222,7 +222,7 @@ public CS_OnBuy(id, item)
 
 @BotSpawn(bot)
 {
-    if(is_user_connected(bot))
+    if(is_user_alive(bot))
     {
         if(bIsCtrl[bot])
         {
@@ -249,7 +249,7 @@ public CS_OnBuy(id, item)
     {
         if(!g_JustTook[id] && !bBotOwner[id])
         {
-            set_task(bShield[id] ? 0.3 :0.1, "@ReSpawn",id)
+            @ReSpawn(id)
         }
     }
 }
@@ -301,6 +301,7 @@ public CS_OnBuy(id, item)
                     goto TRADE;
                 }
             }
+            bIsCtrl[id] = false;
         }
         if(bBotUser[id])
         {
@@ -322,9 +323,7 @@ public CS_OnBuy(id, item)
                         strip_user_weapons(id)
                         if( id == g_c4_client)
                         {
-                            give_item(id, "weapon_c4")
-                            cs_set_user_plant(id, .plant = 1, .showbombicon = 1)
-                            ///engclient_cmd(id, "drop", "weapon_c4")
+                            @give_c4(id)
                         }
                     }
                     for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
@@ -389,12 +388,6 @@ public CS_OnBuy(id, item)
                                 }
                             }
 
-                            if(!user_has_weapon(id, CSW_KNIFE))
-                            {
-                                log_amx "Gave %n a knife!", id
-                                give_item(id, "weapon_knife")
-                            }
-
                             if(iDust && is_user_connected(iBotOwner[id]))
                             {
                                 emessage_begin_f( iDust > 1 ? MSG_BROADCAST : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{0,0,0},  iDust > 1 ? 0 : iBotOwner[id]);
@@ -423,8 +416,7 @@ public CS_OnBuy(id, item)
                 }
             }
         }
-        iBotOwner[id] = 0;
-        @check_arms(id);
+        set_task(2.0, "@check_arms", id)
     }
 }
 
@@ -437,6 +429,8 @@ public round_start()
     {
         client_print 0, print_chat, "%i bots were purchased last round!", g_bot_controllers
     }
+    for(new iPlayer; iPlayer <= iMaxplayers ; ++iPlayer)
+        iBotOwner[iPlayer] = 0;
     g_bot_controllers = 0;
 }
 
@@ -449,6 +443,7 @@ public round_end()
 {
     set_msg_block( g_cor, BLOCK_NOT );
     cool_down_active = true
+    g_c4_client = 0;
     for(new iPlayer; iPlayer <= iMaxplayers ; ++iPlayer)
     {
         respawner[iPlayer] = 0;
@@ -629,8 +624,13 @@ public control_bot(dead_spec)
     {
         if(!get_user_weapon(dead_spec))
         {
-            give_item(dead_spec, "weapon_knife")
             log_amx("%N had no weapon.", dead_spec)
+            @give_default(dead_spec)
+            if(dead_spec == g_c4_client)
+            {
+                @give_c4(dead_spec)
+                log_amx("%N needed the C4.", dead_spec)
+            }
         }
     }
 }
@@ -751,7 +751,6 @@ stock weapon_details(alive_bot)
         {
             if(get_user_weapon(alive_bot) == CSW_C4)
             {
-                give_item(dead_spec, "weapon_c4")
                 client_cmd(dead_spec, "weapon_c4")
             }
             strip_user_weapons(alive_bot)
@@ -768,6 +767,42 @@ stock weapon_details(alive_bot)
         give_item(id, "item_thighpack")
         cs_set_user_defuse(id, 1)
         client_print id, print_chat, "Issuing defuser."
+    }
+}
+
+@give_c4(id)
+{
+    if(is_user_alive(id))
+    {
+        give_item(id, "weapon_c4")
+        cs_set_user_plant(id, .plant = 1, .showbombicon = 1)
+        client_print id, print_chat, "Resssuing voided C4."
+    }    
+}
+
+@give_default(id)
+{
+    if(is_user_alive(id))
+    {
+        g_BackPack[id] = get_user_team(id) == 1 ? g_iSpawnBackpackT : g_iSpawnBackpackCT
+        for (new iArms = CSW_P228; iArms <= CSW_LAST_WEAPON; iArms++)
+        {
+            if(g_BackPack[id] & 1<<iArms)
+            if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
+            {
+                if(!equal(SzWeaponClassname, "weapon_c4") || !equal(SzWeaponClassname, "weapon_null"))
+                {
+                    give_item(id, SzWeaponClassname)
+
+                    if(containi(SzWeaponClassname, "item_")!=charsmin)
+                        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "item_", "")
+                    if(containi(SzWeaponClassname, "weapon_")!=charsmin)
+                        replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
+
+                    client_print id, print_chat,  SzWeaponClassname
+                }
+            }
+        }
     }
 }
 
