@@ -1,4 +1,5 @@
 #include amxmodx
+#include amxmisc
 #include engine
 #include fakemeta
 #include fakemeta_util
@@ -12,9 +13,9 @@ new g_IS_PLANTING
 public plugin_init()
 {
     register_plugin ( "C4 Finder", "0.1", "spinx" )
-    register_logevent("bomb_dropped", 3, "2=Dropped_The_Bomb");
-    register_logevent("bomb_planted", 3, "2=Planted_The_Bomb");
-    register_event("BarTime", "PLANTING", "be", "1=3")
+    register_logevent("@bomb_dropped", 3, "2=Dropped_The_Bomb");
+    register_event("BarTime", "@PLANTING", "be", "1=3")
+    register_event("HLTV", "@event_new_round", "a", "1=0", "2=0");
 }
 
 @c4_model()
@@ -31,12 +32,35 @@ public plugin_init()
     pev_valid(index) ? set_ent_rendering(index, kRenderFxGlowShell, COLOR(), COLOR(), COLOR(), kRenderTransColor, random_num(15,100)) : remove_task(index)
 }
 
-public bomb_planted()
+public bomb_planted(){set_task 1.0, "@check_doubles";}
+
+
+@check_doubles(id)
 {
-    g_IS_PLANTING = 0;
+    new iCheck = find_ent(MaxClients, "weapon_c4")
+    if(iCheck)
+    {
+        new iOwner = pev(iCheck, pev_owner)
+        if(iOwner != g_IS_PLANTING)
+        if(is_user_connected(iOwner))
+        {
+            log_amx("%N had an extra C4!", iOwner)
+            if(pev_valid(iCheck))
+            {
+                engclient_cmd(iOwner, "drop", "weapon_c4")
+            }
+            for(new id = 1; id <= MaxClients; id++)
+            {
+                if(is_user_admin(id))
+                {
+                    client_print(id, print_chat, "%N had an extra C4!", iOwner)
+                }
+            }
+        }
+    }
 }
 
-public PLANTING( id )
+@PLANTING( id )
 {
     g_IS_PLANTING = id
     if(is_user_alive(id))
@@ -51,8 +75,7 @@ public PLANTING( id )
         }
     }
 }
-
-public bomb_dropped()
+@bomb_dropped()
 {
     new id = get_loguser_index();
 
@@ -83,6 +106,8 @@ stock get_loguser_index()
 
     return get_user_index(name);
 }
+
+@event_new_round(){g_IS_PLANTING = 0;}
 
 stock COLOR()
 {
