@@ -653,7 +653,7 @@ public event_new_round() {
 
 public logevent_round_start()
 {
-    set_task(1.5, "initialize_hostages");
+    set_task(0.3, "initialize_hostages");
     g_range = get_pcvar_float(g_pick_distance)
     change_task(2025, get_pcvar_float(g_bot_think))
     bClean = false
