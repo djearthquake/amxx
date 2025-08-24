@@ -39,7 +39,7 @@ g_HostageCount,
 g_rescue_area, g_rescue_area2, g_rescue_area3, g_rescue_area4, g_max_seek,
 g_remove_zones, g_full_rescue, g_hosties_seeker,g_pick_distance, g_bot_think,
 g_fake_rescue, g_fake_rescue2, g_fake_rescue3, g_fake_rescue4, g_freezetime,
-Float:g_range,
+//Float:g_range,
 Float:g_rescue_origin[3],
 Float:g_rescue_origin2[3],
 Float:g_rescue_origin3[3],
@@ -165,6 +165,7 @@ public plugin_init() {
     register_forward(FM_Use, "fw_UseHostageBlock", 0);
     register_logevent("logevent_round_start", 2, "1=Round_Start");
     register_logevent("@round_end", 2, "1=Round_End");
+    
     register_logevent("logevent_hostage_rescued",3,"2=Rescued_A_Hostage");
 
     register_event("SendAudio", "@hostage_two", "a", "2&%!MRAD_escaped");
@@ -428,7 +429,7 @@ public logevent_hostage_rescued()
             ///server_print "Hosatge #%i", ihostie
 
             num_to_str(ihostie, buffer, charsmax(buffer))
-            set_task(0.23, "@Hammer", id, buffer, charsmax(buffer), "a", MAX_HOSTAGES)
+            set_task(0.23, "@Hammer", id, buffer, charsmax(buffer), "a", g_HostageCount-1)
         }
         rescue_hostage(id)
         FnPlant(); // when others are carrying
@@ -469,7 +470,6 @@ stock colored()
 public FnPlant()
 {
     bPlanted = true
-    //static Float:origin[3] = fNullOrigin;
     for (new id = 1; id <= MaxClients; id++)
     {
         //For PodBot bug on Jeep when rescuing and C4 is planted they freeze.
@@ -629,13 +629,14 @@ public event_new_round() {
             iCount++
             set_pev(ent, pev_origin, fNullOrigin)
         }
-        server_print "^n^nThere are %i hostages...^n^n", iCount
+        g_HostageCount = iCount
+        server_print "^n^nThere are %i hostages...^n^n", g_HostageCount
     }
 
     bPlanted = false
     bRescuing = false
 
-    for (new id = 1; id <= MaxClients; id++)
+    for (new id; id <= MaxClients; id++)
     {
         if(is_user_connected(id))
         {
@@ -653,8 +654,8 @@ public event_new_round() {
 
 public logevent_round_start()
 {
-    set_task(0.3, "initialize_hostages");
-    g_range = get_pcvar_float(g_pick_distance)
+    set_task(0.1, "initialize_hostages");
+    //g_range = get_pcvar_float(g_pick_distance)
     change_task(2025, get_pcvar_float(g_bot_think))
     bClean = false
 }
@@ -675,22 +676,20 @@ public initialize_hostages() {
         set_pev(ent, pev_renderamt, 255.0);
         set_pev(ent, pev_owner, 0)
 
-        static effects; effects = pev(ent, pev_effects)
-        set_pev(ent, pev_effects, (effects & ~EF_NODRAW))
-
-
         dllfunc(DLLFunc_Spawn, ent);
     }
     // Reset hostage positions
     for (new i = 0; i < g_HostageCount; i++) {
         if (pev_valid(g_HostageEnts[i])) {
+            set_pev(g_HostageEnts[i], pev_origin, fNullOrigin)
             engfunc(EngFunc_SetOrigin, g_HostageEnts[i], g_HostageOrigins[i]);
+            static effects; effects = pev(g_HostageEnts[i], pev_effects)
+            set_pev(g_HostageEnts[i], pev_effects, (effects & ~EF_NODRAW))
         }
     }
 
     // Reset player states
     for (new id = 1; id <= MaxClients; id++) {
-        set_task(5.0, "@shutup", id)
         if (is_user_connected(id) && g_bCarryingHostage[id]) {
             new hostage = g_CarriedHostage[id];
             if (hostage & pev_valid(hostage)) {
@@ -704,6 +703,7 @@ public initialize_hostages() {
 
             g_CarriedHostage[id] = 0;
             g_bCarryingHostage[id] = false;
+            set_task(5.0, "@shutup", id)
         }
 
         g_bTryingPickup[id] = false;
@@ -731,7 +731,7 @@ public initialize_hostages() {
 public fw_PlayerThink(id) {
     if (!is_user_alive(id) || !is_user_connected(id) || bIsBot[id])
         return;
-
+    new Float:fRange = get_pcvar_float(g_pick_distance)
     // Restore speed after freeze time if not carrying
     if (!g_bCarryingHostage[id]) {
         if(!bCsBeta)
@@ -753,13 +753,13 @@ public fw_PlayerThink(id) {
     }
 
     if(g_fake_rescue)
-    if(entity_range(id, g_fake_rescue) <= g_range)
+    if(entity_range(id, g_fake_rescue) <= fRange)
     {
         @hostage_one(id)
     }
     if(g_fake_rescue2)
     {
-        if(entity_range(id, g_fake_rescue2) <= g_range || entity_range(id, g_fake_rescue3) <= g_range || entity_range(id, g_fake_rescue4) <= g_range )
+        if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
         {
             @hostage_one(id)
         }
@@ -844,9 +844,10 @@ public fw_HostageUse(ent, idcaller, idactivator, use_type, Float:value) {
 public show_progress_bar(ent[], id) {
     if (!is_user_alive(id) || !g_bTryingPickup[id])
         return;
+    new Float:fRange = get_pcvar_float(g_pick_distance)
     new hostie = str_to_num(ent)
     set_pev(hostie, pev_owner, id)
-    if(entity_range(id, hostie) > g_range)
+    if(entity_range(id, hostie) > fRange)
     {
         client_print id, print_center, "You are too far to rescue."
         cancel_pickup(id);
@@ -1315,6 +1316,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
 /* ========== Bot AI Functions ========== */
 @bot_think() {
     new Float:bot_origin[3],Float:hostage_pos[3];
+    new Float:fRange = get_pcvar_float(g_pick_distance)
 
     for (new id = 1; id <= MaxClients; id++) {
         if (!is_user_connected(id) || !is_user_alive(id) || !bIsBot[id] || get_user_team(id) != 2)
@@ -1335,21 +1337,24 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                 if(get_user_weapon(id) != CSW_KNIFE)
                 {
                     if(pev(id,pev_button)  & IN_RELOAD)
-                        break
-                    amxclient_cmd id, "weapon_knife"
+                        break;
+                    else
+                    {
+                        amxclient_cmd( id, "weapon_knife");
+                    }
                 }
             }
             bAttacked[id] = false;
 
-            g_range = g_range*1.5
+            fRange = fRange*1.5
             if(g_fake_rescue)
-            if(entity_range(id, g_fake_rescue) <= g_range)
+            if(entity_range(id, g_fake_rescue) <= fRange)
             {
                 @hostage_one(id)
             }
             if(g_fake_rescue2)
             {
-                if(entity_range(id, g_fake_rescue2) <= g_range || entity_range(id, g_fake_rescue3) <= g_range || entity_range(id, g_fake_rescue4) <= g_range )
+                if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
                 {
                     @hostage_one(id)
                 }
@@ -1357,7 +1362,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             //set follow to g_rescue_area
             set_pev(id, pev_aiment, g_rescue_area);
 
-            if (get_distance_f(bot_origin, g_rescue_origin) <  g_range && is_in_rescue_zone(bot_origin)) {
+            if (get_distance_f(bot_origin, g_rescue_origin) <  fRange && is_in_rescue_zone(bot_origin)) {
                 rescue_hostage(id);
                 RemoveHostageOnBack(id);
             }
@@ -1378,7 +1383,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
 
         ////////FIND AND GRAB CODE
         if (find_nearest_hostage(bot_origin, hostage_pos)) {
-            if (get_distance_f(bot_origin, hostage_pos) < g_range) {
+            if (get_distance_f(bot_origin, hostage_pos) < fRange) {
                 for (new i = 0; i < g_HostageCount; i++) {
                     new hostage = g_HostageEnts[i];
                     if (!pev_valid(hostage) || pev(hostage, pev_iuser1) != 0)
@@ -1387,7 +1392,7 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                     static Float:ent_origin[3];
                     pev(hostage, pev_origin, ent_origin);
                     if(!g_PendingHostage[id] || !g_iCarryHostageBackEnt[id])
-                    if (get_distance_f(bot_origin, ent_origin) < g_range) {
+                    if (get_distance_f(bot_origin, ent_origin) < fRange) {
                         g_PendingHostage[id] = hostage;
 
                         new iOwner = pev(hostage, pev_owner)
