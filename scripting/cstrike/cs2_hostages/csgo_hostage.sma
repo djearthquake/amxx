@@ -690,6 +690,7 @@ public initialize_hostages() {
 
     // Reset player states
     for (new id = 1; id <= MaxClients; id++) {
+        set_task(5.0, "@shutup", id)
         if (is_user_connected(id) && g_bCarryingHostage[id]) {
             new hostage = g_CarriedHostage[id];
             if (hostage & pev_valid(hostage)) {
@@ -703,7 +704,6 @@ public initialize_hostages() {
 
             g_CarriedHostage[id] = 0;
             g_bCarryingHostage[id] = false;
-            set_task(5.0, "@shutup", id)
         }
 
         g_bTryingPickup[id] = false;
