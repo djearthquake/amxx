@@ -563,10 +563,10 @@ public client_putinserver(id)
             {
                 set_task(0.1, "@register", id);
             }
-        }
-        if(!task_exists(2025))
-        {
-            set_task(get_pcvar_float(g_bot_think), "@bot_think", 2025, "", 0, "b"); //directs bots
+            if(!task_exists(2025))
+            {
+                set_task(get_pcvar_float(g_bot_think), "@bot_think", 2025, "", 0, "b"); //directs bots
+            }
         }
     }
 }
@@ -1422,5 +1422,8 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
             }
         }
     }
-    remove_task(2025)
+    else
+    {
+        remove_task(2025)
+    }
 }
