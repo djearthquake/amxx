@@ -828,6 +828,10 @@ public fw_HostageUse(ent, idcaller, idactivator, use_type, Float:value) {
 
     if (g_bCarryingHostage[idcaller]) {
         client_print(idcaller, print_center, "You're already carrying a hostage!");
+        if(bIsBot[idcaller])
+        {
+            set_pev(ent, pev_origin, fNullOrigin)
+        }
         return HAM_SUPERCEDE;
     }
 
