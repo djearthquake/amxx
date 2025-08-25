@@ -125,7 +125,7 @@ public plugin_precache()
 
 public plugin_init() {
     register_plugin(PLUGIN, VERSION, AUTHOR);
-    
+
     // Detect if current map is a hostage map
     //g_bHostageMap = has_map_ent_class(HOSTAGE_CLASSNAME) || has_map_ent_class("monster_scientist")
     g_bHostageMap = find_ent(MaxClients, HOSTAGE_CLASSNAME) > MaxClients ? true : false;
@@ -165,7 +165,7 @@ public plugin_init() {
     register_forward(FM_Use, "fw_UseHostageBlock", 0);
     register_logevent("logevent_round_start", 2, "1=Round_Start");
     register_logevent("@round_end", 2, "1=Round_End");
-    
+
     register_logevent("logevent_hostage_rescued",3,"2=Rescued_A_Hostage");
 
     register_event("SendAudio", "@hostage_two", "a", "2&%!MRAD_escaped");
@@ -175,8 +175,6 @@ public plugin_init() {
     RegisterHam(Ham_Spawn, HOSTAGE_CLASSNAME, "fw_HostageSpawn", 1);
     RegisterHam(Ham_TakeDamage, "player", "fw_PlayerTakeDamage", 0);
     RegisterHam(Ham_Killed, "player", "fw_PlayerKilled", 1);
-
-    set_task(get_pcvar_float(g_bot_think), "@bot_think", 2025, "", 0, "b"); //directs bots
 
     register_concmd("hostage_armor","@buy_armour", 0,": Buy hostage armor.");
 
@@ -559,17 +557,26 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         bIsBot[id] = is_user_bot(id) ? true : false
-        if(bIsBot[id] && !bRegistered)
+        if(bIsBot[id])
         {
-            set_task(0.1, "@register", id);
+            if(!bRegistered)
+            {
+                set_task(0.1, "@register", id);
+            }
+        }
+        if(!task_exists(2025))
+        {
+            set_task(get_pcvar_float(g_bot_think), "@bot_think", 2025, "", 0, "b"); //directs bots
         }
     }
 }
 
-public client_disconnected(id) {
+public client_disconnected(id)
+{
     drop_carried_hostage(id);
     RemoveHostageOnBack(id);
     show_bar(id, 0); // Added to ensure bar is cleared
+    bIsBot[id] = false;
 }
 
 public event_team_switch() {
@@ -1239,7 +1246,7 @@ stock show_status_icon(id, const icon[], r, g, b)
         new flags = pev(id, pev_flags)
         if(flags & FL_SPECTATOR)
             return;
-    
+
         emessage_begin(MSG_ONE_UNRELIABLE, g_status_msg, _, id);
         ewrite_byte(1);
         ewrite_string(icon);
@@ -1314,99 +1321,106 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
 }
 
 /* ========== Bot AI Functions ========== */
-@bot_think() {
+@bot_think()
+{
     new Float:bot_origin[3],Float:hostage_pos[3];
     new Float:fRange = get_pcvar_float(g_pick_distance)
-
-    for (new id = 1; id <= MaxClients; id++) {
-        if (!is_user_connected(id) || !is_user_alive(id) || !bIsBot[id] || get_user_team(id) != 2)
-            continue;
-
-        // Added cooldown check for bots
-        if (get_gametime() - g_LastDropTime[id] < 2.0)
-            continue;
-
-        pev(id, pev_origin, bot_origin);
-
-        // Carrying a hostage - move to nearest rescue zone
-        if (g_bCarryingHostage[id])
+    if(get_playersnum())
+    {
+        for (new id = 1; id <= MaxClients; id++)
         {
-            amxclient_cmd id, "hostage_armor"
-            if(!bAttacked[id])
+            if(bIsBot[id])
             {
-                if(get_user_weapon(id) != CSW_KNIFE)
+                if(is_user_alive(id) && get_user_team(id) == 2)
+    
+                // Added cooldown check for bots
+                if (get_gametime() - g_LastDropTime[id] < 2.0)
+                    continue;
+    
+                pev(id, pev_origin, bot_origin);
+    
+                // Carrying a hostage - move to nearest rescue zone
+                if (g_bCarryingHostage[id])
                 {
-                    if(pev(id,pev_button)  & IN_RELOAD)
-                        break;
-                    else
+                    amxclient_cmd id, "hostage_armor"
+                    if(!bAttacked[id])
                     {
-                        amxclient_cmd( id, "weapon_knife");
-                    }
-                }
-            }
-            bAttacked[id] = false;
-
-            fRange = fRange*1.5
-            if(g_fake_rescue)
-            if(entity_range(id, g_fake_rescue) <= fRange)
-            {
-                @hostage_one(id)
-            }
-            if(g_fake_rescue2)
-            {
-                if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
-                {
-                    @hostage_one(id)
-                }
-            }
-            //set follow to g_rescue_area
-            set_pev(id, pev_aiment, g_rescue_area);
-
-            if (get_distance_f(bot_origin, g_rescue_origin) <  fRange && is_in_rescue_zone(bot_origin)) {
-                rescue_hostage(id);
-                RemoveHostageOnBack(id);
-            }
-            continue;
-        }
-
-        if(bRescuing && !get_pcvar_num(g_full_rescue)|| bPlanted)
-            break;
-
-        if(!bScouting[id] && g_hosties_seeker != get_pcvar_num(g_max_seek))
-        {
-            bScouting[id] = true
-            g_hosties_seeker++
-        }
-
-        // Not carrying - move to nearest unclaimed hostage
-        if(bScouting[id])
-
-        ////////FIND AND GRAB CODE
-        if (find_nearest_hostage(bot_origin, hostage_pos)) {
-            if (get_distance_f(bot_origin, hostage_pos) < fRange) {
-                for (new i = 0; i < g_HostageCount; i++) {
-                    new hostage = g_HostageEnts[i];
-                    if (!pev_valid(hostage) || pev(hostage, pev_iuser1) != 0)
-                        continue;
-
-                    static Float:ent_origin[3];
-                    pev(hostage, pev_origin, ent_origin);
-                    if(!g_PendingHostage[id] || !g_iCarryHostageBackEnt[id])
-                    if (get_distance_f(bot_origin, ent_origin) < fRange) {
-                        g_PendingHostage[id] = hostage;
-
-                        new iOwner = pev(hostage, pev_owner)
-                        if (iOwner == 0)
+                        if(get_user_weapon(id) != CSW_KNIFE)
                         {
-                            set_pev(hostage, pev_owner, id)
+                            if(pev(id,pev_button)  & IN_RELOAD)
+                                break;
+                            else
+                            {
+                                amxclient_cmd( id, "weapon_knife");
+                            }
                         }
-                        set_pev(id,pev_flags,pev(id,pev_flags) | FL_FROZEN);
-                        set_task(float(get_pcvar_num(g_pickuptime)), "pickup_hostage", id);
-                        client_print 0, print_center, "%n[AI] is picking up hostage!", id
-                        break;
+                    }
+                    bAttacked[id] = false;
+    
+                    fRange = fRange*1.5
+                    if(g_fake_rescue)
+                    if(entity_range(id, g_fake_rescue) <= fRange)
+                    {
+                        @hostage_one(id)
+                    }
+                    if(g_fake_rescue2)
+                    {
+                        if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
+                        {
+                            @hostage_one(id)
+                        }
+                    }
+                    //set follow to g_rescue_area
+                    set_pev(id, pev_aiment, g_rescue_area);
+    
+                    if (get_distance_f(bot_origin, g_rescue_origin) <  fRange && is_in_rescue_zone(bot_origin)) {
+                        rescue_hostage(id);
+                        RemoveHostageOnBack(id);
+                    }
+                    continue;
+                }
+    
+                if(bRescuing && !get_pcvar_num(g_full_rescue)|| bPlanted)
+                    break;
+    
+                if(!bScouting[id] && g_hosties_seeker != get_pcvar_num(g_max_seek))
+                {
+                    bScouting[id] = true
+                    g_hosties_seeker++
+                }
+    
+                // Not carrying - move to nearest unclaimed hostage
+                if(bScouting[id])
+    
+                ////////FIND AND GRAB CODE
+                if (find_nearest_hostage(bot_origin, hostage_pos)) {
+                    if (get_distance_f(bot_origin, hostage_pos) < fRange) {
+                        for (new i = 0; i < g_HostageCount; i++) {
+                            new hostage = g_HostageEnts[i];
+                            if (!pev_valid(hostage) || pev(hostage, pev_iuser1) != 0)
+                                continue;
+    
+                            static Float:ent_origin[3];
+                            pev(hostage, pev_origin, ent_origin);
+                            if(!g_PendingHostage[id] || !g_iCarryHostageBackEnt[id])
+                            if (get_distance_f(bot_origin, ent_origin) < fRange) {
+                                g_PendingHostage[id] = hostage;
+    
+                                new iOwner = pev(hostage, pev_owner)
+                                if (iOwner == 0)
+                                {
+                                    set_pev(hostage, pev_owner, id)
+                                }
+                                set_pev(id,pev_flags,pev(id,pev_flags) | FL_FROZEN);
+                                set_task(float(get_pcvar_num(g_pickuptime)), "pickup_hostage", id);
+                                client_print 0, print_center, "%n[AI] is picking up hostage!", id
+                                break;
+                            }
+                        }
                     }
                 }
             }
         }
     }
+    remove_task(2025)
 }
