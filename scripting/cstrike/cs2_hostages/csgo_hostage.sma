@@ -20,7 +20,7 @@ static const CARRY_MODEL[]       = "models/csgo_hostage/p_hostage_back.mdl";
 static const HOSTAGE_CLASSNAME[] = "hostage_entity";
 
 static const szHostageResMsg[]   = "HOSTAGE RESCUE ZONE^n^nBring the hostages here!";
-static const  Float:fNullOrigin[3] = {0.0, 0.0, 0.0};
+static const  Float:fNullOrigin[3] = {0.0, 0.0, -1000000.0};
 
 static const szCZsuffixes[][] ={"A",  "B",  "C", "D"};
 
@@ -821,16 +821,25 @@ public fw_HostageTouch(ent, id)
     return HAM_IGNORED;
 }
 
-public fw_HostageUse(ent, idcaller, idactivator, use_type, Float:value) {
+public fw_HostageUse(ent, idcaller, idactivator, use_type, Float:value)
+{
     if(pev_valid(ent))
     if (!is_user_alive(idcaller) || get_user_team(idcaller) != 2 || g_bRescueEnded || pev(ent, pev_owner) != 0)
         return HAM_SUPERCEDE;
 
-    if (g_bCarryingHostage[idcaller]) {
+    if(g_bCarryingHostage[idcaller])
+    {
         client_print(idcaller, print_center, "You're already carrying a hostage!");
         if(bIsBot[idcaller])
         {
-            set_pev(ent, pev_origin, fNullOrigin)
+            new ent = MaxClients
+            while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME)))
+            {
+                if(pev_valid(ent))
+                {
+                    set_pev(ent, pev_origin, fNullOrigin)
+                }
+            }
         }
         return HAM_SUPERCEDE;
     }
