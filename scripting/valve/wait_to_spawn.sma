@@ -36,14 +36,7 @@ public client_spawn_control(id)
     {
         if(!OkSpawn[id])
         {
-            static effects; effects = pev(id, pev_effects)
-            set_pev(id, pev_effects, (effects | EF_NODRAW))
             set_pev(id, pev_deadflag, DEAD_DEAD)
-            set_pev(id, pev_fov, 150.0)
-
-            set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,0)
-            set_view(id, CAMERA_3RDPERSON)
-
             client_print(id, print_center, szMsg)
         }
     }
@@ -96,6 +89,8 @@ public client_putinserver(id)
             }
 
             fakedamage(id,"Welcome!",1000.0,DMG_GENERIC)
+            set_pev(id, pev_deadflag, DEAD_DEAD)
+            set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,0)
         }
     }
 }
@@ -107,12 +102,18 @@ public client_death(id)
     {
         OkSpawn[id] = g_playercount >= iCount ? false : true;
         if(!OkSpawn[id])
-        {
+        {                                               
             if(!bRanTask[id])
             {
                 bRanTask[id] = true
                 @Ran_task(id)
             }
+            static effects; effects = pev(id, pev_effects)
+            set_pev(id, pev_effects, (effects | EF_NODRAW))
+            set_pev(id, pev_fov, 150.0)
+
+            set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,0)
+            set_view(id, CAMERA_3RDPERSON)
 
             g_spawn_timer[id] = get_pcvar_num(g_mp_spawntime)
             set_task(float(g_spawn_timer[id]), "@spawn_buffer",id)
@@ -141,6 +142,8 @@ public client_spawn(id)
                 {
                     set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,0)
                     set_pev(id, pev_effects, (effects | EF_NODRAW))
+                    set_pev(id, pev_fov, 150.0)
+                    set_view(id, CAMERA_3RDPERSON)
                     set_pev(id, pev_deadflag, DEAD_DEAD)
                 }
                 else
@@ -148,6 +151,8 @@ public client_spawn(id)
                     set_pev(id, pev_deadflag, DEAD_NO)
                     set_user_rendering(id,kRenderFxNone,0,0,0,kRenderTransAlpha,255)
                     set_pev(id, pev_effects, (effects | ~EF_NODRAW))
+                    set_pev(id, pev_fov, 100.0)
+                    set_view(id, CAMERA_NONE)
                     bRanTask[id] = false
                 }
                 return PLUGIN_HANDLED;
@@ -185,5 +190,9 @@ public client_spawn(id)
 
 @spawn_buffer(id)
 {
-    OkSpawn[id] = true
+    if(is_user_connected(id))
+    {
+        OkSpawn[id] = true
+        server_print "%N ALLOWED TO SPAWN.", id
+    }
 }
