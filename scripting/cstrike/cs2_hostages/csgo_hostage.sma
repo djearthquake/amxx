@@ -1372,24 +1372,23 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
         
                         fRange = fRange*1.5
                         if(g_fake_rescue)
-                        if(entity_range(id, g_fake_rescue) <= fRange)
                         {
-                            @hostage_one(id)
-                        }
-                        if(g_fake_rescue2)
-                        {
-                            if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
+                            //set follow to g_rescue_area
+                            set_pev(id, pev_enemy, g_rescue_area); //may only work on monsters
+                            if(entity_range(id, g_fake_rescue) <= fRange)
                             {
                                 @hostage_one(id)
+                                set_pev(id, pev_enemy, 0)
+                            }
+                            if(g_fake_rescue2)
+                            {
+                                if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
+                                {
+                                    @hostage_one(id)
+                                    set_pev(id, pev_enemy, 0)
+                                }
                             }
                         }
-                        //set follow to g_rescue_area
-                        new iTarget = pev(id, pev_enemy)
-                        if(iTarget != g_rescue_area)
-                        {
-                            set_pev(id, pev_enemy, g_rescue_area);
-                        }
-        
                         if (get_distance_f(bot_origin, g_rescue_origin) <  fRange && is_in_rescue_zone(bot_origin)) {
                             rescue_hostage(id);
                             RemoveHostageOnBack(id);
