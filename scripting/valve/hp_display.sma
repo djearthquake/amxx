@@ -5,7 +5,7 @@
 #include fakemeta
 
 #define PLUGIN  "HP Display"
-#define VERSION "0.0.1"
+#define VERSION "0.0.2"
 #define AUTHOR  "SPiNX"
 
 #define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/"
@@ -17,23 +17,31 @@ public plugin_init()
     #else
     register_plugin(PLUGIN, VERSION, AUTHOR, URL);
     #endif
+
+    register_concmd("show_hp","cmdHP",0,": Show your HP in windowed-mode.");
 }
 
-public client_putinserver(id)
+public cmdHP(id,level,cid)
+{
+    if(!is_user_connected(id))
+        return PLUGIN_HANDLED
+
+    if(!cmd_access(id,level,cid,1))
+    {
+        client_print(id,print_chat,"You do not have access to %s %s by %s!",PLUGIN, VERSION, AUTHOR)
+        return PLUGIN_HANDLED
+    }
+
+    task_exists(id) ? remove_task(id) : @task_hp(id);
+
+    return PLUGIN_HANDLED
+}
+
+@task_hp(id)
 {
     if(is_user_connected(id))
     {
-        set_task(1.0, "@admin_check",id);
-    }
-
-}
-
-@admin_check(id)
-{
-    if(is_user_admin(id))
-    {
-        set_task 0.5, "@show_hp",id,_,_,"b"
-        client_print id, print_console, "ADMIN"
+        set_task 1.0, "@show_hp",id,_,_,"b"
     }
 }
 
