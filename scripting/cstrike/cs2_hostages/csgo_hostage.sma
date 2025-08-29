@@ -1384,7 +1384,11 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                             }
                         }
                         //set follow to g_rescue_area
-                        set_pev(id, pev_aiment, g_rescue_area);
+                        new iTarget = pev(id, pev_enemy)
+                        if(iTarget != g_rescue_area)
+                        {
+                            set_pev(id, pev_enemy, g_rescue_area);
+                        }
         
                         if (get_distance_f(bot_origin, g_rescue_origin) <  fRange && is_in_rescue_zone(bot_origin)) {
                             rescue_hostage(id);
