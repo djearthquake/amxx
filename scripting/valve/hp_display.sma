@@ -5,7 +5,7 @@
 #include fakemeta
 
 #define PLUGIN  "HP Display"
-#define VERSION "0.0.2"
+#define VERSION "0.0.3"
 #define AUTHOR  "SPiNX"
 
 #define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/"
@@ -53,8 +53,9 @@ public cmdHP(id,level,cid)
         static arm; arm = pev(id, pev_armorvalue);
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        client_print id, print_center, arm ? "%i|%i" : "%i", hp, arm ;
-
+        //client_print id, print_center, arm ? "%i|%i" : "%i", hp, arm ;
+        set_hudmessage(255, 255, 255, 0.02, 0.89, .effects= 0 , .holdtime= 5.0)
+        show_dhudmessage id, arm ? "%i|%i" : "%i", hp, arm ;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
