@@ -71,7 +71,7 @@ public cmdHP(id,level,cid)
             case 1: client_print id, print_center, arm ? "%i|%i" : "%i", hp, arm ;
             case 2: iHudtype ? show_dhudmessage( id, arm ? "%i|%i" : "%i", hp, arm) : pretty_txt(str, id)
             case 3: pretty_txt(str, id)
-            case 4: remove_task(id)
+            case 4: g_txt[id] = 0 & remove_task(id)
         }
 
     }
