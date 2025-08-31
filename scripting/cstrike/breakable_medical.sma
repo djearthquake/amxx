@@ -17,7 +17,7 @@ static const szFixEnts[][]={"func_breakable", "func_medical"}
 
 public plugin_init()
 {
-    register_plugin("Breakable Medical", "1.52", ".sρiηX҉.")
+    register_plugin("Breakable Medical", "1.53", ".sρiηX҉.")
 }
 
 public plugin_cfg()
@@ -36,13 +36,12 @@ public plugin_cfg()
     register_clcmd("fix_boxes","@fix_boxes", ADMIN_SLAY, "- break on trigger not melee.");
     register_clcmd("hard_boxes","@ent_hardener", ADMIN_SLAY, "- make unbreakable.");
 
-    bC4 = has_map_ent_class("func_bomb_target") ||  has_map_ent_class("info_bomb_target")? true : false
-
-    if(bC4)
-    {
-        server_print ("C4 map!!")
-    }
-
+    //bC4 = has_map_ent_class("func_bomb_target") ||  has_map_ent_class("info_bomb_target") ? true : false
+    
+    static mname[32];
+    get_mapname(mname, charsmax(mname))
+    bC4 = contain(mname, "dust")>-1 ? true : false;
+    
 }
 
 @ent_changing_function(iPlayer, entity_we_touched)
@@ -58,7 +57,7 @@ public plugin_cfg()
         DispatchKeyValue(entity_we_touched, "renderamt", "75")
         DispatchKeyValue(entity_we_touched, "rendercolor", "255 255 255")
 
-        DispatchKeyValue(entity_we_touched, "spawnflags", "2")
+        DispatchKeyValue(entity_we_touched, "spawnflags", "6")
         set_pev(entity_we_touched, pev_classname, "func_medical")
         DispatchSpawn(entity_we_touched); //make gib work
 
@@ -128,16 +127,17 @@ public plugin_cfg()
             set_pev(ent, pev_classname, "func_breakable")
             DispatchKeyValue(ent, "spawnobject", "0")
 
-            DispatchKeyValue(ent, "spawnflags", "4")
+            DispatchKeyValue(ent, "spawnflags", "6")
             DispatchKeyValue(ent, "rendermode", "2")
             DispatchKeyValue(ent, "renderamt", "100")
 
             DispatchKeyValue(ent, "renderfx", "0")
             DispatchKeyValue(ent, "rendercolor", "0 0 0")
-            set_pev(ent, pev_health, 5.0)
+            set_pev(ent, pev_health, bC4 ? 1000.0 : 5.0)
 
             if(bC4)
             {
+                //just dust
                 set_pev(ent, pev_rendermode, kRenderNormal)
                 set_pev(ent, pev_spawnflags, SF_BREAK_TRIGGER_ONLY)
             }
