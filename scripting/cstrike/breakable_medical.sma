@@ -50,7 +50,7 @@ public plugin_cfg()
     {
         DispatchKeyValue(entity_we_touched, "explodemagnitude", "10") //make it hurt
         DispatchKeyValue(entity_we_touched, "spawnobject", "2") //make medkit
-        DispatchKeyValue(entity_we_touched, "health", "150") //make medkit
+        //DispatchKeyValue(entity_we_touched, "health", "15") //make medkit
         DispatchKeyValue(entity_we_touched, "gibmodel", medkit)
         DispatchKeyValue(entity_we_touched, "rendermode", "1")
         DispatchKeyValue(entity_we_touched, "renderfx", "14")
@@ -127,13 +127,13 @@ public plugin_cfg()
             set_pev(ent, pev_classname, "func_breakable")
             DispatchKeyValue(ent, "spawnobject", "0")
 
-            DispatchKeyValue(ent, "spawnflags", "0")
+            DispatchKeyValue(ent, "spawnflags", "6")
             DispatchKeyValue(ent, "rendermode", "2")
             DispatchKeyValue(ent, "renderamt", "100")
 
             DispatchKeyValue(ent, "renderfx", "0")
             DispatchKeyValue(ent, "rendercolor", "0 0 0")
-            set_pev(ent, pev_health, bC4 ? 1000.0 : 5.0)
+            //set_pev(ent, pev_health, bC4 ? 1000.0 : 5.0)
 
             if(bC4)
             {
