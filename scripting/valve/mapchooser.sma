@@ -216,6 +216,7 @@ public checkVotes()
             client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_FRAG", g_frags)
             //client_print 0, print_chat, "Incrementing frag limit to %i.", g_frags
             log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to %i frags.", mapname, g_frags)
+            g_rtv=false
             g_selected = false
             return
         }
@@ -230,6 +231,7 @@ public checkVotes()
             client_print 0, print_chat, "Incrementing capture points to %i.", get_pcvar_num(Pcvar_captures)
             log_amx("Vote:                   Voting for the nextmap finished. Map %s will be extended to %i captures.", mapname, get_pcvar_num(Pcvar_captures))
             g_selected = false
+            g_rtv=false
             return
         }///new to here
         else
@@ -239,6 +241,7 @@ public checkVotes()
             client_print(0, print_chat, "%L", LANG_PLAYER, "CHO_FIN_EXT", steptime)
             log_amx("Vote: Voting for the nextmap finished. Map %s will be extended to next %.0f minutes.", mapname, steptime)
             g_selected = false
+            g_rtv=false
             return
         }
 
