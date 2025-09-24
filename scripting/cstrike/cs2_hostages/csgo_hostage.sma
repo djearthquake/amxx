@@ -667,16 +667,17 @@ public logevent_round_start()
     bClean = false
 }
 
-public initialize_hostages() {
+public initialize_hostages()
+{
     new ent = MaxClients
-    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME))) {
-        if (!pev_valid(ent))
-            continue;
+    while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", HOSTAGE_CLASSNAME)) && pev_valid(ent) ==2 )
+    {
 
-        if (g_HostageCount < MAX_HOSTAGES) {
+        if (g_HostageCount < MAX_HOSTAGES)
+        {
             pev(ent, pev_origin, g_HostageOrigins[g_HostageCount]);
             g_HostageEnts[g_HostageCount++] = ent;
-    }
+        }
 
         set_pev(ent, pev_iuser1, 0);
         set_pev(ent, pev_rendermode, kRenderNormal);
@@ -686,8 +687,10 @@ public initialize_hostages() {
         dllfunc(DLLFunc_Spawn, ent);
     }
     // Reset hostage positions
-    for (new i = 0; i < g_HostageCount; i++) {
-        if (pev_valid(g_HostageEnts[i])) {
+    for (new i = 0; i < g_HostageCount; i++)
+    {
+        if(pev_valid(g_HostageEnts[i]) == 2)
+        {
             set_pev(g_HostageEnts[i], pev_origin, fNullOrigin)
             engfunc(EngFunc_SetOrigin, g_HostageEnts[i], g_HostageOrigins[i]);
             static effects; effects = pev(g_HostageEnts[i], pev_effects)
@@ -866,7 +869,10 @@ public show_progress_bar(ent[], id) {
         return;
     new Float:fRange = get_pcvar_float(g_pick_distance)
     new hostie = str_to_num(ent)
-    set_pev(hostie, pev_owner, id)
+
+    if(pev_valid(hostie))
+        set_pev(hostie, pev_owner, id)
+
     if(entity_range(id, hostie) > fRange)
     {
         client_print id, print_center, "You are too far to rescue."
@@ -910,9 +916,11 @@ public cancel_pickup(id) {
         ent = g_PendingHostage[id]
         set_ent_visibility_to_player(ent, id, true);
     }
-
+    if(pev_valid(ent))
+    {
+        set_pev(ent, pev_owner, 0)
+    }
     g_bTryingPickup[id] = false;
-    set_pev(ent, pev_owner, 0)
     g_PendingHostage[id] = 0;
     remove_task(id);
     show_bar(id, 0);
@@ -939,7 +947,7 @@ public pickup_hostage(id) {
             return;
 
         new iOwner = pev(ent, pev_owner)
-        if (iOwner == 0)
+        if (iOwner == 0 && pev_valid(ent))
         {
             set_pev(ent, pev_owner, id)
         }
@@ -1349,9 +1357,9 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                     // Added cooldown check for bots
                     if (get_gametime() - g_LastDropTime[id] < 2.0)
                         continue;
-        
+
                     pev(id, pev_origin, bot_origin);
-        
+
                     // Carrying a hostage - move to nearest rescue zone
                     if (g_bCarryingHostage[id])
                     {
@@ -1369,23 +1377,19 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                             }
                         }
                         bAttacked[id] = false;
-        
+
                         fRange = fRange*1.5
                         if(g_fake_rescue)
                         {
-                            //set follow to g_rescue_area
-                            set_pev(id, pev_enemy, g_rescue_area); //may only work on monsters
                             if(entity_range(id, g_fake_rescue) <= fRange)
                             {
                                 @hostage_one(id)
-                                set_pev(id, pev_enemy, 0)
                             }
                             if(g_fake_rescue2)
                             {
                                 if(entity_range(id, g_fake_rescue2) <= fRange || entity_range(id, g_fake_rescue3) <= fRange || entity_range(id, g_fake_rescue4) <= fRange )
                                 {
                                     @hostage_one(id)
-                                    set_pev(id, pev_enemy, 0)
                                 }
                             }
                         }
@@ -1395,19 +1399,19 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                         }
                         continue;
                     }
-        
+
                     if(bRescuing && !get_pcvar_num(g_full_rescue)|| bPlanted)
                         break;
-        
+
                     if(!bScouting[id] && g_hosties_seeker != get_pcvar_num(g_max_seek))
                     {
                         bScouting[id] = true
                         g_hosties_seeker++
                     }
-        
+
                     // Not carrying - move to nearest unclaimed hostage
                     if(bScouting[id])
-        
+
                     ////////FIND AND GRAB CODE
                     if (find_nearest_hostage(bot_origin, hostage_pos)) {
                         if (get_distance_f(bot_origin, hostage_pos) < fRange) {
@@ -1415,13 +1419,13 @@ public fw_PlayerTakeDamage(ent, inflictor, attacker, Float:damage, damagebits)
                                 new hostage = g_HostageEnts[i];
                                 if (!pev_valid(hostage) || pev(hostage, pev_iuser1) != 0)
                                     continue;
-        
+
                                 static Float:ent_origin[3];
                                 pev(hostage, pev_origin, ent_origin);
                                 if(!g_PendingHostage[id] || !g_iCarryHostageBackEnt[id])
                                 if (get_distance_f(bot_origin, ent_origin) < fRange) {
                                     g_PendingHostage[id] = hostage;
-        
+
                                     new iOwner = pev(hostage, pev_owner)
                                     if (iOwner == 0)
                                     {
