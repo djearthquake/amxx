@@ -1,19 +1,18 @@
 #include amxmodx
 
 #define PLUGIN    "FOV Finder"
-#define VERSION   "1.0"
+#define VERSION   "1.0.1"
 #define AUTHOR    "SPiNX"
 new const URL[]=  "https://github.com/djearthquake/"
 new const DESC[]= "Cvar how to with FOV."
 
 
 public plugin_init()
-#if AMXX_VERSION_NUM == 182
-register_plugin(PLUGIN, VERSION, AUTHOR);
-#else
+#if AMXX_VERSION_NUM == 110
 register_plugin(PLUGIN, VERSION, AUTHOR, URL, DESC)
+#else
+register_plugin(PLUGIN, VERSION, AUTHOR);
 #endif
-
 
 public client_putinserver(id)
 if(!is_user_bot(id))
