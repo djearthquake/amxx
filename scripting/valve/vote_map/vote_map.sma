@@ -5,7 +5,7 @@
 #include <fun>
 
 #define PLUGIN "Vote Map"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define AUTHOR "Emp`SPiNX"
 #define FORCE_CHANGE_TARGETNAME "changelevel"
 #define FORCE_ROCKTHEVOTE "rockthevote"
@@ -144,6 +144,7 @@ public entity_touch(ent1, ent2)
         new targetname[15]
         new mapchange=0, rockthevote=0
         pev(ent1, pev_targetname, targetname, charsmax(targetname))
+
         if(equal(targetname, FORCE_CHANGE_TARGETNAME) && ent2 < MAX_PLAYERS+1)
             mapchange = 1
         else
@@ -160,6 +161,12 @@ public entity_touch(ent1, ent2)
             pev(ent, pev_target, target, charsmax(target))
             if(strlen(target))
             {
+                //2025 SPiNX. If none game is frozen.
+                if(equal(target, "none"))
+                {
+                    console_cmd 0, "reload"
+                    goto END
+                }
                 set_cvar_string "amx_nextmap", target
                 static exec[MAX_CMD_LENGTH]
                 format(exec,charsmax(exec), "changelevel %s",target)
@@ -192,6 +199,7 @@ public entity_touch(ent1, ent2)
         }
 
     }
+    END:
     return FMRES_IGNORED
 }
 @Won(exec[MAX_CMD_LENGTH])
