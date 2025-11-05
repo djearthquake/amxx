@@ -6,7 +6,7 @@
 #include <engine>
 
 #define PLUGIN             "CSGO Hostage Mode"
-#define VERSION            "1.2.4"
+#define VERSION            "1.2.5"
 #define AUTHOR             "mjf_0.0|SPiNX"
 
 #define MAX_PLAYERS        32
@@ -87,11 +87,8 @@ static g_mod[MAX_NAME_LENGTH];
 /* ========== Plugin Initialization ========== */
 public plugin_precache()
 {
-    new mname[MAX_PLAYERS];
-    get_mapname(mname, charsmax(mname));
-    g_bHostageMap = containi(mname,"cs_") > FM_NULLENT || equal(mname, "de_jeepathon2k") ? true : false
-    server_print("%s", mname)
-
+    g_bHostageMap = has_map_ent_class(HOSTAGE_CLASSNAME) ? true : false
+    
     if(!g_bHostageMap)
     {
         pause("c");
@@ -110,16 +107,14 @@ public plugin_precache()
     precache_model(CARRY_MODEL);
 
     get_modname(g_mod, charsmax(g_mod));
-
-    if(equal(g_mod, "czero") && g_bHostageMap)
+    if(equal(g_mod, "czero"))
+    //if(equal(g_mod, "czero") && g_bHostageMap)
+    for(new lot;lot < sizeof szCZsuffixes;++lot)
     {
-        for(new lot;lot < sizeof szCZsuffixes;++lot)
-        {
-            new szCZhostages[MAX_PLAYERS];
-            formatex(szCZhostages, charsmax(szCZhostages),"models/hostage%s.mdl", szCZsuffixes[lot]);
-            server_print "%s PRECACHED...", szCZhostages;
-            precache_model(szCZhostages);
-        }
+        new szCZhostages[MAX_PLAYERS];
+        formatex(szCZhostages, charsmax(szCZhostages),"models/hostage%s.mdl", szCZsuffixes[lot]);
+        server_print "%s PRECACHED...", szCZhostages;
+        precache_model(szCZhostages);
     }
 }
 
