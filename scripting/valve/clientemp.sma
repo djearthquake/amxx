@@ -46,7 +46,7 @@
     *
     *
     * __..__  .  .\  /
-    *(__ [__)*|\ | >< Sun 6th Oct 2024
+    *(__ [__)*|\ | >< Wed 19th Nov 2025
     *.__)|   || \|/  \
     *    ℂ𝕝𝕚𝕖𝕟𝕥𝕖𝕞𝕡. Displays clients temperature. REQ:HLDS, AMXX, Openweather key.
     *    Get a free 32-bit API key from openweathermap.org. Pick metric or imperial.
@@ -75,7 +75,7 @@
     #endif
 
     #define PLUGIN "Client's temperature"
-    #define VERSION "1.9.2"
+    #define VERSION "1.9.4"
     #define AUTHOR ".sρiηX҉."
 
     #define LOG
@@ -161,9 +161,10 @@
     new bool:g_testingip[MAX_PLAYERS +1]
 
 
-    new token[MAX_PLAYERS + 1]
+    static token[MAX_PLAYERS + 1]
+    new bool:ClientCall[MAX_PLAYERS+1]
 
-    new const SOUND_GOTATEMP[] = "misc/Temp.wav";
+    static const SOUND_GOTATEMP[] = "misc/Temp.wav";
     new bool:gotatemp[ MAX_PLAYERS + 1 ]
     new bool:somebody_is_being_help
     new g_players[ MAX_PLAYERS ],g_iHeadcount;
@@ -175,9 +176,9 @@
     new Trie:g_client_temp;
 
     new bool: b_Bot[MAX_PLAYERS+1];
-    new bool: b_Admin[MAX_PLAYERS+1];
-    new bool: b_CS;
-    new bool: b_DoD;
+    static bool: b_Admin[MAX_PLAYERS+1];
+    static bool: b_CS;
+    static bool: b_DoD;
 
     new const faren_country[][]={
     //Bahamas
@@ -202,7 +203,7 @@
                 "USA"
 };
 
-new const faren_countries[][]={
+static const faren_countries[][]={
     "Bahamas",
     "Cayman Islands",
     "Liberia",
@@ -212,7 +213,7 @@ new const faren_countries[][]={
     "United States"
 };
 
-new const DIC[] = "clientemp.txt";
+static const DIC[] = "clientemp.txt";
 
 enum _:Client_temp
 {
@@ -229,7 +230,7 @@ enum _:Client_temp
 
 new Data[ Client_temp ];
 
-static const unicoding_table[80][2][160] =
+static const unicoding_table[83][2][166] =
 {///https://en.wikipedia.org/wiki/List_of_Unicode_characters
   ///https://www.fileformat.info/info/unicode/char/0165/index.htm
     {"\u2013", "-"},
@@ -311,7 +312,10 @@ static const unicoding_table[80][2][160] =
     {"\u0219", "s"},
     {"\u0144", "n"},
     {"\u017a", "z"},
-    {"\u0142", "s"}
+    {"\u0142", "s"},
+    {"\u0119", "e"},
+    {"\u0110", "D"},
+    {"u1ecb", "i"}
 };
 
 public plugin_init()
@@ -351,7 +355,12 @@ public plugin_init()
 
     register_clcmd("!temp","@temp_test",ADMIN_SLAY,"Check temp specified IP.");
 
-    set_task(60.0, "@the_queue",iQUEUE,"",0,"b"); //makes sure all players temp is read minimal socket hang
+    register_clcmd("queue_repair","@unbusy_disco",ADMIN_SLAY,"Unjam the clients.");
+
+    if(get_pcvar_num(XAutoTempjoin))
+    {
+        set_task(60.0, "@the_queue",iQUEUE,"",0,"b"); //makes sure all players temp is read minimal socket hang
+    }
 
     g_task         = 5.0;
     g_q_weight     = 1
@@ -360,7 +369,7 @@ public plugin_init()
 
     static SzModName[MAX_NAME_LENGTH]
     get_modname(SzModName, charsmax(SzModName));
-    if(equal(SzModName, "cstrike"))
+    if(equal(SzModName, "cstrike") || equal(SzModName, "czero"))
     {
         b_CS = true
     }
@@ -439,6 +448,7 @@ public plugin_precache()
 {
     if(is_user_connected(id))
     {
+        ///g_testingip[id] = true //fix unexpected break
         set_pcvar_num(g_admins, 1)
         gotatemp[id] = false
         client_cmd(id,"spk buttons/bell1.wav");
@@ -638,6 +648,13 @@ public client_infochanged(id)
     }
 }
 
+@temp_cmd(id)
+{
+    ClientCall[id] = true
+    client_temp_cmd(id)
+    //Speak(id)
+}
+
 public Speak(id)
 {
     if(is_user_connected(id))
@@ -654,6 +671,7 @@ public Speak(id)
         if(gotatemp[id]) //remind them otherwise fetch it
         {
             @speakit(id)
+            return
         }
         else
         {
@@ -997,6 +1015,12 @@ public client_disconnected(id)
     somebody_is_being_help = false
     IS_SOCKET_IN_USE = false;
     bServer = false
+    if(is_user_connected(id))
+    {
+        g_testingip[id] = true
+    }
+    return PLUGIN_CONTINUE;
+    //return PLUGIN_HANDLED;
 }
 
 public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
@@ -1415,6 +1439,14 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
 
 @the_queue(player)
 {
+    new Cvar_auto = get_pcvar_num(XAutoTempjoin)
+    /*
+    if(!Cvar_auto)
+    {
+        if(is_user_connected(player) && ClientCall[player] == true)
+            goto JUMP
+    }*/
+
     //Assure admins queue is really running
     server_print "^n^n---------------- The Q -------------------^n%s queue is running.^n------------------------------------------",PLUGIN
     //How many runs before task is put to sleep given diminished returns
@@ -1428,7 +1460,8 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
     {
         new client = g_players[player];
         //Make array of non-bot connected players who need their temp still.
-        //spread tasks apart to go easy on sockets with player who are in game and need their temps taken!
+        //spread tasks apart to go easy on sockets with player wh are in game and need their temps taken!
+        //if(!Cvar_auto && ClientCall[client] || Cvar_auto)
         if(!gotatemp[client] /* && !bAssisted */)
         {
             //ATTEMPT STOP TASKS FROM BEING BACK-TO-BACK
@@ -1444,8 +1477,8 @@ public Weather_Feed(ClientIP[MAX_PLAYERS+1][], feeding)
             server_print "Total players for math adj to: %i", total
             server_print "We STILL need %s's temp already.",ClientName[client]
             server_print "QUEUE NEXT::ID:%d %s",client, ClientName[client]
-            change_task(iQUEUE, 30.0)
-
+            task_exists(iQUEUE) ? change_task(iQUEUE, 30.0) : set_task(30.0, "@the_queue",iQUEUE,"",0,"b");
+            JUMP:
             //If no city showing here there will NEVER be a temp //happens when plugin loads map paused then is unpaused
             if(get_pcvar_num(g_long) > 0 && !got_coords[client] && !task_exists(client + WEATHER))
             {
@@ -1568,12 +1601,19 @@ public client_putinserver_now(id)
         }
         else if(!TrieGetArray( g_client_temp, Data[ SzAddress ], Data, sizeof Data ))
         {
-            server_print "%s ip is NOT cached. -%s.", ClientName[id], PLUGIN
-             #if AMXX_VERSION_NUM == 182
-                geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
-            #else
-                geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), LANG_SERVER );
-            #endif
+            if(g_testingip[id])
+            {
+                server_print "%s ip is NOT cached. -%s.", ClientName[id], PLUGIN
+                 #if AMXX_VERSION_NUM == 182
+                    geoip_country( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]) );
+                #else
+                    geoip_country_ex( ClientIP[id], ClientCountry[id], charsmax(ClientCountry[]), LANG_SERVER );
+                #endif
+            }
+            else
+            {
+                @get_client_data(id+COORD)
+            }
         }
     }
 }
