@@ -10,4 +10,4 @@ public plugin_init()
     register_touch("weaponbox",ents[list], "@kill")
 }
 
-@kill(iBox,world)if(iBox>MaxClients)remove_entity(iBox);
+@kill(iBox,world)if(iBox>MaxClients)call_think(iBox);
