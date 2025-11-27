@@ -135,7 +135,6 @@ public plugin_init()
     g_times = register_cvar("respawn_times", "3")
     g_item_cost = register_cvar("respawn_cost", "2500" )
     //Ham
-    RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     RegisterHam(Ham_Spawn, "player", "@PlayerSpawn", 1)
     RegisterHam(Ham_Killed, "player", "@died", 1)
     //Events
@@ -182,9 +181,16 @@ public logevent_function_p()
 {
     bBotOwner[id] = false;
 
-    if(is_user_connected(id) && !cool_down_active && !bIsBound[id])
+    if(is_user_connected(id))
     {
-        client_print id, print_chat, get_pcvar_num(g_humans) ? SzAdvertAll : SzAdvert
+        if(bIsCtrl[id])
+        {
+            strip_user_weapons(id)
+        }
+        if(!cool_down_active && !bIsBound[id])
+        {
+            client_print id, print_chat, get_pcvar_num(g_humans) ? SzAdvertAll : SzAdvert
+        }
     }
 }
 
@@ -527,19 +533,6 @@ public purchase_respawn(Client)
         return PLUGIN_CONTINUE;
     }
     return PLUGIN_HANDLED
-}
-
-@_weaponbox(iNofreelunch)
-{
-    new iPlayer = pev(iNofreelunch, pev_owner);
-    if(!is_user_alive(iPlayer) && pev_valid(iNofreelunch))
-    {
-        if(bIsCtrl[iPlayer])
-        {
-            set_pev(iNofreelunch, pev_flags, FL_KILLME);
-            fm_set_kvd(iPlayer, "zhlt_lightflags", "1")
-        }
-    }
 }
 
 public control_bot(dead_spec)
