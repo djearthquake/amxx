@@ -1075,8 +1075,8 @@ public hostage_kill()
         if(owner && pev_valid(ent))
         {
             set_pev(ent, pev_owner, 0)
-            RemoveHostageOnBack(owner)
             set_pev(ent, pev_origin, fNullOrigin)
+            RemoveHostageOnBack(owner)
         }
     }
 }
