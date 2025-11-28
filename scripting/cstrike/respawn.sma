@@ -350,7 +350,7 @@ public CS_OnBuy(id, item)
                             }
                         }
                         TRADE:
-                        if(bIsCtrl[id])
+                        if(is_user_alive(id) && bIsCtrl[id])
                         {
                             strip_user_weapons(id) //double-pistol bugfix
                             static Float:fBuyOrigin[3];
