@@ -32,6 +32,15 @@
 #define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 #define SWEEP_LEVEL ADMIN_LEVEL_F
+#define MAX_ITEM_TYPES 6
+
+static const m_rgpPlayerItems_CWeaponBox[MAX_ITEM_TYPES] = {22, 23, ...} //OP4
+static m_pNext;
+
+const LINUX_OFFSET_WEAPONS = 4;
+const LINUX_DIFF = 5;
+const UNIX_DIFF = 20;
+
 
 new const ent_type[]="weaponbox"
 
@@ -40,7 +49,7 @@ new Picked[MAX_PLAYERS+1]
 
 public plugin_init()
 {
-    register_plugin( "Weaponbox sweeper", "1.1", "SPiNX" );
+    register_plugin( "Weaponbox sweeper", "1.2", "SPiNX" );
     register_touch(ent_type, "player", "minus")
     if(get_cvar_pointer("sv_hookpickweapons"))
     {
@@ -51,7 +60,38 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     g_box_lim =  register_cvar("weaponbox_sweep", "10") //Box limit.
     g_box_debug =  register_cvar("weaponbox_debug", "0"); //Show count.
+    m_pNext = 46;
 }
+
+@_box(iWeaponbox)
+{
+    set_task 0.1, "@GetWeaponBoxWeaponType",iWeaponbox;
+}
+
+@GetWeaponBoxWeaponType(WeaponBoxEntity)
+{
+    static null[32];
+    null ="gun";
+    if(WeaponBoxEntity)
+    {
+        static iWeapon
+        for(new i; i < MAX_ITEM_TYPES; ++i)
+        {
+            iWeapon = get_pdata_cbase(WeaponBoxEntity, m_rgpPlayerItems_CWeaponBox[i], LINUX_OFFSET_WEAPONS)
+            while(iWeapon>MaxClients)
+            {
+                static szClass[MAX_PLAYERS]
+                pev(iWeapon, pev_classname, szClass, charsmax(szClass))
+
+                iWeapon = get_pdata_cbase(iWeapon, m_pNext, LINUX_OFFSET_WEAPONS)
+                replace(szClass, charsmax(szClass), "weapon_", "")
+                return szClass;
+            }
+        }
+    }
+    return null
+}
+
 
 public minus_hook()
 {
@@ -79,7 +119,7 @@ public minus(box, player)
 
         if(is_user_connected(box_owner) && box_debug>1)
         {
-            client_print 0, print_chat, "%n picked up %n's box.", player, box_owner
+            client_print 0, print_chat, "%n picked up %n's %s.", player, box_owner, @GetWeaponBoxWeaponType(box)
         }
 
         if(!task_exists(player))
@@ -130,7 +170,7 @@ ent_limiter()
             server_print("%d spawned --%d/%d ents/max...|Index (to be removed):%d: \%s/ (next think):%i", g_master_count, iEnts, iEntMax, ent, ent_type, iThinking_ent);
         }
 
-        iThinking_ent ? remove_entity(ent)  :  set_pev(ent, pev_flags, FL_KILLME);
+        iThinking_ent ? remove_entity(ent)  :  call_think(ent) ///set_pev(ent, pev_flags, FL_KILLME);
 
         g_ent_count--;
 
