@@ -26,7 +26,7 @@
 #include fakemeta
 
 #define PLUGIN  "Ent Count Display"
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define AUTHOR  "SPiNX"
 
 #define URL              "https://github.com/djearthquake/amxx/tree/main/scripting/"
@@ -78,9 +78,14 @@ public plugin_init()
         if(bEntSee[client])
         {
             iViewers++
-            if(is_user_alive(client))
+            if(is_user_connected(client))
             {
                 client_print client, print_center, "Ent count:%i",iEnts
+            }
+            else
+            {
+                iViewers--
+                bEntSee[client] = false;
             }
         }
     }
