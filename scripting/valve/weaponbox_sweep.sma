@@ -51,6 +51,7 @@ public plugin_init()
 {
     register_plugin( "Weaponbox sweeper", "1.2", "SPiNX" );
     register_touch(ent_type, "player", "minus")
+    register_touch(ent_type, "trigger_hurt", "@destroy")
     if(get_cvar_pointer("sv_hookpickweapons"))
     {
         static register_ent; register_ent = find_ent_by_class(charsmin, ent_type);
@@ -63,15 +64,18 @@ public plugin_init()
     m_pNext = 46;
 }
 
-@_box(iWeaponbox)
+@destroy(iWeaponbox, iHurt)
 {
-    set_task 0.1, "@GetWeaponBoxWeaponType",iWeaponbox;
+    remove_entity(iWeaponbox)
+    //call_think(iWeaponbox);
+    if(!iWeaponbox)
+    g_ent_count--
 }
 
 @GetWeaponBoxWeaponType(WeaponBoxEntity)
 {
     static null[32];
-    null ="gun";
+    null ="weapon";
     if(WeaponBoxEntity)
     {
         static iWeapon
@@ -110,16 +114,26 @@ public minus_hook()
 
 public minus(box, player)
 {
-    static box_owner; box_owner = pev(box, pev_owner)
     static box_debug; box_debug = get_pcvar_num(g_box_debug);
+    static box_owner; box_owner = pev(box, pev_owner);
+    new szWeapon[32];
+    copy(szWeapon, charsmax(szWeapon), @GetWeaponBoxWeaponType(box))
+
     if(is_user_alive(player) && !Picked[player])
     {
         Picked[player] = true
-        g_ent_count--
-
-        if(is_user_connected(box_owner) && box_debug>1)
+        if(!box)
         {
-            client_print 0, print_chat, "%n picked up %n's %s.", player, box_owner, @GetWeaponBoxWeaponType(box)
+            g_ent_count--
+        }
+
+        if(box_debug>1)
+        if(player != box_owner)
+        //if(is_user_connected(box_owner))
+        {
+            client_print 0, print_chat, "%n picked up %n's %s.", player, box_owner, szWeapon
+            //static buffer[4];num_to_str(box, buffer, charsmax(buffer));
+            //set_task 0.1, "@delayed_print",player, buffer, charsmax(buffer);
         }
 
         if(!task_exists(player))
@@ -130,6 +144,22 @@ public minus(box, player)
     box_status()
 }
 
+@delayed_print(buffer[], player)
+{
+    new box = str_to_num(buffer);
+    static box_owner; box_owner = pev(box, pev_owner);
+    if(is_user_connected(player) && is_user_connected(box_owner))
+    {
+        if(player != box_owner)
+        {
+            new szWeapon[32];
+            copy(szWeapon, charsmax(szWeapon), @GetWeaponBoxWeaponType(box))
+            //client_print 0, print_chat, "%n picked up %n's %s.", player, box_owner, @GetWeaponBoxWeaponType(box);
+            client_print 0, print_chat, "%n picked up %n's %s.", player, box_owner, szWeapon
+        }
+    }
+}
+
 public end_clamp(player)
 {
     Picked[player] = false
@@ -137,15 +167,19 @@ public end_clamp(player)
 
 @_weaponbox(iloot_crate)
 {
-    g_ent_count++;g_master_count++
-    static box_limit; box_limit = get_pcvar_num(g_box_lim)
-
-    if(g_ent_count >= box_limit)
+    if(iloot_crate)
     {
-        ent_limiter()
-    }
+        g_ent_count++;g_master_count++
+        static box_limit; box_limit = get_pcvar_num(g_box_lim)
 
-    box_status();
+        if(g_ent_count >= box_limit)
+        {
+            ent_limiter()
+        }
+
+        box_status();
+
+    }
 
 }
 
@@ -160,19 +194,18 @@ ent_limiter()
     ent = MaxClients
     while( (ent = find_ent(ent, ent_type) ) > MaxClients && pev_valid(ent) )
     {
-        iThinking_ent = pev(ent, pev_nextthink);
+        //iThinking_ent = pev(ent, pev_nextthink);
 
         if(ent_debug)
         {
             static iEnts, iEntMax;
             iEnts = engfunc(EngFunc_NumberOfEntities)
             iEntMax = global_get(glb_maxEntities)
-            server_print("%d spawned --%d/%d ents/max...|Index (to be removed):%d: \%s/ (next think):%i", g_master_count, iEnts, iEntMax, ent, ent_type, iThinking_ent);
+            //server_print("%d spawned --%d/%d ents/max...|Index (to be removed):%d: \%s/ (next think):%i", g_master_count, iEnts, iEntMax, ent, ent_type, iThinking_ent);
+            server_print("%d spawned --%d/%d ents/max...|Index (to be removed):%d: \%s/", g_master_count, iEnts, iEntMax, ent, ent_type);
         }
-
-        iThinking_ent ? remove_entity(ent)  :  call_think(ent) ///set_pev(ent, pev_flags, FL_KILLME);
-
-        g_ent_count--;
+        //iThinking_ent ? remove_entity(ent)  :  call_think(ent) ///set_pev(ent, pev_flags, FL_KILLME);
+        set_task 1.0, "@remove_box", ent;
 
         if(ent > OVERFLOW && !bChanged)
         {
@@ -182,6 +215,16 @@ ent_limiter()
             console_cmd 0,  "changelevel %s", mapname
         }
     }
+}
+
+@remove_box(ent)
+{
+    if(pev_valid(ent))
+    {
+        call_think(ent)
+        g_ent_count--;
+    }
+
 }
 
 public client_putinserver(id)
