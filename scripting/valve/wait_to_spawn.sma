@@ -17,7 +17,7 @@ g_playercount, g_users, g_mp_spawntime, g_spawn_timer[MAX_PLAYERS +1];
 
 public plugin_init()
 {
-    register_plugin("Spawn wait time", "1.22", "SPiNX");
+    register_plugin("Spawn wait time", "1.23", "SPiNX");
     RegisterHam(Ham_Killed, "player", "client_death", 1);
     RegisterHam(Ham_Spawn, "player", "client_spawn", 0);
     register_forward(FM_PlayerPreThink, "client_spawn_control");
@@ -102,7 +102,7 @@ public client_death(id)
     {
         OkSpawn[id] = g_playercount >= iCount ? false : true;
         if(!OkSpawn[id])
-        {                                               
+        {
             if(!bRanTask[id])
             {
                 bRanTask[id] = true
@@ -153,6 +153,8 @@ public client_spawn(id)
                     set_pev(id, pev_effects, (effects | ~EF_NODRAW))
                     set_pev(id, pev_fov, 100.0)
                     set_view(id, CAMERA_NONE)
+                    set_pev(id, pev_movetype, MOVETYPE_WALK)
+                    set_pev(id, pev_solid, SOLID_SLIDEBOX)
                     bRanTask[id] = false
                 }
                 return PLUGIN_HANDLED;
@@ -165,6 +167,8 @@ public client_spawn(id)
             set_pev(id, pev_effects, (effects | ~EF_NODRAW))
             set_pev(id, pev_fov, 100.0)
             set_view(id, CAMERA_NONE)
+            set_pev(id, pev_movetype, MOVETYPE_WALK)
+            set_pev(id, pev_solid, SOLID_SLIDEBOX)
             bRanTask[id] = false
         }
     }
