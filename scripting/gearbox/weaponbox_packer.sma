@@ -48,12 +48,14 @@ public Ham__WeaponBoxSpawn_Pre(iWeaponBoxEntity)
             new iOwner = pev(box, pev_owner);
             if(is_user_alive(id) && id !=iOwner)
             {
-                client_print id, print_console, "------------------------------------", iOwner
-                client_print id, print_console, "%n's weapons:", iOwner
-                client_print id, print_console, "------------------------------------", iOwner
+            /*
+               client_print id, print_console, "------------------------------------", iOwner
+               client_print(id, print_console, is_user_connected(iOwner) ? "%n's weapons:":"Found new weaponbox:", iOwner)
+               client_print id, print_console, "------------------------------------", iOwner
+            */
                 box = 0;set_pev(box, pev_iuser2, 0);
                 for (new iArms = HLW_CROWBAR; iArms <= HLW_PENGUIN; iArms++)
-                {        
+                {
                     if(box_data & 1<<iArms)
                     {
                         if(get_weaponname(iArms, SzWeaponClassname, charsmax(SzWeaponClassname)))
@@ -65,8 +67,10 @@ public Ham__WeaponBoxSpawn_Pre(iWeaponBoxEntity)
                                     if(is_user_alive(id))
                                     {
                                         give_item(id, SzWeaponClassname)
+/*
                                         replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
                                         client_print id, print_console, SzWeaponClassname
+*/
                                     }
                                 }
                             }
@@ -75,7 +79,7 @@ public Ham__WeaponBoxSpawn_Pre(iWeaponBoxEntity)
                 }
                 if(id)
                 {
-                    client_print id, print_console, "------------------------------------", iOwner
+//                    client_print id, print_console, "------------------------------------", iOwner
                 }
             }
         }
