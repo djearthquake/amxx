@@ -67,7 +67,8 @@ public plugin_init()
 {
     if(iWeaponbox>MaxClients)
     {
-        remove_entity(iWeaponbox)
+        //remove_entity(iWeaponbox)
+        call_think(iWeaponbox)
     }
     if(!iWeaponbox)
     {
