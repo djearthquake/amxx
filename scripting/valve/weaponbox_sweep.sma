@@ -41,17 +41,16 @@ const LINUX_OFFSET_WEAPONS = 4;
 const LINUX_DIFF = 5;
 const UNIX_DIFF = 20;
 
-
-new const ent_type[]="weaponbox"
+static const ent_type[]="weaponbox"
 
 new g_Adm, g_box_debug, g_ent_count, g_master_count, g_box_lim
 new Picked[MAX_PLAYERS+1]
 
 public plugin_init()
 {
-    register_plugin( "Weaponbox sweeper", "1.2", "SPiNX" );
+    register_plugin( "Weaponbox sweeper", "1.3", "SPiNX" );
     register_touch(ent_type, "player", "minus")
-    register_touch(ent_type, "trigger_hurt", "@destroy")
+    register_touch("trigger_hurt", ent_type, "@destroy")
     if(get_cvar_pointer("sv_hookpickweapons"))
     {
         static register_ent; register_ent = find_ent_by_class(charsmin, ent_type);
@@ -64,12 +63,16 @@ public plugin_init()
     m_pNext = 46;
 }
 
-@destroy(iWeaponbox, iHurt)
+@destroy(iHurt, iWeaponbox)
 {
-    remove_entity(iWeaponbox)
-    //call_think(iWeaponbox);
+    if(iWeaponbox>MaxClients)
+    {
+        remove_entity(iWeaponbox)
+    }
     if(!iWeaponbox)
-    g_ent_count--
+    {
+        g_ent_count--
+    }
 }
 
 @GetWeaponBoxWeaponType(WeaponBoxEntity)
@@ -187,7 +190,7 @@ ent_limiter()
 {
     #define OVERFLOW MAX_MOTD_LENGTH
 
-    static ent, ent_debug, iThinking_ent; iThinking_ent = 0;
+    static ent, ent_debug;
     ent_debug = get_pcvar_num(g_box_debug);
     new bool:bChanged
 
