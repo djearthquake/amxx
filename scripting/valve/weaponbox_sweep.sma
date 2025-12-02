@@ -65,13 +65,9 @@ public plugin_init()
 
 @destroy(iHurt, iWeaponbox)
 {
-    if(iWeaponbox>MaxClients)
+    if(pev_valid(iWeaponbox))
     {
-        //remove_entity(iWeaponbox)
         call_think(iWeaponbox)
-    }
-    if(!iWeaponbox)
-    {
         g_ent_count--
     }
 }
@@ -80,13 +76,13 @@ public plugin_init()
 {
     static null[32];
     null ="weapon";
-    if(WeaponBoxEntity)
+    if(pev_valid(WeaponBoxEntity))
     {
         static iWeapon
         for(new i; i < MAX_ITEM_TYPES; ++i)
         {
             iWeapon = get_pdata_cbase(WeaponBoxEntity, m_rgpPlayerItems_CWeaponBox[i], LINUX_OFFSET_WEAPONS)
-            while(iWeapon>MaxClients)
+            while(pev_valid(iWeapon))
             {
                 static szClass[MAX_PLAYERS]
                 pev(iWeapon, pev_classname, szClass, charsmax(szClass))
