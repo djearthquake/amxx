@@ -60,7 +60,6 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "weaponbox", "@_weaponbox", 1)
     g_box_lim =  register_cvar("weaponbox_sweep", "5") //Box limit.
     g_box_debug =  register_cvar("weaponbox_debug", "0"); //Show count.
-    
     m_pNext = 46; //linux
 }
 
@@ -224,7 +223,10 @@ ent_limiter()
             }
         }
     }
-    set_pev(WeaponBoxEntity, pev_flags, FL_KILLME);
+    if(pev_valid(WeaponBoxEntity))
+    {
+        set_pev(WeaponBoxEntity, pev_flags, FL_KILLME);
+    }
     g_ent_count--;
 }
 
