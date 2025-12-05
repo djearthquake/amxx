@@ -10,7 +10,7 @@ static const szEnt[]="weaponbox";
 
 public plugin_init()
 {
-    register_plugin ( "weaponbox packer", "0.1", "spinx" )
+    register_plugin ( "weaponbox packer", "0.2", "spinx" )
     RegisterHam(Ham_Touch, szEnt, "@box_touch")
     RegisterHam(Ham_Spawn, "weaponbox", "Ham__WeaponBoxSpawn_Pre", 0)
 }
@@ -38,7 +38,7 @@ public Ham__WeaponBoxSpawn_Pre(iWeaponBoxEntity)
 
     static box_data, SzWeaponClassname[MAX_PLAYERS];
 
-    if(box>MaxClients)
+    if(pev_valid(box))
     {
         box_data = pev(box, pev_iuser2);
         if(!pev(box, pev_iuser1))
@@ -48,11 +48,8 @@ public Ham__WeaponBoxSpawn_Pre(iWeaponBoxEntity)
             new iOwner = pev(box, pev_owner);
             if(is_user_alive(id) && id !=iOwner)
             {
-            /*
-               client_print id, print_console, "------------------------------------", iOwner
-               client_print(id, print_console, is_user_connected(iOwner) ? "%n's weapons:":"Found new weaponbox:", iOwner)
-               client_print id, print_console, "------------------------------------", iOwner
-            */
+                client_print(id, print_console, is_user_connected(iOwner) ? "%n's weapons:":"Found new weaponbox:", iOwner)
+
                 box = 0;set_pev(box, pev_iuser2, 0);
                 for (new iArms = HLW_CROWBAR; iArms <= HLW_PENGUIN; iArms++)
                 {
@@ -67,19 +64,15 @@ public Ham__WeaponBoxSpawn_Pre(iWeaponBoxEntity)
                                     if(is_user_alive(id))
                                     {
                                         give_item(id, SzWeaponClassname)
-/*
+
                                         replace(SzWeaponClassname, charsmax(SzWeaponClassname), "weapon_", "")
                                         client_print id, print_console, SzWeaponClassname
-*/
+
                                     }
                                 }
                             }
                         }
                     }
-                }
-                if(id)
-                {
-//                    client_print id, print_console, "------------------------------------", iOwner
                 }
             }
         }
