@@ -20,12 +20,12 @@
 //    Agent             = Distant shot
 //    SPiNX             = HL/OF port optimize
 
-new PLUGIN_NAME[]       = "Distant Gunshot";
-new PLUGIN_AUTHOR[]     = "SPiNX";
-new PLUGIN_VERSION[]    = "1.4.4";
+static PLUGIN_NAME[]       = "Distant Gunshot";
+static PLUGIN_AUTHOR[]     = "SPiNX";
+static PLUGIN_VERSION[]    = "1.4.5";
 
 
-new g_WhizSounds[][] =
+static g_WhizSounds[][] =
 {
     "misc/whizz1.wav",
     "misc/whizz2.wav",
@@ -33,7 +33,7 @@ new g_WhizSounds[][] =
     "misc/whizz4.wav"
 }
 
-new g_SnapSounds[][] =
+static g_SnapSounds[][] =
 {
     "misc/snap1.wav",
     "misc/snap2.wav",
@@ -41,7 +41,7 @@ new g_SnapSounds[][] =
     "misc/snap4.wav"
 }
 
-new g_ThudSounds[][] =
+static g_ThudSounds[][] =
 {
     "misc/thud.wav"
 }
@@ -50,10 +50,10 @@ new g_LastWeapon[MAX_PLAYERS + 1];
 new g_LastAmmo[MAX_PLAYERS + 1];
 
 new gs_enabled, gs_measure, gs_whizdist, gs_snapdist, gs_thuddist;
-new bool: b_CS
-new bool: b_HL
-new bool: b_OF
-new bool: b_Bot[MAX_PLAYERS+1]
+static bool: b_CS
+static bool: b_HL
+static bool: b_OF
+static bool: b_Bot[MAX_PLAYERS+1]
 
 public plugin_init()
 {
@@ -65,7 +65,7 @@ public plugin_init()
     gs_snapdist = register_cvar("gs_snapdist",  "1000");    //Hear Snap sounds between 1000 to 2000 meters
     gs_thuddist = register_cvar("gs_thuddist",  "2000");    //Hear Thud sounds beyond 2000 meteers
 
-    new SzModName[MAX_NAME_LENGTH]
+    static SzModName[MAX_NAME_LENGTH]
     get_modname(SzModName, charsmax(SzModName));
     if(equal(SzModName, "cstrike"))
         b_CS = true
@@ -79,7 +79,7 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        b_Bot[id] = is_user_bot(id) ? true : false
+        b_Bot[id] = is_user_bot(id) ? true : false;
     }
 }
 
@@ -130,108 +130,107 @@ public plugin_precache()
 
 public Event_CurWeapon(id)
 {
-    if(get_pcvar_num(gs_enabled) || is_user_connected(id))
+    static iCvar; iCvar = get_pcvar_num(gs_enabled)
+    if(iCvar)
     {
-        if(!is_user_connected(id))
-            return
-
-        new WeaponID = read_data(2);
-
-        if(b_CS)
+        if(is_user_connected(id))
         {
-            switch(WeaponID)
+            static WeaponID; WeaponID = read_data(2);
+
+            if(b_CS)
             {
-                case CSW_HEGRENADE, CSW_FLASHBANG, CSW_SMOKEGRENADE, CSW_C4, CSW_KNIFE: return;
-            }
-        }
-        else if(b_HL)
-        {
-            switch(WeaponID)
-            {
-                case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK: return;
-            }
-        }
-        else if(b_OF)
-        {
-            switch(WeaponID)
-            {
-                case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK, HLW_GRAPPLE, HLW_PIPEWRENCH, HLW_KNIFE, HLW_DISPLACER, HLW_SHOCKROACH, HLW_SPORE, HLW_PENGUIN: return;
-            }
-        }
-
-        new Clip = read_data(3);
-
-        if (g_LastWeapon[id] == WeaponID && g_LastAmmo[id] > Clip)
-        {
-            new Players[32], iNum, Float:origin[3], Float:targetOrigin[3], temp[3], Float:fAim[3], target, Float:flAngle, Float:origDist;
-
-            pev(id, pev_origin, origin);
-            get_user_origin(id, temp, 3);
-            IVecFVec(temp, fAim);
-            get_players(Players, iNum, "a");
-
-            for (--iNum; iNum >= 0; iNum--)
-            {
-                target = Players[iNum];
-
-                if (id == target)
+                switch(WeaponID)
                 {
-                    continue;
-                }
-
-                pev(target, pev_origin, targetOrigin);
-
-                flAngle     = get_distance_to_line_f(origin, targetOrigin, fAim);
-                origDist    = get_distance_f(origin, targetOrigin);
-
-                if (get_pcvar_float(gs_measure))
-                {
-                    if(!b_Bot[target])
-                        client_print(target, print_chat, "Distance (You & Shooter): %f Meters", origDist);
-                }
-
-                if (origDist >= get_pcvar_float(gs_whizdist) && flAngle > 0.0 && fm_is_ent_visible(id, target))
-                {
-                    if(!b_Bot[target])
-                        client_cmd(target, "spk %s", g_WhizSounds[random(sizeof(g_WhizSounds))]);
-                }
-
-                if (origDist < get_pcvar_float(gs_snapdist))
-                {
-                    continue;
-                }
-
-                if (origDist >= get_pcvar_float(gs_snapdist) && flAngle > 0.0)
-                {
-                    if(!b_Bot[target])
-                        client_cmd(target, "spk %s", g_SnapSounds[random(sizeof(g_SnapSounds))]);
-                    continue;
-                }
-
-                if (origDist >= get_pcvar_float(gs_thuddist))
-                {
-                    if(!b_Bot[target])
-                        client_cmd(target, "spk %s", g_ThudSounds[random(sizeof(g_ThudSounds))]);
-                    continue;
+                    case CSW_HEGRENADE, CSW_FLASHBANG, CSW_SMOKEGRENADE, CSW_C4, CSW_KNIFE: return;
                 }
             }
+            else if(b_HL)
+            {
+                switch(WeaponID)
+                {
+                    case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK: return;
+                }
+            }
+            else if(b_OF)
+            {
+                switch(WeaponID)
+                {
+                    case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK, HLW_GRAPPLE, HLW_PIPEWRENCH, HLW_KNIFE, HLW_DISPLACER, HLW_SHOCKROACH, HLW_SPORE, HLW_PENGUIN: return;
+                }
+            }
+    
+            static Clip;Clip = read_data(3);
+    
+            if (g_LastWeapon[id] == WeaponID && g_LastAmmo[id] > Clip)
+            {
+                new Players[32];
+                static iNum, Float:origin[3], Float:targetOrigin[3], temp[3], Float:fAim[3], target, Float:flAngle, Float:origDist;
+    
+                pev(id, pev_origin, origin);
+                get_user_origin(id, temp, 3);
+                IVecFVec(temp, fAim);
+                get_players(Players, iNum, "a");
+    
+                for (--iNum; iNum >= 0; iNum--)
+                {
+                    target = Players[iNum];
+                    if(!b_Bot[target] && id !=target)
+                    {
+                        pev(target, pev_origin, targetOrigin);
+    
+                        flAngle     = get_distance_to_line_f(origin, targetOrigin, fAim);
+                        origDist    = get_distance_f(origin, targetOrigin);
+    
+                        if (get_pcvar_float(gs_measure))
+                        {
+                            client_print(target, print_chat, "Distance (You & Shooter): %f Meters", origDist);
+                        }
+    
+                        if (origDist >= get_pcvar_float(gs_whizdist) && flAngle > 0.0 && fm_is_ent_visible(id, target))
+                        {
+                            client_cmd(target, "spk %s", g_WhizSounds[random(sizeof(g_WhizSounds))]);
+                        }
+    
+                        if (origDist < get_pcvar_float(gs_snapdist))
+                        {
+                            continue;
+                        }
+                        if(iCvar>1)
+                        {
+                            if (origDist >= get_pcvar_float(gs_snapdist) && flAngle > 0.0)
+                            {
+                                client_cmd(target, "spk %s", g_SnapSounds[random(sizeof(g_SnapSounds))]);
+                                continue;
+                            }
+                            if(iCvar>2)
+                            {
+                                if (origDist >= get_pcvar_float(gs_thuddist))
+                                {
+                                    client_cmd(target, "spk %s", g_ThudSounds[random(sizeof(g_ThudSounds))]);
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            g_LastWeapon[id] = WeaponID;
+            g_LastAmmo[id] = Clip;
         }
-        g_LastWeapon[id] = WeaponID;
-        g_LastAmmo[id] = Clip;
     }
 }
 
 Float:get_distance_to_line_f(Float:pos_start[3], Float:pos_end[3], Float:pos_object[3])
 {
-    new Float:vec_start_end[3], Float:vec_start_object[3], Float:vec_end_object[3], Float:vec_end_start[3];
+    static Float:vec_start_end[3], Float:vec_start_object[3], Float:vec_end_object[3], Float:vec_end_start[3];
     xs_vec_sub(pos_end, pos_start, vec_start_end);          // vector from start to end
     xs_vec_sub(pos_object, pos_start, vec_start_object);    // vector from end to object
     xs_vec_sub(pos_start, pos_end, vec_end_start);          // vector from end to start
     xs_vec_sub(pos_end, pos_object, vec_end_object);        // vector object to end
 
-    new Float:len_start_object = vector_length(vec_start_object);
-    new Float:angle_start = floatacos(xs_vec_dot(vec_start_end, vec_start_object) / (vector_length(vec_start_end) * len_start_object), degrees);
-    new Float:angle_end = floatacos(xs_vec_dot(vec_end_start, vec_end_object) / (vector_length(vec_end_start) * vector_length(vec_end_object)), degrees);
+    static Float:len_start_object; len_start_object = vector_length(vec_start_object);
+    static Float:angle_start; angle_start = floatacos(xs_vec_dot(vec_start_end, vec_start_object) / (vector_length(vec_start_end) * len_start_object), degrees);
+    static Float:angle_end;angle_end = floatacos(xs_vec_dot(vec_end_start, vec_end_object) / (vector_length(vec_end_start) * vector_length(vec_end_object)), degrees);
 
     if (angle_start <= 105.0 && angle_end <= 105.0)
     {
@@ -242,12 +241,12 @@ Float:get_distance_to_line_f(Float:pos_start[3], Float:pos_end[3], Float:pos_obj
 
 bool:fm_is_ent_visible(index, entity)
 {
-    new Float:origin[3], Float:view_ofs[3], Float:eyespos[3];
+    static Float:origin[3], Float:view_ofs[3], Float:eyespos[3];
     pev(index, pev_origin, origin);
     pev(index, pev_view_ofs, view_ofs);
     xs_vec_add(origin, view_ofs, eyespos);
 
-    new Float:entpos[3];
+    static Float:entpos[3];
     pev(entity, pev_origin, entpos);
     engfunc(EngFunc_TraceLine, eyespos, entpos, 0, index);
 
