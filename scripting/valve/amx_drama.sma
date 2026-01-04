@@ -23,9 +23,7 @@
 #define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
 #define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
-//new const ent_type[]="func_rotating"
-
-new g_AI
+new g_AI, bool:bRegistered
 
 static sModel[MAX_PLAYERS];
 
@@ -48,7 +46,7 @@ public plugin_init() {
     register_event_ex ( "ResetHUD" , "@spawn", RegisterEvent_Single|RegisterEvent_OnlyAlive )
 
     RegisterHam(Ham_TraceAttack, "player", "SnDamage");
-    RegisterHam(Ham_Killed, "player", "client_death", 0);
+    RegisterHam(Ham_Killed, "player", "client_death_event", 1); //was 0 maybe reason crash!!!!
     RegisterHam(Ham_Spawn, "player", "@spawn", 1);
 
     bStrike = cstrike_running()
@@ -96,7 +94,7 @@ public plugin_precache() {
 
 public plugin_log()
 {
-    new szDummy[ MAX_PLAYERS ];
+    static szDummy[ MAX_PLAYERS ];
     read_logargv(2,szDummy, charsmax(szDummy))
 
     if (containi(szDummy, "trigger_hurt") > charsmin)
@@ -107,7 +105,7 @@ public plugin_log()
 
 public make_deathsound()
 {
-    new victim = get_loguser_index();
+    static victim; victim = get_loguser_index();
 
     if(is_user_connected(victim))
     {
@@ -184,115 +182,67 @@ public client_death_event(victim)
     }
 }
 
-public client_death(victim, killer)
-{
-    #define HLW_KNIFE           0x0019
-    #define HLW_CROWBAR         1
-
-    if(is_user_connected(killer) && is_user_connected(victim))
-    {
-        if(!bStrike && get_user_weapon(killer) != HLW_KNIFE|HLW_CROWBAR)
-
-        if(CheckPlayerBit(g_AI, victim))
-        {
-            switch(random_num(0,3))
-            {
-                case 0: emit_sound(victim, CHAN_AUTO, SOUND_BOTDEATH1, VOL_NORM, ATTN_IDLE, 0, PITCH);
-                case 1: emit_sound(victim, CHAN_AUTO, SOUND_BOTDEATH2, VOL_NORM, ATTN_IDLE, 0, PITCH);
-                case 2: emit_sound(victim, CHAN_AUTO, SOUND_BOTDEATH3, VOL_NORM, ATTN_IDLE, 0, PITCH);
-                case 3: emit_sound(victim, CHAN_AUTO, SOUND_BOTDEATH4, VOL_NORM, ATTN_IDLE, 0, PITCH);
-            }
-        }
-        else
-        {
-            if(!bStrike)
-            switch(random_num(0,2))
-            {
-                case 0: emit_sound(victim, CHAN_AUTO, SOUND_HUMANDIE1, VOL_NORM, ATTN_IDLE, 0, PITCH);
-                case 1: emit_sound(victim, CHAN_AUTO, SOUND_HUMANDIE2, VOL_NORM, ATTN_IDLE, 0, PITCH);
-                case 2: emit_sound(victim, CHAN_AUTO, SOUND_DRAMA2, 3.0, ATTN_IDLE, 0, PITCH);
-            }
-        }
-        port(victim, killer);
-    }
-}
-
-
 public port(victim, killer)
 {
+    new Float:fOrigin[3], Float:fVelo[3], model;
     if(is_user_connected(victim) && is_user_connected(killer) /*&& ~CheckPlayerBit(g_AI, killer)*/)
     {
-        static Float:fOrigin[3], Float:fVelo[3];
-        pev(victim,pev_origin,fOrigin);
+        pev(victim,pev_origin, fOrigin);
 
         pev(victim, pev_velocity, fVelo)
 
-        new model = CheckPlayerBit(g_AI, victim) ? G_FielD : g_specter
-        if(bIsAdmin[victim])
+        model  = CheckPlayerBit(g_AI, victim) ? (G_FielD) : (g_specter)
+
+    /*
+        emessage_begin(MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
+        ewrite_byte( TE_FIREFIELD );
+        ewrite_coord_f( fOrigin[0] );
+        ewrite_coord_f( fOrigin[1] );
+        ewrite_coord_f( fOrigin[2] );
+        ewrite_short( 300 );            ///(radius)
+        ewrite_short( CheckPlayerBit(g_AI, victim) ? G_FielD : g_specter);
+        ewrite_byte( 1 );              ///(count)
+        ewrite_byte( 5 );
+        ewrite_byte( 50 );
+        emessage_end();
+    */
+
+        if(~CheckPlayerBit(g_AI, victim))
         {
+            model_sniffer(victim, killer)
+            new attacker[3]
+            num_to_str(killer, attacker, charsmax(attacker))
+            /////////////////set_task(0.1, "@fake_think", victim, attacker, charsmax(attacker), "b")
+
+
             emessage_begin(MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
-            ewrite_byte( TE_FIREFIELD );
-            ewrite_coord_f( fOrigin[0] );
-            ewrite_coord_f( fOrigin[1] );
-            ewrite_coord_f( fOrigin[2] );
-            ewrite_short( 300 );            ///(radius)
-            ewrite_short( CheckPlayerBit(g_AI, victim) ? G_FielD : g_specter);
-            ewrite_byte( 1 );              ///(count)
-            ewrite_byte( 5 );
-            ewrite_byte( 50 );
-            emessage_end();
+            ewrite_byte(TE_PROJECTILE)
+            ewrite_coord_f(fOrigin[0])
+            ewrite_coord_f(fOrigin[1])
+            ewrite_coord_f(fOrigin[2]+150.0)
+
+            ewrite_coord_f(fVelo[0])
+            ewrite_coord_f(fVelo[1])
+            ewrite_coord_f(fVelo[2] + 50.0)
+
+            ewrite_short(model)
+
+            ewrite_byte(500) //life
+            ewrite_byte(0)  //owner
+            emessage_end()
         }
         else
         {
-            if(~CheckPlayerBit(g_AI, victim))
-            {
-                model_sniffer(victim, killer)
-                new attacker[3]
-                num_to_str(killer, attacker, charsmax(attacker))
-                set_task(0.1, "@fake_think", victim, attacker, charsmax(attacker), "b")
-
-                //emessage_begin(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, { 0, 0, 0 }, killer )
-                emessage_begin(MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
-                ewrite_byte(TE_PROJECTILE)
-                ewrite_coord_f(fOrigin[0])
-                ewrite_coord_f(fOrigin[1])
-                ewrite_coord_f(fOrigin[2]+150.0)
-
-                ewrite_coord_f(fVelo[0])
-                ewrite_coord_f(fVelo[1])
-                ewrite_coord_f(fVelo[2] + 50.0)
-
-                ewrite_short(model)
-
-                ewrite_byte(500) //life
-                ewrite_byte(0)  //owner
-                emessage_end()
-            }
-            /*
-            new ent = create_entity(ent_type)
-            DispatchKeyValue( ent, "model", "models/skeleton.mdl" )
-            DispatchKeyValue( ent, "rendercolor", "0 0 0" )
-            DispatchKeyValue( ent, "targetname", "temp_ent" )
-            DispatchKeyValue( ent, "angles", "0 270 0" )
-            DispatchKeyValue( ent, "speed", "150" )
-            DispatchKeyValue( ent, "spawnflags", "97" )
-            DispatchSpawn(ent);
-            fOrigin[2] += 60.0
-            set_pev(ent, pev_origin, fOrigin)
-            */
-            else
-            {
-                emessage_begin(MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
-                ewrite_byte(TE_EXPLODEMODEL);
-                ewrite_coord_f(fOrigin[0]+random_float(-11.0,11.0));
-                ewrite_coord_f(fOrigin[1]-random_float(-11.0,11.0));
-                ewrite_coord_f(fOrigin[2]+random_float(1.0,75.0));
-                ewrite_coord(random_num(-150,1000));  //vel
-                ewrite_short(model);
-                ewrite_short(1);
-                ewrite_byte(random_num(50,100)); //size
-                emessage_end();
-            }
+            emessage_begin(MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0 )
+            ewrite_byte(TE_EXPLODEMODEL);
+            ewrite_coord_f(fOrigin[0]+random_float(-11.0,11.0));
+            ewrite_coord_f(fOrigin[1]-random_float(-11.0,11.0));
+            ewrite_coord_f(fOrigin[2]+random_float(1.0,75.0));
+            ewrite_coord(random_num(-150,1000));  //vel
+            ewrite_short(model);
+            ewrite_short(1);
+            ewrite_byte(random_num(50,100)); //size
+            emessage_end();
         }
     }
 }
@@ -311,6 +261,32 @@ public client_putinserver(id)
     if(is_user_connected(id) && is_user_bot(id))
     {
         SetPlayerBit(g_AI, id)
+        if(!bRegistered)
+        {
+            set_task(0.1, "@register", id);
+        }
+    }
+}
+
+
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        bRegistered = true;
+        RegisterHamFromEntity(Ham_TraceAttack, ham_bot, "SnDamage", 1 );
+        RegisterHamFromEntity(Ham_Killed, ham_bot, "client_death_event", 1 );
+        RegisterHamFromEntity(Ham_Spawn, ham_bot, "@spawn", 1 );
+
+        //server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    }
+}
+
+public client_authorized(id, const authid[])
+{
+    if(equal(authid, "BOT")  && !bRegistered)
+    {
+        set_task(0.1, "@register", id);
     }
 }
 
@@ -344,13 +320,14 @@ public burial(victim)
 {
     if(is_user_connected(victim))
     {
+        server_print "Processing %N's destruction!", victim
         static Float:iOrigin[3];
         pev(victim,pev_origin,iOrigin);
 
-        new Float:fDelay = 1.5
-        new iAngles[3], Float:fParam1, Float:fParam2, iParam1, iParam2
+//        new Float:fDelay = 1.5
+//        static iAngles[3], Float:fParam1, Float:fParam2, iParam1, iParam2
 
-        engfunc(EngFunc_PlaybackEvent, (FEV_CLIENT|FEV_GLOBAL|FEV_SERVER|FEV_NOTHOST|FEV_UPDATE), victim, g_suicide, fDelay, Float:iOrigin, iAngles, fParam1, fParam2, iParam1, iParam2, 0, 0);
+//        engfunc(EngFunc_PlaybackEvent, (FEV_CLIENT|FEV_GLOBAL|FEV_SERVER|FEV_NOTHOST|FEV_UPDATE), victim, g_suicide, fDelay, Float:iOrigin, iAngles, fParam1, fParam2, iParam1, iParam2, 0, 0);
 
         emessage_begin(MSG_PVS, SVC_TEMPENTITY, { 0, 0, 0 }, 0);
         ewrite_byte(TE_FIREFIELD);
