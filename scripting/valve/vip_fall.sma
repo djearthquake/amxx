@@ -10,7 +10,7 @@
 #define charsmin -1
 
 #define PLUGIN  "VIP-Fall-Guide"
-#define VERSION "11-16-2021"
+#define VERSION "JAN-04-2026"
 #define AUTHOR  "SPiNX"
 
 #define VIP_FLAG ADMIN_LEVEL_H
@@ -18,6 +18,7 @@
 new g_fall_dam, g_cvar_shake_iDelay
 new bool:g_bis_fallen[ MAX_PLAYERS + 1]
 new bool: b_Bot[MAX_PLAYERS+1]
+new bool:bRegistered;
 
 public plugin_init()
 {
@@ -56,11 +57,44 @@ public client_putinserver(id)
     if(is_user_connected(id))
     {
         b_Bot[id] = is_user_bot(id) ? true : false
-        if(!b_Bot[id] && !is_user_hltv(id))
-        set_task(0.5,"client_spawn",id);
+        if(!b_Bot[id])
+        {
+            if(!is_user_hltv(id))
+            {
+                set_task(0.5,"client_spawn",id);
+            }
+        }
+        else
+        {
+            if(!bRegistered)
+            {
+                set_task(0.1, "@register", id);
+            }
+        }
     }
 }
 
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot))
+    {
+        bRegistered = true;
+        
+        RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "Fw_Damage")
+        RegisterHamFromEntity(Ham_Killed, ham_bot, "check_fall");
+        RegisterHamFromEntity(Ham_Spawn, ham_bot, "client_spawn", 1);
+
+        server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    }
+}
+
+public client_authorized(id, const authid[])
+{
+    if(equal(authid, "BOT")  && !bRegistered)
+    {
+        set_task(0.1, "@register", id);
+    }
+}
 
 public client_disconnected(id)
 {
