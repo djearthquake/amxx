@@ -6,7 +6,7 @@
 #include <engine>
 
 #define PLUGIN             "CSGO Hostage Mode"
-#define VERSION            "1.2.5"
+#define VERSION            "1.2.6"
 #define AUTHOR             "mjf_0.0|SPiNX"
 
 #define MAX_PLAYERS        32
@@ -20,7 +20,7 @@ static const CARRY_MODEL[]       = "models/csgo_hostage/p_hostage_back.mdl";
 static const HOSTAGE_CLASSNAME[] = "hostage_entity";
 
 static const szHostageResMsg[]   = "HOSTAGE RESCUE ZONE^n^nBring the hostages here!";
-static const  Float:fNullOrigin[3] = {0.0, 0.0, -1000000.0};
+static const Float:fNullOrigin[3] = {0.0, 0.0, -1000000.0};
 
 static const szCZsuffixes[][] ={"A",  "B",  "C", "D"};
 
@@ -318,10 +318,11 @@ public plugin_init() {
 {
     if(is_user_alive(id))
     {
-         if(g_bCarryingHostage[id])
-         {
-            @hostage_one(id)
-         }
+        if( get_user_team(id) == 2 )
+        if(g_bCarryingHostage[id])
+        {
+           @hostage_one(id)
+        }
          else
          {
             client_print id, print_center, szHostageResMsg
