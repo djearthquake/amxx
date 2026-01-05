@@ -1,5 +1,6 @@
 #include amxmodx
 #include engine_stocks
+#include fakemeta
 #include cstrike
 #include hamsandwich
 
@@ -8,7 +9,7 @@ new g_item_cost
 
 public plugin_init()
 {
-    register_plugin ("Breakable Cost", "0.1", "spinx")
+    register_plugin ("Breakable Cost", "0.2", "spinx")
 
     static iEnt; iEnt = MaxClients
     iEnt = find_ent(iEnt, szEnt)
@@ -16,6 +17,7 @@ public plugin_init()
     if(iEnt)
     {
         RegisterHamFromEntity(Ham_TakeDamage, iEnt, "Ham_Killed_Post", 1)
+        //RegisterHamFromEntity(Ham_Killed, iEnt, "Ham_Killed_Post", 1)
     }
     else
     {
@@ -25,10 +27,17 @@ public plugin_init()
     g_item_cost = register_cvar("break_cost", "5")
 }
 
-public Ham_Killed_Post(victim, inflictor, attacker, Float:damage, damagebits)
-{
-    new iCost = get_pcvar_num(g_item_cost)
 
+public Ham_Killed_Post(victim, inflictor, attacker, Float:damage, damagebits)
+//public Ham_Killed_Post(victim, attacker, shouldgib)
+{
+    static iHp, iCost;
+    iCost = get_pcvar_num(g_item_cost)
+    if(victim)
+    {
+        iHp = pev(victim, pev_health)
+    }
+    if(iHp<2)
     if(is_user_connected(attacker))
     {
         //charge them
