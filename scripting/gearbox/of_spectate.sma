@@ -15,7 +15,7 @@
 #define charsmin                      -1
 
 #define PLUGIN "OF spectator"
-#define VERSION "1.0.8"
+#define VERSION "1.0.9"
 #define AUTHOR ".sρiηX҉."
 
 #define MOTD    1337
@@ -35,7 +35,6 @@
 new g_AI /*,maxplayers*/
 new bool:g_spectating[MAX_PLAYERS + 1]
 new bool:bDemo[MAX_PLAYERS +1]
-new bool:bDucking[MAX_PLAYERS + 1]
 new bool:bAlready_shown_menu[MAX_PLAYERS + 1]
 new bool:bListening[MAX_PLAYERS + 1]
 new bool:bFirstPerson[MAX_PLAYERS + 1]
@@ -571,7 +570,6 @@ public client_connectex(id, const name[], const ip[], reason[128])
                         {
                             server_print "TAKING OVER BOT/AFK PLAYER!"
                             g_Duck[iTarget] = entity_get_int(iTarget, EV_INT_bInDuck);
-                            bDucking[iTarget] = pev(iTarget, pev_flags) & FL_DUCKING  ? true : false;
                             dllfunc(DLLFunc_ClientPutInServer, id)
                             dllfunc(DLLFunc_SpectatorDisconnect, id)
                             g_iViewtype[id]  = 0
@@ -582,11 +580,6 @@ public client_connectex(id, const name[], const ip[], reason[128])
                             entity_set_float(id, EV_FL_fov, 100.0)
                             change_task(id, 60.0) //less spam
                             remove_task(id+MOTD)
-                            if(bDucking[iTarget])
-                            {
-                                set_pev(id, pev_flags, pev(id, pev_flags) | FL_DUCKING)
-                                bDucking[iTarget] = false
-                            }
                             entity_set_int(id, EV_INT_bInDuck, g_Duck[iTarget]);
                             entity_set_vector(id, EV_VEC_angles, g_Angles[iTarget]);
                             entity_set_vector(id, EV_VEC_view_ofs, g_Plane[iTarget]);
@@ -825,6 +818,16 @@ public client_command(id)
 
                 if( equal(szArgCmd, "menuselect")/*MENU ALLOWANCE*/ || equal(szArgCmd, "!spec_switch") || equal(szArgCmd, "amx_help") || equal(szArgCmd, ".")/*search alias*/ || equal(szArgCmd,"!spec") ||  equal(szArgCmd, "scoreboard") )
                     goto SKIP
+
+                 //explain
+                #define HUD_RAN 0,0,random_num(0,255)
+                #if AMXX_VERSION_NUM != 182
+                set_dhudmessage(HUD_RAN,HUD_PLACE1,0,3.0,5.0,1.0,1.5);
+                #endif
+                set_hudmessage(HUD_RAN,HUD_PLACE2,1,2.0,8.0,3.0,3.5,3);
+                show_hudmessage(id,"%L", LANG_PLAYER, "OF_SPEC_HELO")
+                client_print id, print_console, "SPECTATOR MODE| Say or type !spec for menu."
+                    
                 return PLUGIN_HANDLED_MAIN
             }
         SKIP:
@@ -832,6 +835,7 @@ public client_command(id)
     }
     return PLUGIN_HANDLED
 }
+
 public random_view(Tsk)
 {
     static id; id = Tsk - TOGGLE;
