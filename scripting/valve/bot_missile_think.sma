@@ -3,18 +3,21 @@
 #include fakemeta
 #include fun
 #define ALIVE "a"
+//#define CMD client_cmd //console_cmd
 #define CMD amxclient_cmd //console_cmd
-new g_bots_think, g_think_debug, g_think_speed, g_admin_only, g_bot_ammo
+#define charsmin -1
+new g_bots_think, g_think_debug, g_think_speed, g_admin_only, g_bot_ammo, g_bot_trigger_hp
 new bool:bIsBot[ MAX_PLAYERS + 1], bool:bIsAdmin[ MAX_PLAYERS + 1];
 
 public plugin_init()
 {
-    register_plugin("Bot missile think","SPiNX","1.1")
+    register_plugin("Bot missile think","SPiNX","1.2")
     g_bots_think = register_cvar("deathwish_missile","1")
     g_think_speed = register_cvar("deathwish_missile_think","2")
     g_admin_only = register_cvar("deathwish_missile_vip","0")
     g_think_debug = register_cvar("deathwish_missile_debug","0")
     g_bot_ammo = register_cvar("deathwish_bot_ammo","amx_missile5")
+    g_bot_trigger_hp = register_cvar("deathwish_hp","10")
     /*Be sure to allow in cmdaccess.ini*/
 }
 
@@ -42,6 +45,7 @@ public client_disconnected(id)
 
 public bot_missile_think()
 {
+    static iHP; iHP = get_pcvar_num(g_bot_trigger_hp)
     new players[MAX_PLAYERS], playercount
     get_players(players,playercount, ALIVE);
 
@@ -52,7 +56,7 @@ public bot_missile_think()
         {
 
             //trying get bots to fire missile
-            if(pev(players[id],pev_health)<50.0)
+            if(pev(players[id],pev_health)<iHP)
             {
 
                 if(!bIsBot[players[id]])
@@ -70,7 +74,16 @@ public bot_missile_think()
                     new bot_ammo[MAX_IP_LENGTH]
                     get_pcvar_string(g_bot_ammo,bot_ammo, charsmax(bot_ammo))
                     CMD(players[id],bot_ammo)
-                    CMD(players[id], "say ^"hi^"")
+                    switch(@ran_shot())
+                    {
+                        case 0: CMD(players[id], "amx_missile")
+                        case 1: CMD(players[id], "amx_laserguided_missile")
+                        case 2: CMD(players[id], "amx_heatseeking_missile")
+                        case 3: CMD(players[id], "amx_anti_missile")
+                        case 4: CMD(players[id], "amx_swirlingdeath_missile")
+                        case 5: CMD(players[id], "amx_Parachuteseeking_missile")
+                    }
+                    //@bot_fire(id)
                     //CMD(id,"bot_missile")
                     //CMD(id,".sprite_blk_ops")//other mod, waypoint to draw in helecopter
                     if(get_pcvar_num(g_think_debug) >1 )
@@ -93,3 +106,5 @@ public bot_missile_think()
     return PLUGIN_CONTINUE;
 
 }
+
+@ran_shot()return random(6);
