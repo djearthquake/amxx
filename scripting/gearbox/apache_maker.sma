@@ -18,7 +18,7 @@ new g_puff_hp
 new g_puff_scale
 new bool:bSpec_Apache_Owner_lock[MAX_PLAYERS], bool:bApache_Owner_lock[MAX_PLAYERS]
 
-new const grunt_sounds[][]=
+static const grunt_sounds[][]=
 {
     "weapons/saw_fire1.wav",
     "weapons/saw_fire2.wav",
@@ -118,22 +118,28 @@ new const apache_snds[][] =
     "apache/ap_whine1.wav",
     "weapons/mortarhit.wav",
     "turret/tu_fire1.wav"
-}
+};
 
 public plugin_init()
 {
     is_running("gearbox") || is_running("sven") ?
-    register_plugin("OP4 Apache", "1.0", ".sρiηX҉.") : register_plugin("Apache(not_loaded)", "Incompatible-mod", ".sρiηX҉.")
+    register_plugin("OP4 Apache", "1.1", ".sρiηX҉.") : register_plugin("Apache(not_loaded)", "Incompatible-mod", ".sρiηX҉.")
     //Sven Copters (and all monsters) are always enticed to attack humans and follow them. Op4 they are stationary yet attack until waypoint puff of smoke is made.
     //Can own copter and attack does no damage. Bind view to see from their perspective and fly off when in limp mod from bumping objects.
 
     //Sensors
+    ///eip = 0xf1d5121a in COFBlackOpsApache::HuntThink (../gearbox/dlls/ops_apache.cpp:513); saved eip = 0xf1ef8b8a
+    /*
     register_touch("monster_apache", "*", "@Apache_Sensor")
     register_touch("monster_blkop_apache", "*", "@Apache_Sensor")
-    register_touch("monster_apache", "worldspawn", "@Apache_World")
+    
     register_touch("monster_blkop_apache", "worldspawn", "@Apache_World")
     register_touch("monster_osprey", "*", "@Apache_Sensor")
-    register_touch("monster_osprey", "worldspawn", "@Apache_World")
+    */
+    set_task 0.3, "@Apache_Sensor", 2026
+    
+    //register_touch("monster_osprey", "worldspawn", "@Apache_World")
+    //register_touch("monster_apache", "worldspawn", "@Apache_World")
 
     //waypointing
     g_puff_hp = register_cvar("smoke_puff_hp", "200") //HP is how long puff lasts. Dev Comment: Too short of time/HP may contribute to instability with OP4. 
@@ -154,6 +160,10 @@ public plugin_init()
 //WHAT IF APACHE TOUCHES SOMETHING?
 @Apache_Sensor(Apache, Sensor) //standard apache crashing with both monsters merged into 1 fcn.
 {
+    if(!Sensor)
+    {
+        @Apache_World(Apache)
+    }
     if(pev_valid(Apache) == 2)
     {
         new SzMonster_class[MAX_PLAYERS], SzSensor_class[MAX_PLAYERS]
