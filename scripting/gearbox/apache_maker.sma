@@ -14,6 +14,8 @@
 #define FRICTION_ICE    0.3
 #define charsmin        -1
 
+#define MAX_WAY 5
+
 new g_puff_hp
 new g_puff_scale
 new bool:bSpec_Apache_Owner_lock[MAX_PLAYERS], bool:bApache_Owner_lock[MAX_PLAYERS]
@@ -77,7 +79,7 @@ static const grunt_sounds[][]=
 
 }
 
-new const apache_model[][] =
+static const apache_model[][] =
 {
     //osprey
     "models/hgrunt.mdl",
@@ -106,7 +108,7 @@ new const apache_model[][] =
     "sprites/white.spr"
 }
 
-new const apache_snds[][] =
+static const apache_snds[][] =
 {
     "hgrunt/gr_mgun1.wav",
     "ambience/osprey_rotors.wav",
@@ -120,6 +122,12 @@ new const apache_snds[][] =
     "turret/tu_fire1.wav"
 };
 
+static const szFlyingEnt[][]={"monster_apache", "monster_blkop_apache", "monster_osprey", "monster_blkop_osprey"};
+
+static const szPassEnt[][]={"func_wall", "func_breakable", "func_pushable", "player", "Hook_rope", "monster_apache", "monster_blkop_apache", "monster_osprey", "monster_blkop_osprey"};
+
+new iWaypoints;
+
 public plugin_init()
 {
     is_running("gearbox") || is_running("sven") ?
@@ -129,17 +137,15 @@ public plugin_init()
 
     //Sensors
     ///eip = 0xf1d5121a in COFBlackOpsApache::HuntThink (../gearbox/dlls/ops_apache.cpp:513); saved eip = 0xf1ef8b8a
-    /*
-    register_touch("monster_apache", "*", "@Apache_Sensor")
-    register_touch("monster_blkop_apache", "*", "@Apache_Sensor")
-    
-    register_touch("monster_blkop_apache", "worldspawn", "@Apache_World")
-    register_touch("monster_osprey", "*", "@Apache_Sensor")
-    */
-    set_task 0.3, "@Apache_Sensor", 2026
-    
-    //register_touch("monster_osprey", "worldspawn", "@Apache_World")
-    //register_touch("monster_apache", "worldspawn", "@Apache_World")
+
+    for(new list;list<sizeof szFlyingEnt;++list)
+    {
+        register_touch(szFlyingEnt[list], "worldspawn", "@Apache_World")
+        for(new s;s<sizeof szPassEnt;++s)
+        {
+            register_touch(szFlyingEnt[list], szPassEnt[s], "@Apache_Sensor")
+        }
+    }
 
     //waypointing
     g_puff_hp = register_cvar("smoke_puff_hp", "200") //HP is how long puff lasts. Dev Comment: Too short of time/HP may contribute to instability with OP4. 
@@ -160,13 +166,13 @@ public plugin_init()
 //WHAT IF APACHE TOUCHES SOMETHING?
 @Apache_Sensor(Apache, Sensor) //standard apache crashing with both monsters merged into 1 fcn.
 {
-    if(!Sensor)
+    /*if(!Sensor)
     {
         @Apache_World(Apache)
-    }
+    }*/
     if(pev_valid(Apache) == 2)
     {
-        new SzMonster_class[MAX_PLAYERS], SzSensor_class[MAX_PLAYERS]
+        static SzMonster_class[MAX_PLAYERS], SzSensor_class[MAX_PLAYERS]
         entity_get_string(Apache,EV_SZ_classname,SzMonster_class,charsmax(SzMonster_class))
 
         if(pev_valid(Sensor) && containi(SzMonster_class, "apache") != charsmin || containi(SzMonster_class, "osprey") != charsmin)
@@ -470,12 +476,15 @@ public clcmd_apache_buy(id)
 
 //MAKING THEM GO TO POINTS WE PICK IN GAME AS A PLAYER WITH PUFF OF SMOKE ::WAYPOINTING
 public clcmd_apache_waypoint(id)
-{
+{///https://twhl.info/wiki/page/monster_apache
     if(is_user_connected(id))
     {
         new bool:bOps
         if(!find_ent_by_tname(charsmin, "blk_apache_way_point") || !find_ent_by_tname(charsmin, "apache_way_point"))
+        iWaypoints = 0;
+        if(iWaypoints < MAX_WAY)
         {
+            iWaypoints++
             new arg[MAX_PLAYERS]
             read_argv(1,arg,charsmax(arg))
             new way_type[MAX_PLAYERS]
@@ -514,13 +523,15 @@ public clcmd_apache_waypoint(id)
             //if(is_valid_ent(ent) && ent > 0)
             if(pev_valid(ent) == 2 && ent > 0)
                 dllfunc( DLLFunc_Spawn, ent )
+            
+            iWaypoints--
         }
         else
         {
             PRINT:
             client_print id, print_chat, "%L", LANG_PLAYER, "NO_ACC_COM"
-            new SzMessage[64]
-            new const SzWay[]= "waypoint already defined."
+            static SzMessage[64]
+            static const SzWay[]= "waypoint already defined."
     
             formatex(SzMessage, charsmax(SzMessage), bOps ? "Black Ops Apache %s" : "Apache %s",SzWay)
             client_print id, print_center, "%s", SzMessage
