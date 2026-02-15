@@ -219,12 +219,13 @@ public checkVotes()
         static Float:steptime; steptime = get_pcvar_float(g_step)
 
         //Half-Life Frags
-        if(!timeleft || timeleft - iTrigger > 60)
+        if(!timeleft || (timeleft & timeleft - iTrigger > 60))
+        //if(!timeleft || timeleft >= iTrigger )
         {
             if(g_frags)
             {
                 //server_print "Frags enabled"
-                if(g_frags_remaining <= 3)
+                //if(g_frags_remaining <= 3)
                 {
                     //server_print "Few Frags left"
                     set_cvar_num("mp_fraglimit", g_frags + floatround(steptime))
