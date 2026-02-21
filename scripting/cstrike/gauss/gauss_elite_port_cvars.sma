@@ -69,7 +69,7 @@
 
 // Plugin information
 #define Plugin  "Tau Cannon Port"
-#define Version "A1"
+#define Version "A2"
 #define Author  "SPINX"
 // Maxplayers
 const MaxPlayers = 32
@@ -396,24 +396,26 @@ public ze_select_item_post(Player, itemid)
 {
     if (itemid != g_iGaussID)
         return
-
-    // Drop all primary weapons
-    UTIL_DropPrimary( Player )
-
-    // Update
-    g_iHasGauss[ Player ] = true
-
-    // Give m249
-    give_item( Player, "weapon_m249" )
-
-    // Find weapon entity
-    new iEnt = find_ent_by_owner( NULLENT, g_szClassM249, Player )
-
-    // Apply new clip
-    cs_set_weapon_ammo( iEnt, g_pClip )
-
-    // Back pack ammo
-    cs_set_user_bpammo( Player, CSW_M249, MAXBPAMMO[ 20 ] )
+    if(is_user_alive(Player))
+    {
+        // Drop all primary weapons
+        UTIL_DropPrimary( Player )
+    
+        // Update
+        g_iHasGauss[ Player ] = true
+    
+        // Give m249
+        give_item( Player, "weapon_m249" )
+    
+        // Find weapon entity
+        new iEnt = find_ent_by_owner( NULLENT, g_szClassM249, Player )
+    
+        // Apply new clip
+        cs_set_weapon_ammo( iEnt, g_pClip )
+    
+        // Back pack ammo
+        cs_set_user_bpammo( Player, CSW_M249, MAXBPAMMO[ 20 ] )
+    }
 }
 
 
