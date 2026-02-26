@@ -5,7 +5,7 @@
 /**
 *    AMXX MISSILES. Missile menu launcher for GoldSrc.
 *
-*    Copyleft (C) Oct 2020-2024 .sρiηX҉.
+*    Copyleft (C) Oct 2020-2026 .sρiηX҉.
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as
@@ -27,12 +27,16 @@
 *    -Bot heat seekers default.
 *
 *    03/12/21 SPiNX
-*    Change log 3.8.5 3.8.6
+*    Change log 3.8.5 to 3.8.6
 *    -Cleaned up the scoreboard. The frags were not showing up in 'real time'.
 *
 *    04/11/23 SPiNX
-*    Change log 3.8.6 3.8.7
+*    Change log 3.8.6 to 3.8.7
 *    -Optimize. Rework the parachute seekers. They were behaving like next level heat seekers. Stop sending client commands to bots!
+* 
+*    02/26/26 SPiNX
+*    Change log 3.8.7 to 3.8.8
+*    -Fixed run-time on set user frags. Updated server_cmd to console_cmd.
 *
 ****************************************************************************
 *
@@ -392,7 +396,7 @@ new gmsgDeathMsg, gmsgScoreInfo, g_costcvar, g_heatseeker_tag, g_heatseeker_bot,
 
 
 public plugin_init(){
-    register_plugin("Missiles Launcher","3.8.7","SPINX") //Original by EJL. AMXX PORT JTP10181. HL/OP4 PORT SPiNX.
+    register_plugin("Missiles Launcher","3.8.8","SPINX") //Original by EJL. AMXX PORT JTP10181. HL/OP4 PORT SPiNX.
     bCS = cstrike_running() == 1 ? true : false
 
     register_concmd("amx_missiles","admin_missiles",ADMIN_MISSILE_SET,"- Toggles Missiles Mode ON and OFF")
@@ -771,140 +775,149 @@ public vexd_pfntouch(pToucher, pTouched) {
 }
 
 
-do_victim(victim,attacker,damage,unarmed,tk){
-    new namek[ MAX_NAME_LENGTH ],namev[ MAX_NAME_LENGTH ],authida[ MAX_AUTHID_LENGTH ],authidv[ MAX_AUTHID_LENGTH ],teama[ 4 ],teamv[ 4 ]
-    get_user_name(victim,namev,charsmax (namev))
-    get_user_name(attacker,namek,charsmax (namek))
-    get_user_authid(victim,authidv,charsmax (authidv))
-    get_user_authid(attacker,authida,charsmax (authida))
-    get_user_team(victim,teamv,charsmax (teamv))
-    get_user_team(attacker,teama,charsmax (teama))
-
-#if defined TEST
-    if(unarmed == 0)
+do_victim(victim,attacker,damage,unarmed,tk)
+{
+    if(is_user_connected(attacker) && is_user_connected(victim))
     {
-        if(damage >= get_user_health(victim))
-            client_print(attacker,print_chat,"[AMXX] NON-LETHAL TEST MODE:  You would have killed %s with that missile",namev)
+        new namek[ MAX_NAME_LENGTH ],namev[ MAX_NAME_LENGTH ],authida[ MAX_AUTHID_LENGTH ],authidv[ MAX_AUTHID_LENGTH ],teama[ 4 ],teamv[ 4 ]
+        get_user_name(victim,namev,charsmax (namev))
+        get_user_name(attacker,namek,charsmax (namek))
+        get_user_authid(victim,authidv,charsmax (authidv))
+        get_user_authid(attacker,authida,charsmax (authida))
+        get_user_team(victim,teamv,charsmax (teamv))
+        get_user_team(attacker,teama,charsmax (teama))
+
+        #if defined TEST
+        if(unarmed == 0)
+        {
+            if(damage >= get_user_health(victim))
+                client_print(attacker,print_chat,"[AMXX] NON-LETHAL TEST MODE:  You would have killed %s with that missile",namev)
+            else
+                client_print(attacker,print_chat,"[AMXX] NON-LETHAL TEST MODE:  You would have hurt %s with that missile",namev)
+        }
         else
-            client_print(attacker,print_chat,"[AMXX] NON-LETHAL TEST MODE:  You would have hurt %s with that missile",namev)
-    }
-    else
-    {
-#endif
-    if(damage >= get_user_health(victim))
-
-
         {
+            #endif
+            if(damage >= get_user_health(victim))
+            {
+                if(is_heat_rocket[attacker] == 1)
+                    set_task(1.0,"delay_arnold", attacker)
 
-
-            if(is_heat_rocket[attacker] == 1)
-                set_task(1.0,"delay_arnold", attacker)
-
-            if(get_pcvar_num(g_logdetail) == 3){
-                log_message("^"%s<%d><%s><%s>^" attacked ^"%s<%d><%s><%s>^" with ^"missile^" (hit ^"chest^") (damage ^"%d^") (health ^"0^")",
-                    namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv,damage)
-            }
-
-            if(unarmed == 2){
-                log_amx("^"%s<%d><%s><%s>^" admin missile killed ^"%s<%d><%s><%s>^"",
-                    namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv)
-
-                client_print(attacker,print_chat,"[AMXX] You killed %s with that admin missile",namev)
-                client_print(victim,print_chat,"[AMXX] You were killed by %s's admin missile",namek)
-            }
-            #if defined TEST
-            //belongs as a death message not here as cstrike maybe others does a double print
-            else {
-                client_print(attacker,print_chat,"[AMXX] You killed %s with that missile",namev)
-                client_print(victim,print_chat,"[AMXX] You were killed by %s's missile",namek)
-            }
-           #endif
-
-            if(tk == 0) {
-                set_user_frags(attacker,get_user_frags(attacker) + 1 )
-            }
-            else {
-                tkcount[attacker] += 1
-                client_print(attacker,print_center,"You killed a teammate")
-                set_user_frags(attacker,get_user_frags(attacker) - 1 )
-            }
-
-            //set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
-            if(bCS)
-                set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
-            if(!bCS)
-                set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
-
-            fakedamage(victim," Missile",500.0,DMG_MORTAR);
-
-
-            replace_dm(attacker,victim,0);
-
-            new killer;
-            killer = attacker;
-            pin_scoreboard(killer);
-
-            log_message("^"%s<%d><%s><%s>^" killed ^"%s<%d><%s><%s>^" with ^"missile^"",
-                namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv)
-
-        }
-        else {
-            set_user_health(victim,get_user_health(victim) - damage )
-
-            if(get_cvar_num("mp_logdetail") == 3) {
-                log_message("^"%s<%d><%s><%s>^" attacked ^"%s<%d><%s><%s>^" with ^"missile^" (hit ^"chest^") (damage ^"%d^") (health ^"%d^")",
-                    namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv,damage,get_user_health(victim))
-            }
-
-            if(unarmed == 2) {
-                log_amx("^"%s<%d><%s><%s>^" admin missile hurt ^"%s<%d><%s><%s>^"",
-                    namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv)
-
-                client_print(attacker,print_chat,"[AMXX] You hurt %s with that admin missile",namev)
-                client_print(victim,print_chat,"[AMXX] You were hurt by %s's admin missile",namek)
-            }
-            else {
-                client_print(attacker,print_chat,"[AMXX] You hurt %s with that missile",namev)
-                client_print(victim,print_chat,"[AMXX] You were hurt by %s's missile",namek)
-            }
-        }
-
-    if(tk)
-
-        {
-            new players[ MAX_PLAYERS ],pNum
-            get_players(players,pNum,"e",teama)
-            for(new i=0;i<pNum;i++)
-                client_print(players[i],print_chat,"%s attacked a teammate",namek)
-
-            new punish1 = get_cvar_num("amx_missile_tkpunish1")
-            new punish2 = get_cvar_num("amx_missile_tkpunish2")
-
-            if (!(get_user_flags(attacker)&ADMIN_IMMUNITY)){
-                if(punish1 > 2){
-                    user_kill(attacker,0)
-                    set_hudmessage(255,50,50, -1.0, 0.45, 0, 0.02, 10.0, 1.01, 1.1, 4)
-                    show_hudmessage(attacker,"YOU WERE KILLED FOR ATTACKING TEAMMATES.^nSEE THAT IT HAPPENS NO MORE!")
+                if(get_pcvar_num(g_logdetail) == 3)
+                {
+                    log_message("^"%s<%d><%s><%s>^" attacked ^"%s<%d><%s><%s>^" with ^"missile^" (hit ^"chest^") (damage ^"%d^") (health ^"0^")",
+                        namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv,damage)
                 }
-                if((punish1) && (tkcount[attacker] >= punish2 )){
-                    if(punish1 == 1 || punish1 == 3)
-                        client_cmd(attacker,"echo You were kicked for team killing;disconnect")
-                    else if(punish1 == 2 || punish1 == 4){
-                        client_cmd(attacker,"echo You were banned for team killing")
-                        if (equal("4294967295",authida)){
-                            new ipa[ MAX_PLAYERS ]
-                            get_user_ip(attacker,ipa,31,1)
-                            server_cmd("addip 180.0 %s;writeip",ipa)
-                        }else{
-                            server_cmd("banid 180.0 %s kick;writeid",authida)
+
+                if(unarmed == 2)
+                {
+                    log_amx("^"%s<%d><%s><%s>^" admin missile killed ^"%s<%d><%s><%s>^"",
+                        namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv)
+
+                    client_print(attacker,print_chat,"[AMXX] You killed %s with that admin missile",namev)
+                    client_print(victim,print_chat,"[AMXX] You were killed by %s's admin missile",namek)
+                }
+                #if defined TEST
+                //belongs as a death message not here as cstrike maybe others does a double print
+                else
+                {
+                    client_print(attacker,print_chat,"[AMXX] You killed %s with that missile",namev)
+                    client_print(victim,print_chat,"[AMXX] You were killed by %s's missile",namek)
+                }
+               #endif
+
+                if(tk == 0) 
+                {
+                    set_user_frags(attacker,get_user_frags(attacker) + 1 )
+                }
+                else 
+                {
+                    tkcount[attacker] += 1
+                    client_print(attacker,print_center,"You killed a teammate")
+                    set_user_frags(attacker,get_user_frags(attacker) - 1 )
+                }
+
+                //set_msg_block(gmsgDeathMsg,BLOCK_ONCE)
+                if(bCS)
+                    set_msg_block(get_user_msgid("DeathMsg"), BLOCK_SET);
+                if(!bCS)
+                    set_msg_block(get_user_msgid("DeathMsg"), BLOCK_ONCE);
+
+                fakedamage(victim," Missile",500.0,DMG_MORTAR);
+
+
+                replace_dm(attacker,victim,0);
+
+                new killer;
+                killer = attacker;
+                pin_scoreboard(killer);
+
+                log_message("^"%s<%d><%s><%s>^" killed ^"%s<%d><%s><%s>^" with ^"missile^"",
+                    namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv)
+
+            }
+            else
+            {
+                set_user_health(victim,get_user_health(victim) - damage )
+
+                if(get_cvar_num("mp_logdetail") == 3)
+                {
+                    log_message("^"%s<%d><%s><%s>^" attacked ^"%s<%d><%s><%s>^" with ^"missile^" (hit ^"chest^") (damage ^"%d^") (health ^"%d^")",
+                        namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv,damage,get_user_health(victim))
+                }
+
+                if(unarmed == 2) {
+                    log_amx("^"%s<%d><%s><%s>^" admin missile hurt ^"%s<%d><%s><%s>^"",
+                        namek,get_user_userid(attacker),authida,teama,namev,get_user_userid(victim),authidv,teamv)
+
+                    client_print(attacker,print_chat,"[AMXX] You hurt %s with that admin missile",namev)
+                    client_print(victim,print_chat,"[AMXX] You were hurt by %s's admin missile",namek)
+                }
+                else
+                {
+                    client_print(attacker,print_chat,"[AMXX] You hurt %s with that missile",namev)
+                    client_print(victim,print_chat,"[AMXX] You were hurt by %s's missile",namek)
+                }
+            }
+            if(tk)
+            {
+                new players[ MAX_PLAYERS ],pNum
+                get_players(players,pNum,"e",teama)
+                for(new i=0;i<pNum;i++)
+                    client_print(players[i],print_chat,"%s attacked a teammate",namek)
+
+                new punish1 = get_cvar_num("amx_missile_tkpunish1")
+                new punish2 = get_cvar_num("amx_missile_tkpunish2")
+
+                if (!(get_user_flags(attacker)&ADMIN_IMMUNITY))
+                {
+                    if(punish1 > 2)
+                    {
+                        user_kill(attacker,0)
+                        set_hudmessage(255,50,50, -1.0, 0.45, 0, 0.02, 10.0, 1.01, 1.1, 4)
+                        show_hudmessage(attacker,"YOU WERE KILLED FOR ATTACKING TEAMMATES.^nSEE THAT IT HAPPENS NO MORE!")
+                    }
+                    if((punish1) && (tkcount[attacker] >= punish2 )){
+                        if(punish1 == 1 || punish1 == 3)
+                            client_cmd(attacker,"echo You were kicked for team killing;disconnect")
+                        else if(punish1 == 2 || punish1 == 4){
+                            client_cmd(attacker,"echo You were banned for team killing")
+                            if (equal("4294967295",authida)){
+                                new ipa[ MAX_PLAYERS ]
+                                get_user_ip(attacker,ipa,31,1)
+                                console_cmd(0,"addip 180.0 %s;writeip",ipa)
+                            }else
+                            {
+                                console_cmd(0,"banid 180.0 %s kick;writeid",authida)
+                            }
                         }
                     }
                 }
             }
+            #if defined DEBUG
         }
-#if defined DEBUG
+        #endif
     }
-#endif
 }
 
 public delay_arnold(attacker)
@@ -1395,7 +1408,7 @@ make_rocket(id,icmd,iarg1,iarg2,iarg3,admin,antimissile) {
             }
         }
 
-        if(!found){ 
+        if(!found){
             client_print(id,print_chat,"[AMXX] Cannot fire Heat-Seeker,^n^nthere are no heat signatures in view.")
             if(!admin){
                 #if defined CSTRIKE
