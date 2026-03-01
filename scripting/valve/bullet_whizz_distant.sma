@@ -28,8 +28,12 @@ static  AUTHOR[]            = "SPiNX";
 static VERSION[]            = "1.4.6";
 static     URL[]            = "http://github.com/djearthquake/amxx";
 
-static g_snap, g_whiz, g_thud;
+//static g_snap, g_whiz, g_thud;
+static g_impretty
 
+static const tracer_model[]= "sprites/dot.spr"
+
+static g_snap[3], g_whiz[3], g_thud[1];
 static const g_WhizSounds[][] =
 {
     "misc/whizz1.wav",
@@ -46,14 +50,11 @@ static const g_SnapSounds[][] =
     "misc/snap4.wav"
 }
 
-/*
 //Note: This exist just in-case you wanted to append more or remove less audios
 static const g_ThudSounds[][] =
 {
     "misc/thud.wav"
 }
-*/
-static const g_ThudSounds[] = "misc/thud.wav";
 
 new g_LastWeapon[MAX_PLAYERS + 1];
 new g_LastAmmo[MAX_PLAYERS + 1];
@@ -100,13 +101,19 @@ public plugin_precache()
     #endif
     register_cvar("bullwhiz_version", URL, FCVAR_SERVER);
 
+    g_impretty = precache_model(tracer_model)
     static SzFormat[128]
     for (new list = 0; list < sizeof(g_WhizSounds); ++list)
     {
         formatex(SzFormat,charsmax(SzFormat),"sound/%s", g_WhizSounds[list])
         if(file_exists(SzFormat))
         {
-            g_whiz = precache_sound(g_WhizSounds[list])
+            for (new can = 0; can < sizeof(g_whiz); ++can)
+            {
+                {
+                    g_whiz[can] = precache_sound(g_WhizSounds[list])
+                }
+            }
         }
         else
         {
@@ -117,9 +124,13 @@ public plugin_precache()
     for (new list = 0; list < sizeof(g_SnapSounds); ++list)
     {
         format(SzFormat,charsmax(SzFormat),"sound/%s", g_SnapSounds[list])
+        
         if(file_exists(SzFormat))
         {
-            g_snap = precache_sound(g_SnapSounds[list])
+            for (new spam = 0; spam < sizeof(g_snap); ++spam)
+            {
+                g_snap[spam] = precache_sound(g_SnapSounds[list])
+            }
         }
         else
         {
@@ -127,12 +138,15 @@ public plugin_precache()
             pause "a";
         }
     }
-    ///for (new list = 0; list < sizeof(g_ThudSounds); ++list)
+    for (new list = 0; list < sizeof(g_ThudSounds); ++list)
     {
-        format(SzFormat,charsmax(SzFormat),"sound/%s", g_ThudSounds)
+        format(SzFormat,charsmax(SzFormat),"sound/%s", g_ThudSounds[list])
         if(file_exists(SzFormat))
         {
-            g_thud = precache_sound(g_ThudSounds)
+            for (new dam = 0; dam < sizeof(g_thud); ++dam)
+            {
+                g_thud[dam] = precache_sound(g_ThudSounds[list])
+            }
         }
         else
         {
@@ -177,6 +191,7 @@ public Event_CurWeapon(id)
 
             if (g_LastWeapon[id] == WeaponID && g_LastAmmo[id] > Clip)
             {
+                new iMeasure = get_pcvar_num(gs_measure);
                 new Players[MAX_PLAYERS];
                 static iNum, Float:origin[3], Float:targetOrigin[3], temp[3], Float:fAim[3], target, Float:flAngle, Float:origDist;
 
@@ -195,17 +210,21 @@ public Event_CurWeapon(id)
                         flAngle     = get_distance_to_line_f(origin, targetOrigin, fAim);
                         origDist    = get_distance_f(origin, targetOrigin);
 
-                        if (get_pcvar_float(gs_measure))
+                        if(iMeasure)
                         {
                             if(is_user_admin(target))
                             {
-                                client_print(target, print_chat, "%n's %f Meters away", id, origDist);
+                                client_print(target, print_center, "%n's %f Meters away", id, origDist);
+                                if(iMeasure>1)
+                                {
+                                    @make_pretty(target, id)
+                                }
                             }
                         }
 
                         if (origDist >= get_pcvar_float(gs_whizdist) && flAngle > 0.0 && fm_is_ent_visible(id, target))
                         {
-                            iCvar > 1 ? @MakeSound(target, g_whiz):
+                            iCvar > 1 ? @MakeSound(target, g_whiz[random(sizeof(g_whiz))]):
                             emit_sound(target, CHAN_AUTO, g_WhizSounds[random(sizeof(g_WhizSounds))], VOL_NORM, ATTN_IDLE, 0, PITCH);
                         }
 
@@ -215,14 +234,15 @@ public Event_CurWeapon(id)
                         }
                         if (origDist >= get_pcvar_float(gs_snapdist) && flAngle > 0.0)
                         {
-                            iCvar > 1 ? @MakeSound(target, g_snap):
+                            iCvar > 1 ? @MakeSound(target, g_snap[random(sizeof(g_snap))]):
                             emit_sound(target, CHAN_AUTO, g_SnapSounds[random(sizeof(g_SnapSounds))], VOL_NORM, ATTN_IDLE, 0, PITCH);
                             continue;
                         }
                         if (origDist >= get_pcvar_float(gs_thuddist))
                         {
-                            iCvar > 1 ? @MakeSound(target, g_thud):
-                            emit_sound(target, CHAN_AUTO, g_ThudSounds, VOL_NORM, ATTN_IDLE, 0, PITCH);
+                            iCvar > 1 ? @MakeSound(target, g_thud[random(sizeof(g_thud))]):
+                            emit_sound(target, CHAN_AUTO, g_ThudSounds[random(sizeof(g_ThudSounds))], VOL_NORM, ATTN_IDLE, 0, PITCH);
+                            //emit_sound(target, CHAN_AUTO, SOUND_THUD, VOL_NORM, ATTN_NORM, 0, PITCH); //pitch is not working with this wav but others it does
                             continue;
                         }
                     }
@@ -234,28 +254,33 @@ public Event_CurWeapon(id)
     }
 }
 
-/*
-@make_pretty()
+
+@make_pretty(target, id)
 {
+    static Float:Origin[3]
+    pev(target, pev_origin, Origin);
     
-    write_byte(TE_BEAMENTPOINT)
-    write_short(start entity)
-    write_coord(endposition.x)
-    write_coord(endposition.y)
-    write_coord(endposition.z)
-    write_short(sprite index)
-    write_byte(starting frame)
-    write_byte(frame rate in 0.1's)
-    write_byte(life in 0.1's)
-    write_byte(line width in 0.1's)
-    write_byte(noise amplitude in 0.01's)
-    write_byte(red)
-    write_byte(green)
-    write_byte(blue)
-    write_byte(brightness)
-    write_byte(scroll speed in 0.1's)
+    static iCvar; iCvar = get_pcvar_num(gs_enabled);
+    emessage_begin_f( iCvar > 2 ? MSG_ONE : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, target)
+    ewrite_byte(TE_BEAMENTPOINT)
+    ewrite_short(id)
+    ewrite_coord_f(Origin[0])
+    ewrite_coord_f(Origin[1])
+    ewrite_coord_f(Origin[2])
+    ewrite_short(g_impretty)
+    ewrite_byte(16) //starting frame
+    ewrite_byte(30) //frame rate in 0.1's)
+    ewrite_byte(random_num(1,11))//life in 0.1's)
+    ewrite_byte(random_num(50,100))//line width in 0.1's)
+    ewrite_byte(random(256))//noise amplitude in 0.01's)
+    ewrite_byte(156) //red)
+    ewrite_byte(random(256))//green)
+    ewrite_byte(1)//blue)
+    ewrite_byte(1000)//brightness)
+    ewrite_byte(random(100))//scroll speed in 0.1's)
+    emessage_end;
 }
-*/
+
 
 Float:get_distance_to_line_f(Float:pos_start[3], Float:pos_end[3], Float:pos_object[3])
 {
@@ -306,12 +331,12 @@ bool:fm_is_ent_visible(index, entity)
 {
     static iCvar; iCvar = get_pcvar_num(gs_enabled)
     static Float:fOrigin[3];
-    new iAttn=random_num(150, 255)*128, iVol = random_num(150, 255)*64
+    new iAttn=random(256)*64, iVol = random_num(150, 255)*255
     if(is_user_alive(player))
     {
         pev(player, pev_origin, fOrigin);
 
-        emessage_begin_f(iCvar>2 ? MSG_PAS : MSG_BROADCAST, SVC_SPAWNSTATICSOUND, Float:{ 0.0, 0.0, 0.0 }, player = 0)
+        emessage_begin_f( iCvar > 2 ? MSG_ALL : MSG_BROADCAST, SVC_SPAWNSTATICSOUND, Float:{ 0.0, 0.0, 0.0 }, player = 0)
 
         ewrite_coord_f(fOrigin[0])
         ewrite_coord_f(fOrigin[1])
