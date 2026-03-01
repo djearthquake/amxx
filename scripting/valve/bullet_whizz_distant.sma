@@ -124,7 +124,7 @@ public plugin_precache()
     for (new list = 0; list < sizeof(g_SnapSounds); ++list)
     {
         format(SzFormat,charsmax(SzFormat),"sound/%s", g_SnapSounds[list])
-        
+
         if(file_exists(SzFormat))
         {
             for (new spam = 0; spam < sizeof(g_snap); ++spam)
@@ -259,7 +259,8 @@ public Event_CurWeapon(id)
 {
     static Float:Origin[3]
     pev(target, pev_origin, Origin);
-    
+    static iLimit; iLimit = get_pcvar_num(gs_whizdist)
+
     static iCvar; iCvar = get_pcvar_num(gs_enabled);
     emessage_begin_f( iCvar > 2 ? MSG_ONE : MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, Float:{ 0.0, 0.0, 0.0 }, target)
     ewrite_byte(TE_BEAMENTPOINT)
@@ -271,8 +272,8 @@ public Event_CurWeapon(id)
     ewrite_byte(16) //starting frame
     ewrite_byte(30) //frame rate in 0.1's)
     ewrite_byte(random_num(1,11))//life in 0.1's)
-    ewrite_byte(random_num(50,100))//line width in 0.1's)
-    ewrite_byte(floatround(dist))//noise amplitude in 0.01's)
+    ewrite_byte(floatround(dist) > iLimit ? random(floatround(dist)) : random_num(1,50)) //random_num(50,100))//line width in 0.1's)
+    ewrite_byte(floatround(dist) > iLimit ? floatround(dist) : random(20))//noise amplitude in 0.01's)
     ewrite_byte(156) //red)
     ewrite_byte(random(256))//green)
     ewrite_byte(1)//blue)
