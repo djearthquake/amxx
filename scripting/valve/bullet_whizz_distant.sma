@@ -217,7 +217,7 @@ public Event_CurWeapon(id)
                                 client_print(target, print_center, "%n's %f Meters away", id, origDist);
                                 if(iMeasure>1)
                                 {
-                                    @make_pretty(target, id)
+                                    @make_pretty(target, id, flAngle)
                                 }
                             }
                         }
@@ -255,7 +255,7 @@ public Event_CurWeapon(id)
 }
 
 
-@make_pretty(target, id)
+@make_pretty(target, id, Float:dist)
 {
     static Float:Origin[3]
     pev(target, pev_origin, Origin);
@@ -272,11 +272,11 @@ public Event_CurWeapon(id)
     ewrite_byte(30) //frame rate in 0.1's)
     ewrite_byte(random_num(1,11))//life in 0.1's)
     ewrite_byte(random_num(50,100))//line width in 0.1's)
-    ewrite_byte(random(256))//noise amplitude in 0.01's)
+    ewrite_byte(floatround(dist))//noise amplitude in 0.01's)
     ewrite_byte(156) //red)
     ewrite_byte(random(256))//green)
     ewrite_byte(1)//blue)
-    ewrite_byte(1000)//brightness)
+    ewrite_byte(random_num(1,100))//brightness)
     ewrite_byte(random(100))//scroll speed in 0.1's)
     emessage_end;
 }
