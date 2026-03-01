@@ -6,26 +6,31 @@
 #define HLW_GRAPPLE         16
 #define HLW_357             17
 #define HLW_PIPEWRENCH      18
-#define HLW_KNIFE           0x0019
+#define HLW_KNIFE           25
 #define HLW_DISPLACER       20
 #define HLW_SHOCKROACH      22
 #define HLW_SPORE           23
 #define HLW_SNIPER          25
 #define HLW_PENGUIN         26
 
+
+#define PITCH (random_num (20,160))
+
 //Credits to:
-//  Cheap_Suit      = The one who made the Bullet Whiz, which this mod was inspired from
-//  ConnorMcLeod    = Using his optimized code as a reference
-//  Hellmonja       = Sharing the general idea on how detection works
-//    Agent             = Distant shot
-//    SPiNX             = HL/OF port optimize
+//  Cheap_Suit              = The one who made the Bullet Whiz, which this mod was inspired from
+//  ConnorMcLeod            = Using his optimized code as a reference
+//  Hellmonja               = Sharing the general idea on how detection works
+//    Agent                 = Distant shot
+//    SPiNX                 = HL/OF port optimize
 
-static PLUGIN_NAME[]       = "Distant Gunshot";
-static PLUGIN_AUTHOR[]     = "SPiNX";
-static PLUGIN_VERSION[]    = "1.4.5";
+static  PLUGIN[]            = "Distant Gunshot";
+static  AUTHOR[]            = "SPiNX";
+static VERSION[]            = "1.4.6";
+static     URL[]            = "http://github.com/djearthquake/amxx";
 
+static g_snap, g_whiz, g_thud;
 
-static g_WhizSounds[][] =
+static const g_WhizSounds[][] =
 {
     "misc/whizz1.wav",
     "misc/whizz2.wav",
@@ -33,7 +38,7 @@ static g_WhizSounds[][] =
     "misc/whizz4.wav"
 }
 
-static g_SnapSounds[][] =
+static const g_SnapSounds[][] =
 {
     "misc/snap1.wav",
     "misc/snap2.wav",
@@ -41,10 +46,14 @@ static g_SnapSounds[][] =
     "misc/snap4.wav"
 }
 
-static g_ThudSounds[][] =
+/*
+//Note: This exist just in-case you wanted to append more or remove less audios
+static const g_ThudSounds[][] =
 {
     "misc/thud.wav"
 }
+*/
+static const g_ThudSounds[] = "misc/thud.wav";
 
 new g_LastWeapon[MAX_PLAYERS + 1];
 new g_LastAmmo[MAX_PLAYERS + 1];
@@ -57,9 +66,8 @@ static bool: b_Bot[MAX_PLAYERS+1]
 
 public plugin_init()
 {
-    register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR);
     register_event("CurWeapon", "Event_CurWeapon", "be", "1=1");
-    gs_enabled  = register_cvar("gs_enabled",   "1");       //This checks if the plugin is enabled or disabled
+    gs_enabled  = register_cvar("gs_enabled",   "2");       //This checks if the plugin and which parts are enabled or disabled.
     gs_measure  = register_cvar("gs_measure",   "0");       //Measure distance between you & shooter (outputs in chat) <--Enable this if you want to change Whiz/Snap/Thud distance
     gs_whizdist = register_cvar("gs_whizdist",  "400");     //Hear Whiz sounds at 400 meters and beyond
     gs_snapdist = register_cvar("gs_snapdist",  "1000");    //Hear Snap sounds between 1000 to 2000 meters
@@ -85,14 +93,20 @@ public client_putinserver(id)
 
 public plugin_precache()
 {
-    //Note: This exist just in-case you wanted to append more or remove less audios
-    new SzFormat[128]
-    for (new i = 0; i < sizeof(g_WhizSounds); ++i)
+    #if AMXX_VERSION_NUM == 182
+    register_plugin(PLUGIN, VERSION, AUTHOR)
+    #else
+    register_plugin(PLUGIN, VERSION, AUTHOR, URL)
+    #endif
+    register_cvar("bullwhiz_version", URL, FCVAR_SERVER);
+
+    static SzFormat[128]
+    for (new list = 0; list < sizeof(g_WhizSounds); ++list)
     {
-        formatex(SzFormat,charsmax(SzFormat),"sound/%s", g_WhizSounds[i])
+        formatex(SzFormat,charsmax(SzFormat),"sound/%s", g_WhizSounds[list])
         if(file_exists(SzFormat))
         {
-            precache_sound(g_WhizSounds[i])
+            g_whiz = precache_sound(g_WhizSounds[list])
         }
         else
         {
@@ -100,12 +114,12 @@ public plugin_precache()
             pause "a";
         }
     }
-    for (new i = 0; i < sizeof(g_SnapSounds); ++i)
+    for (new list = 0; list < sizeof(g_SnapSounds); ++list)
     {
-        format(SzFormat,charsmax(SzFormat),"sound/%s", g_SnapSounds[i])
+        format(SzFormat,charsmax(SzFormat),"sound/%s", g_SnapSounds[list])
         if(file_exists(SzFormat))
         {
-            precache_sound(g_SnapSounds[i])
+            g_snap = precache_sound(g_SnapSounds[list])
         }
         else
         {
@@ -113,12 +127,12 @@ public plugin_precache()
             pause "a";
         }
     }
-    for (new i = 0; i < sizeof(g_ThudSounds); ++i)
+    ///for (new list = 0; list < sizeof(g_ThudSounds); ++list)
     {
-        format(SzFormat,charsmax(SzFormat),"sound/%s", g_ThudSounds[i])
+        format(SzFormat,charsmax(SzFormat),"sound/%s", g_ThudSounds)
         if(file_exists(SzFormat))
         {
-            precache_sound(g_ThudSounds[i])
+            g_thud = precache_sound(g_ThudSounds)
         }
         else
         {
@@ -158,58 +172,58 @@ public Event_CurWeapon(id)
                     case HLW_CROWBAR, HLW_CROSSBOW, HLW_EGON, HLW_HANDGRENADE, HLW_TRIPMINE,  HLW_SATCHEL, HLW_SNARK, HLW_GRAPPLE, HLW_PIPEWRENCH, HLW_KNIFE, HLW_DISPLACER, HLW_SHOCKROACH, HLW_SPORE, HLW_PENGUIN: return;
                 }
             }
-    
+
             static Clip;Clip = read_data(3);
-    
+
             if (g_LastWeapon[id] == WeaponID && g_LastAmmo[id] > Clip)
             {
-                new Players[32];
+                new Players[MAX_PLAYERS];
                 static iNum, Float:origin[3], Float:targetOrigin[3], temp[3], Float:fAim[3], target, Float:flAngle, Float:origDist;
-    
+
                 pev(id, pev_origin, origin);
                 get_user_origin(id, temp, 3);
                 IVecFVec(temp, fAim);
                 get_players(Players, iNum, "a");
-    
+
                 for (--iNum; iNum >= 0; iNum--)
                 {
                     target = Players[iNum];
                     if(!b_Bot[target] && id !=target)
                     {
                         pev(target, pev_origin, targetOrigin);
-    
+
                         flAngle     = get_distance_to_line_f(origin, targetOrigin, fAim);
                         origDist    = get_distance_f(origin, targetOrigin);
-    
+
                         if (get_pcvar_float(gs_measure))
                         {
-                            client_print(target, print_chat, "Distance (You & Shooter): %f Meters", origDist);
+                            if(is_user_admin(target))
+                            {
+                                client_print(target, print_chat, "%n's %f Meters away", id, origDist);
+                            }
                         }
-    
+
                         if (origDist >= get_pcvar_float(gs_whizdist) && flAngle > 0.0 && fm_is_ent_visible(id, target))
                         {
-                            client_cmd(target, "spk %s", g_WhizSounds[random(sizeof(g_WhizSounds))]);
+                            iCvar > 1 ? @MakeSound(target, g_whiz):
+                            emit_sound(target, CHAN_AUTO, g_WhizSounds[random(sizeof(g_WhizSounds))], VOL_NORM, ATTN_IDLE, 0, PITCH);
                         }
-    
+
                         if (origDist < get_pcvar_float(gs_snapdist))
                         {
                             continue;
                         }
-                        if(iCvar>1)
+                        if (origDist >= get_pcvar_float(gs_snapdist) && flAngle > 0.0)
                         {
-                            if (origDist >= get_pcvar_float(gs_snapdist) && flAngle > 0.0)
-                            {
-                                client_cmd(target, "spk %s", g_SnapSounds[random(sizeof(g_SnapSounds))]);
-                                continue;
-                            }
-                            if(iCvar>2)
-                            {
-                                if (origDist >= get_pcvar_float(gs_thuddist))
-                                {
-                                    client_cmd(target, "spk %s", g_ThudSounds[random(sizeof(g_ThudSounds))]);
-                                    continue;
-                                }
-                            }
+                            iCvar > 1 ? @MakeSound(target, g_snap):
+                            emit_sound(target, CHAN_AUTO, g_SnapSounds[random(sizeof(g_SnapSounds))], VOL_NORM, ATTN_IDLE, 0, PITCH);
+                            continue;
+                        }
+                        if (origDist >= get_pcvar_float(gs_thuddist))
+                        {
+                            iCvar > 1 ? @MakeSound(target, g_thud):
+                            emit_sound(target, CHAN_AUTO, g_ThudSounds, VOL_NORM, ATTN_IDLE, 0, PITCH);
+                            continue;
                         }
                     }
                 }
@@ -219,6 +233,29 @@ public Event_CurWeapon(id)
         }
     }
 }
+
+/*
+@make_pretty()
+{
+    
+    write_byte(TE_BEAMENTPOINT)
+    write_short(start entity)
+    write_coord(endposition.x)
+    write_coord(endposition.y)
+    write_coord(endposition.z)
+    write_short(sprite index)
+    write_byte(starting frame)
+    write_byte(frame rate in 0.1's)
+    write_byte(life in 0.1's)
+    write_byte(line width in 0.1's)
+    write_byte(noise amplitude in 0.01's)
+    write_byte(red)
+    write_byte(green)
+    write_byte(blue)
+    write_byte(brightness)
+    write_byte(scroll speed in 0.1's)
+}
+*/
 
 Float:get_distance_to_line_f(Float:pos_start[3], Float:pos_end[3], Float:pos_object[3])
 {
@@ -263,4 +300,31 @@ bool:fm_is_ent_visible(index, entity)
         return true;
     }
     return false;
+}
+
+@MakeSound(player, iSound)
+{
+    static iCvar; iCvar = get_pcvar_num(gs_enabled)
+    static Float:fOrigin[3];
+    new iAttn=random_num(150, 255)*128, iVol = random_num(150, 255)*64
+    if(is_user_alive(player))
+    {
+        pev(player, pev_origin, fOrigin);
+
+        emessage_begin_f(iCvar>2 ? MSG_PAS : MSG_BROADCAST, SVC_SPAWNSTATICSOUND, Float:{ 0.0, 0.0, 0.0 }, player = 0)
+
+        ewrite_coord_f(fOrigin[0])
+        ewrite_coord_f(fOrigin[1])
+        ewrite_coord_f(fOrigin[2])
+
+        ewrite_short(iSound)
+        ewrite_byte(iVol) //vol cant be 0
+        ewrite_byte(iAttn) //attn 0 worked
+        ewrite_short(player)
+        ewrite_byte(iVol) //pitch //theres no pitch. cant be 0
+        ewrite_byte(CHAN_STREAM) //chan or flags
+        emessage_end;
+
+    }
+
 }
