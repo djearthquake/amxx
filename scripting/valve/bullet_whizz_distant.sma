@@ -58,6 +58,7 @@ static const g_ThudSounds[][] =
 
 new g_LastWeapon[MAX_PLAYERS + 1];
 new g_LastAmmo[MAX_PLAYERS + 1];
+new g_vol, g_pit
 
 new gs_enabled, gs_measure, gs_whizdist, gs_snapdist, gs_thuddist;
 static bool: b_CS
@@ -72,7 +73,9 @@ public plugin_init()
     gs_measure  = register_cvar("gs_measure",   "0");       //Measure distance between you & shooter (outputs in chat) <--Enable this if you want to change Whiz/Snap/Thud distance
     gs_whizdist = register_cvar("gs_whizdist",  "400");     //Hear Whiz sounds at 400 meters and beyond
     gs_snapdist = register_cvar("gs_snapdist",  "1000");    //Hear Snap sounds between 1000 to 2000 meters
-    gs_thuddist = register_cvar("gs_thuddist",  "2000");    //Hear Thud sounds beyond 2000 meteers
+    gs_thuddist = register_cvar("gs_thuddist",  "2000");    //Hear Thud sounds beyond 2000 meters
+    g_vol = register_cvar("gs_volume", "5000"); //Adjust Volume of static sounds
+    g_pit = register_cvar("gs_pitch", "3000")
 
     static SzModName[MAX_NAME_LENGTH]
     get_modname(SzModName, charsmax(SzModName));
@@ -332,7 +335,7 @@ bool:fm_is_ent_visible(index, entity)
 {
     static iCvar; iCvar = get_pcvar_num(gs_enabled)
     static Float:fOrigin[3];
-    new iAttn=random(256)*64, iVol = random_num(150, 255)*255
+    new iAttn=random(256)*64
     if(is_user_alive(player))
     {
         pev(player, pev_origin, fOrigin);
@@ -344,10 +347,10 @@ bool:fm_is_ent_visible(index, entity)
         ewrite_coord_f(fOrigin[2])
 
         ewrite_short(iSound)
-        ewrite_byte(iVol) //vol cant be 0
+        ewrite_byte(get_pcvar_num(g_vol)) //vol cant be 0
         ewrite_byte(iAttn) //attn 0 worked
         ewrite_short(player)
-        ewrite_byte(iVol) //pitch //theres no pitch. cant be 0
+        ewrite_byte(get_pcvar_num(g_pit)) //pitch //theres no pitch. cant be 0
         ewrite_byte(CHAN_STREAM) //chan or flags
         emessage_end;
 
