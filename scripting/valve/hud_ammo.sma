@@ -5,17 +5,17 @@
 #include fakemeta_stocks
 #include hamsandwich
 
-#define MAX_PLAYERS          32
-#define MAX_NAME_LENGTH      32
-#define ALL_NULL (0<<0)
-#define HIDEHUD_AMMO        (1<<0)
-#define HIDEHUD_CROSSHAIR   (1<<6)
-#define HIDEHUD_RETURN      (1<<7)
+#define MAX_PLAYERS                 32
+#define MAX_NAME_LENGTH             32
+#define ALL_NULL                    (0<<0)
+#define HIDEHUD_AMMO                (1<<0)
+#define HIDEHUD_CROSSHAIR           (1<<6)
+#define HIDEHUD_RETURN              (1<<7)
 
 #define LOUD_GUN_VOLUME             1000
 #define NORMAL_GUN_VOLUME           600
 #define QUIET_GUN_VOLUME            200
-#define SILENCER                               100
+#define SILENCER                    100
 #define GAUSS_PRIMARY_CHARGE_VOLUME 256// how loud gauss is while charging
 #define GAUSS_PRIMARY_FIRE_VOLUME   450// how loud gauss is when discharged
 
@@ -48,7 +48,7 @@ static const sven_mag = 300
 
 new magazine, ammo, wpnid;
 new pXPosition,pYPosition,pHoldTime,Float:fXPos,Float:fYPos,Float:fHoldTime;
-new cl_weapon[MAX_PLAYERS + 1]
+new cl_weapon[MAX_PLAYERS + 1], g_gunspeed
 static bool:bCS, bool:bNice
 static g_mod_name[MAX_NAME_LENGTH];
 static iWeapon_Modded
@@ -70,12 +70,14 @@ public event_active_weapon(player)
 
 public plugin_init( )
 {
-    register_plugin( "Show Ammo Hud", "1.21", "SPiNX" )
+    register_plugin( "Show Ammo Hud", "1.22", "SPiNX" )
     get_modname(g_mod_name, charsmax(g_mod_name));
 
-    bCS = equal(g_mod_name, "cstrike") || equal(g_mod_name, "czero")  ? true : false
+    bCS = equal(g_mod_name, "cstrike") || equal(g_mod_name, "czero") ? true : false
 
     register_event("CurWeapon", "event_active_weapon", "be")
+
+    g_gunspeed = get_cvar_pointer("mp_gunspeed")
 
     if(bCS)
     {
@@ -169,12 +171,16 @@ public EV_CurWeapon( plr )
 public make_new_ammo_hud(plr)
 {
     fHoldTime = get_pcvar_float(pHoldTime)
-    bNice?
-    set_dhudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)
-    &show_dhudmessage(plr, "     %i         %i  " , magazine, ammo )
-    :
-    set_hudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)&
-    show_hudmessage(plr, "     %i         %i  " , magazine, ammo )
+    if(bNice)
+    {
+        set_dhudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)
+        show_dhudmessage(plr, "     %i         %i  " , magazine, ammo )
+    }
+    else
+    {
+        set_hudmessage(get_pcvar_num(red), get_pcvar_num(grn), get_pcvar_num(blu), get_pcvar_float(x),  get_pcvar_float(y), 0, 6.0, fHoldTime)&
+        show_hudmessage(plr, "     %i         %i  " , magazine, ammo )
+    }
 }
 
 public make_crosshair_hud(plr)
@@ -246,7 +252,7 @@ public client_think(plr)
         }
     }
 
-    else if (cl_weapon[plr] == HLW_GLOCK)
+    else if (cl_weapon[plr] == HLW_GLOCK && get_pcvar_float(g_gunspeed))
     {
         if(button & IN_ATTACK)
         {
@@ -283,9 +289,11 @@ public client_think(plr)
     if(!bCS)
     {
         //Mods like Sven, HL, and OP4
-        if(oldbutton & IN_ATTACK || button & IN_ATTACK2)
+        if((oldbutton & IN_ATTACK2 || button & IN_ATTACK2) && cl_weapon[plr] == iWeapon_Modded
+        ||
+        button & IN_ATTACK && cl_weapon[plr] == HLW_GLOCK && get_pcvar_float(g_gunspeed))
         {
-            static iOK;
+            static iOK
             iOK = cl_weapon[plr] == iWeapon_Modded  || cl_weapon[plr] == HLW_GLOCK;
             iOK ? set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) | HIDEHUD_AMMO ) :
             set_pdata_int(plr, m_iHideHUD, get_pdata_int(plr, m_iHideHUD) & ~HIDEHUD_AMMO );
