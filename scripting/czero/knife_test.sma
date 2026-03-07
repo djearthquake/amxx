@@ -4,7 +4,7 @@
 #include hamsandwich
 
 #define PLUGIN   "Blade make Terrorist"
-#define VERSION  "1.0.3"
+#define VERSION  "1.0.4"
 #define AUTHOR   "SPiNX"
 #define URL      "github.com/djearthquake"
 #define MAX_PLAYERS 32
@@ -12,11 +12,15 @@
 new HamHook:XDamage, Xcvar
 
 new bool:bRegistered;
+#if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
+new ClientName[MAX_PLAYERS][MAX_PLAYERS+1]
+#endif
 
 public plugin_init()
 {
     #if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
     register_plugin(PLUGIN, VERSION, AUTHOR)
+    register_forward(FM_ClientUserInfoChanged, "fwFmClientUserInfoChanged", 1)
     #else
     register_plugin(PLUGIN, VERSION, AUTHOR, URL)
     #endif
@@ -31,10 +35,33 @@ public plugin_init()
     {
         bRegistered = true;
         RegisterHamFromEntity(Ham_TakeDamage, ham_bot, "@PostTakeDamage", 1 );
+        #if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
+        server_print("%s|%s|%s hambot from %s", PLUGIN, VERSION, AUTHOR, ClientName[ham_bot])
+        #else
         server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+        #endif
     }
 }
+#if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
+public client_connect(id)
+{
+    if(is_user_connecting(id))
+    {
+        if(is_user_bot(id) && !bRegistered)
+        {
+            bRegistered = true;
+            set_task(0.1, "@register", id);
+        }
+    }
+}
+public fwFmClientUserInfoChanged(const id)
+{
+    if (!is_user_connected(id))
+        return;
 
+    get_user_name(id, ClientName[id], charsmax(ClientName[]))
+}
+#else
 public client_authorized(id, const authid[])
 {
     if(equal(authid, "BOT")  && !bRegistered)
@@ -42,6 +69,7 @@ public client_authorized(id, const authid[])
         set_task(0.1, "@register", id);
     }
 }
+#endif
 
 public plugin_end()
 {
@@ -62,7 +90,11 @@ public plugin_end()
         if(iGat == CSW_KNIFE)
         {
             iKnife[iVictim]++
+            #if AMXX_VERSION_NUM >= 179 && AMXX_VERSION_NUM <= 190
+            client_print 0, print_chat, "%s was struck by %s's knife %i times!", ClientName[iVictim], ClientName[iAttacker], iKnife[iVictim]
+            #else
             client_print 0, print_chat, "%n was struck by %n's knife %i times!", iVictim, iAttacker, iKnife[iVictim]
+            #endif
             if(iKnife[iVictim] == 2)
             {
                 iKnife[iVictim] = 0
