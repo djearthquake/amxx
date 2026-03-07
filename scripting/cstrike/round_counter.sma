@@ -3,12 +3,16 @@
 #include <hamsandwich>
 
 #define PLUGIN "Round Counter"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define AUTHOR "SPiNX"
 
 #define RED    255
 #define GREEN    255
 #define BLUE    255
+
+#define SetPlayerBit(%1,%2)      (%1 |= (1<<(%2&31)))
+#define ClearPlayerBit(%1,%2)    (%1 &= ~(1 <<(%2&31)))
+#define CheckPlayerBit(%1,%2)    (%1 & (1<<(%2&31)))
 
 new g_round = 1;
 new g_syncmsg
@@ -19,7 +23,7 @@ new g_max, g_ctwin, g_terrwin;
 static const szTheMsg[] = "speak ^"you are in warm up^"";
 //static const szTheMsg[] = "speak ^"warm up^""
 static const szEnt[] = "hostage_entity";
-new g_Hostie, g_gungame;
+new g_Hostie, g_gungame, g_AI;
 
 
 public plugin_init()
@@ -78,8 +82,7 @@ public plugin_init()
 
 @event_newround()
 {
-    if(get_pcvar_num(g_max))
-    if(g_gungame && !get_pcvar_num(g_gungame))
+    if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
     {
         set_task 0.1, "@delayed_showing", 2028
     }
@@ -89,10 +92,9 @@ public plugin_init()
 public playerSpawnPost(id)
 {
     new iMax = get_pcvar_num(g_max)
-    if(iMax)
-    if(g_gungame && !get_pcvar_num(g_gungame))
-    if(!is_user_bot(id))
+    if(iMax && !get_pcvar_num(g_gungame))
     {
+        if(CheckPlayerBit(g_AI, id))return
         if(!bWarmedup)
         {
             set_task 5.0, "@reset", id
@@ -132,8 +134,9 @@ public playerSpawnPost(id)
 
     formatex(szBuffer, charsmax(szBuffer), "speak ^"round %s out of %s^"", szRound, szMax)
     for(new players; players<=MaxClients; ++players)
-    if(is_user_connected(players) && !is_user_bot(players))
+    if(is_user_connected(players))
     {
+        if(CheckPlayerBit(g_AI, players))return
         if(g_round == iMax)
         {
             console_cmd( players, "speak ^"final last round^"")
@@ -159,8 +162,9 @@ public playerSpawnPost(id)
 
     for(new players; players<=MaxClients; ++players)
     {
-        if(is_user_connected(players) && !is_user_bot(players))
+        if(is_user_connected(players))
         {
+            if(CheckPlayerBit(g_AI, players))return
             console_cmd(players, szScore)
         }
     }
@@ -175,18 +179,20 @@ public playerSpawnPost(id)
 
 public client_connect(id)
 {
-    if(get_pcvar_num(g_max))
-    if(g_gungame && !get_pcvar_num(g_gungame))
-    if(!bWarmedup)
+    if(is_user_connected(id))
     {
-        set_task 5.0, "@reset", id
+        is_user_bot(id) ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
+        if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
+        if(!bWarmedup)
+        {
+            set_task 5.0, "@reset", id
+        }
     }
 }
 
 public client_disconnected(id)
 {
-    if(get_pcvar_num(g_max))
-    if(g_gungame && !get_pcvar_num(g_gungame))
+    if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
     {
         set_task 1.0, "@check_players", 2029
     }
@@ -194,7 +200,7 @@ public client_disconnected(id)
 
 @check_players()
 {
-    new iPlayers = get_playersnum();
+    static iPlayers; iPlayers = get_playersnum();
     if(iPlayers <=1)
     {
         bWarmedup = false;
