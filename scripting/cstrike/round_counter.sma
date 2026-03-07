@@ -3,7 +3,7 @@
 #include <hamsandwich>
 
 #define PLUGIN "Round Counter"
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define AUTHOR "SPiNX"
 
 #define RED    255
@@ -33,7 +33,7 @@ public plugin_init()
     g_syncmsg = CreateHudSyncObj()
     bWarmedup = false
     g_max = get_cvar_pointer("mp_maxrounds")
-    g_gungame = get_cvar_pointer("gg_enabled")
+    g_gungame = get_cvar_pointer("gg_enabled") ? get_cvar_pointer("gg_enabled") : register_cvar("gg_enabled", "0");
     if(get_cvar_pointer("respawn_humans"))
     {
         RegisterHam(Ham_Spawn, "player","playerSpawnPost",1)
@@ -53,7 +53,8 @@ public plugin_init()
 
 @round_end()
 {
-    if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
+    if(get_pcvar_num(g_max))
+    if(g_gungame && !get_pcvar_num(g_gungame))
     {
         new iMax = get_pcvar_num(g_max)
         new Float:roundtime = get_cvar_float("mp_roundtime") * 60
@@ -77,7 +78,8 @@ public plugin_init()
 
 @event_newround()
 {
-    if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
+    if(get_pcvar_num(g_max))
+    if(g_gungame && !get_pcvar_num(g_gungame))
     {
         set_task 0.1, "@delayed_showing", 2028
     }
@@ -87,7 +89,8 @@ public plugin_init()
 public playerSpawnPost(id)
 {
     new iMax = get_pcvar_num(g_max)
-    if(iMax && !get_pcvar_num(g_gungame))
+    if(iMax)
+    if(g_gungame && !get_pcvar_num(g_gungame))
     if(!is_user_bot(id))
     {
         if(!bWarmedup)
@@ -172,7 +175,8 @@ public playerSpawnPost(id)
 
 public client_connect(id)
 {
-    if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
+    if(get_pcvar_num(g_max))
+    if(g_gungame && !get_pcvar_num(g_gungame))
     if(!bWarmedup)
     {
         set_task 5.0, "@reset", id
@@ -181,7 +185,8 @@ public client_connect(id)
 
 public client_disconnected(id)
 {
-    if(get_pcvar_num(g_max) && !get_pcvar_num(g_gungame))
+    if(get_pcvar_num(g_max))
+    if(g_gungame && !get_pcvar_num(g_gungame))
     {
         set_task 1.0, "@check_players", 2029
     }
