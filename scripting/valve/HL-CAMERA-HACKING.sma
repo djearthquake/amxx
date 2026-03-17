@@ -1,43 +1,97 @@
-#include amxmodx
-#include engine
-#include hamsandwich
-#define charsmin -1
+/*
+ * camera_cycle.sma
+ *
+ * Purpose:
+ * Allows players to cycle through available map cameras via a slideshow.
+ * Includes a chat notification for the current camera index.
+ *
+ * Copyright (C) 2026 SPiNX
+ * Refined by AI on Google Search
+ */
 
-new cam1, next_cam, third_eye, g_slide_show;
+#include <amxmodx>
+#include <engine>
+#include <hamsandwich>
+
+#define MAX_CAMS 6
+
+new g_Cameras[MAX_CAMS];
+new g_CamCount;
+new g_pSlideShow;
+new g_PlayerCamIndex[MAX_PLAYERS + 1];
 
 public plugin_init()
 {
-    register_plugin("2 cam views", "1.0", "SPiNX")
-    register_clcmd("check_camera", "@CmdCam", 0, "check cameras")
-    g_slide_show = register_cvar("camera_slideshow", "0")
+    register_plugin("Camera Cycle Optimized", "1.5", ".sρiηX҉.");
+
+    register_clcmd("check_camera", "cmd_check_camera");
+    g_pSlideShow = register_cvar("camera_slideshow", "1");
 }
 
-@CmdCam(id)
+public plugin_cfg()
 {
-    camafind();
-    ExecuteHam(Ham_Use, cam1, id, id, 3, 1.0);
-    if (next_cam && get_pcvar_float(g_slide_show))
-        set_task(5.0,"@2ndCam", id);
+    g_CamCount = 0;
+    new ent = -1;
+
+    while ((ent = find_ent_by_class(ent, "trigger_camera")) > 0 && g_CamCount < MAX_CAMS)
+    {
+        g_Cameras[g_CamCount++] = ent;
+    }
+}
+
+public client_disconnected(id)
+{
+    remove_task(id);
+}
+
+public cmd_check_camera(id)
+{
+    if (g_CamCount == 0)
+    {
+        client_print(id, print_chat, "* No cameras found on this map.");
+        return PLUGIN_HANDLED;
+    }
+
+    remove_task(id);
+
+    g_PlayerCamIndex[id] = 0;
+    use_camera(id, 0);
+
+    client_print(id, print_chat, "* Viewing Camera: 1 of %d", g_CamCount);
+
+    if (get_pcvar_num(g_pSlideShow) && g_CamCount > 1)
+    {
+        set_task(5.0, "task_cycle_camera", id, _, _, "b");
+    }
+
     return PLUGIN_HANDLED;
 }
 
-@2ndCam(id)
+public task_cycle_camera(id)
 {
-    ExecuteHam(Ham_Use, next_cam, id, id, 3, 1.0);
-    if (third_eye && get_pcvar_float(g_slide_show))set_task(5.0,"@3rdCam", id);
+    if (!is_user_connected(id))
+    {
+        remove_task(id);
+        return;
+    }
+
+    g_PlayerCamIndex[id]++;
+
+    if (g_PlayerCamIndex[id] >= g_CamCount)
+    {
+        client_print(id, print_chat, "* Camera slideshow finished.");
+        remove_task(id);
+        return;
+    }
+
+    use_camera(id, g_PlayerCamIndex[id]);
+    client_print(id, print_chat, "* Viewing Camera: %d of %d", g_PlayerCamIndex[id] + 1, g_CamCount);
 }
 
-@3rdCam(id)
-    ExecuteHam(Ham_Use, third_eye, id, id, 3, 1.0);
-
-stock camafind()
+use_camera(id, index)
 {
-    cam1 = find_ent_by_class(charsmin, "trigger_camera");
-    next_cam = find_ent_by_class(cam1, "trigger_camera");
-    third_eye = find_ent_by_class(next_cam, "trigger_camera");
-
-    if (cam1 > 0) return cam1;
-    if (next_cam > cam1 && next_cam != cam1) return next_cam;
-    if (next_cam > cam1 && next_cam != cam1 && third_eye != cam1 && third_eye != next_cam) return third_eye;
-    return PLUGIN_CONTINUE;
+    if (index < g_CamCount && is_valid_ent(g_Cameras[index]))
+    {
+        ExecuteHamB(Ham_Use, g_Cameras[index], id, id, 3, 1.0);
+    }
 }
