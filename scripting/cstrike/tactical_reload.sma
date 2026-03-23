@@ -134,21 +134,18 @@ force_emergency_reload(id, iEnt)
 {
     static iWeaponID, iClip, iBpAmmo;
     iWeaponID = cs_get_weapon_id(iEnt);
-    if(iWeaponID != CSW_KNIFE | CSW_C4)
+    iClip = cs_get_weapon_ammo(iEnt);
+    iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
+
+    if(iClip > 0 && iBpAmmo > 0)
     {
-        iClip = cs_get_weapon_ammo(iEnt);
-        iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
-    
-        if(iClip > 0 && iBpAmmo > 0)
-        {
-            cs_set_weapon_ammo(iEnt, 0);
-            cs_set_user_bpammo(id, iWeaponID, iBpAmmo - iClip);
-            spawn_mag_drop(id);
-            client_print(id, print_center, "EMERGENCY RELOAD: Mag Dropped!");
-        }
-        set_pdata_float(iEnt, m_flNextPrimaryAttack, 0.0, OFFSET_LINUX_WEAPONS);
-        ExecuteHamB(Ham_Weapon_Reload, iEnt);
+        cs_set_weapon_ammo(iEnt, 0);
+        cs_set_user_bpammo(id, iWeaponID, iBpAmmo - iClip);
+        spawn_mag_drop(id);
+        client_print(id, print_center, "EMERGENCY RELOAD: Mag Dropped!");
     }
+    set_pdata_float(iEnt, m_flNextPrimaryAttack, 0.0, OFFSET_LINUX_WEAPONS);
+    ExecuteHamB(Ham_Weapon_Reload, iEnt);
 }
 
 Float:get_weapon_bias(iId)
@@ -197,19 +194,16 @@ public fw_TouchWeaponBox(iBox, id)
         {
             static iWeaponID;
             iWeaponID = cs_get_weapon_id(iWeapon);
-            if(iWeaponID != CSW_KNIFE | CSW_C4)
+            if(user_has_weapon(id, iWeaponID))
             {
-                if(user_has_weapon(id, iWeaponID))
+                static iClip;
+                iClip = cs_get_weapon_ammo(iWeapon);
+                if(iClip > 0)
                 {
-                    static iClip;
-                    iClip = cs_get_weapon_ammo(iWeapon);
-                    if(iClip > 0)
-                    {
-                        cs_set_user_bpammo(id, iWeaponID, cs_get_user_bpammo(id, iWeaponID) + iClip);
-                        emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
-                        set_pev(iBox, pev_flags, pev(iBox, pev_flags) | FL_KILLME);
-                        return HAM_HANDLED;
-                    }
+                    cs_set_user_bpammo(id, iWeaponID, cs_get_user_bpammo(id, iWeaponID) + iClip);
+                    emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
+                    set_pev(iBox, pev_flags, pev(iBox, pev_flags) | FL_KILLME);
+                    return HAM_HANDLED;
                 }
             }
         }
@@ -222,7 +216,8 @@ bool:can_reload(iEnt, id)
     if(!pev_valid(iEnt)) return false;
     static iId;
     iId = cs_get_weapon_id(iEnt);
-    return (iId && cs_get_weapon_ammo(iEnt) < get_max_clip(iId) && cs_get_user_bpammo(id, iId) > 0);
+    if(iId == CSW_KNIFE || iId == CSW_C4) return false; //V1.0 mistake
+    return iId && cs_get_weapon_ammo(iEnt) < get_max_clip(iId) && cs_get_user_bpammo(id, iId) > 0;
 }
 
 get_max_clip(iId)
