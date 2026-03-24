@@ -6,7 +6,7 @@
 #include <hamsandwich>
 
 #define PLUGIN "Tactical Reload: Tension & Tradeoffs"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define AUTHOR "SPiNX"
 
 #define MAX_PLAYERS 32
@@ -25,10 +25,10 @@ static g_pCvarEnabled;
 
 static const GSZ_WEAPONS[][] =
 {
-    "weapon_p228", "weapon_scout", "weapon_xm1014", "weapon_mac10", "weapon_aug",
+    "weapon_p228", "weapon_scout", "weapon_mac10", "weapon_aug",
     "weapon_elite", "weapon_fiveseven", "weapon_ump45", "weapon_sg550", "weapon_galil",
     "weapon_famas", "weapon_usp", "weapon_glock18", "weapon_awp", "weapon_mp5navy",
-    "weapon_m249", "weapon_m3", "weapon_m4a1", "weapon_tmp", "weapon_g3sg1",
+    "weapon_m249", "weapon_m4a1", "weapon_tmp", "weapon_g3sg1",
     "weapon_sg552", "weapon_ak47", "weapon_p90", "weapon_deagle"
 };
 
@@ -262,11 +262,11 @@ get_max_clip(iId)
 {
     switch(iId)
     {
-        case CSW_P228:return 13; case CSW_SCOUT:return 10; case CSW_XM1014:return 7; case CSW_MAC10:return 32;
+        case CSW_P228:return 13; case CSW_SCOUT:return 10; case CSW_MAC10:return 32;
         case CSW_AUG:return 30; case CSW_ELITE:return 30; case CSW_FIVESEVEN:return 20; case CSW_UMP45:return 25;
         case CSW_SG550:return 30; case CSW_GALIL:return 35; case CSW_FAMAS:return 25; case CSW_USP:return 12;
         case CSW_GLOCK18:return 20; case CSW_AWP:return 10; case CSW_MP5NAVY:return 30; case CSW_M249:return 100;
-        case CSW_M3:return 8; case CSW_M4A1:return 30; case CSW_TMP:return 30; case CSW_G3SG1:return 20;
+        case CSW_M4A1:return 30; case CSW_TMP:return 30; case CSW_G3SG1:return 20;
         case CSW_SG552:return 30; case CSW_AK47:return 30; case CSW_P90:return 50; case CSW_DEAGLE:return 7;
     }
     return 0;
