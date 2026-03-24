@@ -1,11 +1,12 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <cstrike>
 #include <engine>
 #include <fakemeta>
 #include <hamsandwich>
 
 #define PLUGIN "Tactical Reload: Tension & Tradeoffs"
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define AUTHOR "SPiNX"
 
 #define MAX_PLAYERS 32
@@ -52,7 +53,13 @@ public plugin_init()
     g_msgBarTime = get_user_msgid("BarTime");
 }
 
-public client_putinserver(id) is_user_bot(id) ? set_bit(g_iBitIsBot, id) : clear_bit(g_iBitIsBot, id);
+public client_putinserver(id)
+{
+    if(is_user_connected(id))
+    {
+        is_user_bot(id) ? set_bit(g_iBitIsBot, id) : clear_bit(g_iBitIsBot, id);
+    }
+}
 
 public client_disconnected(id)
 {
@@ -62,61 +69,64 @@ public client_disconnected(id)
 
 public fw_CmdStart(id, uc_handle, seed)
 {
-    if(!get_pcvar_num(g_pCvarEnabled) || !is_user_alive(id))
-        return FMRES_IGNORED;
-
-    static iButtons, iOldButtons, iEnt, iWeaponID;
-    iButtons = get_uc(uc_handle, UC_Buttons);
-    iOldButtons = pev(id, pev_oldbuttons);
-    iEnt = get_pdata_cbase(id, m_pActiveItem, OFFSET_LINUX);
-
-    if(!pev_valid(iEnt)) return FMRES_IGNORED;
-    iWeaponID = cs_get_weapon_id(iEnt);
-
-    if((iButtons & IN_RELOAD) && !(iOldButtons & IN_RELOAD))
+    if(is_user_alive(id))
     {
-        if(can_reload(iEnt, id))
-        {
-            g_fHoldStart[id] = get_gametime();
-            set_bit(g_iBitIsSaving, id);
-            util_show_bartime(id, floatround(get_weapon_bias(iWeaponID)));
-            client_print(id, print_center, "HOLD TO SECURE MAGAZINE");
-        }
-    }
+        if(!get_pcvar_num(g_pCvarEnabled) || !is_user_alive(id))
+            return FMRES_IGNORED;
 
-    if(get_bit(g_iBitIsSaving, id) && (iButtons & IN_RELOAD))
-    {
-        static Float:fCurTime;
-        fCurTime = get_gametime();
+        static iButtons, iOldButtons, iEnt, iWeaponID;
+        iButtons = get_uc(uc_handle, UC_Buttons);
+        iOldButtons = pev(id, pev_oldbuttons);
+        iEnt = get_pdata_cbase(id, m_pActiveItem, OFFSET_LINUX);
 
-        if(fCurTime >= g_fNextClick[id])
+        if(!pev_valid(iEnt)) return FMRES_IGNORED;
+        iWeaponID = cs_get_weapon_id(iEnt);
+
+        if((iButtons & IN_RELOAD) && !(iOldButtons & IN_RELOAD))
         {
-            if(iWeaponID == CSW_AWP || iWeaponID == CSW_G3SG1 || iWeaponID == CSW_SG550)
+            if(can_reload(iEnt, id))
             {
-                emit_sound(id, CHAN_WEAPON, "weapons/scout_bolt.wav", 0.6, ATTN_NORM, 0, 85);
-                g_fNextClick[id] = fCurTime + 0.7;
-            }
-            else
-            {
-                emit_sound(id, CHAN_WEAPON, "weapons/usp_sliderelease.wav", 0.4, ATTN_NORM, 0, PITCH_NORM);
-                g_fNextClick[id] = fCurTime + 0.4;
+                g_fHoldStart[id] = get_gametime();
+                set_bit(g_iBitIsSaving, id);
+                util_show_bartime(id, floatround(get_weapon_bias(iWeaponID)));
+                client_print(id, print_center, "HOLD TO SECURE MAGAZINE");
             }
         }
 
-        if(fCurTime - g_fHoldStart[id] >= get_weapon_bias(iWeaponID))
+        if(get_bit(g_iBitIsSaving, id) && (iButtons & IN_RELOAD))
+        {
+            static Float:fCurTime;
+            fCurTime = get_gametime();
+
+            if(fCurTime >= g_fNextClick[id])
+            {
+                if(iWeaponID == CSW_AWP || iWeaponID == CSW_G3SG1 || iWeaponID == CSW_SG550)
+                {
+                    emit_sound(id, CHAN_WEAPON, "weapons/scout_bolt.wav", 0.6, ATTN_NORM, 0, 85);
+                    g_fNextClick[id] = fCurTime + 0.7;
+                }
+                else
+                {
+                    emit_sound(id, CHAN_WEAPON, "weapons/usp_sliderelease.wav", 0.4, ATTN_NORM, 0, PITCH_NORM);
+                    g_fNextClick[id] = fCurTime + 0.4;
+                }
+            }
+
+            if(fCurTime - g_fHoldStart[id] >= get_weapon_bias(iWeaponID))
+            {
+                clear_bit(g_iBitIsSaving, id);
+                util_show_bartime(id, 0);
+                emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 0.8, ATTN_NORM, 0, PITCH_NORM);
+                ExecuteHamB(Ham_Weapon_Reload, iEnt);
+            }
+        }
+
+        if(!(iButtons & IN_RELOAD) && (iOldButtons & IN_RELOAD) && get_bit(g_iBitIsSaving, id))
         {
             clear_bit(g_iBitIsSaving, id);
             util_show_bartime(id, 0);
-            emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 0.8, ATTN_NORM, 0, PITCH_NORM);
-            ExecuteHamB(Ham_Weapon_Reload, iEnt);
+            force_emergency_reload(id, iEnt);
         }
-    }
-
-    if(!(iButtons & IN_RELOAD) && (iOldButtons & IN_RELOAD) && get_bit(g_iBitIsSaving, id))
-    {
-        clear_bit(g_iBitIsSaving, id);
-        util_show_bartime(id, 0);
-        force_emergency_reload(id, iEnt);
     }
     return FMRES_IGNORED;
 }
@@ -132,20 +142,38 @@ public fw_PostFrame_Pre(iEnt)
 
 force_emergency_reload(id, iEnt)
 {
-    static iWeaponID, iClip, iBpAmmo;
-    iWeaponID = cs_get_weapon_id(iEnt);
-    iClip = cs_get_weapon_ammo(iEnt);
-    iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
-
-    if(iClip > 0 && iBpAmmo > 0)
+    if(is_user_alive(id))
     {
-        cs_set_weapon_ammo(iEnt, 0);
-        cs_set_user_bpammo(id, iWeaponID, iBpAmmo - iClip);
-        spawn_mag_drop(id);
-        client_print(id, print_center, "EMERGENCY RELOAD: Mag Dropped!");
+        static iWeaponID, iClip, iBpAmmo;
+        iWeaponID = cs_get_weapon_id(iEnt);
+        iClip = cs_get_weapon_ammo(iEnt);
+        iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
+
+        if(iClip > 0 && iBpAmmo > 0)
+        {
+            static iWeaponID, iBpAmmo;
+            iWeaponID = cs_get_weapon_id(iEnt);
+            iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
+
+            static iMag; iMag = get_max_clip(iWeaponID)
+            static iPouch; iPouch = floatround((iBpAmmo/iMag*1.0), .method=floatround_floor) //v1.1 bugfix
+            cs_set_weapon_ammo(iEnt, 0);
+            if(iPouch>1)
+            {
+                cs_set_user_bpammo(id, iWeaponID, iPouch*iMag);
+                spawn_mag_drop(id);
+                client_print(id, print_center, "EMERGENCY RELOAD: Mag Dropped!^n%i Magazines remaining.", iPouch--);
+
+                set_pdata_float(iEnt, m_flNextPrimaryAttack, 0.0, OFFSET_LINUX_WEAPONS);
+                ExecuteHamB(Ham_Weapon_Reload, iEnt);
+            }
+            else
+            {
+                client_cmd id, "spk ^"fvox/blip^""
+                client_print id, print_center, "Need to find more magazines!"
+            }
+        }
     }
-    set_pdata_float(iEnt, m_flNextPrimaryAttack, 0.0, OFFSET_LINUX_WEAPONS);
-    ExecuteHamB(Ham_Weapon_Reload, iEnt);
 }
 
 Float:get_weapon_bias(iId)
@@ -161,49 +189,55 @@ Float:get_weapon_bias(iId)
 
 spawn_mag_drop(id)
 {
-    static Float:vOrigin[3], Float:vVelocity[3];
-    entity_get_vector(id, EV_VEC_origin, vOrigin);
-    vOrigin[2] -= 10.0;
-    vVelocity[0] = random_float(-50.0, 50.0);
-    vVelocity[1] = random_float(-50.0, 50.0);
-    vVelocity[2] = -100.0;
+    if(is_user_connected(id))
+    {
+        static Float:vOrigin[3], Float:vVelocity[3];
+        entity_get_vector(id, EV_VEC_origin, vOrigin);
+        vOrigin[2] -= 10.0;
+        vVelocity[0] = random_float(-50.0, 50.0);
+        vVelocity[1] = random_float(-50.0, 50.0);
+        vVelocity[2] = -100.0;
 
-    message_begin(MSG_BROADCAST, SVC_TEMPENTITY);
-    write_byte(TE_MODEL);
-    engfunc(EngFunc_WriteCoord, vOrigin[0]);
-    engfunc(EngFunc_WriteCoord, vOrigin[1]);
-    engfunc(EngFunc_WriteCoord, vOrigin[2]);
-    engfunc(EngFunc_WriteCoord, vVelocity[0]);
-    engfunc(EngFunc_WriteCoord, vVelocity[1]);
-    engfunc(EngFunc_WriteCoord, vVelocity[2]);
-    write_angle(random_num(0, 360));
-    write_short(g_sMagModel);
-    write_byte(1);
-    write_byte(25);
-    message_end();
+        message_begin(MSG_BROADCAST, SVC_TEMPENTITY);
+        write_byte(TE_MODEL);
+        engfunc(EngFunc_WriteCoord, vOrigin[0]);
+        engfunc(EngFunc_WriteCoord, vOrigin[1]);
+        engfunc(EngFunc_WriteCoord, vOrigin[2]);
+        engfunc(EngFunc_WriteCoord, vVelocity[0]);
+        engfunc(EngFunc_WriteCoord, vVelocity[1]);
+        engfunc(EngFunc_WriteCoord, vVelocity[2]);
+        write_angle(random(361));
+        write_short(g_sMagModel);
+        write_byte(1);
+        write_byte(25);
+        message_end();
+    }
 }
 
 public fw_TouchWeaponBox(iBox, id)
 {
-    if(!get_pcvar_num(g_pCvarEnabled) || !is_user_alive(id)) return HAM_IGNORED;
-    for(new i = 0; i < 6; i++)
+    if(is_user_alive(id))
     {
-        static iWeapon;
-        iWeapon = get_pdata_cbase(iBox, 34 + i, OFFSET_LINUX_WEAPONS);
-        if(pev_valid(iWeapon))
+        if(!get_pcvar_num(g_pCvarEnabled) || !is_user_alive(id)) return HAM_IGNORED;
+        for(new i = 0; i < 6; i++)
         {
-            static iWeaponID;
-            iWeaponID = cs_get_weapon_id(iWeapon);
-            if(user_has_weapon(id, iWeaponID))
+            static iWeapon;
+            iWeapon = get_pdata_cbase(iBox, 34 + i, OFFSET_LINUX_WEAPONS);
+            if(pev_valid(iWeapon))
             {
-                static iClip;
-                iClip = cs_get_weapon_ammo(iWeapon);
-                if(iClip > 0)
+                static iWeaponID;
+                iWeaponID = cs_get_weapon_id(iWeapon);
+                if(user_has_weapon(id, iWeaponID))
                 {
-                    cs_set_user_bpammo(id, iWeaponID, cs_get_user_bpammo(id, iWeaponID) + iClip);
-                    emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
-                    set_pev(iBox, pev_flags, pev(iBox, pev_flags) | FL_KILLME);
-                    return HAM_HANDLED;
+                    static iClip;
+                    iClip = cs_get_weapon_ammo(iWeapon);
+                    if(iClip > 0)
+                    {
+                        cs_set_user_bpammo(id, iWeaponID, cs_get_user_bpammo(id, iWeaponID) + iClip);
+                        emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
+                        set_pev(iBox, pev_flags, pev(iBox, pev_flags) | FL_KILLME);
+                        return HAM_HANDLED;
+                    }
                 }
             }
         }
@@ -215,9 +249,13 @@ bool:can_reload(iEnt, id)
 {
     if(!pev_valid(iEnt)) return false;
     static iId;
-    iId = cs_get_weapon_id(iEnt);
-    if(iId == CSW_KNIFE || iId == CSW_C4) return false; //V1.0 mistake
-    return iId && cs_get_weapon_ammo(iEnt) < get_max_clip(iId) && cs_get_user_bpammo(id, iId) > 0;
+    if(is_user_alive(id))
+    {
+        iId = cs_get_weapon_id(iEnt);
+        if(iId == CSW_KNIFE || iId == CSW_C4) return false; //V1.0 mistake
+        return iId && cs_get_weapon_ammo(iEnt) < get_max_clip(iId) && cs_get_user_bpammo(id, iId) > 0;
+    }
+    return false;
 }
 
 get_max_clip(iId)
@@ -237,7 +275,10 @@ get_max_clip(iId)
 stock util_show_bartime(id, seconds)
 {
     if(get_bit(g_iBitIsBot, id)) return;
-    message_begin(MSG_ONE_UNRELIABLE, g_msgBarTime, _, id);
-    write_short(seconds);
-    message_end();
+    if(is_user_alive(id))
+    {
+        emessage_begin(MSG_ONE_UNRELIABLE, g_msgBarTime, _, id);
+        ewrite_short(seconds);
+        emessage_end();
+    }
 }
