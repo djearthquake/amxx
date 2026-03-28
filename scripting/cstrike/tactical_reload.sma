@@ -6,7 +6,7 @@
 #include <hamsandwich>
 
 #define PLUGIN "Tactical Reload: Tension & Tradeoffs"
-#define VERSION "1.3"
+#define VERSION "1.4"
 #define AUTHOR "SPiNX"
 
 #define MAX_PLAYERS 32
@@ -81,51 +81,53 @@ public fw_CmdStart(id, uc_handle, seed)
 
         if(!pev_valid(iEnt)) return FMRES_IGNORED;
         iWeaponID = cs_get_weapon_id(iEnt);
-
-        if((iButtons & IN_RELOAD) && !(iOldButtons & IN_RELOAD))
+        if(is_gun(iWeaponID))
         {
-            if(can_reload(iEnt, id))
+            if((iButtons & IN_RELOAD) && !(iOldButtons & IN_RELOAD))
             {
-                g_fHoldStart[id] = get_gametime();
-                set_bit(g_iBitIsSaving, id);
-                util_show_bartime(id, floatround(get_weapon_bias(iWeaponID)));
-                client_print(id, print_center, "HOLD TO SECURE MAGAZINE");
-            }
-        }
-
-        if(get_bit(g_iBitIsSaving, id) && (iButtons & IN_RELOAD))
-        {
-            static Float:fCurTime;
-            fCurTime = get_gametime();
-
-            if(fCurTime >= g_fNextClick[id])
-            {
-                if(iWeaponID == CSW_AWP || iWeaponID == CSW_G3SG1 || iWeaponID == CSW_SG550)
+                if(can_reload(iEnt, id))
                 {
-                    emit_sound(id, CHAN_WEAPON, "weapons/scout_bolt.wav", 0.6, ATTN_NORM, 0, 85);
-                    g_fNextClick[id] = fCurTime + 0.7;
-                }
-                else
-                {
-                    emit_sound(id, CHAN_WEAPON, "weapons/usp_sliderelease.wav", 0.4, ATTN_NORM, 0, PITCH_NORM);
-                    g_fNextClick[id] = fCurTime + 0.4;
+                    g_fHoldStart[id] = get_gametime();
+                    set_bit(g_iBitIsSaving, id);
+                    util_show_bartime(id, floatround(get_weapon_bias(iWeaponID)));
+                    client_print(id, print_center, "HOLD TO SECURE MAGAZINE");
                 }
             }
 
-            if(fCurTime - g_fHoldStart[id] >= get_weapon_bias(iWeaponID))
+            if(get_bit(g_iBitIsSaving, id) && (iButtons & IN_RELOAD))
+            {
+                static Float:fCurTime;
+                fCurTime = get_gametime();
+
+                if(fCurTime >= g_fNextClick[id])
+                {
+                    if(iWeaponID == CSW_AWP || iWeaponID == CSW_G3SG1 || iWeaponID == CSW_SG550)
+                    {
+                        emit_sound(id, CHAN_WEAPON, "weapons/scout_bolt.wav", 0.6, ATTN_NORM, 0, 85);
+                        g_fNextClick[id] = fCurTime + 0.7;
+                    }
+                    else
+                    {
+                        emit_sound(id, CHAN_WEAPON, "weapons/usp_sliderelease.wav", 0.4, ATTN_NORM, 0, PITCH_NORM);
+                        g_fNextClick[id] = fCurTime + 0.4;
+                    }
+                }
+
+                if(fCurTime - g_fHoldStart[id] >= get_weapon_bias(iWeaponID))
+                {
+                    clear_bit(g_iBitIsSaving, id);
+                    util_show_bartime(id, 0);
+                    emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 0.8, ATTN_NORM, 0, PITCH_NORM);
+                    ExecuteHamB(Ham_Weapon_Reload, iEnt);
+                }
+            }
+
+            if(!(iButtons & IN_RELOAD) && (iOldButtons & IN_RELOAD) && get_bit(g_iBitIsSaving, id))
             {
                 clear_bit(g_iBitIsSaving, id);
                 util_show_bartime(id, 0);
-                emit_sound(id, CHAN_ITEM, "items/9mmclip1.wav", 0.8, ATTN_NORM, 0, PITCH_NORM);
-                ExecuteHamB(Ham_Weapon_Reload, iEnt);
+                force_emergency_reload(id, iEnt);
             }
-        }
-
-        if(!(iButtons & IN_RELOAD) && (iOldButtons & IN_RELOAD) && get_bit(g_iBitIsSaving, id))
-        {
-            clear_bit(g_iBitIsSaving, id);
-            util_show_bartime(id, 0);
-            force_emergency_reload(id, iEnt);
         }
     }
     return FMRES_IGNORED;
@@ -146,6 +148,8 @@ force_emergency_reload(id, iEnt)
     {
         static iWeaponID, iClip, iBpAmmo;
         iWeaponID = cs_get_weapon_id(iEnt);
+        if(!is_gun(iWeaponID))
+            return;
         iClip = cs_get_weapon_ammo(iEnt);
         iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
 
@@ -245,6 +249,11 @@ public fw_TouchWeaponBox(iBox, id)
     return HAM_IGNORED;
 }
 
+bool:is_gun(iId)
+{
+    return (iId == CSW_KNIFE || iId == CSW_C4) ? false : true;
+}
+
 bool:can_reload(iEnt, id)
 {
     if(!pev_valid(iEnt)) return false;
@@ -252,7 +261,7 @@ bool:can_reload(iEnt, id)
     if(is_user_alive(id))
     {
         iId = cs_get_weapon_id(iEnt);
-        if(iId == CSW_KNIFE || iId == CSW_C4) return false; //V1.0 mistake
+        if(is_gun(iId))
         return iId && cs_get_weapon_ammo(iEnt) < get_max_clip(iId) && cs_get_user_bpammo(id, iId) > 0;
     }
     return false;
