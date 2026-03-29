@@ -8,28 +8,28 @@
 new p_max_mags;
 new Float:g_LastMsgTime[MAX_PLAYERS + 1];
 
-static const g_MaxClip[] = 
+static const g_MaxClip[] =
 {
     0, 13, 0, 10, 0, 7, 0, 30, 30, 0, 30, 20, 25, 30, 35, 25, 12, 20, 10, 30, 100, 8, 30, 30, 20, 0, 7, 30, 30, 0, 50
 };
 
-public plugin_init() 
+public plugin_init()
 {
     register_plugin("Ammo Limiter", "1.2", "SPiNX");
     p_max_mags = register_cvar("amx_max_mags", "1");
-    
+
     register_event("AmmoX", "Event_AmmoChange", "be");
-    register_event("CurWeapon", "Event_CurWeapon", "be", "1=1"); 
-    
+    register_event("CurWeapon", "Event_CurWeapon", "be", "1=1");
+
     register_clcmd("buyammo1", "Cmd_BlockBuyAmmo");
     register_clcmd("buyammo2", "Cmd_BlockBuyAmmo");
     register_clcmd("primammo", "Cmd_BlockBuyAmmo");
     register_clcmd("secammo", "Cmd_BlockBuyAmmo");
 }
 
-public Cmd_BlockBuyAmmo(id) 
+public Cmd_BlockBuyAmmo(id)
 {
-    if (is_user_alive(id) && IsAtAmmoLimit(id)) 
+    if (is_user_alive(id) && IsAtAmmoLimit(id))
     {
         DisplayLimitMessage(id, get_pcvar_num(p_max_mags));
         return PLUGIN_HANDLED;
@@ -37,23 +37,23 @@ public Cmd_BlockBuyAmmo(id)
     return PLUGIN_CONTINUE;
 }
 
-bool:IsAtAmmoLimit(id) 
+bool:IsAtAmmoLimit(id)
 {
     new weapons[MAX_PLAYERS], num, max_mags = get_pcvar_num(p_max_mags);
     get_user_weapons(id, weapons, num);
     new active_wpn = get_user_weapon(id);
-    
-    for (new i = 0; i < num; i++) 
+
+    for (new i = 0; i < num; i++)
     {
         new wpn_id = weapons[i];
         if (wpn_id >= sizeof(g_MaxClip) || g_MaxClip[wpn_id] <= 0) continue;
 
         if (cs_get_user_bpammo(id, wpn_id) < GetDynamicLimit(wpn_id, active_wpn, max_mags))
         {
-            return false; 
+            return false;
         }
     }
-    return true; 
+    return true;
 }
 
 GetDynamicLimit(wpn_id, active_wpn, max_mags)
@@ -99,12 +99,12 @@ public Event_CurWeapon(id)
     TaskCapAmmo(id);
 }
 
-public Event_AmmoChange(id) 
+public Event_AmmoChange(id)
 {
     set_task(0.1, "TaskCapAmmo", id);
 }
 
-public TaskCapAmmo(id) 
+public TaskCapAmmo(id)
 {
     if (!is_user_alive(id)) return;
 
@@ -113,14 +113,14 @@ public TaskCapAmmo(id)
     new active_wpn = get_user_weapon(id);
     new bool:capped = false;
 
-    for (new i = 0; i < num; i++) 
+    for (new i = 0; i < num; i++)
     {
         new wpn_id = weapons[i];
         if (wpn_id >= sizeof(g_MaxClip) || g_MaxClip[wpn_id] <= 0) continue;
 
         new limit = GetDynamicLimit(wpn_id, active_wpn, max_mags);
-        
-        if (cs_get_user_bpammo(id, wpn_id) > limit) 
+
+        if (cs_get_user_bpammo(id, wpn_id) > limit)
         {
             cs_set_user_bpammo(id, wpn_id, limit);
             capped = true;
@@ -130,10 +130,10 @@ public TaskCapAmmo(id)
     if (capped) DisplayLimitMessage(id, max_mags);
 }
 
-DisplayLimitMessage(id, max_mags) 
+DisplayLimitMessage(id, max_mags)
 {
     new Float:cur_time = get_gametime();
-    if (cur_time - g_LastMsgTime[id] > 2.0) 
+    if (cur_time - g_LastMsgTime[id] > 2.0)
     {
         client_print(id, print_center, "Ammo limit reached (%d mag%s max)", max_mags, max_mags == 1 ? "" : "s");
         g_LastMsgTime[id] = cur_time;
