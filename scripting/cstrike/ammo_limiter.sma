@@ -16,7 +16,7 @@ static const g_MaxClip[] =
 public plugin_init()
 {
     register_plugin("Ammo Limiter", "1.2", "SPiNX");
-    p_max_mags = register_cvar("amx_max_mags", "1");
+    p_max_mags = register_cvar("amx_max_mags", "2");
 
     register_event("AmmoX", "Event_AmmoChange", "be");
     register_event("CurWeapon", "Event_CurWeapon", "be", "1=1");
@@ -60,42 +60,42 @@ GetDynamicLimit(wpn_id, active_wpn, max_mags)
 {
     new base_clip = g_MaxClip[wpn_id];
 
-    // Shared .45 ACP Pool: USP, UMP45, MAC-10
-    if (wpn_id == 16 || wpn_id == 12 || wpn_id == 7)
-    {
-        if (active_wpn == 16 || active_wpn == 12 || active_wpn == 7)
-            base_clip = g_MaxClip[active_wpn];
-    }
-    // Shared 5.7mm Pool: Five-SeveN, P90
-    else if (wpn_id == 11 || wpn_id == 30)
-    {
-        if (active_wpn == 11 || active_wpn == 30)
-            base_clip = g_MaxClip[active_wpn];
-    }
-    // Shared 9mm Pool: Glock, MP5, TMP, Elite
-    else if (wpn_id == 17 || wpn_id == 19 || wpn_id == 23 || wpn_id == 10)
-    {
-        if (active_wpn == 17 || active_wpn == 19 || active_wpn == 23 || active_wpn == 10)
-            base_clip = g_MaxClip[active_wpn];
-    }
-    // Shared 7.62mm Pool: AK-47, Scout, G3SG1
-    else if (wpn_id == 28 || wpn_id == 3 || wpn_id == 24)
-    {
-        if (active_wpn == 28 || active_wpn == 3 || active_wpn == 24)
-            base_clip = g_MaxClip[active_wpn];
-    }
-    // Shared 5.56mm Pool: M249, M4A1, Galil, etc.
-    else if (wpn_id == 20 || wpn_id == 22 || wpn_id == 14 || wpn_id == 15 || wpn_id == 8 || wpn_id == 27 || wpn_id == 13)
-    {
-        if (wpn_id == 20 || active_wpn == 20) // Always prioritize M249's 100 round box
-            base_clip = g_MaxClip[active_wpn];
-    }
+    if ((wpn_id == 16 || wpn_id == 12 || wpn_id == 7) && (active_wpn == 16 || active_wpn == 12 || active_wpn == 7))
+        base_clip = g_MaxClip[active_wpn];
+
+    else if ((wpn_id == 11 || wpn_id == 30) && (active_wpn == 11 || active_wpn == 30))
+        base_clip = g_MaxClip[active_wpn];
+
+    else if ((wpn_id == 17 || wpn_id == 19 || wpn_id == 23 || wpn_id == 10) && (active_wpn == 17 || active_wpn == 19 || active_wpn == 23 || active_wpn == 10))
+        base_clip = g_MaxClip[active_wpn];
+
+    else if ((wpn_id == 28 || wpn_id == 3 || wpn_id == 24) && (active_wpn == 28 || active_wpn == 3 || active_wpn == 24))
+        base_clip = g_MaxClip[active_wpn];
+
+    else if ((wpn_id == 20 || wpn_id == 22 || wpn_id == 14 || wpn_id == 15 || wpn_id == 8 || wpn_id == 27 || wpn_id == 13) &&
+             (active_wpn == 20 || active_wpn == 22 || active_wpn == 14 || active_wpn == 15 || active_wpn == 8 || active_wpn == 27 || active_wpn == 13))
+        base_clip = g_MaxClip[active_wpn];
 
     return base_clip * max_mags;
 }
 
 public Event_CurWeapon(id)
 {
+    if (!is_user_alive(id)) return;
+
+    new active_wpn = get_user_weapon(id);
+    new max_mags = get_pcvar_num(p_max_mags);
+    new current_bp = cs_get_user_bpammo(id, active_wpn);
+    new target_limit = g_MaxClip[active_wpn] * max_mags;
+
+    // AUTO-RESTORE: If the player switches to a weapon that SHOULD have more ammo
+    // than the current backpack (because it was previously shrunk by a pistol),
+    // we give them the missing rounds back.
+    if (current_bp < target_limit)
+    {
+        cs_set_user_bpammo(id, active_wpn, target_limit);
+    }
+
     TaskCapAmmo(id);
 }
 
