@@ -6,7 +6,7 @@
 #include <hamsandwich>
 
 #define PLUGIN "Tactical Reload: Tension & Tradeoffs"
-#define VERSION "1.4"
+#define VERSION "1.5"
 #define AUTHOR "SPiNX"
 
 #define MAX_PLAYERS 32
@@ -148,33 +148,37 @@ force_emergency_reload(id, iEnt)
     {
         static iWeaponID, iClip, iBpAmmo;
         iWeaponID = cs_get_weapon_id(iEnt);
+
         if(!is_gun(iWeaponID))
             return;
+
         iClip = cs_get_weapon_ammo(iEnt);
         iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
 
         if(iClip > 0 && iBpAmmo > 0)
         {
-            static iWeaponID, iBpAmmo;
-            iWeaponID = cs_get_weapon_id(iEnt);
-            iBpAmmo = cs_get_user_bpammo(id, iWeaponID);
+            static iMag; iMag = get_max_clip(iWeaponID);
 
-            static iMag; iMag = get_max_clip(iWeaponID)
-            static iPouch; iPouch = floatround((iBpAmmo/iMag*1.0), .method=floatround_floor) //v1.1 bugfix
+            // FIX: Prevent division by zero if get_max_clip returns 0
+            if(iMag <= 0) return;
+
+            static iPouch; iPouch = floatround((iBpAmmo/iMag*1.0), .method=floatround_floor);
+
             cs_set_weapon_ammo(iEnt, 0);
-            if(iPouch>1)
+
+            if(iPouch > 1)
             {
-                cs_set_user_bpammo(id, iWeaponID, iPouch*iMag);
+                cs_set_user_bpammo(id, iWeaponID, iPouch * iMag);
                 spawn_mag_drop(id);
-                client_print(id, print_center, "EMERGENCY RELOAD: Mag Dropped!^n%i Magazines remaining.", iPouch--);
+                client_print(id, print_center, "EMERGENCY RELOAD: Mag Dropped!^n%i Magazines remaining.", iPouch - 1);
 
                 set_pdata_float(iEnt, m_flNextPrimaryAttack, 0.0, OFFSET_LINUX_WEAPONS);
                 ExecuteHamB(Ham_Weapon_Reload, iEnt);
             }
             else
             {
-                client_cmd id, "spk ^"fvox/blip^""
-                client_print id, print_center, "Need to find more magazines!"
+                client_cmd(id, "spk ^"fvox/blip^"");
+                client_print(id, print_center, "Need to find more magazines!");
             }
         }
     }
