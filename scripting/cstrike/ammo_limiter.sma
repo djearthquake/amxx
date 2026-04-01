@@ -5,6 +5,13 @@
     #define MAX_PLAYERS 32
 #endif
 
+// Weapon IDs to skip (Items without traditional backpack ammo)
+#define CSW_KNIFE    29
+#define CSW_C4       6
+#define CSW_HEGREN   4
+#define CSW_SMOKEGREN 9
+#define CSW_FLASHBANG 25
+
 new p_max_mags;
 new Float:g_LastMsgTime[MAX_PLAYERS + 1];
 
@@ -22,7 +29,7 @@ static const g_WeaponToAmmoPool[] =
 
 public plugin_init()
 {
-    register_plugin("Ammo Limiter", "1.2", "SPiNX");
+    register_plugin("Ammo Limiter", "1.4", "SPiNX");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
     register_event("AmmoX", "Event_AmmoChange", "be");
@@ -45,14 +52,15 @@ public Cmd_BlockBuyAmmo(id)
 
 bool:IsAtAmmoLimit(id)
 {
-    new weapons[MAX_PLAYERS], num;
-    get_user_weapons(id, weapons, num);
-
     new active_wpn = get_user_weapon(id);
-    if (active_wpn <= 0 || active_wpn >= 31)
+
+    if (!IsValidAmmoWeapon(active_wpn))
     {
         return false;
     }
+
+    new weapons[32], num;
+    get_user_weapons(id, weapons, num);
 
     new current_bp = cs_get_user_bpammo(id, active_wpn);
     new limit = GetHighestOwnedLimit(active_wpn, weapons, num);
@@ -60,7 +68,17 @@ bool:IsAtAmmoLimit(id)
     return (current_bp >= limit);
 }
 
-// Finds the largest magazine size for the ammo pool among ALL held weapons
+// Centralized check to skip Knife, C4, and Grenades
+bool:IsValidAmmoWeapon(wpn_id)
+{
+    if (wpn_id <= 0 || wpn_id >= 31) return false;
+    if (wpn_id == CSW_KNIFE || wpn_id == CSW_C4) return false;
+    if (wpn_id == CSW_HEGREN || wpn_id == CSW_SMOKEGREN || wpn_id == CSW_FLASHBANG) return false;
+    if (g_MaxClip[wpn_id] <= 0) return false;
+
+    return true;
+}
+
 GetHighestOwnedLimit(wpn_id, weapons[], num)
 {
     new pool_id = g_WeaponToAmmoPool[wpn_id];
@@ -74,8 +92,7 @@ GetHighestOwnedLimit(wpn_id, weapons[], num)
     for (new i = 0; i < num; i++)
     {
         new w = weapons[i];
-        // If this held weapon is in the same pool and has a larger mag, use it for the limit
-        if (g_WeaponToAmmoPool[w] == pool_id && g_MaxClip[w] > highest_clip)
+        if (IsValidAmmoWeapon(w) && g_WeaponToAmmoPool[w] == pool_id && g_MaxClip[w] > highest_clip)
         {
             highest_clip = g_MaxClip[w];
         }
@@ -91,21 +108,17 @@ public Event_AmmoChange(id)
 
 public TaskEnforceLimit(id)
 {
-    if (!is_user_alive(id))
-    {
-        return;
-    }
+    if (!is_user_alive(id)) return;
 
-    new weapons[MAX_PLAYERS], num;
+    new weapons[32], num;
     get_user_weapons(id, weapons, num);
 
     for (new i = 0; i < num; i++)
     {
         new wpn_id = weapons[i];
-        if (wpn_id <= 0 || wpn_id >= 31 || g_MaxClip[wpn_id] <= 0)
-        {
+
+        if (!IsValidAmmoWeapon(wpn_id))
             continue;
-        }
 
         new current_bp = cs_get_user_bpammo(id, wpn_id);
         new limit = GetHighestOwnedLimit(wpn_id, weapons, num);
