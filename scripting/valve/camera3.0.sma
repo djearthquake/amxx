@@ -1,94 +1,123 @@
 #include <amxmodx>
-#include <amxmisc>
 #include <engine>
-//#include <hamsandwich>
+#include <hamsandwich>
 
-#define MAX_PLAYERS 32
+#define PLUGIN "Camera Changer"
+#define VERSION "3.7"
+#define AUTHOR "SPiNX"
 
-#if !defined client_disconnected
-#define client_disconnected client_disconnect
+#if !defined CAMERA_UPLEFT
+    #define CAMERA_UPLEFT 3
 #endif
+
+new g_IsBot;
+new g_IsConnected;
+
+#define set_bit(%1,%2)      (%1 |= (1<<(%2 & 31)))
+#define clear_bit(%1,%2)    (%1 &= ~(1<<(%2 & 31)))
+#define get_bit(%1,%2)      (%1 & (1<<(%2 & 31)))
+
+public plugin_precache()
+{
+    precache_model("models/rpgrocket.mdl");
+}
 
 public plugin_init()
 {
-    register_plugin("Camera Changer", "3.0", "XunTric|SPiNX");
-    register_menucmd(register_menuid("Choose Camera View"), 1023, "setview");
-    //RegisterHam(Ham_Spawn, "player", "client_spawn", 1);
-    register_event_ex( "ResetHUD" , "client_spawn", RegisterEventFlags: RegisterEvent_Single)
-    register_clcmd("say /cam", "chooseview", 0, "- displays camera menu");
-    register_clcmd("say_team /cam", "chooseview", 0, "- displays camera menu");
-    register_think("player","Fn_3rd_Person");
+    register_plugin(PLUGIN, VERSION, AUTHOR);
+
+    register_clcmd("say /cam", "cmdMenu");
+    register_clcmd("say_team /cam", "cmdMenu");
+
+    RegisterHam(Ham_Spawn, "player", "fw_PlayerSpawn_Post", 1);
+    RegisterHam(Ham_Killed, "player", "fw_PlayerKilled_Post", 1);
+
+    register_menucmd(register_menuid("CamMenu"), 1023, "handleMenu");
+}
+
+public client_putinserver(id)
+{
+    set_bit(g_IsConnected, id);
+
+    if (is_user_bot(id) || is_user_hltv(id))
+    {
+        set_bit(g_IsBot, id);
+    }
+    else
+    {
+        clear_bit(g_IsBot, id);
+    }
 }
 
 public client_disconnected(id)
 {
-    if(task_exists(id))
-        remove_task(id);
+    clear_bit(g_IsConnected, id);
+    clear_bit(g_IsBot, id);
 }
 
-public client_spawn(id)
+public fw_PlayerSpawn_Post(id)
 {
-    if(is_user_bot(id) || is_user_hltv(id) )
-        return PLUGIN_HANDLED_MAIN;
-
-    if(is_user_connected(id) && is_user_alive(id) )
+    if (get_bit(g_IsBot, id) || !is_user_alive(id))
     {
-        set_view(id, CAMERA_NONE);
-        console_cmd(id, "default_fov 100");
+        return;
     }
 
-    return PLUGIN_CONTINUE;
+    set_view(id, CAMERA_NONE);
+    client_cmd(id, "default_fov 100");
 }
 
-public Fn_3rd_Person(id)
+public fw_PlayerKilled_Post(id)
 {
-    if(is_user_bot(id) || is_user_hltv(id) )
-        return PLUGIN_HANDLED_MAIN;
+    set_view(id, CAMERA_NONE);
+}
 
-    if(is_user_connected(id) && !is_user_alive(id) )
+public cmdMenu(id)
+{
+    if (get_bit(g_IsBot, id))
+    {
+        return PLUGIN_HANDLED;
+    }
 
+    static menu[256];
+    static len;
+    len = 0;
+
+    len += formatex(menu[len], charsmax(menu) - len, "\yCamera View^n^n");
+    len += formatex(menu[len], charsmax(menu) - len, "\r1. \w3rd Person^n");
+    len += formatex(menu[len], charsmax(menu) - len, "\r2. \wTop-Down^n");
+    len += formatex(menu[len], charsmax(menu) - len, "\r3. \wTop-Left (Isometric)^n");
+    len += formatex(menu[len], charsmax(menu) - len, "\r4. \wNormal View^n^n");
+    len += formatex(menu[len], charsmax(menu) - len, "\r0. \wExit");
+
+    show_menu(id, (1<<0)|(1<<1)|(1<<2)|(1<<3)|(1<<9), menu, -1, "CamMenu");
+    return PLUGIN_HANDLED;
+}
+
+public handleMenu(id, key)
+{
+    if (!is_user_alive(id))
+    {
+        return PLUGIN_HANDLED;
+    }
+
+    switch (key)
+    {
+        case 0:
+        {
+            set_view(id, CAMERA_3RDPERSON);
+        }
+        case 1:
+        {
+            set_view(id, CAMERA_TOPDOWN);
+        }
+        case 2:
+        {
+            set_view(id, CAMERA_UPLEFT);
+        }
+        case 3:
         {
             set_view(id, CAMERA_NONE);
-            console_cmd(id, "default_fov 100");
         }
-
-    return PLUGIN_CONTINUE;
-
-}
-
-public plugin_precache()
-{
-    #if AMXX_VERSION_NUM == 182
-    precache_model("models/rpgrocket.mdl");
-    #endif
-}
-
-public chooseview(id)
-{
-    new menu[192]
-    new keys = MENU_KEY_0|MENU_KEY_1|MENU_KEY_2|MENU_KEY_3
-    format(menu, charsmax(menu), "Choose Camera View^n^n1. 3rd Person View^n2. Upside View^n3. Normal View^n^n0. Exit")
-    show_menu(id, keys, menu)
-    return PLUGIN_CONTINUE
-}
-
-public setview(id, key, menu)
-{
-    if(key == 0) {
-         set_view(id, CAMERA_3RDPERSON)
-         return PLUGIN_HANDLED
     }
-
-    if(key == 1) {
-         set_view(id, CAMERA_TOPDOWN)
-         return PLUGIN_HANDLED
-    }
-
-    if(key == 2) {
-         set_view(id, CAMERA_NONE)
-         return PLUGIN_HANDLED
-    }
-
-    return PLUGIN_CONTINUE
-
+    return PLUGIN_HANDLED;
 }
