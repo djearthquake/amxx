@@ -4,8 +4,8 @@
 #include <fun>
 #include <fakemeta>
 
-#define PLUGIN "Last Man Standing Op4 Pro"
-#define VERSION "46.0"
+#define PLUGIN "Last Man Standing Op4"
+#define VERSION "0.2"
 #define AUTHOR "SPiNX"
 
 #define TASK_STATUS 888
@@ -13,10 +13,21 @@
 #define WINNERS_FILE "lms_winners.txt"
 
 public g_bLmsActive = 0;
-new bool:g_bHasDied[MAX_PLAYERS +1];
-new g_iPlayerHud[MAX_PLAYERS +1];
+new bool:g_bHasDied[33];
+new g_iPlayerHud[33];
 new g_iVotesYes, g_iVotesNo, g_iRoundTime, g_sModelIndexBeam;
 new bool:g_bDuelStarted = false;
+
+// --- OPFOR HELPER: BOTS ARE PLAYERS, SPECS ARE NOT ---
+stock bool:is_user_participant(id)
+{
+    if (!is_user_connected(id) || is_user_hltv(id)) return false;
+
+    // Skip anyone with the Engine Spectator Flag (God-Tier Spec)
+    if (pev(id, pev_flags) & FL_SPECTATOR) return false;
+
+    return true;
+}
 
 public plugin_precache()
 {
@@ -30,7 +41,6 @@ public plugin_init()
     RegisterHam(Ham_Killed, "player", "fw_PlayerKilled_Post", 1);
     RegisterHam(Ham_Spawn, "player", "fw_PlayerSpawn_Pre", 0);
 
-    /* Properly registered for amx_help visibility */
     register_clcmd("say /winners", "cmd_ShowWinners", ADMIN_ALL, "- Displays the LMS Hall of Fame");
     register_clcmd("say /vote_lms", "cmd_CallVote", ADMIN_ALL, "- Starts a vote to enable LMS mode");
     register_clcmd("say /lms", "cmd_LmsMenu", ADMIN_ALL, "- Opens the LMS configuration menu");
@@ -40,11 +50,9 @@ public plugin_init()
 
 public client_putinserver(id)
 {
-    g_iPlayerHud[id] = 1; /* Default to HUD ON */
+    g_iPlayerHud[id] = 1;
     g_bHasDied[id] = false;
 }
-
-// --- HUD & CENTER PRINT FALLBACK ---
 
 public task_DisplayStatus()
 {
@@ -52,14 +60,18 @@ public task_DisplayStatus()
 
     g_iRoundTime++;
 
-    static szAlive[512], szDead[512], szName[MAX_PLAYERS];
-    new iPlayers[MAX_PLAYERS], iNum, id, iTarget, iAliveCount = 0;
+    static szAlive[512], szDead[512], szName[32];
+    new iPlayers[32], iNum, id, iTarget, iAliveCount = 0;
     szAlive[0] = 0; szDead[0] = 0;
 
-    get_players(iPlayers, iNum);
+    // Flag "h" = include bots. No "c" flag used here.
+    get_players(iPlayers, iNum, "h");
     for (new i = 0; i < iNum; i++)
     {
         iTarget = iPlayers[i];
+
+        if (!is_user_participant(iTarget)) continue;
+
         get_user_name(iTarget, szName, charsmax(szName));
         if (is_user_alive(iTarget))
         {
@@ -75,11 +87,10 @@ public task_DisplayStatus()
     for (new i = 0; i < iNum; i++)
     {
         id = iPlayers[i];
-        if (is_user_bot(id)) continue;
+        if (is_user_bot(id) || !is_user_participant(id)) continue;
 
         if (g_iPlayerHud[id])
         {
-            /* Full HUD Display */
             set_hudmessage(0, 255, 0, 0.75, 0.15, 0, 0.0, 1.1, 0.1, 0.1, 1);
             show_hudmessage(id, "LMS ROUND [%d:%02d]^n^nALIVE:^n%s", g_iRoundTime / 60, g_iRoundTime % 60, szAlive);
 
@@ -88,17 +99,14 @@ public task_DisplayStatus()
         }
         else
         {
-            /* HUD is OFF: Fallback to Center Print */
             client_print(id, print_center, "LMS ACTIVE | Time: %d:%02d | Survivors: %d", g_iRoundTime / 60, g_iRoundTime % 60, iAliveCount);
         }
     }
 }
 
-// --- DUEL LOGIC ---
-
 public fw_PlayerKilled_Post(victim, attacker, shouldgib)
 {
-    if (g_bLmsActive) 
+    if (g_bLmsActive && is_user_participant(victim))
     {
         g_bHasDied[victim] = true;
         check_last_man();
@@ -107,23 +115,34 @@ public fw_PlayerKilled_Post(victim, attacker, shouldgib)
 
 public check_last_man()
 {
-    new iPlayers[MAX_PLAYERS], iNum;
+    new iPlayers[32], iNum, iAlive[32], iAliveCount = 0;
+
+    // Flag "a" includes alive bots
     get_players(iPlayers, iNum, "a");
 
-    if (iNum == 2 && !g_bDuelStarted)
+    for(new i = 0; i < iNum; i++)
+    {
+        if(is_user_participant(iPlayers[i]))
+        {
+            iAlive[iAliveCount] = iPlayers[i];
+            iAliveCount++;
+        }
+    }
+
+    if (iAliveCount == 2 && !g_bDuelStarted)
     {
         g_bDuelStarted = true;
         set_task(0.1, "task_ShowBeams", TASK_BEAMS, _, _, "b");
         client_print(0, print_center, "FINAL SHOWDOWN!");
     }
 
-    if (iNum == 1) declare_winner(iPlayers[0]);
-    else if (iNum == 0 && g_bLmsActive) force_lms_end();
+    if (iAliveCount == 1) declare_winner(iAlive[0]);
+    else if (iAliveCount == 0 && g_bLmsActive) force_lms_end();
 }
 
 public declare_winner(id)
 {
-    new szName[MAX_PLAYERS], szMap[MAX_PLAYERS], szTime[MAX_PLAYERS], szPath[128], szLog[256];
+    new szName[32], szMap[32], szTime[32], szPath[128], szLog[256];
     get_user_name(id, szName, charsmax(szName));
     get_mapname(szMap, charsmax(szMap));
     get_time("%Y-%m-%d %H:%M", szTime, charsmax(szTime));
@@ -145,7 +164,7 @@ public force_lms_end()
     g_bDuelStarted = false;
     g_iRoundTime = 0;
 
-    new iPlayers[MAX_PLAYERS], iNum;
+    new iPlayers[32], iNum;
     get_players(iPlayers, iNum);
     for (new i = 0; i < iNum; i++) g_bHasDied[iPlayers[i]] = false;
 
@@ -154,25 +173,32 @@ public force_lms_end()
 
 public fw_PlayerSpawn_Pre(id)
 {
-    if (g_bLmsActive && g_bHasDied[id]) return HAM_SUPERCEDE;
+    if (g_bLmsActive && is_user_participant(id) && g_bHasDied[id]) return HAM_SUPERCEDE;
     g_bHasDied[id] = false;
     return HAM_IGNORED;
 }
-
-// --- BEAMS & VOTING ---
 
 public task_ShowBeams()
 {
     if (!g_bLmsActive) return;
 
-    new iPlayers[MAX_PLAYERS], iNum;
+    new iPlayers[32], iNum, iAlive[2], iAliveCount = 0;
     get_players(iPlayers, iNum, "a");
 
-    if (iNum == 2)
+    for(new i = 0; i < iNum; i++)
+    {
+        if(is_user_participant(iPlayers[i]))
+        {
+            if(iAliveCount < 2) iAlive[iAliveCount] = iPlayers[i];
+            iAliveCount++;
+        }
+    }
+
+    if (iAliveCount == 2)
     {
         new Float:v1[3], Float:v2[3];
-        pev(iPlayers[0], pev_origin, v1);
-        pev(iPlayers[1], pev_origin, v2);
+        pev(iAlive[0], pev_origin, v1);
+        pev(iAlive[1], pev_origin, v2);
 
         new Float:fDist = get_distance_f(v1, v2);
         new r, g, b;
@@ -198,8 +224,13 @@ public cmd_CallVote(id)
     new menu = menu_create("\yStart Last Man Standing?", "menu_VoteHandler");
     menu_additem(menu, "Yes", "1"); menu_additem(menu, "No", "2");
     g_iVotesYes = 0; g_iVotesNo = 0;
-    new iPlayers[MAX_PLAYERS], iNum; get_players(iPlayers, iNum);
-    for (new i = 0; i < iNum; i++) menu_display(iPlayers[i], menu, 0);
+
+    new iPlayers[32], iNum; get_players(iPlayers, iNum, "h");
+    for (new i = 0; i < iNum; i++)
+    {
+        if (is_user_participant(iPlayers[i]) && !is_user_bot(iPlayers[i]))
+            menu_display(iPlayers[i], menu, 0);
+    }
     set_task(10.0, "task_FinishVote");
     return PLUGIN_HANDLED;
 }
@@ -219,8 +250,6 @@ public task_FinishVote()
         server_cmd("sv_restart 3");
     }
 }
-
-// --- MENUS ---
 
 public cmd_LmsMenu(id)
 {
