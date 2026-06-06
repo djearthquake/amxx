@@ -25,7 +25,7 @@ static const g_WeaponToAmmoPool[] =
 
 public plugin_init()
 {
-    register_plugin("Ammo Limiter", "2.0.7", "SPiNX / Dynamic Pool Fixed");
+    register_plugin("Ammo Limiter", "2.0.8", "SPiNX / Global Pool Fix");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
     register_event("AmmoX", "Event_AmmoChange", "be");
@@ -60,7 +60,7 @@ bool:IsValidAmmoWeapon(wpn_id)
     return false;
 }
 
-// FIXED LOGIC: Checks all player-owned weapons in a pool and matches the highest capacity clip.
+// FIXED PERMANENTLY: Evaluates the maximum baseline capacity of the pool globally during purchases
 GetHighestPoolLimit(id, wpn_id)
 {
     new pool_id = g_WeaponToAmmoPool[wpn_id];
@@ -83,7 +83,6 @@ GetHighestPoolLimit(id, wpn_id)
         if (IsValidAmmoWeapon(w) && g_WeaponToAmmoPool[w] == pool_id)
         {
             has_matching_weapon = true;
-            // Evaluates the physical weapon clip sizes owned to pull the largest value (e.g., Colt's 30 vs Clarion's 25)
             if (g_MaxClip[w] > user_highest)
             {
                 user_highest = g_MaxClip[w];
@@ -91,9 +90,25 @@ GetHighestPoolLimit(id, wpn_id)
         }
     }
 
+    // If they own a weapon in this pool, use their held maximum.
     if (has_matching_weapon)
     {
         highest_clip = user_highest;
+    }
+    else
+    {
+        // CRITICAL FIX: If they are hands-free buying via a macro and don't register as holding the weapon yet,
+        // scan the game database globally for the absolute highest clip size available in that shared pool.
+        for (new w = 1; w < sizeof(g_MaxClip); w++)
+        {
+            if (IsValidAmmoWeapon(w) && g_WeaponToAmmoPool[w] == pool_id)
+            {
+                if (g_MaxClip[w] > highest_clip)
+                {
+                    highest_clip = g_MaxClip[w];
+                }
+            }
+        }
     }
 
     return highest_clip * get_pcvar_num(p_max_mags);
