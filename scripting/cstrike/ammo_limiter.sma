@@ -39,7 +39,7 @@ static const g_MaxClip[] =
     30, // MP5Navy
     100,// M249
     8,  // M3
-    30, // M4A1
+    30, // M4A1 (Colt)
     30, // TMP
     0,  // Flashbang
     7,  // Deagle
@@ -62,7 +62,7 @@ static const g_WeaponClassnames[][] =
 
 public plugin_init()
 {
-    register_plugin("Proactive Ammo Limiter", "3.1.0", "SPiNX");
+    register_plugin("Proactive Ammo Limiter", "3.1.1", "SPiNX");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
     // Cleanly loop through the array to hook weapon deployment/switching
@@ -140,7 +140,8 @@ GetWeaponStaticLimit(wpn_id)
         case CSW_KNIFE, CSW_C4, CSW_HEGREN, CSW_SMOKEGREN, CSW_FLASHBANG: return 0;
         case CSW_USP: return 24;      
         case CSW_UMP45: return 50;    
-        case CSW_FAMAS: return 50;    
+        case CSW_FAMAS: return 50;
+        case CSW_M4A1: return 60;     // Explicit hardcoded protection for Colt M4A1 (30 * 2)
     }
     
     return g_MaxClip[wpn_id] * get_pcvar_num(p_max_mags);
