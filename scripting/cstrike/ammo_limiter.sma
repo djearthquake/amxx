@@ -49,36 +49,27 @@ static const g_MaxClip[] =
     50  // P90
 };
 
+// Array of weapon classnames that require deployment checking
+static const g_WeaponClassnames[][] = 
+{
+    "weapon_p228", "weapon_scout", "weapon_xm1014", "weapon_mac10", 
+    "weapon_aug", "weapon_elite", "weapon_fiveseven", "weapon_g3sg1", 
+    "weapon_ump45", "weapon_sg550", "weapon_galil", "weapon_famas", 
+    "weapon_usp", "weapon_glock18", "weapon_awp", "weapon_mp5navy", 
+    "weapon_m249", "weapon_m3", "weapon_m4a1", "weapon_tmp", 
+    "weapon_deagle", "weapon_sg552", "weapon_ak47", "weapon_p90"
+};
+
 public plugin_init()
 {
-    register_plugin("Proactive Ammo Limiter", "3.0.1", "SPiNX");
+    register_plugin("Proactive Ammo Limiter", "3.1.0", "SPiNX");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
-    // Hook weapon deployment/switching directly via HamSandwich
-    RegisterHam(Ham_Item_Deploy, "weapon_p228", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_scout", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_xm1014", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_mac10", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_aug", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_elite", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_fiveseven", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_g3sg1", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_ump45", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_sg550", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_galil", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_famas", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_usp", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_glock18", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_awp", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_mp5navy", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_m249", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_m3", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_m4a1", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_tmp", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_deagle", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_sg552", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_ak47", "DynamicWeaponCheck", 1);
-    RegisterHam(Ham_Item_Deploy, "weapon_p90", "DynamicWeaponCheck", 1);
+    // Cleanly loop through the array to hook weapon deployment/switching
+    for (new i = 0; i < sizeof(g_WeaponClassnames); i++)
+    {
+        RegisterHam(Ham_Item_Deploy, g_WeaponClassnames[i], "DynamicWeaponCheck", 1);
+    }
 
     // Engine fallback for ammo modifications
     register_event("AmmoX", "Event_AmmoChange", "be");
@@ -127,7 +118,7 @@ public DynamicWeaponCheck(const weapon_ent)
     if (!pev_valid(weapon_ent))
         return;
 
-    new id = get_pdata_cbase(weapon_ent, 41, 4); // Fixed: Requires fakemeta/hamsandwich offsets
+    new id = get_pdata_cbase(weapon_ent, 41, 4); 
     if (is_user_alive(id))
     {
         EnforceActiveLimit(id);
