@@ -17,8 +17,7 @@ static const g_MaxClip[] =
     0, 13, 0, 10, 0, 7, 0, 30, 30, 0, 30, 20, 25, 30, 35, 25, 12, 20, 10, 30, 100, 8, 30, 30, 20, 0, 7, 30, 30, 0, 50
 };
 
-// FIXED: Corrected mapping of shared ammo pools to resolve Primary/Secondary mix-ups.
-// Index 22 (TMP) now correctly shares Pool 9 with Glock (Index 17) and MP5 (Index 19).
+// Maps every weapon to its shared Ammo Pool Index (0-14)
 static const g_WeaponToAmmoPool[] =
 {
     -1, 9, -1, 2, 12, 5, 14, 6, 4, 13, 9, 7, 6, 4, 4, 4, 6, 9, 1, 9, 3, 5, 4, 9, 2, 11, 8, 4, 2, -1, 7
@@ -26,12 +25,12 @@ static const g_WeaponToAmmoPool[] =
 
 public plugin_init()
 {
-    register_plugin("Ammo Limiter", "2.0.6", "SPiNX");
+    register_plugin("Ammo Limiter", "2.0.7", "SPiNX / Dynamic Pool Fixed");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
     register_event("AmmoX", "Event_AmmoChange", "be");
 
-    // Hook all native buy inputs to fix single-tap spacebar macro executions
+    // Hook all native buy inputs to process instant single-tap spacebar macros
     register_clcmd("buyammo1", "CmdBuyAmmo")
     register_clcmd("buyammo2", "CmdBuyAmmo")
     register_clcmd("cl_buyammo", "CmdBuyAmmo")
@@ -61,8 +60,7 @@ bool:IsValidAmmoWeapon(wpn_id)
     return false;
 }
 
-// Calculates dynamic caps based strictly on matching weapon assets you own.
-// If buying hands-free, it falls back flawlessly to that exact weapon ID's native cap.
+// FIXED LOGIC: Checks all player-owned weapons in a pool and matches the highest capacity clip.
 GetHighestPoolLimit(id, wpn_id)
 {
     new pool_id = g_WeaponToAmmoPool[wpn_id];
@@ -85,6 +83,7 @@ GetHighestPoolLimit(id, wpn_id)
         if (IsValidAmmoWeapon(w) && g_WeaponToAmmoPool[w] == pool_id)
         {
             has_matching_weapon = true;
+            // Evaluates the physical weapon clip sizes owned to pull the largest value (e.g., Colt's 30 vs Clarion's 25)
             if (g_MaxClip[w] > user_highest)
             {
                 user_highest = g_MaxClip[w];
