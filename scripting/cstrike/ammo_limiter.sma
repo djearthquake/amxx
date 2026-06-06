@@ -17,25 +17,38 @@ static const g_MaxClip[] =
     0, 13, 0, 10, 0, 7, 0, 30, 30, 0, 30, 20, 25, 30, 35, 25, 12, 20, 10, 30, 100, 8, 30, 30, 20, 0, 7, 30, 30, 0, 50
 };
 
-// Maps every weapon to its shared Ammo Pool Index (0-14)
-static const g_WeaponToAmmoPool[] =
-{
-    -1, 9, -1, 2, 12, 5, 14, 6, 4, 13, 9, 7, 6, 4, 4, 4, 6, 9, 1, 9, 3, 5, 4, 9, 2, 11, 8, 4, 2, -1, 7
-};
-
 public plugin_init()
 {
-    register_plugin("Ammo Limiter", "2.0.8", "SPiNX / Global Pool Fix");
+    register_plugin("Ammo Limiter", "2.1.0", "SPiNX / Command Intercept");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
     register_event("AmmoX", "Event_AmmoChange", "be");
 
-    // Hook all native buy inputs to process instant single-tap spacebar macros
+    // Hook standard buy commands
     register_clcmd("buyammo1", "CmdBuyAmmo")
     register_clcmd("buyammo2", "CmdBuyAmmo")
     register_clcmd("cl_buyammo", "CmdBuyAmmo")
-    register_clcmd("primammo", "CmdBuyAmmo")
-    register_clcmd("secammo", "CmdBuyAmmo")
+}
+
+// INTERCEPT ENGINE COMMANDS: Catches macro strings directly from the player console
+public client_command(id)
+{
+    if (!is_user_alive(id))
+    {
+        return PLUGIN_CONTINUE;
+    }
+
+    static cmd[32];
+    read_argv(0, cmd, charsmax(cmd));
+
+    // If the spacebar macro sends "secammo" or "primammo", instantly trigger our top-off
+    if (equal(cmd, "secammo") || equal(cmd, "primammo"))
+    {
+        ForceFillAllWeapons(id);
+        return PLUGIN_HANDLED; // Block the engine from rejecting the unheld weapon command
+    }
+
+    return PLUGIN_CONTINUE;
 }
 
 bool:IsValidAmmoWeapon(wpn_id)
@@ -60,58 +73,13 @@ bool:IsValidAmmoWeapon(wpn_id)
     return false;
 }
 
-// FIXED PERMANENTLY: Evaluates the maximum baseline capacity of the pool globally during purchases
-GetHighestPoolLimit(id, wpn_id)
+GetWeaponStaticLimit(wpn_id)
 {
-    new pool_id = g_WeaponToAmmoPool[wpn_id];
-    new highest_clip = g_MaxClip[wpn_id];
-
-    if (pool_id == -1)
+    if (!IsValidAmmoWeapon(wpn_id))
     {
-        return highest_clip * get_pcvar_num(p_max_mags);
+        return 0;
     }
-
-    static weapons[MAX_PLAYERS], num;
-    get_user_weapons(id, weapons, num);
-
-    new bool:has_matching_weapon = false;
-    new user_highest = 0;
-
-    for (new i = 0; i < num; i++)
-    {
-        new w = weapons[i];
-        if (IsValidAmmoWeapon(w) && g_WeaponToAmmoPool[w] == pool_id)
-        {
-            has_matching_weapon = true;
-            if (g_MaxClip[w] > user_highest)
-            {
-                user_highest = g_MaxClip[w];
-            }
-        }
-    }
-
-    // If they own a weapon in this pool, use their held maximum.
-    if (has_matching_weapon)
-    {
-        highest_clip = user_highest;
-    }
-    else
-    {
-        // CRITICAL FIX: If they are hands-free buying via a macro and don't register as holding the weapon yet,
-        // scan the game database globally for the absolute highest clip size available in that shared pool.
-        for (new w = 1; w < sizeof(g_MaxClip); w++)
-        {
-            if (IsValidAmmoWeapon(w) && g_WeaponToAmmoPool[w] == pool_id)
-            {
-                if (g_MaxClip[w] > highest_clip)
-                {
-                    highest_clip = g_MaxClip[w];
-                }
-            }
-        }
-    }
-
-    return highest_clip * get_pcvar_num(p_max_mags);
+    return g_MaxClip[wpn_id] * get_pcvar_num(p_max_mags);
 }
 
 public CmdBuyAmmo(id)
@@ -132,28 +100,33 @@ public Event_AmmoChange(id)
 
 public TaskForceFill(id)
 {
+    ForceFillAllWeapons(id);
+}
+
+// Core function to safely top off holstered and held weapons
+ForceFillAllWeapons(id)
+{
     if (!is_user_alive(id))
     {
         return;
     }
 
-    static weapons[MAX_PLAYERS], num;
-    get_user_weapons(id, weapons, num);
-
-    for (new i = 0; i < num; i++)
+    for (new wpn_id = 1; wpn_id < sizeof(g_MaxClip); wpn_id++)
     {
-        new wpn_id = weapons[i];
         if (!IsValidAmmoWeapon(wpn_id))
         {
             continue;
         }
 
-        new current_bp = cs_get_user_bpammo(id, wpn_id);
-        new limit = GetHighestPoolLimit(id, wpn_id);
-
-        if (current_bp < limit)
+        if (user_has_weapon(id, wpn_id))
         {
-            cs_set_user_bpammo(id, wpn_id, limit);
+            new current_bp = cs_get_user_bpammo(id, wpn_id);
+            new limit = GetWeaponStaticLimit(wpn_id);
+
+            if (current_bp < limit)
+            {
+                cs_set_user_bpammo(id, wpn_id, limit);
+            }
         }
     }
 }
@@ -174,13 +147,16 @@ public TaskEnforceLimit(id)
             continue;
         }
 
-        new current_bp = cs_get_user_bpammo(id, wpn_id);
-        new limit = GetHighestPoolLimit(id, wpn_id);
-
-        if (current_bp > limit)
+        if (user_has_weapon(id, wpn_id))
         {
-            cs_set_user_bpammo(id, wpn_id, limit);
-            over_limit = true;
+            new current_bp = cs_get_user_bpammo(id, wpn_id);
+            new limit = GetWeaponStaticLimit(wpn_id);
+
+            if (current_bp > limit)
+            {
+                cs_set_user_bpammo(id, wpn_id, limit);
+                over_limit = true;
+            }
         }
     }
 
