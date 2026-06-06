@@ -1,93 +1,114 @@
 #include <amxmodx>
 #include <cstrike>
+#include <fakemeta>
+#include <hamsandwich>
 
-// Weapon IDs to skip (Items without traditional backpack ammo)
-#define CSW_KNIFE     29
-#define CSW_C4        6
-#define CSW_HEGREN    4
+// Weapon IDs to skip
+#define CSW_KNIFE      29
+#define CSW_C4         6
+#define CSW_HEGREN     4
 #define CSW_SMOKEGREN 9
 #define CSW_FLASHBANG 25
 
 new p_max_mags;
 new Float:g_LastMsgTime[MAX_PLAYERS + 1];
 
-// Official Individual Magazine Sizes
+// Absolute, bulletproof magazine sizes matching standard CS 1.6
 static const g_MaxClip[] =
 {
-    0, 13, 0, 10, 0, 7, 0, 30, 30, 0, 30, 20, 25, 30, 35, 25, 12, 20, 10, 30, 100, 8, 30, 30, 20, 0, 7, 30, 30, 0, 50
+    0,  // None
+    13, // P228
+    0,  // Shield
+    10, // Scout
+    0,  // HEGrenade
+    7,  // XM1014
+    0,  // C4
+    30, // Mac10
+    30, // AUG
+    0,  // SmokeGrenade
+    30, // Elite
+    20, // Fiveseven
+    20, // G3SG1
+    25, // UMP45
+    30, // SG550
+    35, // Galil
+    25, // Famas (Clarion)
+    12, // USP
+    20, // Glock18
+    10, // AWP
+    30, // MP5Navy
+    100,// M249
+    8,  // M3
+    30, // M4A1
+    30, // TMP
+    0,  // Flashbang
+    7,  // Deagle
+    30, // SG552
+    30, // AK47
+    0,  // Knife
+    50  // P90
 };
 
 public plugin_init()
 {
-    register_plugin("Ammo Limiter", "2.1.0", "SPiNX / Command Intercept");
+    register_plugin("Proactive Ammo Limiter", "3.0.1", "SPiNX");
     p_max_mags = register_cvar("amx_max_mags", "2");
 
+    // Hook weapon deployment/switching directly via HamSandwich
+    RegisterHam(Ham_Item_Deploy, "weapon_p228", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_scout", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_xm1014", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_mac10", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_aug", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_elite", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_fiveseven", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_g3sg1", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_ump45", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_sg550", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_galil", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_famas", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_usp", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_glock18", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_awp", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_mp5navy", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_m249", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_m3", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_m4a1", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_tmp", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_deagle", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_sg552", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_ak47", "DynamicWeaponCheck", 1);
+    RegisterHam(Ham_Item_Deploy, "weapon_p90", "DynamicWeaponCheck", 1);
+
+    // Engine fallback for ammo modifications
     register_event("AmmoX", "Event_AmmoChange", "be");
 
-    // Hook standard buy commands
-    register_clcmd("buyammo1", "CmdBuyAmmo")
-    register_clcmd("buyammo2", "CmdBuyAmmo")
-    register_clcmd("cl_buyammo", "CmdBuyAmmo")
+    register_clcmd("buyammo1", "CmdBuyAmmo");
+    register_clcmd("buyammo2", "CmdBuyAmmo");
+    register_clcmd("cl_buyammo", "CmdBuyAmmo");
 }
 
-// INTERCEPT ENGINE COMMANDS: Catches macro strings directly from the player console
 public client_command(id)
 {
     if (!is_user_alive(id))
-    {
         return PLUGIN_CONTINUE;
-    }
 
     static cmd[32];
     read_argv(0, cmd, charsmax(cmd));
 
-    // If the spacebar macro sends "secammo" or "primammo", instantly trigger our top-off
     if (equal(cmd, "secammo") || equal(cmd, "primammo"))
     {
-        ForceFillAllWeapons(id);
-        return PLUGIN_HANDLED; // Block the engine from rejecting the unheld weapon command
+        ForceFillActiveWeapon(id);
+        return PLUGIN_HANDLED;
     }
 
     return PLUGIN_CONTINUE;
 }
 
-bool:IsValidAmmoWeapon(wpn_id)
-{
-    if (wpn_id <= 0 || wpn_id >= sizeof(g_MaxClip))
-    {
-        return false;
-    }
-
-    switch (wpn_id)
-    {
-        case CSW_KNIFE, CSW_C4, CSW_HEGREN, CSW_SMOKEGREN, CSW_FLASHBANG:
-        {
-            return false;
-        }
-        default:
-        {
-            return (g_MaxClip[wpn_id] > 0);
-        }
-    }
-
-    return false;
-}
-
-GetWeaponStaticLimit(wpn_id)
-{
-    if (!IsValidAmmoWeapon(wpn_id))
-    {
-        return 0;
-    }
-    return g_MaxClip[wpn_id] * get_pcvar_num(p_max_mags);
-}
-
 public CmdBuyAmmo(id)
 {
     if (!is_user_alive(id))
-    {
         return PLUGIN_CONTINUE;
-    }
 
     set_task(0.05, "TaskForceFill", id);
     return PLUGIN_CONTINUE;
@@ -95,74 +116,78 @@ public CmdBuyAmmo(id)
 
 public Event_AmmoChange(id)
 {
-    set_task(0.1, "TaskEnforceLimit", id);
+    if (!is_user_alive(id))
+        return;
+
+    EnforceActiveLimit(id);
+}
+
+public DynamicWeaponCheck(const weapon_ent)
+{
+    if (!pev_valid(weapon_ent))
+        return;
+
+    new id = get_pdata_cbase(weapon_ent, 41, 4); // Fixed: Requires fakemeta/hamsandwich offsets
+    if (is_user_alive(id))
+    {
+        EnforceActiveLimit(id);
+    }
 }
 
 public TaskForceFill(id)
 {
-    ForceFillAllWeapons(id);
+    ForceFillActiveWeapon(id);
 }
 
-// Core function to safely top off holstered and held weapons
-ForceFillAllWeapons(id)
+GetWeaponStaticLimit(wpn_id)
+{
+    if (wpn_id <= 0 || wpn_id >= sizeof(g_MaxClip))
+        return 0;
+
+    switch (wpn_id)
+    {
+        case CSW_KNIFE, CSW_C4, CSW_HEGREN, CSW_SMOKEGREN, CSW_FLASHBANG: return 0;
+        case CSW_USP: return 24;      
+        case CSW_UMP45: return 50;    
+        case CSW_FAMAS: return 50;    
+    }
+    
+    return g_MaxClip[wpn_id] * get_pcvar_num(p_max_mags);
+}
+
+ForceFillActiveWeapon(id)
 {
     if (!is_user_alive(id))
-    {
         return;
-    }
 
-    for (new wpn_id = 1; wpn_id < sizeof(g_MaxClip); wpn_id++)
+    new clip, ammo;
+    new wpn_id = get_user_weapon(id, clip, ammo);
+    new limit = GetWeaponStaticLimit(wpn_id);
+
+    if (limit > 0)
     {
-        if (!IsValidAmmoWeapon(wpn_id))
+        new current_bp = cs_get_user_bpammo(id, wpn_id);
+        if (current_bp < limit)
         {
-            continue;
-        }
-
-        if (user_has_weapon(id, wpn_id))
-        {
-            new current_bp = cs_get_user_bpammo(id, wpn_id);
-            new limit = GetWeaponStaticLimit(wpn_id);
-
-            if (current_bp < limit)
-            {
-                cs_set_user_bpammo(id, wpn_id, limit);
-            }
+            cs_set_user_bpammo(id, wpn_id, limit);
         }
     }
 }
 
-public TaskEnforceLimit(id)
+EnforceActiveLimit(id)
 {
-    if (!is_user_alive(id))
-    {
-        return;
-    }
+    new clip, ammo;
+    new wpn_id = get_user_weapon(id, clip, ammo);
+    new limit = GetWeaponStaticLimit(wpn_id);
 
-    new bool:over_limit = false;
-
-    for (new wpn_id = 1; wpn_id < sizeof(g_MaxClip); wpn_id++)
+    if (limit > 0)
     {
-        if (!IsValidAmmoWeapon(wpn_id))
+        new current_bp = cs_get_user_bpammo(id, wpn_id);
+        if (current_bp > limit)
         {
-            continue;
+            cs_set_user_bpammo(id, wpn_id, limit);
+            DisplayLimitMessage(id, get_pcvar_num(p_max_mags));
         }
-
-        if (user_has_weapon(id, wpn_id))
-        {
-            new current_bp = cs_get_user_bpammo(id, wpn_id);
-            new limit = GetWeaponStaticLimit(wpn_id);
-
-            if (current_bp > limit)
-            {
-                cs_set_user_bpammo(id, wpn_id, limit);
-                over_limit = true;
-            }
-        }
-    }
-
-    if (over_limit)
-    {
-        DisplayLimitMessage(id, get_pcvar_num(p_max_mags));
     }
 }
 
