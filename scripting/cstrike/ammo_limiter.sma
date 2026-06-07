@@ -132,9 +132,10 @@ GetIndividualWeaponLimit(iWeaponID)
         case CSW_FIVESEVEN: return 20 * iMultiplier;
         case CSW_P90: return 50 * iMultiplier;
         case CSW_USP: return 12 * iMultiplier;
-        case CSW_MAC10, CSW_UMP45: return 25 * iMultiplier;
         case CSW_GLOCK18: return 20 * iMultiplier;
         case CSW_MP5NAVY, CSW_TMP, CSW_ELITE: return 30 * iMultiplier;
+        case CSW_UMP45: return 25 * iMultiplier;
+        case CSW_MAC10: return 30 * iMultiplier;
     }
     return 0;
 }
