@@ -120,12 +120,12 @@ GetIndividualWeaponLimit(iWeaponID)
 
     switch(iWeaponID)
     {
+        case CSW_GALIL: return 35 * iMultiplier;
         case CSW_AWP: return 10 * iMultiplier;
-        case CSW_AK47, CSW_SCOUT, CSW_G3SG1: return 30 * iMultiplier;
+        case CSW_M4A1, CSW_AK47, CSW_SCOUT, CSW_G3SG1: return 30 * iMultiplier;
         case CSW_M249: return 100 * iMultiplier;
-        case CSW_GALIL, CSW_AUG, CSW_SG552, CSW_SG550: return 30 * iMultiplier;
-        case CSW_M4A1: return 30 * iMultiplier;
-        case CSW_FAMAS: return 25 * iMultiplier;
+        case CSW_AUG, CSW_SG552, CSW_SG550: return 30 * iMultiplier;
+        case CSW_UMP45, CSW_FAMAS: return 25 * iMultiplier;
         case CSW_XM1014, CSW_M3: return 8 * iMultiplier;
         case CSW_DEAGLE: return 7 * iMultiplier;
         case CSW_P228: return 13 * iMultiplier;
@@ -133,9 +133,7 @@ GetIndividualWeaponLimit(iWeaponID)
         case CSW_P90: return 50 * iMultiplier;
         case CSW_USP: return 12 * iMultiplier;
         case CSW_GLOCK18: return 20 * iMultiplier;
-        case CSW_MP5NAVY, CSW_TMP, CSW_ELITE: return 30 * iMultiplier;
-        case CSW_UMP45: return 25 * iMultiplier;
-        case CSW_MAC10: return 30 * iMultiplier;
+        case CSW_MAC10, CSW_MP5NAVY, CSW_TMP, CSW_ELITE: return 30 * iMultiplier;
     }
     return 0;
 }
