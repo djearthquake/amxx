@@ -7,7 +7,7 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.8.6"
+#define VERSION "3.8.7"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
@@ -158,12 +158,12 @@ public parse_json_response(const data[], socket)
     if (ip_obj != Invalid_JSON)
     {
         new risk_score = json_object_get_number(ip_obj, "risk");
-        static reason[32], is_proxy_str[8];
+        static reason[32];
 
         determine_reason(ip_obj, reason, charsmax(reason));
-        json_object_get_string(ip_obj, "proxy", is_proxy_str, charsmax(is_proxy_str));
 
-        if (risk_score >= get_pcvar_num(g_cvar_risk_kick) || equal(is_proxy_str, "yes"))
+        // FIXED: Strict numeric verification check. 
+        if (risk_score >= get_pcvar_num(g_cvar_risk_kick))
         {
             log_to_json(id, ip, risk_score, reason);
 
@@ -208,7 +208,6 @@ public log_to_json(id, const ip[], risk, const reason[])
         if (root == Invalid_JSON) root = json_init_array();
     }
 
-    // Pruning Fix: Backward iteration prevents data loss and shifting index anomalies
     new iCutoff = get_systime() - (get_pcvar_num(g_cvar_prune) * 86400);
     for (new i = json_array_get_count(root) - 1; i >= 0; i--)
     {
@@ -241,7 +240,6 @@ public log_to_json(id, const ip[], risk, const reason[])
 
     server_print("[ProxySnort] Logged and Pruned: %s [%d%% Risk]", name, risk);
 }
-
 public execute_troll(id, const ip[], risk, const country[], const isp[], const reason[])
 {
     if (g_is_whitelisted[id] || !is_user_connected(id)) return;
