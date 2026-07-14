@@ -2,6 +2,7 @@
 #include <amxmisc>
 #include <engine>
 #include <fakemeta>
+#include <hamsandwich>
 
 #define ACCESS_LEVEL    "ADMIN_RESERVATION"
 #define charsmin    -1
@@ -15,15 +16,16 @@
 #define PROP 32
 
 #define PLUGIN  "Command 'hide doors'"
-#define VERSION "1.0.1"
-#define AUTHOR  "SPiNX"
+#define VERSION "1.0.2"
+#define AUTHOR  "SPiNX" // Rippy (https://forums.alliedmods.net/member.php?u=488646) fixed with AI!
 
 new g_Ability, g_Locked, g_Prop, g_pack, g_AI;
+new bool:g_AllDoorsLocked = true;
 
 static const SzClass[][] =
 {
     "momentary_door", "func_door_rotating",
-    "func_door",  //if door 'skin' = ladder -> crash.
+    "func_door",
     "func_breakable", "func_pushable",
     "func_wall", "func_wall_toggle"
 };
@@ -37,6 +39,10 @@ public plugin_init()
     register_clcmd("door_prop","build_prop",ADMIN_KICK,"Gives/takes ability to prop open doors.")
 
     g_pack = register_forward(FM_AddToFullPack, "AddToFullPack_Post", 1)
+
+    RegisterHam(Ham_Use, "func_door", "Ham_BlockDoorUse")
+    RegisterHam(Ham_Use, "func_door_rotating", "Ham_BlockDoorUse")
+    RegisterHam(Ham_Use, "momentary_door", "Ham_BlockDoorUse")
 }
 
 public plugin_cfg()
@@ -64,10 +70,7 @@ public plugin_end()
 
 public client_authorized(id, const authid[])
 {
-    if(is_user_connecting(id))
-    {
-        equal(authid, "BOT") ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
-    }
+    equal(authid, "BOT") ? SetPlayerBit(g_AI, id) : ClearPlayerBit(g_AI, id)
 }
 
 public client_putinserver(id)
@@ -77,11 +80,34 @@ public client_putinserver(id)
     ClearPlayerBit(g_Prop, id);
 }
 
-public client_disconnected(id)
+public client_disconnecting(id)
 {
     ClearPlayerBit(g_Ability, id);
     ClearPlayerBit(g_Locked, id);
     ClearPlayerBit(g_Prop, id);
+}
+
+public Ham_BlockDoorUse(ent, caller, activator, use_type, Float:value)
+{
+    if (!pev_valid(ent) || caller <= 0 || caller > MaxClients)
+        return HAM_IGNORED;
+
+    if (g_AllDoorsLocked)
+    {
+        if (!CheckPlayerBit(g_Locked, caller) || is_user_bot(caller))
+        {
+            return HAM_SUPERCEDE;
+        }
+    }
+    else
+    {
+        if (CheckPlayerBit(g_Locked, caller) || is_user_bot(caller))
+        {
+            return HAM_SUPERCEDE;
+        }
+    }
+
+    return HAM_IGNORED;
 }
 
 public seal_door(ent)
@@ -110,12 +136,12 @@ public build_lock(id,level,cid)
             if(CheckPlayerBit(g_Locked, id))
             {
                 ClearPlayerBit(g_Locked, id)
-                client_print id, print_chat, "Added door access to %n.", id
+                client_print id, print_chat, "Removed your special door access. You can no longer open doors.", id
             }
             else
             {
                 SetPlayerBit(g_Locked, id)
-                client_print id, print_chat, "Removed door access from %n.", id
+                client_print id, print_chat, "Gave yourself special door access. You can now open doors.", id
             }
         }
         else if(is_user_connected(target))
@@ -123,12 +149,12 @@ public build_lock(id,level,cid)
             if(CheckPlayerBit(g_Locked, target))
             {
                 ClearPlayerBit(g_Locked, target)
-                client_print id, print_chat, "Added door access to %n.", target
+                client_print id, print_chat, "Removed special door access from %N.", target
             }
             else
             {
                 SetPlayerBit(g_Locked, target)
-                client_print id, print_chat, "Removed door access from %n.", target
+                client_print id, print_chat, "Gave special door access to %N.", target
             }
         }
     }
@@ -152,12 +178,12 @@ public build_power(id,level,cid)
             if(CheckPlayerBit(g_Ability, id))
             {
                 ClearPlayerBit(g_Ability, id)
-                client_print id, print_chat, "Removed door traversal from %n.", id
+                client_print id, print_chat, "Removed door traversal from %N.", id
             }
             else
             {
                 SetPlayerBit(g_Ability, id)
-                client_print id, print_chat, "Added door traversal to %n.", id
+                client_print id, print_chat, "Added door traversal to %N.", id
             }
         }
         else if(is_user_connected(target))
@@ -165,12 +191,12 @@ public build_power(id,level,cid)
             if(CheckPlayerBit(g_Ability, target))
             {
                 ClearPlayerBit(g_Ability, target)
-                client_print id, print_chat, "Removed 'door walk-through' ability from %n.", target
+                client_print id, print_chat, "Removed 'door walk-through' ability from %N.", target
             }
             else
             {
                 SetPlayerBit(g_Ability, target)
-                client_print id, print_chat, "Added 'door walk-through' to %n.", target
+                client_print id, print_chat, "Added 'door walk-through' to %N.", target
             }
         }
     }
@@ -193,13 +219,13 @@ public build_prop(id,level,cid)
         {
             if(CheckPlayerBit(g_Prop, id))
             {
-                ClearPlayerBit(g_Ability, id)
-                client_print id, print_chat, "Removed door prop from %n.", id
+                ClearPlayerBit(g_Prop, id)
+                client_print id, print_chat, "Removed door prop from %N.", id
             }
             else
             {
                 SetPlayerBit(g_Prop, id)
-                client_print id, print_chat, "Added door prop to %n.", id
+                client_print id, print_chat, "Added door prop to %N.", id
             }
         }
         else if(is_user_connected(target))
@@ -207,12 +233,12 @@ public build_prop(id,level,cid)
             if(CheckPlayerBit(g_Prop, target))
             {
                 ClearPlayerBit(g_Prop, target)
-                client_print id, print_chat, "Removed 'door prop' tool from %n.", target
+                client_print id, print_chat, "Removed 'door prop' tool from %N.", target
             }
             else
             {
                 SetPlayerBit(g_Prop, target)
-                client_print id, print_chat, "Added 'door prop' to %n.", target
+                client_print id, print_chat, "Added 'door prop' to %N.", target
             }
         }
     }
@@ -223,6 +249,12 @@ public touched(id, ent)
 {
     if(id<=MaxClients)
     {
+        if(isDoor(ent))
+        {
+            if(is_user_bot(id)) return PLUGIN_HANDLED;
+            if(g_AllDoorsLocked && !CheckPlayerBit(g_Locked, id)) return PLUGIN_HANDLED;
+        }
+
         if(CheckPlayerBit(g_Ability, id))
         {
             set_pev(ent, pev_movetype, MOVETYPE_NONE)
@@ -243,8 +275,11 @@ public pfn_touch(touched, toucher)
 {
     if(isDoor(touched))
     {
-        if(CheckPlayerBit(g_Locked, toucher))
-            return PLUGIN_HANDLED;
+        if(toucher > 0 && toucher <= MaxClients)
+        {
+            if(is_user_bot(toucher)) return PLUGIN_HANDLED;
+            if(g_AllDoorsLocked && !CheckPlayerBit(g_Locked, toucher)) return PLUGIN_HANDLED;
+        }
     }
     return PLUGIN_CONTINUE;
 }
@@ -267,7 +302,7 @@ stock bool:isDoor(ent)
 {
     if(ent>MaxClients && pev_valid(ent))
     {
-        static szClassName[MAX_PLAYERS];
+        static szClassName[64]; // HATA BURADAYDI: [64] boyutu eklenerek diziye dönüştürüldü.
         pev(ent, pev_classname, szClassName, charsmax(szClassName));
         return contain(szClassName, "door") == charsmin ? false : true
     }
