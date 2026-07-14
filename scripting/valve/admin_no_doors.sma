@@ -80,7 +80,7 @@ public client_putinserver(id)
     ClearPlayerBit(g_Prop, id);
 }
 
-public client_disconnecting(id)
+public client_disconnected(id)
 {
     ClearPlayerBit(g_Ability, id);
     ClearPlayerBit(g_Locked, id);
