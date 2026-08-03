@@ -401,9 +401,10 @@ public pfn_touch(ptr, ptd)
 {
     if (!g_bPluginEnabled) return PLUGIN_CONTINUE
 
-    if (ptr > 0 && ptd > 0)
+    if (ptr > MaxClients && ptd > MaxClients)
+    if(pev_valid(ptr))
     {
-        new Portal[64]
+        new Portal[MAX_RESOURCE_PATH_LENGTH]
         entity_get_string(ptr, EV_SZ_classname, Portal, charsmax(Portal))
 
         if (equal(Portal, "amx_portal"))
@@ -667,4 +668,3 @@ public actionPortalMenu(id, key)
     if (key != 9) displayPortalMenu(id)
     return PLUGIN_HANDLED
 }
-
