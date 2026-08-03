@@ -27,12 +27,12 @@ new numTargets
 new numAllrounds
 new numBlackholes
 
-new portal_model[64] = "sprites/e-tele1.spr"
-new target_model[64] = "sprites/b-tele1.spr"
-new allround_model[64] = "sprites/exit1.spr"
-new blackhole_model[64] = "models/blackhole.mdl"
+static portal_model[MAX_RESOURCE_PATH_LENGTH] = "sprites/e-tele1.spr"
+static target_model[MAX_RESOURCE_PATH_LENGTH] = "sprites/b-tele1.spr"
+static allround_model[MAX_RESOURCE_PATH_LENGTH] = "sprites/exit1.spr"
+static blackhole_model[MAX_RESOURCE_PATH_LENGTH] = "models/blackhole.mdl"
 
-new g_config_dir[128]
+static g_config_dir[128]
 new bool:g_bPluginEnabled = true
 
 public plugin_precache()
@@ -62,7 +62,7 @@ public plugin_precache()
 
 bool:check_asset(const szFile[], bool:bIsModel)
 {
-    new szValveFile[128]
+    static szValveFile[128]
     formatex(szValveFile, charsmax(szValveFile), "../valve/%s", szFile)
 
     // Check current mod dir (gearbox) OR fall back to base valve dir
@@ -77,7 +77,7 @@ bool:check_asset(const szFile[], bool:bIsModel)
 
 public plugin_init()
 {
-    register_plugin("AMX Portal", "1.7", "KleeneX | SPINX")
+    register_plugin("AMX Portal", "1.8", "KleeneX | SPINX")
     
     if (!g_bPluginEnabled) return
 
@@ -136,7 +136,7 @@ public cmd_create_portal(id, level, cid)
         return PLUGIN_HANDLED
     }
     
-    new Origin[3], Float:pOrigin[3]
+    static Origin[3], Float:pOrigin[3]
     get_user_origin(id, Origin)
     IVecFVec(Origin, pOrigin)
     pOrigin[2] += 10.0
@@ -149,7 +149,7 @@ public spawn_portal(Float:pOrigin[3])
 {
     if (!g_bPluginEnabled || numPortals >= MAX_PORTALS) return 0
 
-    new portal = create_entity("info_target")
+    static portal; portal = create_entity("info_target")
     if (!is_valid_ent(portal)) return 0
 
     entity_set_string(portal, EV_SZ_classname, "amx_portal")
@@ -191,7 +191,7 @@ public spawn_target(Float:pOrigin[3])
 {
     if (!g_bPluginEnabled || numTargets >= MAX_TARGETS) return 0
 
-    new target = create_entity("info_target")
+    static target; target = create_entity("info_target")
     if (!is_valid_ent(target)) return 0
 
     entity_set_string(target, EV_SZ_classname, "amx_ptarget")
@@ -214,7 +214,7 @@ public cmd_create_allround(id, level, cid)
         return PLUGIN_HANDLED
     }
     
-    new Origin[3], Float:pOrigin[3]
+    static Origin[3], Float:pOrigin[3]
     get_user_origin(id, Origin)
     IVecFVec(Origin, pOrigin)
     pOrigin[2] += 10.0
@@ -227,7 +227,7 @@ public spawn_allround(Float:pOrigin[3])
 {
     if (!g_bPluginEnabled || numAllrounds >= MAX_ALLROUNDS) return 0
 
-    new allround = create_entity("info_target")
+    static allround; allround = create_entity("info_target")
     if (!is_valid_ent(allround)) return 0
 
     entity_set_string(allround, EV_SZ_classname, "amx_aportal")
@@ -256,7 +256,7 @@ public cmd_create_blackhole(id, level, cid)
         return PLUGIN_HANDLED
     }
     
-    new Float:vOrigin[3], Float:vTraceDirection[3], Float:vTraceEnd[3], Float:vTraceResult[3], Float:vNormal[3]
+    static Float:vOrigin[3], Float:vTraceDirection[3], Float:vTraceEnd[3], Float:vTraceResult[3], Float:vNormal[3]
     entity_get_vector(id, EV_VEC_origin, vOrigin)
     
     VelocityByAim(id, 64, vTraceDirection)
@@ -272,7 +272,7 @@ public cmd_create_blackhole(id, level, cid)
         return PLUGIN_HANDLED
     }
     
-    new Float:vNewOrigin[3], Float:vEntAngles[3]
+    static Float:vNewOrigin[3], Float:vEntAngles[3]
     vNewOrigin[0] = vTraceResult[0] + (vNormal[0] * 10.0)
     vNewOrigin[1] = vTraceResult[1] + (vNormal[1] * 10.0)
     vNewOrigin[2] = vTraceResult[2] + (vNormal[2] * 10.0)
@@ -401,17 +401,16 @@ public pfn_touch(ptr, ptd)
 {
     if (!g_bPluginEnabled) return PLUGIN_CONTINUE
 
-    if (ptr > MaxClients && ptd > MaxClients)
-    if(pev_valid(ptr))
+    if (ptd & ptr && pev_valid(ptr))
     {
-        new Portal[MAX_RESOURCE_PATH_LENGTH]
+        static Portal[MAX_RESOURCE_PATH_LENGTH]
         entity_get_string(ptr, EV_SZ_classname, Portal, charsmax(Portal))
 
         if (equal(Portal, "amx_portal"))
         {
             if (numTargets == 0) return PLUGIN_HANDLED
             
-            new random_target, Origin[3], Float:eOrigin[3], Float:velocity[3]
+            static random_target, Origin[3], Float:eOrigin[3], Float:velocity[3]
             random_target = mapTargets[random_num(0, numTargets - 1)]
             entity_get_vector(random_target, EV_VEC_origin, eOrigin)
             FVecIVec(eOrigin, Origin)
