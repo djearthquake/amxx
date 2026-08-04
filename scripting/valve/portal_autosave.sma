@@ -401,7 +401,8 @@ public pfn_touch(ptr, ptd)
 {
     if (!g_bPluginEnabled) return PLUGIN_CONTINUE
 
-    if (ptd & ptr && pev_valid(ptr))
+    if (ptr > MaxClients & ptd && ptd <= MaxClients)
+    if(pev_valid(ptr))
     {
         static Portal[MAX_RESOURCE_PATH_LENGTH]
         entity_get_string(ptr, EV_SZ_classname, Portal, charsmax(Portal))
@@ -432,7 +433,7 @@ public pfn_touch(ptr, ptd)
         {
             if (numAllrounds <= 1) return PLUGIN_HANDLED
             
-            new random_target, Origin[3], Float:eOrigin[3], Float:velocity[3]
+            static random_target, Origin[3], Float:eOrigin[3], Float:velocity[3]
             random_target = mapAllrounds[random_num(0, numAllrounds - 1)]
             
             if (random_target != ptr)
