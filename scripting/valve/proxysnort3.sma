@@ -64,7 +64,7 @@ public plugin_init()
     set_task(10.0, "display_proxy_hud", .flags="b");
 }
 
-public client_connect(id)
+public client_putinserver(id)
 {
     g_is_proxy[id] = false;
     g_is_checking[id] = false;
