@@ -1,9 +1,13 @@
-/*Install instructions: Add z to cmdaccess.ini entry "amx_votemapmenu"   "jz" ; mapsmenu.amxx*/
 #include amxmodx
 
 public plugin_init()
-    register_plugin("Simpler RTV", "1.0", "SPiNX")&
-    register_clcmd("say rtv","handlesay")
+{
+    register_plugin("Simpler RTV", "1.1", "SPiNX")
+    register_clcmd("say rtv", "cmd_rtv")
+}
 
-public handlesay(id)
-    client_cmd(id,"amx_votemapmenu");
+public cmd_rtv(id)
+{
+    amxclient_cmd(id, "amx_votemapmenu")
+    return PLUGIN_HANDLED
+}
