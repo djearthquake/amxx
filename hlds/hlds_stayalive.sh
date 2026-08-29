@@ -4,10 +4,12 @@
 SERVER_IP=$(hostname -I | cut -f1 -d' ')   # SPiNX Auto-IP detection
 CHECK_INTERVAL=5                           # Check every 5 seconds
 BINARY_NAME="hlds_linux"                   # Exact name of your server executable
+MAX_STRIKES=3                              # Number of failures before killing process
 # ---------------------
 
 echo "[WATCHDOG] Initializing Multi-Port Auto-Scanner..."
 echo "[WATCHDOG] Detected Server IP: $SERVER_IP"
+echo "[WATCHDOG] Strike threshold set to: $MAX_STRIKES"
 
 # Create associative arrays to track independent failure counters for each port
 declare -A FAIL_COUNTS
@@ -67,10 +69,10 @@ except Exception:
         if [ "$STATUS" != "OK" ]; then
             # Increment the strike specific to this isolated port index channel
             FAIL_COUNTS[$SERVER_PORT]=$(( ${FAIL_COUNTS[$SERVER_PORT]} + 1 ))
-            echo "[WATCHDOG][PORT $SERVER_PORT] No response! Status: $STATUS (Failure ${FAIL_COUNTS[$SERVER_PORT]}/3)"
+            echo "[WATCHDOG][PORT $SERVER_PORT] No response! Status: $STATUS (Failure ${FAIL_COUNTS[$SERVER_PORT]}/$MAX_STRIKES)"
             
-            # If THIS specific port hits 3 strikes, drop the hammer on its unique PID
-            if [ "${FAIL_COUNTS[$SERVER_PORT]}" -ge 3 ]; then
+            # If THIS specific port hits max strikes, drop the hammer on its unique PID
+            if [ "${FAIL_COUNTS[$SERVER_PORT]}" -ge "$MAX_STRIKES" ]; then
                 echo "[WATCHDOG][PORT $SERVER_PORT] CONFIRMED FROZEN! Target-killing PID $PID..."
                 kill -9 "$PID"
                 FAIL_COUNTS[$SERVER_PORT]=0
