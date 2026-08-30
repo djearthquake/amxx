@@ -1,8 +1,13 @@
+/***********************************************************************************
+* Adminmod Style RTV Plugin
+* Fixed Version with Map Validation Checking on Chat Entry
+***********************************************************************************/
+
 #include <amxmodx>
 #include <amxmisc>
 
 #define PLUGIN "Adminmod Style RTV"
-#define VERSION "0.1"
+#define VERSION "0.3"
 #define AUTHOR "SPiNX"
 
 #if !defined MAX_PLAYERS
@@ -18,7 +23,7 @@ new bool:g_HasRTVed[MAX_PLAYERS + 1]
 new g_RTVCount = 0
 new Float:g_MapStartTime
 
-new bool:g_NominationActive = false
+public bool:g_NominationActive = false
 new g_NominationTimeLeft
 new g_PlayerNomination[MAX_PLAYERS + 1][MAX_MAP_LEN]
 
@@ -29,6 +34,7 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR)
 
+    register_clcmd("say rockthevote", "HandleRTV")
     register_clcmd("say rtv", "HandleRTV")
     register_clcmd("say /rtv", "HandleRTV")
     register_clcmd("say rockthevote", "HandleRTV")
@@ -142,6 +148,9 @@ StartNominationWindow()
     g_NominationActive = true
     g_NominationTimeLeft = NOMINATION_TIME
 
+    // ADD THIS LINE HERE: Notifies the bot think plugin instantly
+    server_cmd("amx_rtv_active 1") 
+
     new maxPlayers = get_maxplayers()
     for (new i = 1; i <= maxPlayers; i++)
     {
@@ -191,7 +200,15 @@ public HookPlayerChat(id)
         return PLUGIN_CONTINUE
     }
 
-    copy(g_PlayerNomination[id], charsmax(g_PlayerNomination[]), speech)
+    // --- CORE FIX: PRE-VALIDATE MAP STRING VIA SERVER MAPS DIRECTORY ---
+    if (!is_map_valid(speech))
+    {
+        PrintChat(id, "^4[RTV]^1 Chat text '^3%s^1' is not a valid server map! Try again.", speech)
+        return PLUGIN_CONTINUE
+    }
+
+    // Explicit matrix assignment bounds fix
+    copy(g_PlayerNomination[id], MAX_MAP_LEN - 1, speech)
     PrintChat(id, "^4[RTV]^1 Registered your map nomination:^3 %s", speech)
 
     return PLUGIN_CONTINUE
@@ -227,7 +244,7 @@ UpdateVoteHud()
         }
         else if (uniqueCount < MAX_PLAYERS)
         {
-            copy(uniqueMaps[uniqueCount], charsmax(uniqueMaps[]), g_PlayerNomination[i])
+            copy(uniqueMaps[uniqueCount], MAX_MAP_LEN - 1, g_PlayerNomination[i])
             mapVotes[uniqueCount] = 1
             uniqueCount++
         }
@@ -255,9 +272,9 @@ UpdateVoteHud()
                     mapVotes[i] = mapVotes[j]
                     mapVotes[j] = tempVotes
 
-                    copy(tempMap, charsmax(tempMap), uniqueMaps[i])
-                    copy(uniqueMaps[i], charsmax(uniqueMaps[]), uniqueMaps[j])
-                    copy(uniqueMaps[j], charsmax(uniqueMaps[]), tempMap)
+                    copy(tempMap, MAX_MAP_LEN - 1, uniqueMaps[i])
+                    copy(uniqueMaps[i], MAX_MAP_LEN - 1, uniqueMaps[j])
+                    copy(uniqueMaps[j], MAX_MAP_LEN - 1, tempMap)
                 }
             }
         }
@@ -309,7 +326,7 @@ ProcessWinningMap()
         }
         else if (uniqueCount < MAX_PLAYERS)
         {
-            copy(uniqueMaps[uniqueCount], charsmax(uniqueMaps[]), g_PlayerNomination[i])
+            copy(uniqueMaps[uniqueCount], MAX_MAP_LEN - 1, g_PlayerNomination[i])
             mapVotes[uniqueCount] = 1
             uniqueCount++
         }
@@ -333,22 +350,15 @@ ProcessWinningMap()
     }
 
     new winningMap[MAX_MAP_LEN]
-    copy(winningMap, charsmax(winningMap), uniqueMaps[winningIndex])
-
-    if (!is_map_valid(winningMap))
-    {
-        PrintChat(0, "^4[RTV]^1 Winning text string '^3%s^1' is not a valid server map. Aborting.", winningMap)
-        return
-    }
+    copy(winningMap, MAX_MAP_LEN - 1, uniqueMaps[winningIndex])
 
     PrintChat(0, "^4[RTV]^1 Nomination over! The winner is^4 %s ^1with^3 %d ^1nominations.", winningMap, maxVotes)
     PrintChat(0, "^4[RTV]^1 Changing map now...")
 
-    set_task(3.0, "DelayedChangeMap", 0, winningMap, charsmax(winningMap))
+    set_task(3.0, "DelayedChangeMap", 0, winningMap, MAX_MAP_LEN - 1)
 }
 
 public DelayedChangeMap(winningMap[])
 {
     server_cmd("changelevel %s", winningMap)
 }
-
