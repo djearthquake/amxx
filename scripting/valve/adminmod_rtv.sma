@@ -37,14 +37,13 @@ public plugin_init()
     register_clcmd("say rockthevote", "HandleRTV")
     register_clcmd("say rtv", "HandleRTV")
     register_clcmd("say /rtv", "HandleRTV")
-    register_clcmd("say rockthevote", "HandleRTV")
 
     register_clcmd("say", "HookPlayerChat")
 
     g_HudSyncObj = CreateHudSyncObj()
     g_MapStartTime = get_gametime()
 
-    new modName[MAX_MAP_LEN]
+    static modName[MAX_MAP_LEN]
     get_modname(modName, charsmax(modName))
     if (equal(modName, "cstrike") || equal(modName, "czero"))
     {
