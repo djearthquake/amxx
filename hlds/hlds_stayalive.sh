@@ -16,7 +16,6 @@ declare -A FAIL_COUNTS
 
 while true; do
     # AUTO-SCAN: Dynamically find all UDP ports currently held open by hlds_linux
-    # It parses lsof output to find numbers after the ':' in the name column
     AUTO_PORTS=$(lsof -i udp -a -c "$BINARY_NAME" -F n 2>/dev/null | grep -o ':[0-9]*' | tr -d ':' | sort -u)
 
     if [ -z "$AUTO_PORTS" ]; then
@@ -40,33 +39,48 @@ while true; do
             FAIL_COUNTS[$SERVER_PORT]=0
         fi
 
-        # Execute the 2-step Valve player database challenge handshake in Python
+        # IMPROVED: Robust Valve player challenge handshake
         PLAYER_DATA=$(python3 -c "
 import socket
+import sys
+
 try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(1.2)
+    sock.settimeout(1.5)
     server_addr = ('$SERVER_IP', $SERVER_PORT)
+    
+    # Step 1: Send A2S_PLAYER request with dummy challenge (-1)
     sock.sendto(b'\xff\xff\xff\xff\x55\xff\xff\xff\xff', server_addr)
     res, _ = sock.recvfrom(1400)
-    if res[:5] == b'\xff\xff\xff\xff\x41':
+    
+    # Expecting A2S_SERVERCOMMAND (0x41) challenge response
+    if res.startswith(b'\xff\xff\xff\xff\x41'):
         challenge_token = res[5:9]
+        
+        # Step 2: Send A2S_PLAYER request with the real token
         sock.sendto(b'\xff\xff\xff\xff\x55' + challenge_token, server_addr)
-        player_res, _ = sock.recvfrom(4096)
-        if player_res[:5] == b'\xff\xff\xff\xff\x44':
+        player_res, _ = sock.recvfrom(65535)
+        
+        # Expecting A2S_PLAYER response (0x44)
+        if player_res.startswith(b'\xff\xff\xff\xff\x44') and len(player_res) >= 6:
             count = player_res[5]
             print(f'OK|{count}')
-        else: print('ERROR')
-    else: print('ERROR')
+            sys.exit(0)
+
+    print('ERROR|0')
 except Exception:
-    print('TIMEOUT')
+    print('TIMEOUT|0')
 " 2>/dev/null)
 
         # Parse the Python communication strings safely
         STATUS=$(echo "$PLAYER_DATA" | cut -d'|' -f1)
         P_COUNT=$(echo "$PLAYER_DATA" | cut -d'|' -f2)
 
-        if [ "$STATUS" != "OK" ]; then
+        if [ "$STATUS" = "OK" ]; then
+            # Reset strike tracking metrics for this port channel upon success
+            FAIL_COUNTS[$SERVER_PORT]=0
+            echo "[WATCHDOG][PORT $SERVER_PORT] Server Healthy | PID: $PID | Players: $P_COUNT"
+        else
             # Increment the strike specific to this isolated port index channel
             FAIL_COUNTS[$SERVER_PORT]=$(( ${FAIL_COUNTS[$SERVER_PORT]} + 1 ))
             echo "[WATCHDOG][PORT $SERVER_PORT] No response! Status: $STATUS (Failure ${FAIL_COUNTS[$SERVER_PORT]}/$MAX_STRIKES)"
@@ -77,10 +91,6 @@ except Exception:
                 kill -9 "$PID"
                 FAIL_COUNTS[$SERVER_PORT]=0
             fi
-        else
-            # Reset strike tracking metrics for this port channel upon success
-            FAIL_COUNTS[$SERVER_PORT]=0
-            echo "[WATCHDOG][PORT $SERVER_PORT] Server Healthy | PID: $PID | Players: $P_COUNT"
         fi
     done
 
