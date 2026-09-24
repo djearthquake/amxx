@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-SERVER_IP=$(hostname -I | cut -f1 -d' ')   # Your primary host IP
-CHECK_INTERVAL=5                           # Check every 15 seconds
+SERVER_IP=$(hostname -I | cut -f1 -d' ' | head -n 1) # Your primary host IP (safeguarded)
+CHECK_INTERVAL=10                           # Check every 20 seconds
 BINARY_NAME="hlds_linux"                   # Server executable name
 MAX_STRIKES=5                              # Failures before warning/killing
 LOG_FILE="/tmp/hlds_watchdog.log"          # Path to log file
@@ -26,6 +26,17 @@ declare -A FAIL_COUNTS
 
 while true; do
     AUTO_PORTS=$(lsof -nP -i udp -a -c "$BINARY_NAME" -F n 2>/dev/null | grep -o ':[0-9]*' | tr -d ':' | sort -u)
+
+    # --- PORT CLEANUP LOGIC ---
+    # Loop through tracking memory and purge ports that completely shut down or crashed
+    for TRACKED_PORT in "${!FAIL_COUNTS[@]}"; do
+        if ! echo "$AUTO_PORTS" | grep -qw "$TRACKED_PORT"; then
+            log_message "[PORT $TRACKED_PORT] Disappeared from process list. Resetting tracking history."
+            unset "FAIL_COUNTS[$TRACKED_PORT]"
+        fi
+    done
+    # --------------------------
+
 
     if [ -z "$AUTO_PORTS" ]; then
         sleep "$CHECK_INTERVAL"
