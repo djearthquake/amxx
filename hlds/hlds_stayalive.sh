@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-SERVER_IP=$(hostname -I | cut -f1 -d' ' | head -n 1) # Your primary host IP (safeguarded)
-CHECK_INTERVAL=10                           # Check every 20 seconds
+SERVER_IP=$(hostname -I | cut -f1 -d' ' | head -n 1)   # Your primary host IP
+CHECK_INTERVAL=20                           # Check every 20 seconds
 BINARY_NAME="hlds_linux"                   # Server executable name
-MAX_STRIKES=5                              # Failures before warning/killing
+MAX_STRIKES=20                              # Failures before warning/killing
 LOG_FILE="/tmp/hlds_watchdog.log"          # Path to log file
 
 # SAFE MODE CONTROL: 
@@ -27,25 +27,36 @@ declare -A FAIL_COUNTS
 while true; do
     AUTO_PORTS=$(lsof -nP -i udp -a -c "$BINARY_NAME" -F n 2>/dev/null | grep -o ':[0-9]*' | tr -d ':' | sort -u)
 
-    # --- PORT CLEANUP LOGIC ---
-    # Loop through tracking memory and purge ports that completely shut down or crashed
-    for TRACKED_PORT in "${!FAIL_COUNTS[@]}"; do
-        if ! echo "$AUTO_PORTS" | grep -qw "$TRACKED_PORT"; then
-            log_message "[PORT $TRACKED_PORT] Disappeared from process list. Resetting tracking history."
-            unset "FAIL_COUNTS[$TRACKED_PORT]"
-        fi
-    done
-    # --------------------------
-
-
+    # SHORT-CIRCUIT SAFETY: If no ports are active anywhere, sleep and skip completely.
+    # This prevents lsof from listing global processes when maps change or servers go down.
     if [ -z "$AUTO_PORTS" ]; then
+        # Reset tracking memory safely since nothing is online
+        for TRACKED_PORT in "${!FAIL_COUNTS[@]}"; do
+            FAIL_COUNTS[$TRACKED_PORT]=0
+        done
         sleep "$CHECK_INTERVAL"
         continue
     fi
 
+    # --- SAFE PORT RESET LOGIC ---
+    # Reset counters for ports that have dropped offline or changed maps cleanly
+    for TRACKED_PORT in "${!FAIL_COUNTS[@]}"; do
+        if ! echo "$AUTO_PORTS" | grep -qw "$TRACKED_PORT"; then
+            FAIL_COUNTS[$TRACKED_PORT]=0
+        fi
+    done
+    # ------------------------------
+
     for SERVER_PORT in $AUTO_PORTS; do
+        # CRITICAL PROTECTION: Double check SERVER_PORT is a valid number before hitting lsof
+        if ! [[ "$SERVER_PORT" =~ ^[0-9]+$ ]]; then
+            continue
+        fi
+
         PID=$(lsof -nP -i udp:"$SERVER_PORT" -t 2>/dev/null | head -n 1)
-        if [ -z "$PID" ]; then
+        
+        # CRITICAL PROTECTION: If PID is empty, 0, or matches this script's PID, skip it!
+        if [ -z "$PID" ] || [ "$PID" -eq 0 ] || [ "$PID" -eq "$$" ]; then
             continue
         fi
 
