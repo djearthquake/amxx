@@ -3,20 +3,26 @@
 #include <hamsandwich>
 
 #define PLUGIN  "Op4 Wait to Spawn Core"
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define AUTHOR  "SPiNX"
 
 #define TASK_COUNTDOWN 3000
 
 new g_pWaitTime;
-new g_iSecondsLeft[33];
-new bool:g_bBlockSpawn[33];
+new g_pForceRespawn;
+new g_iSecondsLeft[MAX_PLAYERS +1];
+new bool:g_bBlockSpawn[MAX_PLAYERS +1];
 
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
 
     g_pWaitTime = register_cvar("respawn_wait_time", "10.0");
+    g_pForceRespawn = get_cvar_pointer("mp_forcerespawn");
+    if (!g_pForceRespawn)
+    {
+        g_pForceRespawn = register_cvar("mp_forcerespawn", "1");
+    }
 
     RegisterHam(Ham_Killed, "player", "fw_PlayerKilled_Post", 1);
     RegisterHam(Ham_Spawn, "player", "fw_PlayerSpawn_Pre", 0);
@@ -71,11 +77,16 @@ public task_Countdown(id)
     }
     else
     {
+        // Unblock player spawn when timer finishes
         g_bBlockSpawn[id] = false;
 
-        if (!is_user_alive(id) && !(pev(id, pev_flags) & FL_SPECTATOR))
+        // If mp_forcerespawn is active, execute the forced spawn
+        if (get_pcvar_num(g_pForceRespawn) != 0)
         {
-            ExecuteHamB(Ham_Spawn, id);
+            if (!is_user_alive(id) && !(pev(id, pev_flags) & FL_SPECTATOR))
+            {
+                ExecuteHamB(Ham_Spawn, id);
+            }
         }
     }
 }
