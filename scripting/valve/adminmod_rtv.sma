@@ -359,6 +359,11 @@ ProcessWinningMap()
     {
         PrintChat(0, "^4[RTV]^1 No maps were nominated. Map cycle continues normally.")
         g_NominationActive = false
+        for (new i = 1; i <= MaxClients; i++)
+        {
+            g_PlayerNomination[i][0] = '^0'
+            g_HasRTVed[i] = false
+        }
         return
     }
     
