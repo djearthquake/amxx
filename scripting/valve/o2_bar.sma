@@ -1,5 +1,5 @@
 /*
-Current Version - 1.0.1 June 2022
+Current Version - 1.0.2 Sept 2026
 
 Oxygen Bar
 
@@ -8,6 +8,11 @@ Oxygen Bar
 While you're underwater, it shows how much oxygen you still have. When the last line from the bar disappears you will start to receive damage.
 
 - Changelog -
+1.0.2
+Sept 27 2026
+Issue: Seeing code mistakes.
+Resolution: Optimize. Remove double Ham.
+
 1.0.1
 Jun 23, 2022
 Issue: Lag from plugin think and showing as spectator.
@@ -25,10 +30,9 @@ Resoultion: B-TEAM SPiNX took over project and fixed error. Shortened plugin nam
 #include <amxmodx>
 #include <engine_stocks>
 #include <fakemeta>
-#include <fakemeta_stocks>
 #include <hamsandwich>
 
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 
 #define MAX_PLAYERS 32
 
@@ -66,37 +70,36 @@ new Float:g_PlayerUpdateGametime[MAX_PLAYERS]
 //Toggle feat
 new bool:g_Wants_O2_View[MAX_PLAYERS + 1]
 
-new g_maxPlayers
+static const SzWater[]="func_water"
+static const SzWaterFake[]="func_illusionary" //can be reskinned to water, lava, or slime.
 
-new const SzWater[]="func_water"
-new const SzWaterFake[]="func_illusionary" //can be reskinned to water, lava, or slime.
-
-public plugin_init() {
-
-    register_plugin("O2-bar",VERSION,"SPiNX")
+public plugin_init()
+{
+    register_plugin("O2-bar",VERSION,"SPiNX|shine771")
 
     //Originally coded as a think by shine771 https://forums.alliedmods.net/member.php?u=28238
     //original plugin https://forums.alliedmods.net/showthread.php?t=96782
 
     register_cvar("O2-bar",VERSION,FCVAR_SERVER|FCVAR_SPONLY)
 
-    find_ent(-1, SzWater) ||  find_ent(-1, SzWaterFake) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
+    find_ent(FM_NULLENT, SzWater) ||  find_ent(FM_NULLENT, SzWaterFake) ? server_print("%s found.", SzWater) : log_amx("%s NOT found on map.", SzWater)&pause("a")
 
     //Ham Forwards
-    RegisterHam(Ham_Spawn,"player","PlayerLife",1)
     RegisterHam(Ham_Spawn,"player","PlayerLife",1)
 
     set_task(0.3,"HandlerThink", 2022, .flags="b")
 
     register_clcmd("o2","@o2_view", 0, "- toggle underwater Oxygen bar / O2 view.")
     register_clcmd("oxygen_bar","@o2_view", 0, "- toggle underwater Oxygen bar / O2 view.")
-
-    g_maxPlayers = get_maxplayers()
 }
 
 public client_putinserver(id)
+{
     if(is_user_alive(id))
+    {
         g_PlayerAlive[id] = true
+    }
+}
 
 #if !defined client_disconnected
 #define client_disconnected client_disconnect
@@ -131,7 +134,9 @@ public client_disconnected(id)
 }
 
 public PlayerLife(id)
+{
     g_PlayerAlive[id] = is_user_alive(id) ? true : false
+}
 
 public HandlerThink(Ent)
 {
@@ -140,11 +145,10 @@ public HandlerThink(Ent)
 
     set_hudmessage(255,0,0,-1.0,0.9,0,6.0,TIME_PER_LINE + 0.01)
 
-    for(i = 1; i < g_maxPlayers  ; i++)
+    for(i = 1; i < MaxClients+1  ; i++)
     {
-        if(g_PlayerAlive[i] && !is_user_bot(i) && !is_user_hltv(i))
+        if(g_PlayerAlive[i] && g_Wants_O2_View[i])
         {
-            if(g_Wants_O2_View[i])
 
             if(pev(i,pev_waterlevel) == UNDERWATER && !g_PlayerWaterGametime[i])
                 g_PlayerWaterGametime[i] = Gametime
