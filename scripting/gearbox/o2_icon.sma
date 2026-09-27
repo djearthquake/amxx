@@ -39,18 +39,18 @@ static const g_iRainbowB[COLOR_STEPS] =
 public plugin_init()
 {
     register_plugin("O2 Icon", "1.0", "SPiNX");
-    
+
     g_msgStatusIcon = get_user_msgid("StatusIcon");
     g_msgHudColor = get_user_msgid("HudColor");
 
     register_message(g_msgStatusIcon, "msg_status_icon");
-    
+
     register_clcmd("o2", "cmd_toggle_o2");
     register_clcmd("oxygen_bar", "cmd_toggle_o2");
-    
+
     RegisterHam(Ham_Spawn, "player", "OnPlayerSpawn", 1);
     RegisterHam(Ham_Killed, "player", "OnPlayerKilled", 1);
-    
+
     set_task(REFRESH_INTERVAL, "task_oxygen_processor", 5000, _, _, "b");
 }
 
@@ -58,7 +58,7 @@ public client_putinserver(id)
 {
     if(is_user_connected(id))
     {
-        g_bWantsO2[id] = is_user_bot(id) ?  true : false;
+        g_bWantsO2[id] = is_user_bot(id) ?  false : true;
         g_PlayerAlive[id] = true;
         g_fOxygen[id] = OXYGEN_MAX_TIME;
         g_iLastColorState[id] = -1;
@@ -91,10 +91,10 @@ public msg_status_icon(msg_id, msg_dest, id)
 {
     new sIcon[MAX_PLAYERS];
     get_msg_arg_string(1, sIcon, charsmax(sIcon));
-    
-    if (equal(sIcon, "oxygen")) 
+
+    if (equal(sIcon, "oxygen"))
         return PLUGIN_HANDLED;
-        
+
     return PLUGIN_CONTINUE;
 }
 
@@ -102,7 +102,7 @@ public cmd_toggle_o2(id)
 {
     g_bWantsO2[id] = !g_bWantsO2[id];
     client_print(id, print_chat, "* Oxygen HUD is now %s.", g_bWantsO2[id] ? "ON" : "OFF");
-    
+
     if (!g_bWantsO2[id])
     {
         g_iLastColorState[id] = -1;
@@ -113,35 +113,35 @@ public cmd_toggle_o2(id)
 public task_oxygen_processor()
 {
     static id;
-    
+
     for (id = 1; id < MaxClients + 1; id++)
     {
-        if (!g_PlayerAlive[id] || !g_bWantsO2[id]) 
+        if (!g_PlayerAlive[id] || !g_bWantsO2[id])
             continue;
-        
+
         if (pev(id, pev_waterlevel) > 0 || (pev(id, pev_flags) & FL_INWATER))
         {
-            g_fOxygen[id] -= REFRESH_INTERVAL; 
-            if (g_fOxygen[id] < 0.0) 
+            g_fOxygen[id] -= REFRESH_INTERVAL;
+            if (g_fOxygen[id] < 0.0)
                 g_fOxygen[id] = 0.0;
-            
+
             new Float:fRatio = g_fOxygen[id] / OXYGEN_MAX_TIME;
             new iIndex = floatround(fRatio * (COLOR_STEPS - 1));
             iIndex = clamp(iIndex, 0, COLOR_STEPS - 1);
-            
+
             new iTargetIndex = (COLOR_STEPS - 1) - iIndex;
-            
+
             new r = g_iRainbowR[iTargetIndex];
             new g = g_iRainbowG[iTargetIndex];
             new b = g_iRainbowB[iTargetIndex];
-            
+
             new mode = (g_fOxygen[id] <= 1.0) ? 2 : 1;
-            
+
             if (g_iLastColorState[id] != iTargetIndex)
             {
                 g_iLastColorState[id] = iTargetIndex;
                 update_custom_sprite(id, mode, r, g, b);
-                
+
                 if (g_msgHudColor)
                 {
                     message_begin(MSG_ONE_UNRELIABLE, g_msgHudColor, _, id);
