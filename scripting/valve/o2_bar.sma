@@ -112,6 +112,8 @@ public client_disconnected(id)
     g_PlayerWaterGametime[id] = 0.0
 
     g_PlayerUpdateGametime[id] = 0.0
+    
+    g_Wants_O2_View[id] = false;
 }
 
 @o2_view(id)
