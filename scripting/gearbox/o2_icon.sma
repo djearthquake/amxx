@@ -2,18 +2,21 @@
 #include <fakemeta>
 #include <hamsandwich>
 
+#define PLUGIN  "Oxygen Status Icon"
+#define VERSION "1.2"
+#define AUTHOR  "SPiNX"
+
+#define TASK_OXYGEN 5000
+
 #define OXYGEN_MAX_TIME 12.0
 #define REFRESH_INTERVAL 0.2
-
 #define COLOR_STEPS 60
 
 static g_msgStatusIcon;
 static g_msgHudColor;
 
-new bool:g_PlayerAlive[MAX_PLAYERS + 1];
-new Float:g_fOxygen[MAX_PLAYERS + 1];
+new bool:g_bWantsO2[MAX_PLAYERS + 1] = { true, ... };
 new g_iLastColorState[MAX_PLAYERS + 1];
-new bool:g_bWantsO2[MAX_PLAYERS + 1] = { false, ... };
 
 static const g_iRainbowR[COLOR_STEPS] =
 {
@@ -38,7 +41,7 @@ static const g_iRainbowB[COLOR_STEPS] =
 
 public plugin_init()
 {
-    register_plugin("O2 Icon", "1.0", "SPiNX");
+    register_plugin(PLUGIN, VERSION, AUTHOR);
 
     g_msgStatusIcon = get_user_msgid("StatusIcon");
     g_msgHudColor = get_user_msgid("HudColor");
@@ -48,48 +51,30 @@ public plugin_init()
     register_clcmd("o2", "cmd_toggle_o2");
     register_clcmd("oxygen_bar", "cmd_toggle_o2");
 
-    RegisterHam(Ham_Spawn, "player", "OnPlayerSpawn", 1);
     RegisterHam(Ham_Killed, "player", "OnPlayerKilled", 1);
 
-    set_task(REFRESH_INTERVAL, "task_oxygen_processor", 5000, _, _, "b");
+    set_task(REFRESH_INTERVAL, "task_oxygen_processor", TASK_OXYGEN, _, _, "b");
 }
 
 public client_putinserver(id)
 {
-    if(is_user_connected(id))
-    {
-        g_bWantsO2[id] = is_user_bot(id) ?  false : true;
-        g_PlayerAlive[id] = true;
-        g_fOxygen[id] = OXYGEN_MAX_TIME;
-        g_iLastColorState[id] = -1;
-    }
+    g_bWantsO2[id] = is_user_bot(id) ? false : true;
+    g_iLastColorState[id] = -1;
 }
 
 public client_disconnected(id)
 {
-    g_PlayerAlive[id] = false;
     g_iLastColorState[id] = -1;
-}
-
-public OnPlayerSpawn(id)
-{
-    if (is_user_alive(id))
-    {
-        g_PlayerAlive[id] = true;
-        g_fOxygen[id] = OXYGEN_MAX_TIME;
-        g_iLastColorState[id] = -1;
-    }
 }
 
 public OnPlayerKilled(id)
 {
-    g_PlayerAlive[id] = false;
-    update_custom_sprite(id, 0, 0, 0, 0);
+    clear_oxygen_hud_state(id);
 }
 
 public msg_status_icon(msg_id, msg_dest, id)
 {
-    new sIcon[MAX_PLAYERS];
+    new sIcon[32];
     get_msg_arg_string(1, sIcon, charsmax(sIcon));
 
     if (equal(sIcon, "oxygen"))
@@ -101,64 +86,70 @@ public msg_status_icon(msg_id, msg_dest, id)
 public cmd_toggle_o2(id)
 {
     g_bWantsO2[id] = !g_bWantsO2[id];
-    client_print(id, print_chat, "* Oxygen HUD is now %s.", g_bWantsO2[id] ? "ON" : "OFF");
+    client_print(id, print_chat, "* Oxygen Icon is now %s.", g_bWantsO2[id] ? "ON" : "OFF");
 
     if (!g_bWantsO2[id])
     {
-        g_iLastColorState[id] = -1;
-        update_custom_sprite(id, 0, 0, 0, 0);
+        clear_oxygen_hud_state(id);
     }
     return PLUGIN_HANDLED;
 }
+
 public task_oxygen_processor()
 {
-    static id;
+    new players[MAX_PLAYERS], num;
+    get_players(players, num, "ch");
 
-    for (id = 1; id < MaxClients + 1; id++)
+    new id;
+    new Float:gameTime = get_gametime();
+
+    for (new i = 0; i < num; i++)
     {
-        if (!g_PlayerAlive[id] || !g_bWantsO2[id])
+        id = players[i];
+
+        if (!is_user_alive(id) || !g_bWantsO2[id])
+        {
+            clear_oxygen_hud_state(id);
             continue;
-
-        if (pev(id, pev_waterlevel) > 0 || (pev(id, pev_flags) & FL_INWATER))
-        {
-            g_fOxygen[id] -= REFRESH_INTERVAL;
-            if (g_fOxygen[id] < 0.0)
-                g_fOxygen[id] = 0.0;
-
-            new Float:fRatio = g_fOxygen[id] / OXYGEN_MAX_TIME;
-            new iIndex = floatround(fRatio * (COLOR_STEPS - 1));
-            iIndex = clamp(iIndex, 0, COLOR_STEPS - 1);
-
-            new iTargetIndex = (COLOR_STEPS - 1) - iIndex;
-
-            new r = g_iRainbowR[iTargetIndex];
-            new g = g_iRainbowG[iTargetIndex];
-            new b = g_iRainbowB[iTargetIndex];
-
-            new mode = (g_fOxygen[id] <= 1.0) ? 2 : 1;
-
-            if (g_iLastColorState[id] != iTargetIndex)
-            {
-                g_iLastColorState[id] = iTargetIndex;
-                update_custom_sprite(id, mode, r, g, b);
-
-                if (g_msgHudColor)
-                {
-                    message_begin(MSG_ONE_UNRELIABLE, g_msgHudColor, _, id);
-                    write_byte(r);
-                    write_byte(g);
-                    write_byte(b);
-                    message_end();
-                }
-            }
         }
-        else
+
+        if (pev(id, pev_waterlevel) != 3)
         {
-            if (g_iLastColorState[id] != -1)
+            clear_oxygen_hud_state(id);
+            continue;
+        }
+
+        new Float:airFinished;
+        pev(id, pev_air_finished, airFinished);
+
+        new Float:remaining = airFinished - gameTime;
+        if (remaining < 0.0)
+            remaining = 0.0;
+
+        new Float:fRatio = remaining / OXYGEN_MAX_TIME;
+        new iIndex = floatround(fRatio * (COLOR_STEPS - 1));
+        iIndex = clamp(iIndex, 0, COLOR_STEPS - 1);
+
+        new iTargetIndex = (COLOR_STEPS - 1) - iIndex;
+
+        new r = g_iRainbowR[iTargetIndex];
+        new g = g_iRainbowG[iTargetIndex];
+        new b = g_iRainbowB[iTargetIndex];
+
+        new mode = (remaining <= 1.0) ? 2 : 1;
+
+        if (g_iLastColorState[id] != iTargetIndex)
+        {
+            g_iLastColorState[id] = iTargetIndex;
+            update_custom_sprite(id, mode, r, g, b);
+
+            if (g_msgHudColor)
             {
-                g_fOxygen[id] = OXYGEN_MAX_TIME;
-                g_iLastColorState[id] = -1;
-                update_custom_sprite(id, 0, 0, 0, 0);
+                message_begin(MSG_ONE_UNRELIABLE, g_msgHudColor, _, id);
+                write_byte(r);
+                write_byte(g);
+                write_byte(b);
+                message_end();
             }
         }
     }
@@ -173,4 +164,23 @@ stock update_custom_sprite(id, mode, r, g, b)
     write_byte(g);
     write_byte(b);
     message_end();
+}
+
+stock clear_oxygen_hud_state(id)
+{
+    if (g_iLastColorState[id] != -1)
+    {
+        g_iLastColorState[id] = -1;
+
+        update_custom_sprite(id, 0, 0, 0, 0);
+
+        if (g_msgHudColor)
+        {
+            message_begin(MSG_ONE_UNRELIABLE, g_msgHudColor, _, id);
+            write_byte(255);
+            write_byte(255);
+            write_byte(255);
+            message_end();
+        }
+    }
 }
