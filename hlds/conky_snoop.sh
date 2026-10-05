@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-DEFAULT_IP="YOUR_UP"
+DEFAULT_IP="YOUR_IP"
 PORTS=("27030" "27015")  # Add all your ports here
 
 # --- BYPASS USER INPUT FOR CONKY ---
