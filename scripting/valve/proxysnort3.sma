@@ -7,13 +7,14 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.8.7"
+#define VERSION "3.8.8"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
 #define MAX_HUD_ENTRIES 3
 #define SVC_SPAWNSTATICSOUND 29
 #define FCVAR_NOEXTRAWHITEPACE 512
+#define MAX_PROXY_USERS 6
 
 new g_cvar_token, g_cvar_risk_kick, g_cvar_troll, g_cvar_prune;
 new g_hud_sync, g_log_path[MAX_RESOURCE_PATH_LENGTH], g_whitelist_path[MAX_RESOURCE_PATH_LENGTH];
@@ -66,24 +67,31 @@ public plugin_init()
 
 public client_putinserver(id)
 {
-    g_is_proxy[id] = false;
-    g_is_checking[id] = false;
-    g_half_damage[id] = false;
-    g_active_troll[id] = 0;
-    g_is_whitelisted[id] = check_file_whitelist(id);
-
-    if (is_user_bot(id) || g_is_whitelisted[id])
+    set_task 3.0, "process_start", id
+}
+public process_start(id)
+{
+    if(is_user_connected(id))
     {
-        return;
-    }
+        g_is_proxy[id] = false;
+        g_is_checking[id] = false;
+        g_half_damage[id] = false;
+        g_active_troll[id] = 0;
+        g_is_whitelisted[id] = check_file_whitelist(id);
 
-    static ip[16];
-    get_user_ip(id, ip, charsmax(ip), 1);
+        if (is_user_bot(id) || g_is_whitelisted[id])
+        {
+            return;
+        }
 
-    if (!equal(ip, "127.0.0.1") && !equal(ip, "loopback"))
-    {
-        g_is_checking[id] = true;
-        start_proxy_check(id, ip);
+        static ip[16];
+        get_user_ip(id, ip, charsmax(ip), 1);
+
+        if (!equal(ip, "127.0.0.1") && !equal(ip, "loopback"))
+        {
+            g_is_checking[id] = true;
+            start_proxy_check(id, ip);
+        }
     }
 }
 
@@ -99,8 +107,8 @@ public start_proxy_check(id, const ip[])
     if (socket > 0)
     {
         formatex(request, charsmax(request),
-            "GET /v2/%s?key=%s&vpn=1&risk=2&asn=1&tag=%s-%s HTTP/1.1^r^nHost: proxycheck.io^r^nConnection: close^r^n^r^n",
-            ip, token, modname, authid);
+        "GET /v2/%s?key=%s&vpn=1&risk=2&asn=1&tag=%s-%s HTTP/1.1^r^nHost: proxycheck.io^r^nConnection: close^r^n^r^n",
+        ip, token, modname, authid);
 
         socket_send(socket, request, charsmax(request));
 
@@ -139,7 +147,7 @@ public parse_json_response(const data[], socket)
     new JSON:root = json_parse(buffer[body_start]);
     if (root == Invalid_JSON)
     {
-        server_print("[ProxySnort] Error: JSON Truncated.");
+        server_print("[%s] Error: JSON Truncated.", PLUGIN);
         return;
     }
 
@@ -158,11 +166,10 @@ public parse_json_response(const data[], socket)
     if (ip_obj != Invalid_JSON)
     {
         new risk_score = json_object_get_number(ip_obj, "risk");
-        static reason[32];
+        static reason[MAX_NAME_LENGTH];
 
         determine_reason(ip_obj, reason, charsmax(reason));
 
-        // FIXED: Strict numeric verification check. 
         if (risk_score >= get_pcvar_num(g_cvar_risk_kick))
         {
             log_to_json(id, ip, risk_score, reason);
@@ -220,7 +227,7 @@ public log_to_json(id, const ip[], risk, const reason[])
     }
 
     new JSON:entry = json_init_object();
-    static name[MAX_NAME_LENGTH], t[32];
+    static name[MAX_NAME_LENGTH], t[MAX_NAME_LENGTH];
     get_user_name(id, name, charsmax(name));
     get_time("%m/%d %H:%M", t, charsmax(t));
 
@@ -238,7 +245,7 @@ public log_to_json(id, const ip[], risk, const reason[])
     json_free(entry);
     json_free(root);
 
-    server_print("[ProxySnort] Logged and Pruned: %s [%d%% Risk]", name, risk);
+    server_print("[%s] Logged and Pruned: %s [%d%% Risk]", PLUGIN, name, risk);
 }
 public execute_troll(id, const ip[], risk, const country[], const isp[], const reason[])
 {
@@ -265,21 +272,46 @@ public execute_troll(id, const ip[], risk, const country[], const isp[], const r
     static Float:origin[3];
     pev(id, pev_origin, origin);
     message_begin(MSG_ONE_UNRELIABLE, SVC_SPAWNSTATICSOUND, .player=id);
-    write_coord(floatround(origin[0])); write_coord(floatround(origin[1])); write_coord(floatround(origin[2]));
-    write_short(g_sound_index); write_byte(255); write_byte(60); write_byte(0); write_byte(64);
+
+    write_coord(floatround(origin[0]));
+    write_coord(floatround(origin[1]));
+    write_coord(floatround(origin[2]));
+
+    write_short(g_sound_index);
+    write_byte(150) //vol *255
+    write_byte(64) //attenu *64
+
+    write_short(id) //ent index -- follow the player
+    write_byte(10) //pitch
+    write_byte(0) //flags
     message_end();
 
-    if (g_active_troll[id] == 3) g_half_damage[id] = true;
+    if (g_active_troll[id] == 3)
+    {
+        g_half_damage[id] = true;
+        client_print 0, print_chat, "Proxy user %n punishment = [[HALF-DAMAGE]]!", id
+    }
 
     fwd_PlayerSpawn(id);
-    set_task(8.0, "delayed_kick_custom", id);
+    //only kick full servers; treat like reserved slots
+    new iLimit = get_playersnum(.flag = 0)
+    if(iLimit >= MaxClients - MAX_PROXY_USERS)
+    {
+        set_task(1.5, "delayed_kick_custom", id);
+    }
+    else
+    {
+        new iSlots = MaxClients - iLimit -MAX_PROXY_USERS
+        server_print("Permitting proxy user %N due to %i slots open", id, iSlots)
+        client_print 0, print_chat, "Permitting proxy user %n due to %i slots open!", id, iSlots
+    }
 }
 
 public delayed_kick_custom(id)
 {
     if (is_user_connected(id))
     {
-        server_cmd("kick #%d ^"Security Risk: High Proxy Detection^"", get_user_userid(id));
+        server_cmd("kick #%d ^"Security Risk: High Proxy Detection. Risk > %i%^"", get_user_userid(id), get_pcvar_num(g_cvar_risk_kick));
     }
 }
 
@@ -317,12 +349,22 @@ public fwd_PlayerSpawn(id)
             message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenShake"), {0,0,0}, id);
             write_short(1<<14); write_short(1<<14); write_short(1<<14);
             message_end();
+            client_print 0, print_chat, "%n is being punished with [[TREMORS]] for being on a proxy.", id
         }
-        case 2: set_user_health(id, 50);
+        case 2:
+        {
+            set_user_health(id, 50);
+            client_print 0, print_chat, "%n is being punished with [[HALF-HEALTH]] for being on a proxy.", id
+        }
+        case 3:
+        {
+            client_print 0, print_chat, "%n is being punished with [[HALF-DAMAGE]] for being on a proxy.", id
+        }
         case 4:
         {
             set_pev(id, pev_flags, pev(id, pev_flags) | FL_FROZEN);
             set_user_rendering(id, kRenderFxGlowShell, 255, 0, 0, kRenderNormal, 25);
+            client_print 0, print_chat, "%n is being [[FROZEN]] for being on a proxy.", id
         }
     }
 }
@@ -366,7 +408,7 @@ public cmd_show_proxies(id)
 public display_proxy_hud()
 {
     if (g_entry_count == 0) return;
-    static hud_text[512];
+    static hud_text[MAX_MENU_LENGTH];
     new len = formatex(hud_text, charsmax(hud_text), "[ Recent Proxy Blocks ]^n");
     for (new i = 0; i < g_entry_count; i++)
     {
@@ -381,7 +423,7 @@ public cmd_whitelist_add(id, level, cid)
 {
     if (!cmd_access(id, level, cid, 2)) return PLUGIN_HANDLED;
 
-    static arg[32]; read_argv(1, arg, charsmax(arg));
+    static arg[MAX_NAME_LENGTH]; read_argv(1, arg, charsmax(arg));
     new target = cmd_target(id, arg, 0);
 
     if (target)
