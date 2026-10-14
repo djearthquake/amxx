@@ -7,7 +7,7 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.8.8"
+#define VERSION "3.8.9"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
@@ -31,8 +31,12 @@ new bool:g_is_whitelisted[MAX_PLAYERS + 1];
 new g_active_troll[MAX_PLAYERS + 1];
 new g_original_name[MAX_PLAYERS + 1][MAX_NAME_LENGTH];
 
-new g_sound_index;
-new const g_alert_sound[] = "buttons/button10.wav";
+static g_sound_index;
+static const g_alert_sound[] = "buttons/button10.wav";
+static g_modname[MAX_NAME_LENGTH]
+new g_authid[MAX_AUTHID_LENGTH][MAX_PLAYERS+1]
+new g_ip[MAX_IP_LENGTH][MAX_PLAYERS+1]
+new g_name[MAX_NAME_LENGTH][MAX_PLAYERS +1]
 
 public plugin_precache()
 {
@@ -62,13 +66,51 @@ public plugin_init()
     formatex(g_log_path, charsmax(g_log_path), "%s/proxy_logs.json", config_dir);
     formatex(g_whitelist_path, charsmax(g_whitelist_path), "%s/proxy_whitelist.ini", config_dir);
 
+    get_modname(g_modname, charsmax(g_modname));
+
     set_task(10.0, "display_proxy_hud", .flags="b");
+}
+
+
+public client_authorized(id, const authid[])
+{
+    if(is_user_connecting(id))
+    {
+        if(!equal(authid, "BOT"))
+        {
+            copy(g_authid[id], charsmax(g_authid[]), authid)
+            get_user_ip(id, g_ip[id], charsmax(g_ip[]), 1);
+
+            if(!check_proxy_cache(id))
+            {
+                process_start(id)
+                server_print "%s %s by %s active on %N", PLUGIN, VERSION, AUTHOR, id
+            }
+        }
+    }
 }
 
 public client_putinserver(id)
 {
-    set_task 3.0, "process_start", id
+    if(check_proxy_cache(id))
+    {
+        g_is_proxy[id] = true;
+        //only kick full servers; treat like reserved slots
+        new iLimit = get_playersnum(.flag = 0)
+        if(iLimit >= MaxClients - MAX_PROXY_USERS)
+        {
+            set_task(1.5, "delayed_kick_custom", id);
+        }
+        else
+        {
+            new iSlots = MaxClients - iLimit -MAX_PROXY_USERS
+            server_print("Permitting proxy user %N due to %i slots open", id, iSlots)
+            client_print 0, print_chat, "Permitting proxy user %n due to %i slots open!", id, iSlots
+        }
+    }
 }
+
+
 public process_start(id)
 {
     if(is_user_connected(id))
@@ -84,23 +126,41 @@ public process_start(id)
             return;
         }
 
-        static ip[16];
-        get_user_ip(id, ip, charsmax(ip), 1);
-
-        if (!equal(ip, "127.0.0.1") && !equal(ip, "loopback"))
+        if (!equal(g_ip[id], "127.0.0.1") && !equal(g_ip[id], "loopback"))
         {
             g_is_checking[id] = true;
-            start_proxy_check(id, ip);
+            start_proxy_check(id);
         }
     }
 }
 
-public start_proxy_check(id, const ip[])
+public bool:check_proxy_cache(id)
 {
-    static token[MAX_NAME_LENGTH], request[MAX_FMT_LENGTH], authid[MAX_AUTHID_LENGTH], modname[MAX_NAME_LENGTH];
+    if (!file_exists(g_log_path)) return false;
+    static line[MAX_IP_LENGTH + 4];
+    new file = fopen(g_log_path, "rt");
+    if (file)
+    {
+        while (!feof(file))
+        {
+            fgets(file, line, charsmax(line)); trim(line);
+            if (line[0] == ';' || line[0] == '#' || !line[0]) continue;
+            if (equal(g_ip[id], line))
+            {
+                fclose(file);
+                server_print "%N likes to anonymize.", id
+                return true;
+            }
+        }
+        fclose(file);
+    }
+    return false;
+}
+
+public start_proxy_check(id)
+{
+    static token[MAX_NAME_LENGTH], request[MAX_FMT_LENGTH];
     get_pcvar_string(g_cvar_token, token, charsmax(token));
-    get_user_authid(id, authid, charsmax(authid));
-    get_modname(modname, charsmax(modname));
 
     new error, socket = socket_open("proxycheck.io", 80, SOCKET_TCP, error);
 
@@ -108,7 +168,7 @@ public start_proxy_check(id, const ip[])
     {
         formatex(request, charsmax(request),
         "GET /v2/%s?key=%s&vpn=1&risk=2&asn=1&tag=%s-%s HTTP/1.1^r^nHost: proxycheck.io^r^nConnection: close^r^n^r^n",
-        ip, token, modname, authid);
+        g_ip[id], token, g_modname, g_authid[id]);
 
         socket_send(socket, request, charsmax(request));
 
@@ -159,10 +219,7 @@ public parse_json_response(const data[], socket)
         return;
     }
 
-    static ip[16];
-    get_user_ip(id, ip, charsmax(ip), 1);
-
-    new JSON:ip_obj = json_object_get_value(root, ip);
+    new JSON:ip_obj = json_object_get_value(root, g_ip[id]);
     if (ip_obj != Invalid_JSON)
     {
         new risk_score = json_object_get_number(ip_obj, "risk");
@@ -172,14 +229,14 @@ public parse_json_response(const data[], socket)
 
         if (risk_score >= get_pcvar_num(g_cvar_risk_kick))
         {
-            log_to_json(id, ip, risk_score, reason);
+            log_to_json(id, risk_score, reason);
 
             if (get_pcvar_num(g_cvar_troll) == 1)
             {
                 static country[MAX_NAME_LENGTH], isp[MAX_NAME_LENGTH];
                 json_object_get_string(ip_obj, "country", country, charsmax(country));
                 json_object_get_string(ip_obj, "isp", isp, charsmax(isp));
-                execute_troll(id, ip, risk_score, country, isp, reason);
+                execute_troll(id, risk_score, country, isp, reason);
             }
             else
             {
@@ -202,7 +259,7 @@ determine_reason(JSON:ip_obj, dest[], len)
     }
 }
 
-public log_to_json(id, const ip[], risk, const reason[])
+public log_to_json(id, risk, const reason[])
 {
     new JSON:root;
     if (!file_exists(g_log_path) || file_size(g_log_path) < 2)
@@ -227,14 +284,15 @@ public log_to_json(id, const ip[], risk, const reason[])
     }
 
     new JSON:entry = json_init_object();
-    static name[MAX_NAME_LENGTH], t[MAX_NAME_LENGTH];
-    get_user_name(id, name, charsmax(name));
+    static t[MAX_NAME_LENGTH];
+
     get_time("%m/%d %H:%M", t, charsmax(t));
 
     json_object_set_number(entry, "timestamp", get_systime());
     json_object_set_string(entry, "time", t);
-    json_object_set_string(entry, "user", name);
-    json_object_set_string(entry, "ip", ip);
+    json_object_set_string(entry, "user", g_name[id]);
+    json_object_set_string(entry, "authid", g_authid[id]);
+    json_object_set_string(entry, "ip", g_ip[id]);
     json_object_set_number(entry, "risk", risk);
     json_object_set_string(entry, "reason", reason);
 
@@ -245,9 +303,10 @@ public log_to_json(id, const ip[], risk, const reason[])
     json_free(entry);
     json_free(root);
 
-    server_print("[%s] Logged and Pruned: %s [%d%% Risk]", PLUGIN, name, risk);
+    server_print("[%s] Logged and Pruned: %s [%d%% Risk]", PLUGIN, g_name[id], risk);
 }
-public execute_troll(id, const ip[], risk, const country[], const isp[], const reason[])
+
+public execute_troll(id, risk, const country[], const isp[], const reason[])
 {
     if (g_is_whitelisted[id] || !is_user_connected(id)) return;
 
@@ -289,7 +348,6 @@ public execute_troll(id, const ip[], risk, const country[], const isp[], const r
     if (g_active_troll[id] == 3)
     {
         g_half_damage[id] = true;
-        client_print 0, print_chat, "Proxy user %n punishment = [[HALF-DAMAGE]]!", id
     }
 
     fwd_PlayerSpawn(id);
@@ -318,16 +376,15 @@ public delayed_kick_custom(id)
 public bool:check_file_whitelist(id)
 {
     if (!file_exists(g_whitelist_path)) return false;
-    static authid[MAX_AUTHID_LENGTH], line[MAX_AUTHID_LENGTH + 4];
+    static line[MAX_AUTHID_LENGTH + 4];
     new file = fopen(g_whitelist_path, "rt");
-    get_user_authid(id, authid, charsmax(authid));
     if (file)
     {
         while (!feof(file))
         {
             fgets(file, line, charsmax(line)); trim(line);
             if (line[0] == ';' || line[0] == '#' || !line[0]) continue;
-            if (equal(authid, line))
+            if (equal(g_authid[id], line))
             {
                 fclose(file);
                 return true;
@@ -371,16 +428,18 @@ public fwd_PlayerSpawn(id)
 
 public fwd_ClientUserInfoChanged(id, infobuffer)
 {
-    if (!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll)) return FMRES_IGNORED;
-
-    static current_name[MAX_NAME_LENGTH], target_name[MAX_NAME_LENGTH];
-    engfunc(EngFunc_InfoKeyValue, infobuffer, "name", current_name, charsmax(current_name));
-    formatex(target_name, charsmax(target_name), "PROXY: %s", g_original_name[id]);
-
-    if (!equal(current_name, target_name))
+    if(is_user_connected(id))
     {
-        engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", target_name);
-        return FMRES_HANDLED;
+        static target_name[MAX_NAME_LENGTH];
+        engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
+        if (!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll)) return FMRES_IGNORED;
+        formatex(target_name, charsmax(target_name), "PROXY: %s", g_original_name[id]);
+
+        if (!equal(g_name[id], target_name))
+        {
+            engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", target_name);
+            return FMRES_HANDLED;
+        }
     }
     return FMRES_IGNORED;
 }
@@ -407,7 +466,7 @@ public cmd_show_proxies(id)
 
 public display_proxy_hud()
 {
-    if (g_entry_count == 0) return;
+    if (!g_entry_count) return;
     static hud_text[MAX_MENU_LENGTH];
     new len = formatex(hud_text, charsmax(hud_text), "[ Recent Proxy Blocks ]^n");
     for (new i = 0; i < g_entry_count; i++)
@@ -428,10 +487,9 @@ public cmd_whitelist_add(id, level, cid)
 
     if (target)
     {
-        static authid[MAX_AUTHID_LENGTH], name[MAX_NAME_LENGTH];
-        get_user_authid(target, authid, charsmax(authid));
+        static name[MAX_NAME_LENGTH];
         get_user_name(target, name, charsmax(name));
-        write_file(g_whitelist_path, authid, -1);
+        write_file(g_whitelist_path, g_authid[target], -1);
         g_is_whitelisted[target] = true;
         console_print(id, "[ProxySnort] Whitelisted %s", name);
     }
