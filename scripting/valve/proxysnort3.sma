@@ -7,7 +7,7 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.8.9"
+#define VERSION "3.9.0"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
@@ -29,7 +29,7 @@ new bool:g_is_checking[MAX_PLAYERS + 1];
 new bool:g_half_damage[MAX_PLAYERS + 1];
 new bool:g_is_whitelisted[MAX_PLAYERS + 1];
 new g_active_troll[MAX_PLAYERS + 1];
-new g_original_name[MAX_PLAYERS + 1][MAX_NAME_LENGTH];
+new g_target_name[MAX_PLAYERS + 1][MAX_NAME_LENGTH];
 
 static g_sound_index;
 static const g_alert_sound[] = "buttons/button10.wav";
@@ -76,15 +76,17 @@ public client_authorized(id, const authid[])
 {
     if(is_user_connecting(id))
     {
-        if(!equal(authid, "BOT"))
+        if(!equal(authid, "BOT") && !g_is_whitelisted[id])
         {
             copy(g_authid[id], charsmax(g_authid[]), authid)
+            g_is_whitelisted[id] = check_file_whitelist(id);
+
             get_user_ip(id, g_ip[id], charsmax(g_ip[]), 1);
 
             if(!check_proxy_cache(id))
             {
                 process_start(id)
-                server_print "%s %s by %s active on %N", PLUGIN, VERSION, AUTHOR, id
+                server_print "%s %s by %s active on %N/%s", PLUGIN, VERSION, AUTHOR, id, g_ip[id]
             }
         }
     }
@@ -92,6 +94,7 @@ public client_authorized(id, const authid[])
 
 public client_putinserver(id)
 {
+    if(!g_is_whitelisted[id])
     if(check_proxy_cache(id))
     {
         g_is_proxy[id] = true;
@@ -113,7 +116,7 @@ public client_putinserver(id)
 
 public process_start(id)
 {
-    if(is_user_connected(id))
+    if(id && id <= MaxClients)
     {
         g_is_proxy[id] = false;
         g_is_checking[id] = false;
@@ -121,7 +124,7 @@ public process_start(id)
         g_active_troll[id] = 0;
         g_is_whitelisted[id] = check_file_whitelist(id);
 
-        if (is_user_bot(id) || g_is_whitelisted[id])
+        if (g_is_whitelisted[id])
         {
             return;
         }
@@ -137,7 +140,7 @@ public process_start(id)
 public bool:check_proxy_cache(id)
 {
     if (!file_exists(g_log_path)) return false;
-    static line[MAX_IP_LENGTH + 4];
+    static line[MAX_NAME_LENGTH];
     new file = fopen(g_log_path, "rt");
     if (file)
     {
@@ -145,7 +148,7 @@ public bool:check_proxy_cache(id)
         {
             fgets(file, line, charsmax(line)); trim(line);
             if (line[0] == ';' || line[0] == '#' || !line[0]) continue;
-            if (equal(g_ip[id], line))
+            if (contain(line, g_ip[id]) != FM_NULLENT)
             {
                 fclose(file);
                 server_print "%N likes to anonymize.", id
@@ -159,6 +162,7 @@ public bool:check_proxy_cache(id)
 
 public start_proxy_check(id)
 {
+    server_print "Checking %N/%s", id, g_ip[id]
     static token[MAX_NAME_LENGTH], request[MAX_FMT_LENGTH];
     get_pcvar_string(g_cvar_token, token, charsmax(token));
 
@@ -311,7 +315,6 @@ public execute_troll(id, risk, const country[], const isp[], const reason[])
     if (g_is_whitelisted[id] || !is_user_connected(id)) return;
 
     g_is_proxy[id] = true;
-    get_user_name(id, g_original_name[id], charsmax(g_original_name[]));
 
     g_active_troll[id] = random_num(1, 4);
 
@@ -322,7 +325,7 @@ public execute_troll(id, risk, const country[], const isp[], const reason[])
         g_risks[i] = g_risks[i-1];
     }
 
-    copy(g_names[0], charsmax(g_names[]), g_original_name[id]);
+    copy(g_names[0], charsmax(g_names[]), g_name[id]);
     formatex(g_info[0], charsmax(g_info[]), "%s (%s)", country, reason);
     g_risks[0] = risk;
 
@@ -387,6 +390,7 @@ public bool:check_file_whitelist(id)
             if (equal(g_authid[id], line))
             {
                 fclose(file);
+                server_print "%N is %s WHITE LISTED!", id, PLUGIN
                 return true;
             }
         }
@@ -430,14 +434,20 @@ public fwd_ClientUserInfoChanged(id, infobuffer)
 {
     if(is_user_connected(id))
     {
-        static target_name[MAX_NAME_LENGTH];
         engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
+        
         if (!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll)) return FMRES_IGNORED;
-        formatex(target_name, charsmax(target_name), "PROXY: %s", g_original_name[id]);
+        engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
+        formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
 
-        if (!equal(g_name[id], target_name))
+        if (!equal(g_name[id], g_target_name[id]))
         {
-            engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", target_name);
+            if(contain("PROXY", g_name[id]) == FM_NULLENT)
+            {
+                engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
+                formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
+                engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
+            }
             return FMRES_HANDLED;
         }
     }
@@ -487,11 +497,9 @@ public cmd_whitelist_add(id, level, cid)
 
     if (target)
     {
-        static name[MAX_NAME_LENGTH];
-        get_user_name(target, name, charsmax(name));
         write_file(g_whitelist_path, g_authid[target], -1);
         g_is_whitelisted[target] = true;
-        console_print(id, "[ProxySnort] Whitelisted %s", name);
+        console_print(id, "[ProxySnort] Whitelisted %s", g_name[id]);
     }
     return PLUGIN_HANDLED;
 }
