@@ -181,7 +181,7 @@ public bool:check_ok_cache(id)
             if (contain(line, g_ip[id]) != FM_NULLENT)
             {
                 fclose(file);
-                server_print "%S is clean IP.", g_ip[id]
+                server_print "%s is clean IP.", g_ip[id]
                 return true;
             }
         }
