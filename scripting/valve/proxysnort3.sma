@@ -515,12 +515,21 @@ public fwd_ClientUserInfoChanged(id, infobuffer)
     {
         engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
         
-        if (!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll) || contain("PROXY", g_name[id]) != FM_NULLENT)
-        return FMRES_IGNORED;
+        new bool:has_proxy_tag = (containi(g_name[id], "PROXY: ") != -1);
 
-        formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
-        engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
-        return FMRES_HANDLED;
+        if ((!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll)) && has_proxy_tag)
+        {
+            formatex(g_target_name[id], charsmax(g_target_name[]), "%s", g_name[id]);
+            engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
+            return FMRES_HANDLED;
+        }
+
+        if (g_is_proxy[id] && get_pcvar_num(g_cvar_troll) && !has_proxy_tag)
+        {
+            formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
+            engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
+            return FMRES_HANDLED;
+        }
     }
     return FMRES_IGNORED;
 }
