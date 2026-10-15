@@ -127,7 +127,6 @@ public process_start(id)
     if(id && id <= MaxClients)
     {
         g_is_proxy[id] = false;
-        ///g_is_checking[id] = false;
         g_half_damage[id] = false;
         g_active_troll[id] = 0;
 
@@ -216,7 +215,7 @@ public parse_json_response(const data[], socket)
 {
     new id = str_to_num(data);
 
-    if (id <=0 || id >= MaxClients)
+    if (id <=0 || id > MaxClients)
     {
         socket_close(socket);
         return;
