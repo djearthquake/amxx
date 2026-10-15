@@ -7,7 +7,7 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.9.0"
+#define VERSION "3.9.1"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
@@ -17,7 +17,8 @@
 #define MAX_PROXY_USERS 6
 
 new g_cvar_token, g_cvar_risk_kick, g_cvar_troll, g_cvar_prune;
-new g_hud_sync, g_log_path[MAX_RESOURCE_PATH_LENGTH], g_whitelist_path[MAX_RESOURCE_PATH_LENGTH];
+new g_hud_sync, g_log_path[MAX_RESOURCE_PATH_LENGTH], g_whitelist_path[MAX_RESOURCE_PATH_LENGTH],
+g_ok_path[MAX_RESOURCE_PATH_LENGTH];
 
 new g_names[MAX_HUD_ENTRIES][MAX_NAME_LENGTH];
 new g_risks[MAX_HUD_ENTRIES];
@@ -64,6 +65,7 @@ public plugin_init()
     static config_dir[MAX_RESOURCE_PATH_LENGTH];
     get_configsdir(config_dir, charsmax(config_dir));
     formatex(g_log_path, charsmax(g_log_path), "%s/proxy_logs.json", config_dir);
+    formatex(g_ok_path, charsmax(g_ok_path), "%s/proxyfree_logs.json", config_dir);
     formatex(g_whitelist_path, charsmax(g_whitelist_path), "%s/proxy_whitelist.ini", config_dir);
 
     get_modname(g_modname, charsmax(g_modname));
@@ -76,14 +78,13 @@ public client_authorized(id, const authid[])
 {
     if(is_user_connecting(id))
     {
+        copy(g_authid[id], charsmax(g_authid[]), authid)
+        g_is_whitelisted[id] = check_file_whitelist(id);
+
         if(!equal(authid, "BOT") && !g_is_whitelisted[id])
         {
-            copy(g_authid[id], charsmax(g_authid[]), authid)
-            g_is_whitelisted[id] = check_file_whitelist(id);
-
             get_user_ip(id, g_ip[id], charsmax(g_ip[]), 1);
-
-            if(!check_proxy_cache(id))
+            if(!check_ok_cache(id) && !check_proxy_cache(id))
             {
                 process_start(id)
                 server_print "%s %s by %s active on %N/%s", PLUGIN, VERSION, AUTHOR, id, g_ip[id]
@@ -111,6 +112,11 @@ public client_putinserver(id)
             client_print 0, print_chat, "Permitting proxy user %n due to %i slots open!", id, iSlots
         }
     }
+    else if(check_ok_cache(id))
+    {
+        server_print "%N has clean IP:%s", id, g_ip[id]
+    }
+    
 }
 
 
@@ -122,9 +128,8 @@ public process_start(id)
         g_is_checking[id] = false;
         g_half_damage[id] = false;
         g_active_troll[id] = 0;
-        g_is_whitelisted[id] = check_file_whitelist(id);
 
-        if (g_is_whitelisted[id])
+        if (g_is_whitelisted[id] || check_ok_cache(id))
         {
             return;
         }
@@ -160,9 +165,33 @@ public bool:check_proxy_cache(id)
     return false;
 }
 
+
+public bool:check_ok_cache(id)
+{
+    if (!file_exists(g_ok_path)) return false;
+    static line[MAX_NAME_LENGTH];
+    new file = fopen(g_ok_path, "rt");
+    if (file)
+    {
+        while (!feof(file))
+        {
+            fgets(file, line, charsmax(line)); trim(line);
+            if (line[0] == ';' || line[0] == '#' || !line[0]) continue;
+            if (contain(line, g_ip[id]) != FM_NULLENT)
+            {
+                fclose(file);
+                server_print "%N has clean IP.", id
+                return true;
+            }
+        }
+        fclose(file);
+    }
+    return false;
+}
+
 public start_proxy_check(id)
 {
-    server_print "Checking %N/%s", id, g_ip[id]
+    server_print "Checking %N %s", id, g_ip[id]
     static token[MAX_NAME_LENGTH], request[MAX_FMT_LENGTH];
     get_pcvar_string(g_cvar_token, token, charsmax(token));
 
@@ -247,6 +276,11 @@ public parse_json_response(const data[], socket)
                 server_cmd("kick #%d ^"Security Risk: %s (%d%%)^"", get_user_userid(id), reason, risk_score);
             }
         }
+        else
+        {
+            server_print "%N is not a risk.", id
+            log_to_cache(id)
+        }
     }
     json_free(root);
 }
@@ -261,6 +295,51 @@ determine_reason(JSON:ip_obj, dest[], len)
         else if (json_object_has_value(history, "Login Attempt")) copy(dest, len, "Brute Force");
         json_free(history);
     }
+}
+
+public log_to_cache(id)
+{
+    new JSON:root;
+    if (!file_exists(g_ok_path) || file_size(g_ok_path) < 2)
+    {
+        root = json_init_array();
+    }
+    else
+    {
+        root = json_parse(g_ok_path, true);
+        if (root == Invalid_JSON) root = json_init_array();
+    }
+
+    // Prune entries older than X days based on cvar
+    new iCutoff = get_systime() - (get_pcvar_num(g_cvar_prune) * 86400);
+    for (new i = json_array_get_count(root) - 1; i >= 0; i--)
+    {
+        new JSON:temp = json_array_get_value(root, i);
+        if (json_object_get_number(temp, "timestamp") < iCutoff)
+        {
+            json_array_remove(root, i);
+        }
+        json_free(temp);
+    }
+
+    // Create entry with only timestamp and IP
+    new JSON:entry = json_init_object();
+    json_object_set_number(entry, "timestamp", get_systime());
+    json_object_set_string(entry, "ip", g_ip[id]);
+
+    // Append and enforce a maximum size limit of 100 entries
+    json_array_append_value(root, entry);
+    while (json_array_get_count(root) > 100) 
+    {
+        json_array_remove(root, 0);
+    }
+
+    // Save and clean up handles
+    json_serial_to_file(root, g_ok_path, true);
+    json_free(entry);
+    json_free(root);
+
+    server_print("[%s] Logged and Pruned IP: %s", PLUGIN, g_ip[id]);
 }
 
 public log_to_json(id, risk, const reason[])
@@ -436,20 +515,12 @@ public fwd_ClientUserInfoChanged(id, infobuffer)
     {
         engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
         
-        if (!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll)) return FMRES_IGNORED;
-        engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
-        formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
+        if (!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll) || contain("PROXY", g_name[id]) != FM_NULLENT)
+        return FMRES_IGNORED;
 
-        if (!equal(g_name[id], g_target_name[id]))
-        {
-            if(contain("PROXY", g_name[id]) == FM_NULLENT)
-            {
-                engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
-                formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
-                engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
-            }
-            return FMRES_HANDLED;
-        }
+        formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
+        engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
+        return FMRES_HANDLED;
     }
     return FMRES_IGNORED;
 }
