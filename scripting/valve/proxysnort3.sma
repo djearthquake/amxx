@@ -17,7 +17,8 @@
 #define MAX_PROXY_USERS 6
 
 new g_cvar_token, g_cvar_risk_kick, g_cvar_troll, g_cvar_prune;
-new g_hud_sync, g_log_path[MAX_RESOURCE_PATH_LENGTH], g_whitelist_path[MAX_RESOURCE_PATH_LENGTH],
+new g_hud_sync;
+static g_log_path[MAX_RESOURCE_PATH_LENGTH], g_whitelist_path[MAX_RESOURCE_PATH_LENGTH],
 g_ok_path[MAX_RESOURCE_PATH_LENGTH];
 
 new g_names[MAX_HUD_ENTRIES][MAX_NAME_LENGTH];
@@ -114,6 +115,7 @@ public client_putinserver(id)
     }
     else if(check_ok_cache(id))
     {
+        g_is_proxy[id] = false;
         server_print "%N has clean IP:%s", id, g_ip[id]
     }
     
@@ -515,18 +517,22 @@ public fwd_ClientUserInfoChanged(id, infobuffer)
     {
         engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
         
-        new bool:has_proxy_tag = (containi(g_name[id], "PROXY: ") != -1);
-
-        if ((!g_is_proxy[id] || !get_pcvar_num(g_cvar_troll)) && has_proxy_tag)
+        if (strfind(g_name[id], "PROXY: ") == 0)
         {
-            formatex(g_target_name[id], charsmax(g_target_name[]), "%s", g_name[id]);
+            replace(g_name[id], charsmax(g_name[]), "PROXY: ", "");
+        }
+
+        new bool:should_have_tag = (g_is_proxy[id] && get_pcvar_num(g_cvar_troll));
+
+        if (should_have_tag)
+        {
+            formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
             engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
             return FMRES_HANDLED;
         }
-
-        if (g_is_proxy[id] && get_pcvar_num(g_cvar_troll) && !has_proxy_tag)
+        else
         {
-            formatex(g_target_name[id], charsmax(g_target_name[]), "PROXY: %s", g_name[id]);
+            formatex(g_target_name[id], charsmax(g_target_name[]), "%s", g_name[id]);
             engfunc(EngFunc_SetClientKeyValue, id, infobuffer, "name", g_target_name[id]);
             return FMRES_HANDLED;
         }
