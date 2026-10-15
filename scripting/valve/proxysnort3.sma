@@ -74,19 +74,20 @@ public plugin_init()
     set_task(10.0, "display_proxy_hud", .flags="b");
 }
 
-
 public client_authorized(id, const authid[])
 {
     if(is_user_connecting(id))
     {
         copy(g_authid[id], charsmax(g_authid[]), authid)
+        get_user_name(id, g_name[id], charsmax(g_name[]));
         g_is_whitelisted[id] = check_file_whitelist(id);
 
         if(!equal(authid, "BOT") && !g_is_whitelisted[id])
         {
             get_user_ip(id, g_ip[id], charsmax(g_ip[]), 1);
-            if(!check_ok_cache(id) && !check_proxy_cache(id))
+            if(!check_ok_cache(id) && !check_proxy_cache(id) && !g_is_checking[id])
             {
+                g_is_checking[id] = true;
                 process_start(id)
                 server_print "%s %s by %s active on %N/%s", PLUGIN, VERSION, AUTHOR, id, g_ip[id]
             }
@@ -121,13 +122,12 @@ public client_putinserver(id)
     
 }
 
-
 public process_start(id)
 {
     if(id && id <= MaxClients)
     {
         g_is_proxy[id] = false;
-        g_is_checking[id] = false;
+        ///g_is_checking[id] = false;
         g_half_damage[id] = false;
         g_active_troll[id] = 0;
 
@@ -167,7 +167,6 @@ public bool:check_proxy_cache(id)
     return false;
 }
 
-
 public bool:check_ok_cache(id)
 {
     if (!file_exists(g_ok_path)) return false;
@@ -182,7 +181,7 @@ public bool:check_ok_cache(id)
             if (contain(line, g_ip[id]) != FM_NULLENT)
             {
                 fclose(file);
-                server_print "%N has clean IP.", id
+                server_print "%S is clean IP.", g_ip[id]
                 return true;
             }
         }
@@ -193,7 +192,7 @@ public bool:check_ok_cache(id)
 
 public start_proxy_check(id)
 {
-    server_print "Checking %N %s", id, g_ip[id]
+    server_print "Checking %s", g_ip[id]
     static token[MAX_NAME_LENGTH], request[MAX_FMT_LENGTH];
     get_pcvar_string(g_cvar_token, token, charsmax(token));
 
@@ -216,7 +215,8 @@ public start_proxy_check(id)
 public parse_json_response(const data[], socket)
 {
     new id = str_to_num(data);
-    if (!is_user_connected(id))
+
+    if (id <=0 || id >= MaxClients)
     {
         socket_close(socket);
         return;
