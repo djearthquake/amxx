@@ -78,8 +78,8 @@ public client_authorized(id, const authid[])
 {
     if(is_user_connecting(id))
     {
-        copy(g_authid[id], charsmax(g_authid[]), authid)
         get_user_name(id, g_name[id], charsmax(g_name[]));
+        copy(g_authid[id], charsmax(g_authid[]), authid)
         g_is_whitelisted[id] = check_file_whitelist(id);
 
         if(!equal(authid, "BOT") && !g_is_whitelisted[id])
@@ -117,9 +117,9 @@ public client_putinserver(id)
     else if(check_ok_cache(id))
     {
         g_is_proxy[id] = false;
-        server_print "%N has clean IP:%s", id, g_ip[id]
+        server_print "%s has clean IP:%s", g_name[id], g_ip[id]
     }
-    
+
 }
 
 public process_start(id)
@@ -180,7 +180,7 @@ public bool:check_ok_cache(id)
             if (contain(line, g_ip[id]) != FM_NULLENT)
             {
                 fclose(file);
-                server_print "%s is clean IP.", g_ip[id]
+                server_print "%s is clean.", g_ip[id]
                 return true;
             }
         }
@@ -330,7 +330,7 @@ public log_to_cache(id)
 
     // Append and enforce a maximum size limit of 100 entries
     json_array_append_value(root, entry);
-    while (json_array_get_count(root) > 100) 
+    while (json_array_get_count(root) > 100)
     {
         json_array_remove(root, 0);
     }
@@ -515,7 +515,7 @@ public fwd_ClientUserInfoChanged(id, infobuffer)
     if(is_user_connected(id))
     {
         engfunc(EngFunc_InfoKeyValue, infobuffer, "name", g_name[id], charsmax(g_name[]));
-        
+
         if (strfind(g_name[id], "PROXY: ") == 0)
         {
             replace(g_name[id], charsmax(g_name[]), "PROXY: ", "");
