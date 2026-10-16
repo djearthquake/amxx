@@ -288,7 +288,7 @@ public parse_json_response(const data[], socket)
 
 determine_reason(JSON:ip_obj, dest[], len)
 {
-    copy(dest, len, "Proxy/VPN");
+    copy(dest, len, "Proxy-VPN");
     new JSON:history = json_object_get_value(ip_obj, "attack history");
     if (history != Invalid_JSON)
     {
@@ -370,7 +370,7 @@ public log_to_json(id, risk, const reason[])
     new JSON:entry = json_init_object();
     static t[MAX_NAME_LENGTH];
 
-    get_time("%m/%d %H:%M", t, charsmax(t));
+    get_time("%m-%d %H:%M", t, charsmax(t));
 
     json_object_set_number(entry, "timestamp", get_systime());
     json_object_set_string(entry, "time", t);
