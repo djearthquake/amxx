@@ -279,7 +279,7 @@ public parse_json_response(const data[], socket)
         }
         else
         {
-            server_print "%N is not a risk.", id
+            server_print "%s is not a risk.", g_name[id]
             log_to_cache(id)
         }
     }
