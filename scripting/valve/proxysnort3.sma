@@ -1,3 +1,7 @@
+//grep -oP '"authid":\s*"\K[^"]+' proxy_logs.json | sort -u | awk '{print "banid 0.0 " $0}'
+//jq -r '.[].authid | "banid 0.0 \(.)"' proxy_logs.json
+//jq -r '.[].authid' proxy_logs.json
+
 #include <amxmodx>
 #include <amxmisc>
 #include <sockets>
@@ -7,7 +11,7 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.9.1"
+#define VERSION "3.9.2"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
@@ -157,7 +161,7 @@ public bool:check_proxy_cache(id)
             if (contain(line, g_ip[id]) != FM_NULLENT)
             {
                 fclose(file);
-                server_print "%N likes to anonymize.", id
+                server_print "%s likes to anonymize.", g_name[id]
                 return true;
             }
         }
