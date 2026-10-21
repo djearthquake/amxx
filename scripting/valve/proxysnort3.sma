@@ -11,7 +11,7 @@
 #include <fun>
 
 #define PLUGIN  "ProxySnort: Troll Edition"
-#define VERSION "3.9.2"
+#define VERSION "3.9.3"
 #define AUTHOR  "SPiNX"
 
 #define MAX_BUFFER_SIZE 2048
@@ -278,7 +278,18 @@ public parse_json_response(const data[], socket)
             }
             else
             {
-                server_cmd("kick #%d ^"Security Risk: %s (%d%%)^"", get_user_userid(id), reason, risk_score);
+                //only kick full servers; treat like reserved slots
+                new iLimit = get_playersnum(.flag = 0)
+                if(iLimit >= MaxClients - MAX_PROXY_USERS)
+                {
+                    server_cmd("kick #%d ^"Security Risk: %s (%d%%)^"", get_user_userid(id), reason, risk_score);
+                }
+                else
+                {
+                    new iSlots = MaxClients - iLimit -MAX_PROXY_USERS
+                    server_print("Permitting proxy user %N due to %i slots open", id, iSlots)
+                    client_print 0, print_chat, "Permitting proxy user %n due to %i slots open!", id, iSlots
+                }
             }
         }
         else
