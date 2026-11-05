@@ -1,26 +1,27 @@
 #!/bin/sh
-#Patching Linux hlds on Debian Bookworm on 11/26/2023 -SPINX
+# Patching Linux hlds on Debian/Ubuntu - Updated 2026
+# Fixes 'CXXABI' and 'GCC_7.0.0' missing library errors
 
-#Error:./libstdc++.so.6: version `CXXABI_1.3.8' not found (required by /home/myuserid/Steam/steamapps/common/Half-Life/filesystem_stdio.so)
-#email debug.log to linux@valvesoftware.com
+# Define your actual HL1 root directory path based on your logs
+HL_DIR="$HOME/.local/share/Steam/steamapps/common/Half-Life"
+STEAMCMD_DIR="$HOME/.local/share/Steam/steamcmd/linux32"
 
-if find -name "libstdc++.so.6"
-then
-unlink ./.local/share/Steam/steamcmd/linux32/libstdc++.so.6
-unlink ./Steam/steamapps/common/Half-Life/libstdc++.so.6
-fi
+echo "=== Cleaning up archaic local Valve libraries ==="
 
-export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libstdc++.so.6:./.local/share/Steam/steamcmd/linux32/libstdc++.so.6
-export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libstdc++.so.6:./Steam/steamapps/common/Half-Life/libstdc++.so.6
+# Safely remove the broken local libstdc++ files if they exist
+[ -f "$HL_DIR/libstdc++.so.6" ] && rm -v "$HL_DIR/libstdc++.so.6"
+[ -f "$STEAMCMD_DIR/libstdc++.so.6" ] && rm -v "$STEAMCMD_DIR/libstdc++.so.6"
 
-if find -name "libgcc_s.so.1"
+# Safely remove the broken local libgcc files if they exist
+[ -f "$HL_DIR/libgcc_s.so.1" ] && rm -v "$HL_DIR/libgcc_s.so.1"
+[ -f "$STEAMCMD_DIR/libgcc_s.so.1" ] && rm -v "$STEAMCMD_DIR/libgcc_s.so.1"
 
-then
-unlink ./Steam/steamapps/common/Half-Life/libgcc_s.so.1
-fi
+echo "=== Setting up 32-bit System Library Overrides ==="
 
-#in case it was not a link
-if ls ./Steam/steamapps/common/Half-Life/libgcc_s.so.1
-then
-rm ./Steam/steamapps/common/Half-Life/libgcc_s.so.1
-fi
+# Force Linux to look at your host OS 32-bit library directories first
+export LD_LIBRARY_PATH=/usr/lib/i386-linux-gnu:/lib/i386-linux-gnu:$LD_LIBRARY_PATH
+
+# Preload the system's 32-bit libgcc to satisfy modern libstdc++ requirements
+export LD_PRELOAD=/lib/i386-linux-gnu/libgcc_s.so.1
+
+echo "=== Patch complete. You can now start hlds_run ==="
