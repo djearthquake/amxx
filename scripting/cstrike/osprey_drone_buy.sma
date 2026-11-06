@@ -26,31 +26,43 @@
 #include <fun>
 
 #define PLUGIN  "Mini Osprey Drone Delivery"
-#define VERSION "0.1"
+#define VERSION "1.4"
 #define AUTHOR  "SPiNX"
 
 #define MAX_DRONES  8
-#define PAGE_SIZE   8
+#define PAGE_SIZE   7
+#define MAX_WEAPONS 24
 
 #define DRONE_MODEL       "models/mini_osprey.mdl"
 #define DRONE_SOUND       "misc/plane_drone.wav"
 #define DRONE_HOVER_SOUND "ambience/dronemachine1.wav"
 
-#define MAX_WEAPONS 16
+#define DELIVERY_WEAPON     0
+#define DELIVERY_DEFUSER    1
+#define DELIVERY_ARMOR      2
+#define DELIVERY_VESTHELM   3
+#define DELIVERY_HEGRENADE  4
+#define DELIVERY_FLASHBANG  5
+#define DELIVERY_SMOKEGRENADE 6
+#define DELIVERY_MEDIC      7
+#define MEDIC_HEAL_AMOUNT   25
 
 #define TASK_BUYTIME_EXPIRE 1337
 
-new g_weaponName[MAX_WEAPONS][MAX_PLAYERS]
-new g_weaponAlias[MAX_WEAPONS][MAX_PLAYERS]
+new g_weaponName[MAX_WEAPONS][32]
+new g_weaponAlias[MAX_WEAPONS][32]
 new g_weaponId[MAX_WEAPONS]
 new g_weaponPrice[MAX_WEAPONS]
 new g_weaponAmmo[MAX_WEAPONS]
+new g_deliveryType[MAX_WEAPONS]
 new g_weaponCount = 0
 
 // Drone slots
 new g_droneEnt[MAX_DRONES]
 new g_droneOwner[MAX_DRONES]
 new g_droneWeapon[MAX_DRONES]
+new g_droneCost[MAX_DRONES]
+new bool:g_droneSimulation[MAX_DRONES]
 new Float:g_droneExpire[MAX_DRONES]
 new bool:g_droneDelivered[MAX_DRONES]
 
@@ -59,53 +71,20 @@ new g_pendingWeapon[MAX_PLAYERS + 1]
 new g_pendingDrone[MAX_PLAYERS + 1]
 new g_menuPage[MAX_PLAYERS + 1]
 new g_confirmWeapon[MAX_PLAYERS + 1]
+new bool:g_freeSim[MAX_PLAYERS + 1]
 new Float:g_menuShown[MAX_PLAYERS + 1]
 
-// Round timing
-new Float:g_roundStart = 0.0
+// Buy-zone tracking (StatusIcon). Flipped to false for everyone once
+// mp_buytime expires, so the drone becomes available everywhere.
+new bool:g_bInBuyZone[MAX_PLAYERS + 1]
 
 new g_cvarEnabled
 new g_cvarMultiplier
+new g_cvarBuyAnywhere
 
-new g_menuKeys = MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_8 | MENU_KEY_9 | MENU_KEY_0
-new g_confirmKeys = MENU_KEY_1 | MENU_KEY_2;
-//new g_pCustomBuyTime;
-//new g_pBuyAnywhereCvar;
-
-public bool:g_bInBuyZone[MAX_PLAYERS + 1];
-
-public check_buyzone_status(id) {
-    /*
-    if (!is_user_alive(id)) return 0;
-
-    // 1. Convert the custom cvar minutes limit directly to seconds
-    new Float:fBuyTimeLimit = get_pcvar_float(g_pCustomBuyTime) * 60.0;
-    if (fBuyTimeLimit <= 0.0) {
-        fBuyTimeLimit = 15.0; // Fallback default
-    }
-
-    // 2. TIME CHECK: If custom round buy time has run out, drone menu is allowed everywhere
-    if ((get_gametime() - g_roundStart) > fBuyTimeLimit) {
-        return 0; // 0 = Outside buy zone / allowed to use drone
-    }
-
-    // 3. RANGE CHECK: Otherwise, follow standard spatial base restrictions
-    */
-    return g_bInBuyZone[id] ? 1 : 0; // 1 = Inside buy zone (forces normal menu)
-}
-
-/*
-// THE LOCK MECHANIC: Fires instantly whenever any engine source tries to change this value
-public OnBuyAnywhereChanged(pcvar, const old_value[], const new_value[]) {
-    if (str_to_num(new_value) != 1) {
-        // Forcefully overwrite it back to 1 immediately
-        set_pcvar_num(g_pBuyAnywhereCvar, 1);
-        
-        // Log a silent notice to the server logs to let owners know it's pinned
-        log_amx("[Drone System] Blocked attempt to change mp_buy_anywhere. Pinned to 1 for drone functionality.");
-    }
-}
-*/
+new g_menuKeys   = MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5
+                | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_8 | MENU_KEY_9 | MENU_KEY_0
+new g_confirmKeys = MENU_KEY_1 | MENU_KEY_2
 
 public plugin_precache()
 {
@@ -123,18 +102,11 @@ public plugin_init()
 
     g_cvarEnabled = register_cvar("drone_buy_enabled", "1")
     g_cvarMultiplier = register_cvar("drone_buy_multiplier", "2")
-    /*
-    // 1. Locate or create the CVAR pointer using your preferred setup check
-    g_pBuyAnywhereCvar = get_cvar_pointer("mp_buy_anywhere") ? get_cvar_pointer("mp_buy_anywhere") : register_cvar("mp_buy_anywhere", "1");
-    
-    // 2. Intercept changes to the CVAR to permanently pin it to 1
-    hook_cvar_change(g_pBuyAnywhereCvar, "OnBuyAnywhereChanged");
-    
-    // 3. Enforce the value right now on startup
-    set_pcvar_num(g_pBuyAnywhereCvar, 1);
-*/
+    g_cvarBuyAnywhere = get_cvar_pointer("mp_buy_anywhere")
+    if (!g_cvarBuyAnywhere)
+        g_cvarBuyAnywhere = register_cvar("mp_buy_anywhere", "1")
+    enforce_buy_anywhere()
     register_clcmd("buy", "cmd_buy_intercept")
-    //register_clcmd("drone", "cmd_drone")
 
     register_menucmd(register_menuid("Drone Buy Menu"), g_menuKeys, "menu_drone_buy")
     register_menucmd(register_menuid("Drone Confirm"), g_confirmKeys, "menu_drone_confirm")
@@ -150,32 +122,28 @@ public plugin_init()
     // Intercept every buy-menu weapon command so the drone offer works
     // where the normal buy menu would otherwise refuse the purchase.
     for (new i = 0; i < g_weaponCount; i++)
-        register_clcmd(g_weaponAlias[i], "cmd_buy_alias")
+    {
+        if (g_weaponAlias[i][0])
+            register_clcmd(g_weaponAlias[i], "cmd_buy_alias")
+    }
 
     register_clcmd("autobuy", "cmd_buy_intercept")
-    //register_clcmd("rebuy", "cmd_buy_intercept")
     register_clcmd("rebuy", "cmd_vgui_buy_intercept")
     
     register_clcmd("cl_initbuy", "cmd_vgui_buy_intercept");
     register_clcmd("client_buy_open", "cmd_vgui_buy_intercept");
 
-    // The client sends client_buy_open when B is pressed. Away from the
-    // buyzone / after buy time, close the engine menu and show ours instead.
-    register_clcmd("client_buy_open", "cmd_buy_open")
-
     // Guaranteed way to open the drone menu even if the client refuses
     // to open the normal buy menu away from a buy zone.
     register_clcmd("drone", "cmd_drone_menu")
     register_concmd("dronework", "cmd_drone")
+    register_concmd("dronesim", "cmd_drone_sim", ADMIN_KICK, "- open a free admin-only delivery test menu")
     register_clcmd("say /drone", "cmd_drone_menu")
 
     set_task(5.0, "task_cleanup_drones", 0, "", 0, "b")
 
     log_amx("[Drone] %s loaded (%d weapons)", PLUGIN, g_weaponCount)
 
-    // Hook the modern VGUI buy menu initialization
-    register_clcmd("client_buy_open", "cmd_vgui_buy_intercept")
-    //g_pCustomBuyTime = register_cvar("mp_buytime_custom", "0.25");
 }
 
 public OnEnterBuyzone(id)
@@ -188,69 +156,75 @@ public OnLeaveBuyzone(id)
     g_bInBuyZone[id] = false
 }
 
-public cmd_drone(id)
-{
-    if (is_user_alive(id))
-    {
-        console_cmd 0, "mp_buy_anywhere 1"
-        // Fix 3: Added missing parentheses for client_print
-        client_print(id, print_chat, "Trying our drone work...")
-        
-        show_drone_menu(id, 0)
-        
-        // Fix 4: Changed to PLUGIN_HANDLED so "Unknown command" doesn't print in console
-        return PLUGIN_HANDLED 
-    }
-    return PLUGIN_HANDLED
-}
-
-
 public plugin_cfg()
 {
-    g_roundStart = get_gametime()
+    enforce_buy_anywhere()
+}
+
+enforce_buy_anywhere()
+{
+    if (!g_cvarBuyAnywhere)
+    {
+        log_amx("[Drone] ERROR: mp_buy_anywhere cvar is unavailable.")
+        return
+    }
+
+    set_pcvar_num(g_cvarBuyAnywhere, 1)
 }
 
 init_weapons()
 {
-    add_weapon("AK-47",    "ak47",    CSW_AK47,    2500, 90)
-    add_weapon("M4A1",     "m4a1",    CSW_M4A1,    3100, 90)
-    add_weapon("AWP",      "awp",     CSW_AWP,     4750, 30)
-    add_weapon("Deagle",   "deagle",  CSW_DEAGLE,   650, 35)
-    add_weapon("MP5 Navy", "mp5",     CSW_MP5NAVY, 1500, 120)
-    add_weapon("Famas",    "famas",   CSW_FAMAS,   2250, 90)
-    add_weapon("Galil",    "galil",   CSW_GALIL,   2000, 90)
-    add_weapon("AUG",      "aug",     CSW_AUG,     3500, 90)
-    add_weapon("SG552",    "sg552",   CSW_SG552,   3500, 90)
-    add_weapon("Scout",    "scout",   CSW_SCOUT,   2750, 90)
-    add_weapon("P90",      "p90",     CSW_P90,     2350, 100)
-    add_weapon("UMP45",    "ump45",   CSW_UMP45,   1700, 100)
-    add_weapon("MAC10",    "mac10",   CSW_MAC10,   1400, 100)
-    add_weapon("TMP",      "tmp",     CSW_TMP,     1250, 120)
-    add_weapon("M3",       "m3",      CSW_M3,      1700, 32)
-    add_weapon("XM1014",   "xm1014",  CSW_XM1014,  3000, 32)
+    add_weapon("AK-47",       "ak47",    CSW_AK47,    2500, 90, DELIVERY_WEAPON)
+    add_weapon("M4A1",        "m4a1",    CSW_M4A1,    3100, 90, DELIVERY_WEAPON)
+    add_weapon("AWP",         "awp",     CSW_AWP,     4750, 30, DELIVERY_WEAPON)
+    add_weapon("Deagle",      "deagle",  CSW_DEAGLE,   650, 35, DELIVERY_WEAPON)
+    add_weapon("MP5 Navy",    "mp5",     CSW_MP5NAVY, 1500, 120, DELIVERY_WEAPON)
+    add_weapon("Famas",       "famas",   CSW_FAMAS,   2250, 90, DELIVERY_WEAPON)
+    add_weapon("Galil",       "galil",   CSW_GALIL,   2000, 90, DELIVERY_WEAPON)
+    add_weapon("AUG",         "aug",     CSW_AUG,     3500, 90, DELIVERY_WEAPON)
+    add_weapon("SG552",       "sg552",   CSW_SG552,   3500, 90, DELIVERY_WEAPON)
+    add_weapon("Scout",       "scout",   CSW_SCOUT,   2750, 90, DELIVERY_WEAPON)
+    add_weapon("P90",         "p90",     CSW_P90,     2350, 100, DELIVERY_WEAPON)
+    add_weapon("UMP45",       "ump45",   CSW_UMP45,   1700, 100, DELIVERY_WEAPON)
+    add_weapon("MAC10",       "mac10",   CSW_MAC10,   1400, 100, DELIVERY_WEAPON)
+    add_weapon("TMP",         "tmp",     CSW_TMP,     1250, 120, DELIVERY_WEAPON)
+    add_weapon("M3",          "m3",      CSW_M3,      1700, 32, DELIVERY_WEAPON)
+    add_weapon("XM1014",      "xm1014",  CSW_XM1014,  3000, 32, DELIVERY_WEAPON)
+    add_weapon("Defuse Kit",  "",        0,            200, 0, DELIVERY_DEFUSER)
+    add_weapon("Body Armor",  "",        0,            650, 0, DELIVERY_ARMOR)
+    add_weapon("Armor + Helmet", "",     0,           1000, 0, DELIVERY_VESTHELM)
+    add_weapon("HE Grenade",  "",        CSW_HEGRENADE, 300, 1, DELIVERY_HEGRENADE)
+    add_weapon("Flashbangs",  "",        CSW_FLASHBANG, 200, 2, DELIVERY_FLASHBANG)
+    add_weapon("Smoke Grenade", "",      CSW_SMOKEGRENADE, 300, 1, DELIVERY_SMOKEGRENADE)
+    add_weapon("Field Medic", "",        0,           1500, 0, DELIVERY_MEDIC)
 }
 
-add_weapon(const name[], const alias[], weaponId, price, ammo)
+add_weapon(const name[], const alias[], weaponId, price, ammo, deliveryType)
 {
     if (g_weaponCount >= MAX_WEAPONS)
         return
 
     copy(g_weaponName[g_weaponCount], 31, name)
-    copy(g_weaponAlias[g_weaponCount], 31, alias)
+    if (alias[0])
+        copy(g_weaponAlias[g_weaponCount], 31, alias)
     g_weaponId[g_weaponCount] = weaponId
     g_weaponPrice[g_weaponCount] = price
     g_weaponAmmo[g_weaponCount] = ammo
+    g_deliveryType[g_weaponCount] = deliveryType
     g_weaponCount++
 }
 
 public event_round_start()
 {
+    enforce_buy_anywhere()
+
     for (new i = 1; i <= MaxClients; i++)
     {
         g_pendingWeapon[i] = -1
         g_pendingDrone[i] = -1
         g_menuPage[i] = 0
         g_confirmWeapon[i] = -1
+        g_freeSim[i] = false
         g_menuShown[i] = 0.0
     }
 
@@ -259,22 +233,15 @@ public event_round_start()
         g_droneEnt[i] = 0
         g_droneOwner[i] = 0
         g_droneWeapon[i] = -1
+        g_droneCost[i] = 0
+        g_droneSimulation[i] = false
         g_droneExpire[i] = 0.0
         g_droneDelivered[i] = false
     }
-    g_roundStart = get_gametime()
     new Float:fBuyTimeLimit = get_cvar_float("mp_buytime") * 60.0
     if (fBuyTimeLimit > 0.0)
     {
         set_task(fBuyTimeLimit, "Task_BuytimeExpired", TASK_BUYTIME_EXPIRE)
-    }
-    for (new i = 1; i <= MaxClients; i++)
-    {
-        g_pendingWeapon[i] = -1
-        g_pendingDrone[i] = -1
-        g_menuPage[i] = 0
-        g_confirmWeapon[i] = -1
-        g_menuShown[i] = 0.0
     }
 }
 
@@ -289,7 +256,6 @@ public Task_BuytimeExpired()
 
 public event_round_start_hltv()
 {
-    g_roundStart = get_gametime()
 }
 
 public event_round_end()
@@ -320,19 +286,8 @@ public client_disconnected(id, bool:drop, message[], maxlen)
     g_pendingDrone[id] = -1
     g_menuPage[id] = 0
     g_confirmWeapon[id] = -1
+    g_freeSim[id] = false
     g_menuShown[id] = 0.0
-}
-
-bool:buy_time_expired()
-{
-    if (g_roundStart <= 0.0)
-        return false
-
-    new Float:buyTime = get_cvar_float("mp_buytime")
-    if (buyTime <= 0.0)
-        return false
-
-    return ((get_gametime() - g_roundStart) > buyTime * 60.0)
 }
 
 bool:can_use_drone(id)
@@ -348,41 +303,43 @@ bool:can_use_drone(id)
 
 // The engine's buy menu opening. If buying is not allowed, close it and
 // reuse the /drone flow (unless the drone menu is already on screen).
-public cmd_buy_open(id)
+// Console test command: open the delivery menu even inside a buy zone.
+public cmd_drone(id)
 {
-    if (is_user_alive(id))
-    {
-        if (!can_use_drone(id))
-            return PLUGIN_CONTINUE
-    
-        if (cs_get_user_buyzone(id) && !buy_time_expired())
-            return PLUGIN_CONTINUE
-    
-        if (g_pendingDrone[id] >= 0)
-        {
-            client_print(id, print_chat, "[Drone] Your mini osprey is already en route.")
-            return PLUGIN_HANDLED
-        }
-    
-        if (get_gametime() - g_menuShown[id] < 16.0)
-            return PLUGIN_HANDLED
-    
-        g_menuShown[id] = get_gametime()
-    
-        // The engine buy menu is client-side and cannot be closed from the
-        // server, so let the player pick a weapon there: the weapon command
-        // below is intercepted and turned into the drone offer.
-        //client_print(id, print_chat,"[Drone] Out of buy range - pick a weapon to order it by drone (%dx price) or type /drone."
-        //if(!g_bInBuyZone[id] ||
-        if(buy_time_expired())
-        {
-            cmd_drone_menu(id)
-            get_pcvar_num(g_cvarMultiplier)
-    
-            return PLUGIN_HANDLED
-        }
+    enforce_buy_anywhere()
+
+    if (!can_use_drone(id))
         return PLUGIN_CONTINUE
+
+    if (g_pendingDrone[id] >= 0)
+    {
+        client_print(id, print_chat, "[Drone] Your mini osprey is already en route.")
+        return PLUGIN_HANDLED
     }
+
+    g_menuShown[id] = get_gametime()
+    g_freeSim[id] = false
+    show_drone_menu(id, 0)
+    return PLUGIN_HANDLED
+}
+
+public cmd_drone_sim(id, level, cid)
+{
+    if (!cmd_access(id, level, cid, 1))
+        return PLUGIN_HANDLED
+
+    if (!can_use_drone(id))
+        return PLUGIN_HANDLED
+
+    if (g_pendingDrone[id] >= 0)
+    {
+        console_print(id, "[Drone] Your mini osprey is already en route.")
+        return PLUGIN_HANDLED
+    }
+
+    g_freeSim[id] = true
+    g_menuShown[id] = get_gametime()
+    show_drone_menu(id, 0)
     return PLUGIN_HANDLED
 }
 
@@ -397,22 +354,21 @@ public cmd_drone_menu(id)
         return PLUGIN_HANDLED
     }
 
-    if (cs_get_user_buyzone(id) && !buy_time_expired())
+    if (g_bInBuyZone[id])
     {
         client_print(id, print_chat, "[Drone] You are in the buy zone - use the normal buy menu.")
         return PLUGIN_HANDLED
     }
 
     g_menuShown[id] = get_gametime()
+    g_freeSim[id] = false
     show_drone_menu(id, 0)
     return PLUGIN_HANDLED
 }
 
-// We intercept the VGUI menu open attempt
+// VGUI buy menu open attempt -> route through the drone logic.
 public cmd_vgui_buy_intercept(id)
 {
-    // Run your exact drone logic. 
-    // If it returns PLUGIN_HANDLED, it blocks the VGUI menu from showing and handles the drone.
     return handle_drone_routing(id)
 }
 
@@ -452,35 +408,7 @@ public handle_drone_routing(id)
     
     return PLUGIN_HANDLED
 }
-/*
-public cmd_buy_intercept(id)
-{
-    if (!can_use_drone(id))
-        return PLUGIN_CONTINUE
 
-    if (g_pendingDrone[id] >= 0)
-    {
-        client_print(id, print_chat, "[Drone] Your mini osprey is already en route.")
-        return PLUGIN_HANDLED
-    }
-
-    // If they ARE in the buyzone, let the default game buy menu handle it
-    if (g_bInBuyZone[id])
-        return PLUGIN_CONTINUE
-
-    // Player is OUTSIDE the buyzone -> Trigger drone menu
-    // Anti-spam check: prevents re-opening if they pressed 'buy' less than 16 seconds ago
-    if (get_gametime() - g_menuShown[id] < 16.0)
-    {
-        return PLUGIN_HANDLED // Silently block the command during cooldown
-    }
-
-    g_menuShown[id] = get_gametime()
-    show_drone_menu(id, 0)
-    
-    return PLUGIN_HANDLED
-}
-*/
 
 // The CS buy menu sends a weapon alias (e.g. "deagle") to the server.
 // When the player cannot buy normally, turn that into a drone offer.
@@ -505,6 +433,9 @@ public cmd_buy_alias(id)
     if (idx < 0)
         return PLUGIN_CONTINUE
 
+    if (!can_receive_delivery(id, idx, true))
+        return PLUGIN_HANDLED
+
     if (g_pendingDrone[id] >= 0)
     {
         client_print(id, print_chat, "[Drone] Your mini osprey is already en route.")
@@ -512,7 +443,7 @@ public cmd_buy_alias(id)
     }
 
     // Inside the buyzone during buy time: let CS handle the purchase.
-    if (cs_get_user_buyzone(id) && !buy_time_expired())
+    if (g_bInBuyZone[id])
         return PLUGIN_CONTINUE
 
     new price = g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
@@ -538,7 +469,10 @@ show_drone_menu(id, page)
     new mult = get_pcvar_num(g_cvarMultiplier)
     new start = page * PAGE_SIZE
 
-    len += formatex(menuText[len], charsmax(menuText) - len, "\yMini Osprey Delivery\w - %dx price^n^n", mult)
+    if (g_freeSim[id])
+        len += formatex(menuText[len], charsmax(menuText) - len, "\yMini Osprey Delivery\w - ADMIN FREE TEST^n^n")
+    else
+        len += formatex(menuText[len], charsmax(menuText) - len, "\yMini Osprey Delivery\w - %dx price^n^n", mult)
 
     for (new i = 0; i < PAGE_SIZE; i++)
     {
@@ -546,18 +480,32 @@ show_drone_menu(id, page)
         if (idx >= g_weaponCount)
             break
 
-        len += formatex(menuText[len], charsmax(menuText) - len, "\r%d. \w%s \y($%d)^n",
-            i + 1, g_weaponName[idx], g_weaponPrice[idx] * mult)
+        if (g_freeSim[id])
+            len += formatex(menuText[len], charsmax(menuText) - len, "\r%d. \w%s \y(FREE TEST)^n",
+                i + 1, g_weaponName[idx])
+        else
+            len += formatex(menuText[len], charsmax(menuText) - len, "\r%d. \w%s \y($%d)^n",
+                i + 1, g_weaponName[idx], g_weaponPrice[idx] * mult)
+    }
+
+    new menuKeys = MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4
+                 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_0
+
+    if (page > 0)
+    {
+        len += formatex(menuText[len], charsmax(menuText) - len, "^n\r8. \wBack")
+        menuKeys |= MENU_KEY_8
     }
 
     if (start + PAGE_SIZE < g_weaponCount)
-        len += formatex(menuText[len], charsmax(menuText) - len, "^n\r9. \wMore weapons...")
-    else if (page > 0)
-        len += formatex(menuText[len], charsmax(menuText) - len, "^n\r9. \wBack")
+    {
+        len += formatex(menuText[len], charsmax(menuText) - len, "^n\r9. \wMore deliveries...")
+        menuKeys |= MENU_KEY_9
+    }
 
     len += formatex(menuText[len], charsmax(menuText) - len, "^n\r0. \wCancel")
 
-    show_menu(id, g_menuKeys, menuText, 15, "Drone Buy Menu")
+    show_menu(id, menuKeys, menuText, 15, "Drone Buy Menu")
 }
 
 public menu_drone_buy(id, key)
@@ -566,27 +514,39 @@ public menu_drone_buy(id, key)
 
     if (key == 9)
     {
+        g_freeSim[id] = false
         client_print(id, print_chat, "[Drone] Delivery cancelled.")
+        return PLUGIN_HANDLED
+    }
+
+    if (key == 7)
+    {
+        if (g_menuPage[id] > 0)
+            show_drone_menu(id, g_menuPage[id] - 1)
         return PLUGIN_HANDLED
     }
 
     if (key == 8)
     {
-        if (g_menuPage[id] == 0 && PAGE_SIZE < g_weaponCount)
-            show_drone_menu(id, 1)
-        else if (g_menuPage[id] > 0)
-            show_drone_menu(id, g_menuPage[id] - 1)
+        if ((g_menuPage[id] + 1) * PAGE_SIZE < g_weaponCount)
+            show_drone_menu(id, g_menuPage[id] + 1)
         return PLUGIN_HANDLED
     }
 
     new idx = g_menuPage[id] * PAGE_SIZE + key
     if (idx < 0 || idx >= g_weaponCount)
+    {
+        g_freeSim[id] = false
+        return PLUGIN_HANDLED
+    }
+
+    if (!g_freeSim[id] && !can_receive_delivery(id, idx, true))
         return PLUGIN_HANDLED
 
-    new price = g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
+    new price = g_freeSim[id] ? 0 : g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
     new money = cs_get_user_money(id)
 
-    if (money < price)
+    if (!g_freeSim[id] && money < price)
     {
         client_print(id, print_chat, "[Drone] You cannot afford %s - need $%d, you have $%d.",
             g_weaponName[idx], price, money)
@@ -602,12 +562,27 @@ show_confirm_menu(id, idx)
     // Ask for confirmation before taking any money
     g_confirmWeapon[id] = idx
 
-    new price = g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
+    new price = g_freeSim[id] ? 0 : g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
 
-    new menuText[256]
-    formatex(menuText, charsmax(menuText),
-        "\yConfirm drone delivery^n^n\wWeapon: \r%s^n\wFee: \r$%d^n^n\r1. \wYes, deliver it^n\r2. \wNo, cancel",
-        g_weaponName[idx], price)
+    new menuText[384]
+    if (g_freeSim[id])
+    {
+        formatex(menuText, charsmax(menuText),
+            "\yAdmin free delivery test^n^n\wPackage: \r%s^n\wFee: \rFREE^n^n\r1. \wSend test delivery^n\r2. \wCancel",
+            g_weaponName[idx])
+    }
+    else if (g_deliveryType[idx] == DELIVERY_MEDIC)
+    {
+        formatex(menuText, charsmax(menuText),
+            "\yConfirm drone delivery^n^n\wPackage: \r%s^n\wFee: \r$%d^n^n\yField treatment only: up to %d HP.^nSevere injuries require hospitalization.^n^n\r1. \wYes, deliver it^n\r2. \wNo, cancel",
+            g_weaponName[idx], price, MEDIC_HEAL_AMOUNT)
+    }
+    else
+    {
+        formatex(menuText, charsmax(menuText),
+            "\yConfirm drone delivery^n^n\wPackage: \r%s^n\wFee: \r$%d^n^n\r1. \wYes, deliver it^n\r2. \wNo, cancel",
+            g_weaponName[idx], price)
+    }
 
     show_menu(id, g_confirmKeys, menuText, 15, "Drone Confirm")
 }
@@ -621,9 +596,13 @@ public menu_drone_confirm(id, key)
 
     if (key != 0 || idx < 0 || idx >= g_weaponCount)
     {
+        g_freeSim[id] = false
         client_print(id, print_chat, "[Drone] Delivery cancelled.")
         return PLUGIN_HANDLED
     }
+
+    new bool:freeSim = g_freeSim[id]
+    g_freeSim[id] = false
 
     if (!is_user_alive(id))
     {
@@ -631,16 +610,19 @@ public menu_drone_confirm(id, key)
         return PLUGIN_HANDLED
     }
 
-    new price = g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
+    if (!freeSim && !can_receive_delivery(id, idx, true))
+        return PLUGIN_HANDLED
+
+    new price = freeSim ? 0 : g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
     new money = cs_get_user_money(id)
 
-    if (money < price)
+    if (!freeSim && money < price)
     {
         client_print(id, print_chat, "[Drone] Not enough money - need $%d, you have $%d.", price, money)
         return PLUGIN_HANDLED
     }
 
-    new slot = spawn_drone(id, idx)
+    new slot = spawn_drone(id, idx, price, freeSim)
 
     if (slot < 0)
     {
@@ -648,16 +630,23 @@ public menu_drone_confirm(id, key)
         return PLUGIN_HANDLED
     }
 
-    cs_set_user_money(id, money - price, 1)
+    if (!freeSim)
+        cs_set_user_money(id, money - price, 1)
 
     g_pendingWeapon[id] = idx
     g_pendingDrone[id] = slot
 
-    client_print(id, print_chat, "[Drone] Mini osprey inbound - %s for $%d.", g_weaponName[idx], price)
+    if (freeSim)
+        client_print(id, print_chat, "[Drone] Admin free test delivery inbound - %s.", g_weaponName[idx])
+    else
+        client_print(id, print_chat, "[Drone] Mini osprey inbound - %s for $%d.", g_weaponName[idx], price)
 
     new name[32]
     get_user_name(id, name, charsmax(name))
-    log_amx("[Drone] %s ordered %s ($%d)", name, g_weaponName[idx], price)
+    if (freeSim)
+        log_amx("[Drone] %s started a free test delivery of %s", name, g_weaponName[idx])
+    else
+        log_amx("[Drone] %s ordered %s ($%d)", name, g_weaponName[idx], price)
 
     return PLUGIN_HANDLED
 }
@@ -711,7 +700,7 @@ get_hover_pos(id, Float:hoverPos[3])
     hoverPos[2] = cand[2]
 }
 
-spawn_drone(id, weaponIdx)
+spawn_drone(id, weaponIdx, price, bool:simulation)
 {
     new slot = -1
     for (new i = 0; i < MAX_DRONES; i++)
@@ -758,6 +747,8 @@ spawn_drone(id, weaponIdx)
     g_droneEnt[slot] = drone
     g_droneOwner[slot] = id
     g_droneWeapon[slot] = weaponIdx
+    g_droneCost[slot] = price
+    g_droneSimulation[slot] = simulation
     g_droneExpire[slot] = get_gametime() + 15.0
     g_droneDelivered[slot] = false
 
@@ -813,6 +804,7 @@ public drone_drop_item(drone)
 
     new owner = g_droneOwner[slot]
     new idx = g_droneWeapon[slot]
+    new bool:simulation = g_droneSimulation[slot]
 
     if (!is_user_connected(owner) || !is_user_alive(owner) || idx < 0 || idx >= g_weaponCount)
     {
@@ -822,32 +814,138 @@ public drone_drop_item(drone)
         return
     }
 
-    new weaponName[32]
-    get_weaponname(g_weaponId[idx], weaponName, charsmax(weaponName))
-
-    if (weaponName[0])
+    if (simulation)
     {
-        give_item(owner, weaponName)
-        cs_set_user_bpammo(owner, g_weaponId[idx], g_weaponAmmo[idx])
-        engclient_cmd(owner, "use", weaponName)
-
+        g_droneDelivered[slot] = true
+        client_print(owner, print_chat, "[Drone] Free test simulation complete: %s was not actually delivered.",
+            g_weaponName[idx])
+        new name[32]
+        get_user_name(owner, name, charsmax(name))
+        log_amx("[Drone] %s completed a free visual simulation of %s", name, g_weaponName[idx])
+    }
+    else if (can_receive_delivery(owner, idx, false) && deliver_package(owner, idx))
+    {
         g_droneDelivered[slot] = true
 
         client_print(owner, print_chat, "[Drone] Delivered %s! (%dx price)",
             g_weaponName[idx], get_pcvar_num(g_cvarMultiplier))
 
+        if (g_deliveryType[idx] == DELIVERY_MEDIC)
+            client_print(owner, print_chat, "[Medic] Field treatment only. Severe injuries require hospitalization.")
+
         new name[32]
         get_user_name(owner, name, charsmax(name))
         log_amx("[Drone] delivered %s to %s", g_weaponName[idx], name)
-    }
-    else
-    {
-        client_print(owner, print_chat, "[Drone] Delivery failed - refunded.")
     }
 
     emit_sound(drone, CHAN_AUTO, DRONE_SOUND, 0.7, ATTN_NORM, 0, PITCH_NORM)
 
     set_task(1.0, "drone_depart", drone)
+}
+
+bool:can_receive_delivery(id, idx, bool:notify)
+{
+    if (idx < 0 || idx >= g_weaponCount)
+        return false
+
+    new bool:available = true
+    new message[128]
+
+    switch (g_deliveryType[idx])
+    {
+        case DELIVERY_DEFUSER:
+        {
+            if (cs_get_user_team(id) != CS_TEAM_CT)
+            {
+                available = false
+                copy(message, charsmax(message), "A defuse kit is only useful to Counter-Terrorists.")
+            }
+            else if (cs_get_user_defuse(id))
+            {
+                available = false
+                copy(message, charsmax(message), "You already have a defuse kit.")
+            }
+        }
+        case DELIVERY_ARMOR, DELIVERY_VESTHELM:
+        {
+            new CsArmorType:armorType
+            new armor = cs_get_user_armor(id, armorType)
+            if (armor >= 100 && (g_deliveryType[idx] == DELIVERY_ARMOR || armorType == CS_ARMOR_VESTHELM))
+            {
+                available = false
+                copy(message, charsmax(message), "Your armor is already fully equipped.")
+            }
+        }
+        case DELIVERY_HEGRENADE, DELIVERY_FLASHBANG, DELIVERY_SMOKEGRENADE:
+        {
+            new maxAmmo = g_deliveryType[idx] == DELIVERY_FLASHBANG ? 2 : 1
+            if (cs_get_user_bpammo(id, g_weaponId[idx]) >= maxAmmo)
+            {
+                available = false
+                copy(message, charsmax(message), "You already carry the maximum amount.")
+            }
+        }
+        case DELIVERY_MEDIC:
+        {
+            if (get_user_health(id) >= 100)
+            {
+                available = false
+                copy(message, charsmax(message), "You do not need field treatment right now.")
+            }
+        }
+    }
+
+    if (!available && notify)
+        client_print(id, print_chat, "[Drone] %s", message)
+
+    return available
+}
+
+bool:deliver_package(id, idx)
+{
+    switch (g_deliveryType[idx])
+    {
+        case DELIVERY_WEAPON:
+        {
+            new weaponName[32]
+            get_weaponname(g_weaponId[idx], weaponName, charsmax(weaponName))
+            if (!weaponName[0] || give_item(id, weaponName) <= 0)
+                return false
+
+            cs_set_user_bpammo(id, g_weaponId[idx], g_weaponAmmo[idx])
+            engclient_cmd(id, "use", weaponName)
+        }
+        case DELIVERY_DEFUSER:
+            cs_set_user_defuse(id, 1)
+        case DELIVERY_ARMOR:
+            cs_set_user_armor(id, 100, CS_ARMOR_KEVLAR)
+        case DELIVERY_VESTHELM:
+            cs_set_user_armor(id, 100, CS_ARMOR_VESTHELM)
+        case DELIVERY_HEGRENADE, DELIVERY_FLASHBANG, DELIVERY_SMOKEGRENADE:
+        {
+            new weaponName[32]
+            get_weaponname(g_weaponId[idx], weaponName, charsmax(weaponName))
+            if (!weaponName[0] || give_item(id, weaponName) <= 0)
+                return false
+
+            new ammo = cs_get_user_bpammo(id, g_weaponId[idx]) + g_weaponAmmo[idx]
+            new maxAmmo = g_deliveryType[idx] == DELIVERY_FLASHBANG ? 2 : 1
+            if (ammo > maxAmmo)
+                ammo = maxAmmo
+            cs_set_user_bpammo(id, g_weaponId[idx], ammo)
+        }
+        case DELIVERY_MEDIC:
+        {
+            new health = get_user_health(id) + MEDIC_HEAL_AMOUNT
+            if (health > 100)
+                health = 100
+            set_user_health(id, health)
+        }
+        default:
+            return false
+    }
+
+    return true
 }
 
 public drone_depart(drone)
@@ -921,7 +1019,7 @@ clear_slot(slot, bool:refund)
     {
         if (is_user_connected(owner) && idx >= 0 && idx < g_weaponCount)
         {
-            new price = g_weaponPrice[idx] * get_pcvar_num(g_cvarMultiplier)
+            new price = g_droneCost[slot]
             cs_set_user_money(owner, cs_get_user_money(owner) + price, 1)
             client_print(owner, print_chat, "[Drone] Delivery failed - $%d refunded.", price)
         }
@@ -939,6 +1037,8 @@ clear_slot(slot, bool:refund)
     g_droneEnt[slot] = 0
     g_droneOwner[slot] = 0
     g_droneWeapon[slot] = -1
+    g_droneCost[slot] = 0
+    g_droneSimulation[slot] = false
     g_droneExpire[slot] = 0.0
     g_droneDelivered[slot] = false
 }
