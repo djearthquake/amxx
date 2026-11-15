@@ -3,68 +3,68 @@
 #include engine_stocks
 #include fakemeta
 
-new const ent_type[]="game_player_equip"
+static const ent_type[]="game_player_equip"
 
-new const GIVES[][]=
+static const GIVES[][]=
 {
-    "weapon_knife",
-    "weapon_pipewrench",
-    "weapon_crowbar",
-    "weapon_eagle",
-    "weapon_9mmhandgun",
     "ammo_357",
-    "ammo_357",
-    "ammo_357",
-    "weapon_9mmAR",
     "ammo_9mmclip",
-    "ammo_9mmclip",
-    "weapon_shotgun",
-    "ammo_buckshot",
-    "ammo_buckshot",
     "ammo_buckshot",
     "item_battery",
-    "item_battery",
-    "item_battery"
+    "weapon_tripmine"
 }
+
 public plugin_init()
 {
-    new Origin[3], iSwap, ent2
+    new Origin[3], iSwap, ent2;
 
-    iSwap = find_ent(MaxClients,"item_ctfportablehev")
+    iSwap = find_ent(MaxClients+1,"item_ctfportablehev")
 
-    if(iSwap)
+    if(pev_valid(iSwap))
     {
         pev(iSwap, pev_origin, Origin)
         remove_entity(iSwap)
+
+        ent2 = create_entity("item_ctfregeneration")
+
+        if(pev_valid(ent2))
+        {
+            set_pev(ent2, pev_origin, Origin)
+            DispatchSpawn(ent2);
+        }
+
     }
 
-    ent2 = create_entity("item_ctfregeneration")
-    set_pev(ent2, pev_origin, Origin)
-    DispatchSpawn(ent2);
+    iSwap = find_ent(MaxClients+1,"weapon_displacer")
 
-    iSwap = find_ent(MaxClients,"weapon_displacer")
-
-    if(iSwap)
+    if(pev_valid(iSwap))
     {
         pev(iSwap, pev_origin, Origin)
         remove_entity(iSwap)
+
+        ent2 = create_entity("item_ctflongjump")
+
+        if(pev_valid(ent2))
+        {
+            set_pev(ent2, pev_origin, Origin)
+            DispatchSpawn(ent2);
+        }
     }
 
-    ent2 = create_entity("item_ctflongjump")
-    set_pev(ent2, pev_origin, Origin)
-    DispatchSpawn(ent2);
+    iSwap = find_ent(MaxClients+1,"weapon_gauss")
 
-    iSwap = find_ent(-1,"weapon_gauss")
-
-    if(iSwap)
+    if(pev_valid(iSwap))
     {
         pev(iSwap, pev_origin, Origin)
         remove_entity(iSwap)
-    }
 
-    ent2 = create_entity("weapon_displacer")
-    set_pev(ent2, pev_origin, Origin)
-    DispatchSpawn(ent2);
+        ent2 = create_entity("weapon_displacer")
+        if(pev_valid(ent2))
+        {
+            set_pev(ent2, pev_origin, Origin)
+            DispatchSpawn(ent2);
+        }
+    }
 
     remove_entity_name("weapon_shotgun");
     remove_entity_name("ammo_buckshot");
@@ -75,7 +75,7 @@ public plugin_init()
 
 public plugin_precache()
 {
-    register_plugin("op4ctf_orange_fix","1.1","SPiNX");
+    register_plugin("op4ctf_orange_fix","1.2","SPiNX");
     static mapname[MAX_NAME_LENGTH];get_mapname(mapname, charsmax(mapname));
     if(!equal(mapname, "op4ctf_orange"))
     {
@@ -83,14 +83,24 @@ public plugin_precache()
         return PLUGIN_HANDLED
     }
 
-
     new ent = create_entity(ent_type)
-
-    for(new i;i < sizeof GIVES;++i)
+    if(pev_valid(ent))
     {
-        DispatchKeyValue( ent, GIVES[i], "1" )
+        for(new i;i < sizeof GIVES;++i)
+        {
+            DispatchKeyValue( ent, GIVES[i], "4" )
+        }
+        DispatchKeyValue( ent, "weapon_crowbar", "1" )
+        DispatchKeyValue( ent, "weapon_knife", "1" )
+        DispatchKeyValue( ent, "weapon_pipewrench", "1" )
+        DispatchKeyValue( ent, "weapon_shotgun", "1" )
+        DispatchKeyValue( ent, "weapon_9mmAR", "1" )
+        DispatchKeyValue( ent, "weapon_9mmhandgun", "1" )
+        DispatchKeyValue( ent, "weapon_eagle", "1" )
+
         DispatchSpawn(ent);
     }
+
     return PLUGIN_CONTINUE
 
 }
