@@ -8,36 +8,44 @@
 #include <hamsandwich>
 #include <xs>
 #define PLUGIN "Ghost Door Walker"
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define AUTHOR "SPiNX"
 
 #define g_fbox 100.0 //security key hitbox
 #define g_packHP                   15
 #define MAX_IP_LENGTH              16
 #define MAX_PLAYERS                32
-//Base plugin is from Xalus Walk through walls. Interchangeable cvars.
-///Idea from Castlewolfenstein on Apple II.
-new bool:g_bHasKey[ MAX_PLAYERS + 1 ], bool:g_bHasKey2[ MAX_PLAYERS + 1 ], g_key;
-new g_target_name
-new Float:g_flDelay[ MAX_PLAYERS + 1 ];
-new /*g_model,*/ g_model2;
-new g_cvarDistance, g_cvarFalldistance, g_cvarButton, g_cvarDelay, g_cvarMessages;
-//new g_Ent, g_Ent1, g_Ent2, g_Ent3, g_Ent4, g_Ent5;
-new const SzClass[][] =
+
+static const SzClass[][] =
 {
     "player", "func_breakable", "momentary_door",
     "func_healthcharger", "func_recharge",
     "func_door", "func_door_rotating",
     "func_wall","func_wall_toggle",
     "worldspawn", "func_pushable", "momentary_door"
-}; //"worldspawn" crash-related but damn it's fun
+} //"worldspawn" crash-related but damn it's fun
+
+//Base plugin is from Xalus Walk through walls. Interchangeable cvars.
+///Idea from Castlewolfenstein on Apple II.
+new bool:g_bHasKey[ MAX_PLAYERS + 1 ], bool:g_bHasKey2[ MAX_PLAYERS + 1 ], g_key
+new g_target_name
+new Float:g_flDelay[ MAX_PLAYERS + 1 ]
+new /*g_model,*/ g_model2
+new g_cvarDistance, g_cvarFalldistance, g_cvarButton, g_cvarDelay, g_cvarMessages
+//new g_Ent, g_Ent1, g_Ent2, g_Ent3, g_Ent4, g_Ent5;
+
+
+new bool:g_bot[MAX_PLAYERS+1]
+new bool:g_admin[MAX_PLAYERS+1]
+new bool:bRegistered;
+
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR);
     register_impulse(204, "impulse_handler");
-    RegisterHam(Ham_Spawn,"player", "client_putinserver",1)
+    RegisterHam(Ham_Spawn,"player", "player_spawn",1)
     register_clcmd("say !key", "handlesay");
-    g_cvarDistance       = register_cvar("wtw_distance", "200");        // Maximum wall wiPlayers_indexth wich player can go through.
+    g_cvarDistance       = register_cvar("wtw_distance", "200");        // Maximum wall width wich player can go through.
     g_cvarFalldistance   = register_cvar("wtw_fall_distance", "500");   // Maximum Fall distance behind the wall. (So you don't end up dead).
     g_cvarButton         = register_cvar("wtw_button", "1");            // Button (USE) needed to go through walls (1) or automatically (0)
     g_cvarDelay          = register_cvar("wtw_delay", "0.7");           // Delay after going through a wall, to go through the next one.
@@ -47,28 +55,29 @@ public plugin_init()
     register_touch("func_door","player","Color");
 */
     for(new list; list < sizeof SzClass; list++)
-        register_touch(SzClass[list],"player","Touch_Wall");/* &&
+        register_touch(SzClass[list],"player","Touch_Wall")/* &&
         register_touch(SzClass[list],"player","Color");*/
 }
-public Touch_Wall(entity, iPlayers_index)
+public Touch_Wall(entity, id)
 {
-    if(is_user_connected(iPlayers_index) && is_user_alive(iPlayers_index) && !is_user_bot(iPlayers_index) )
+    if(is_user_connected(id) && is_user_alive(id) && !g_bot[id] )
     {
-        if(g_flDelay[iPlayers_index] < get_gametime())
+        if(g_flDelay[id] < get_gametime())
         {
             new intCvarButton;
             intCvarButton = get_pcvar_num(g_cvarButton);
-            if(!intCvarButton || (intCvarButton && pev(iPlayers_index, pev_button) & IN_USE))
-            if(g_bHasKey[iPlayers_index])
+            if(!intCvarButton || (intCvarButton && pev(id, pev_button) & IN_USE))
+            if(g_bHasKey[id])
             {
-                set_player_behindwall(entity, iPlayers_index);
-                if(g_bHasKey2[iPlayers_index])
-                    Restore_door2(entity, iPlayers_index);
+                set_player_behindwall(entity, id);
+                if(g_bHasKey2[id])
+                    Restore_door2(entity, id);
             }
         }
     }
 }
-public Color(entity, iPlayers_index)
+
+public Color(entity, id)
 {
    // const SPAWNFLAGS = 768
     set_pev(entity, pev_rendermode, kRenderTransColor);
@@ -76,19 +85,20 @@ public Color(entity, iPlayers_index)
     set_pev(entity, pev_renderamt, 150.0);
     set_task(random_float(2.0,5.0),"Restore_door", entity);
 }
-public light_up(entity, iPlayers_index)
+
+public light_up(entity, id)
 {
     if(pev_valid(entity)>1)
     {
         set_pev(entity, pev_rendercolor, Float:{255.0, 207.0, 148.0});
         /*
-        if(is_user_admin(iPlayers_index))
-            client_print(iPlayers_index, print_console, "Attempting to alter ent for you..");
+        if(g_admin[id])
+            client_print(id, print_console, "Attempting to alter ent for you..");
         ****/
         set_task(random_float(2.0,5.0),"Restore_door", entity);
     }
 }
-public Restore_door(entity, iPlayers_index)
+public Restore_door(entity, id)
 {
    if(pev_valid(entity)>1)
     {
@@ -104,7 +114,8 @@ public Restore_door(entity, iPlayers_index)
         set_task(random_float(5.0,9.0),"Restore_door2", entity);
     }
 }
-public Restore_door2(entity, iPlayers_index)
+
+public Restore_door2(entity, id)
 {
    if(pev_valid(entity)>1)
     {
@@ -113,7 +124,7 @@ public Restore_door2(entity, iPlayers_index)
         set_pev(entity, pev_renderamt,  255.0);
         new SzEntCheck[MAX_PLAYERS]
         entity_get_string(entity, EV_SZ_target, SzEntCheck, charsmax(SzEntCheck))
-        if(g_bHasKey2[iPlayers_index] && containi(SzEntCheck, "door_blast") == -1)
+        if(g_bHasKey2[id] && containi(SzEntCheck, "door_blast") == -1)
         {
             g_target_name++
             entity_set_string(entity, EV_SZ_classname,"func_breakable")
@@ -125,13 +136,13 @@ public Restore_door2(entity, iPlayers_index)
 
             set_pev(entity, pev_rendermode, kRenderNormal);
 
-            set_pev(entity, pev_flags, SF_BREAK_PRESSURE) //testing if it does rework obj
+            ///set_pev(entity, pev_flags, SF_BREAK_PRESSURE) //testing if it does rework obj
 
             //new ent = create_entity("env_explosion")
             new ent = create_entity("func_breakable")
 
             fm_set_kvd(ent, "explodemagnitude", "250"); //breakable
-            set_pev(ent, pev_flags, SF_BREAK_TOUCH)
+            ///set_pev(ent, pev_flags, SF_BREAK_TOUCH)
             //fm_set_kvd(ent, "iMagnitude", "250"); //env
             /*
             new SzDrop[4]
@@ -179,69 +190,71 @@ public Restore_door2(entity, iPlayers_index)
             set_pev(ent, pev_rendermode, kRenderNormal);
 
             new Origin[3];
-            pev(iPlayers_index, pev_origin, Origin);
+            pev(id, pev_origin, Origin);
             set_pev(ent, pev_origin, Origin);
             dllfunc( DLLFunc_Spawn, ent)
             entity_set_string(ent, EV_SZ_classname,"func_breakable")
 
 
-            if(is_user_connected(iPlayers_index))
-                client_print(iPlayers_index, print_center,"Item^n^n^n~~is~~^n^n^nbreakable now!");
+            if(is_user_connected(id))
+                client_print(id, print_center,"Item^n^n^n~~is~~^n^n^nbreakable now!");
         }
     }
 }
-set_player_behindwall(entity, iPlayers_index)
+
+set_player_behindwall(entity, id)
 {
     new Float:flOrigin[4][3], Float:flAngle[3]
     new Origin[3];
-    get_user_origin(iPlayers_index, Origin);
-    pev(iPlayers_index, pev_origin, flOrigin[0])
-    pev(iPlayers_index, pev_v_angle, flAngle)
+    get_user_origin(id, Origin);
+    pev(id, pev_origin, flOrigin[0])
+    pev(id, pev_v_angle, flAngle)
     flAngle[0] = -10.0
     origin_infront(flAngle, flOrigin[0], (get_pcvar_float(g_cvarDistance) + 40.0), flOrigin[1]);
     new iTraceHandle = create_tr2();
-    engfunc(EngFunc_TraceLine, flOrigin[0], flOrigin[1], DONT_IGNORE_MONSTERS, iPlayers_index, iTraceHandle);
+    engfunc(EngFunc_TraceLine, flOrigin[0], flOrigin[1], DONT_IGNORE_MONSTERS, id, iTraceHandle);
     get_tr2(iTraceHandle, TR_vecEndPos, flOrigin[2]);
     if(get_distance_f(flOrigin[0], flOrigin[2]) > 17.0)
     {
         free_tr2(iTraceHandle);
         return 0;
     }
-    g_flDelay[iPlayers_index] = (get_gametime() + get_pcvar_float(g_cvarDelay));
-    engfunc(EngFunc_TraceLine, flOrigin[1], flOrigin[0], DONT_IGNORE_MONSTERS, iPlayers_index, iTraceHandle);
+    g_flDelay[id] = (get_gametime() + get_pcvar_float(g_cvarDelay));
+    engfunc(EngFunc_TraceLine, flOrigin[1], flOrigin[0], DONT_IGNORE_MONSTERS, id, iTraceHandle);
     get_tr2(iTraceHandle, TR_vecEndPos, flOrigin[3]);
     origin_infront(flAngle, flOrigin[3], 16.55, flOrigin[3]);
-    if(is_hull_vacant(flOrigin[3], pev(iPlayers_index, pev_flags) & FL_DUCKING ? HULL_HEAD : HULL_HUMAN))
+    if(is_hull_vacant(flOrigin[3], pev(id, pev_flags) & FL_DUCKING ? HULL_HEAD : HULL_HUMAN))
     {
         xs_vec_copy(flOrigin[3], flOrigin[1]);
         flOrigin[1][2] -= 1000.0;
-        engfunc(EngFunc_TraceLine, flOrigin[3], flOrigin[1], IGNORE_MONSTERS, iPlayers_index, iTraceHandle);
+        engfunc(EngFunc_TraceLine, flOrigin[3], flOrigin[1], IGNORE_MONSTERS, id, iTraceHandle);
         get_tr2(iTraceHandle, TR_vecEndPos, flOrigin[1]);
         if(get_distance_f(flOrigin[3], flOrigin[1]) > get_pcvar_float(g_cvarFalldistance))
         {
-            if(get_pcvar_num(g_cvarMessages) /*&& is_user_connected(iPlayers_index)*/ )
+            if(get_pcvar_num(g_cvarMessages) /*&& is_user_connected(id)*/ )
             {
-                client_print(iPlayers_index, print_center, "Walking through failed, ^n^nfall risk");
-                Color(entity, iPlayers_index);
-                Lights(iPlayers_index, Origin);
+                client_print(id, print_center, "Walking through failed, ^n^nfall risk");
+                Color(entity, id);
+                Lights(id, Origin);
             }
             free_tr2(iTraceHandle);
             return 0;
         }
-        engfunc(EngFunc_SetOrigin, iPlayers_index, flOrigin[3]);
+        engfunc(EngFunc_SetOrigin, id, flOrigin[3]);
     }
     else if(get_pcvar_num(g_cvarMessages) )
     {
-        client_print(iPlayers_index, print_center, "Walking through failed, ^n^narea too big.");
-        Color(entity, iPlayers_index);
-        Lights(iPlayers_index, Origin);
+        client_print(id, print_center, "Walking through failed, ^n^narea too big.");
+        Color(entity, id);
+        Lights(id, Origin);
     }
     free_tr2(iTraceHandle);
     return 1;
 }
-public Lights(iPlayers_index,Origin[3])
+
+public Lights(id,Origin[3])
 {
-    emessage_begin(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY,{0,0,0},iPlayers_index);
+    emessage_begin(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY,{0,0,0},id);
     ewrite_byte(TE_DLIGHT);
     ewrite_coord(Origin[0])
     ewrite_coord(Origin[1])
@@ -255,7 +268,7 @@ public Lights(iPlayers_index,Origin[3])
     emessage_end();
     message_begin(MSG_BROADCAST, SVC_TEMPENTITY,{0,0,0},0);
     ewrite_byte(TE_ELIGHT);
-    ewrite_short(iPlayers_index)
+    ewrite_short(id)
     ewrite_coord(Origin[0])
     ewrite_coord(Origin[1])
     ewrite_coord(Origin[2])
@@ -276,12 +289,14 @@ origin_infront( Float:vAngles[3], Float:vecOrigin[ 3 ], Float:flDistance, Float:
     xs_vec_mul_scalar(vecAngles, flDistance, vecAngles);
     xs_vec_add(vecOrigin, vecAngles, vecOutput);
 }
+
 bool:is_hull_vacant(const Float:origin[3], hull)
 {
     new tr;
     engfunc(EngFunc_TraceHull, origin, origin, IGNORE_MONSTERS, hull, 0, tr);
     return bool:(!get_tr2(tr, TR_StartSolid) && !get_tr2(tr, TR_AllSolid) && get_tr2(tr, TR_InOpen))
 }
+
 public plugin_precache()
 {
     precache_model("models/w_security.mdl");
@@ -319,70 +334,100 @@ public plugin_precache()
     ////////////////fun C  breakable!!///////////////
 
 }
-public handlesay(iPlayers_index)
+
+public handlesay(id)
 {
-    if(is_user_connected(iPlayers_index))
-        client_putinserver(iPlayers_index)
+    if(is_user_connected(id))
+        client_putinserver(id)
 }
-public client_putinserver(iPlayers_index)
+
+public client_putinserver(id)
 {
-    if(is_user_bot(iPlayers_index))
-        return PLUGIN_HANDLED_MAIN;
-/*
-    new Float:minbox[3] = { -g_fbox, -g_fbox, -g_fbox }
-    new Float:maxbox[3] = { g_fbox, g_fbox, g_fbox }
-    new Float:angles[3] = { 0.0, 0.0, 0.0 }
-*/
-    if( !is_user_bot(iPlayers_index) && is_user_alive(iPlayers_index) && get_user_frags(iPlayers_index) > 4 || is_user_alive(iPlayers_index) && is_user_admin(iPlayers_index))
+    if(is_user_connected(id))
     {
-        give_item(iPlayers_index,"item_security");
-        g_bHasKey[iPlayers_index] = true
-        client_print(iPlayers_index, print_center,"Skeleton Key given!");
-/*
-        g_key = create_entity("func_breakable")
-        entity_set_string(g_key, EV_SZ_targetname,"skeleton_key")
-        entity_set_edict(g_key, EV_ENT_aiment, iPlayers_index)
-        entity_set_edict(g_key, EV_ENT_owner, iPlayers_index)
-        entity_set_float(g_key, EV_FL_health, g_packHP*1.0) //Cvar later?
-        entity_set_size(g_key, minbox, maxbox )
-        set_pev(g_key,pev_angles,angles)
-        entity_set_int(g_key, EV_INT_movetype, MOVETYPE_BOUNCE)
-        set_pev(g_key,pev_solid,SOLID_BBOX)
-        set_pev(g_key,pev_takedamage, DAMAGE_AIM)
-*/
-        if(get_user_frags(iPlayers_index) > 9)
-            g_bHasKey2[iPlayers_index] = true && client_print(iPlayers_index, print_chat,"impulse 204 (~ console) drops key of destruction!");
-        //if(is_user_connected(iPlayers_index) && g_bHasKey2[iPlayers_index])
-//            entity_set_model(g_key, "models/w_security.mdl")
+        g_admin[id]  = is_user_admin(id) ? true : false;
+        g_bot[id] = is_user_bot(id) ? true : false;
+        if(g_bot[id] && ! bRegistered)
+        {
+                set_task(0.1, "@register", id);
+        }
+    }
+}
+
+@register(ham_bot)
+{
+    if(is_user_connected(ham_bot) && !bRegistered)
+    {
+        bRegistered = true;
+        RegisterHamFromEntity(Ham_Spawn, ham_bot, "player_spawn", 1);
+        server_print("%s|%s|%s hambot from %N", PLUGIN, VERSION, AUTHOR, ham_bot)
+    }
+}
+
+public player_spawn(id)
+{
+    if(is_user_alive(id))
+    {
+        if(g_bot[id])
+            return PLUGIN_HANDLED_MAIN;
+    /*
+        new Float:minbox[3] = { -g_fbox, -g_fbox, -g_fbox }
+        new Float:maxbox[3] = { g_fbox, g_fbox, g_fbox }
+        new Float:angles[3] = { 0.0, 0.0, 0.0 }
+    */
+        if(get_user_frags(id) > 4 || g_admin[id])
+        {
+            give_item(id,"item_security");
+            g_bHasKey[id] = true
+            client_print(id, print_center,"Skeleton Key given!");
+    /*
+            g_key = create_entity("func_breakable")
+            entity_set_string(g_key, EV_SZ_targetname,"skeleton_key")
+            entity_set_edict(g_key, EV_ENT_aiment, id)
+            entity_set_edict(g_key, EV_ENT_owner, id)
+            entity_set_float(g_key, EV_FL_health, g_packHP*1.0) //Cvar later?
+            entity_set_size(g_key, minbox, maxbox )
+            set_pev(g_key,pev_angles,angles)
+            entity_set_int(g_key, EV_INT_movetype, MOVETYPE_BOUNCE)
+            set_pev(g_key,pev_solid,SOLID_BBOX)
+            set_pev(g_key,pev_takedamage, DAMAGE_AIM)
+    */
+            if(get_user_frags(id) > 9)
+                g_bHasKey2[id] = true && client_print(id, print_chat,"impulse 204 (~ console) drops key of destruction!");
+            //if(is_user_connected(id) && g_bHasKey2[id])
+    //            entity_set_model(g_key, "models/w_security.mdl")
+        }
+        else
+        {
+            g_bHasKey[id] = false
+            client_print(id, print_center,"You were not granted a key!");
+            new X = ( 5 - get_user_frags(id) )
+            client_print(id,print_chat,"%i more frag(s) are needed.", X);
+        }
+        return PLUGIN_CONTINUE;
+    }
+    return PLUGIN_HANDLED;
+}
+
+public client_disconnected(id)
+{
+    g_bHasKey[id] = false
+    g_bHasKey2[id] = false
+}
+public impulse_handler(id)
+{
+    if(g_bHasKey[id])
+    {
+        client_print(id, print_chat,"Skeleton Key dropped.");
+        drop(id);
     }
     else
-    {
-        g_bHasKey[iPlayers_index] = false
-        client_print(iPlayers_index, print_center,"You were not granted a key!");
-        new X = ( 5 - get_user_frags(iPlayers_index) )
-        client_print(iPlayers_index,print_chat,"%i more frag(s) are needed.", X);
-    }
-    return PLUGIN_CONTINUE;
-}
-public client_disconnected(iPlayers_index)
-{
-    g_bHasKey[iPlayers_index] = false
-    g_bHasKey2[iPlayers_index] = false
-}
-public impulse_handler(iPlayers_index)
-{
-    if(g_bHasKey[iPlayers_index])
-    {
-        client_print(iPlayers_index, print_chat,"Skeleton Key dropped.");
-        drop(iPlayers_index);
-    }
-    else
-        client_print(iPlayers_index, print_chat,"You have no keys to drop!");
+        client_print(id, print_chat,"You have no keys to drop!");
 }
 
 //Back when this was a key that could be dropped. Now frag based at least for starters.
 ///Remake to have other player pick up. Make a sound etc. Make this fun.
-public drop(iPlayers_index)
+public drop(id)
 {
     //remove_entity(g_key)
     new count, variance;
@@ -391,19 +436,19 @@ public drop(iPlayers_index)
     #define TE_PLAYERATTACHMENT         124
     emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 );
     ewrite_byte(TE_PLAYERSPRITES)
-    ewrite_short(iPlayers_index)
+    ewrite_short(id)
     ewrite_short(g_model2)
     ewrite_byte(count)
     ewrite_byte(variance) //(0 = no variance in size) (10 = 10% variance in size)
     emessage_end();
     emessage_begin( MSG_BROADCAST, SVC_TEMPENTITY, { 0, 0, 0 }, 0 );
     ewrite_byte(TE_PLAYERATTACHMENT)
-    ewrite_byte(iPlayers_index)
+    ewrite_byte(id)
     ewrite_coord(-75) //(attachment origin.z = player origin.z + vertical offset)
     ewrite_short(g_model2)   //mdl
     ewrite_short(160 ) //life * 10
     emessage_end();
-    g_bHasKey[iPlayers_index] = false;
+    g_bHasKey[id] = false;
     if(pev_valid(g_key) > 1)
         remove_entity(g_key)
 }
