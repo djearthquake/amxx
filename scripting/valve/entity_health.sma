@@ -89,7 +89,7 @@ new Trie:g_mnames
 
 public plugin_init()
 {
-    register_plugin("Entity Health","1.58","SPiNX");
+    register_plugin("Entity Health","1.59","SPiNX");
     register_event("Damage","@event_damage","be")
     RegisterHam(Ham_Killed, "player", "fw_PlayerKilled_Pre", 0)
     register_forward(FM_ServerDeactivate, "OnServerDeactivate_Post", 1)
@@ -778,6 +778,18 @@ public monster_scan()
         new victim = get_monster_npc(szName)
         if(victim && is_user_connected(victim))
         {
+            new vdeaths = pev(victim, pev_iuser2) + 1
+            set_pev(victim, pev_iuser2, vdeaths)
+            emessage_begin(MSG_BROADCAST, get_user_msgid("ScoreInfo"))
+            ewrite_byte(victim)
+            ewrite_short(get_user_frags(victim))
+            ewrite_short(vdeaths)
+            if(cstrike_running())
+            {
+                ewrite_short(0)
+                ewrite_short(get_user_team(victim))
+            }
+            emessage_end()
             log_kill(attacker, victim, weapon, 1)
             @fake_death(victim, attacker)
         }
